@@ -632,3 +632,56 @@ terseness win in itself. **If this gets reverted to flat per-transition weightin
 it's reintroducing an assumption (pinky is the weak finger, all mismatches cost the same) the
 literature specifically contradicts** - re-derive the research summary above before touching the
 coupling weights, don't just restore the old numbers.
+
+**The backup-entry composition pass (`src/generate.rs`, see `docs/syllables.md`) now arbitrates a
+within-round text collision by cost and frequency, the same way the solver rewrite above already
+fixed primary outlines, instead of leaving it first-come-first-served.** The solver rewrite
+deliberately left this pass alone (it has to stay iterative - a round's own compositions depend on
+the previous round's committed entries, so it can't be folded into one global solve), but
+`try_add_backup` kept whichever of two colliding words `generate`'s own round loop happened to
+visit first, with no cost or frequency comparison at all - the exact unfairness the rewrite fixed
+everywhere else, just left over here. Worse than merely unfair: since that visit order comes from
+iterating a `HashMap`'s own keys (`word_outline`), and Rust's default hasher is randomized per
+process, this made the backup pass - and with it, the deployed dictionary and the quote-corpus
+benchmark - genuinely non-deterministic across runs, not just "equally good, whichever word
+happened to come up." Confirmed directly: two consecutive `build` runs of the pre-fix binary,
+nothing else changed, differed on 259 of roughly 105,000 outline-to-word mappings, and
+`quote_corpus`'s own word-level counts (and total key count) swung between runs of the unfixed
+`cargo test` binary too.
+
+Fixed by splitting `try_add_backup` into three pieces: `compose_backup` (the fragment-safety check
+and text rendering, same as before, just without committing anything yet), `arbitrate_backup_round`
+(new - groups one round's full list of composed candidates by text and, for any text more than one
+candidate wants, keeps only the one minimizing `weight(word) * candidate_cost(outline)`, the
+identical `edge_cost` formula and `setup.count`-based frequency weighting the real solver already
+uses - no second, parallel cost system), and `commit_backup` (the final `taken` check and insert,
+unchanged, still first-come-first-served but now only *across* rounds, where that is actually
+correct: an earlier round's winner already committed fair and square under this same rule). Every
+round now collects every direction's every candidate before committing any of them, instead of
+committing eagerly as each is found. A collision's loser - whether cost-arbitrated away within the
+round, or simply already `taken` from an earlier round - still counts in `backup_skipped`, so that
+report line stays accurate. Covered by a new, standalone unit test
+(`backup_round_arbitration_picks_lowest_weighted_cost_not_whoever_is_tried_first`) that feeds
+`arbitrate_backup_round` the same two colliding candidates in both orders and checks the winner
+doesn't move.
+
+**One honest wrinkle, not a flaw in the fix**: a within-round collision is always on the exact same
+rendered outline text, which means the same outline, which means `candidate_cost` is identical for
+every contender in a group - the formula's cost term cancels, and the arbitration reduces, in every
+real collision found, to simply "the lower-frequency word wins," not "the more common word gets the
+nicer outline" the way intuition might expect. This is the formula this change was specified to use
+(mirroring the solver's own `edge_cost` exactly, deliberately not inventing a new one), so it is
+intentional, but worth flagging rather than glossing over.
+
+**Measured effect**: a full build finds 4,838 real within-round collisions across roughly 105,000
+words - not rare at all. One concrete example: `spade` (frequency weight 1,796) and `spayed`
+(weight 76) both compose to the exact same text, `SPAEUD`; under this fix, `spayed` keeps it every
+run, and `spade` falls back to its own separately-derived `SPAED` - no worse off (one fewer key,
+if anything). `quote_corpus`'s own numbers land squarely inside the range the *unfixed* code's own
+run-to-run noise already covered (4,341-4,342 total keys observed across repeated runs of the old
+binary); the fixed binary now settles at 4,342 on every single run. No threshold in that file
+needed raising - there is no real improvement or regression to bank here beyond the noise band
+this fix eliminated, which is itself the point. **If this gets reverted to eager, per-candidate
+commits "for simplicity," the backup pass goes back to being non-deterministic across runs**, not
+just unfair in the abstract - re-confirm the 259-mapping, two-identical-runs test above before
+assuming a revert is harmless.

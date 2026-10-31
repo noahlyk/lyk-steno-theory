@@ -96,4 +96,15 @@ alone rather than guessed at. A collision with an outline something else already
 counted (`build`'s own report line), never a hard failure, since this is a best-effort pass over
 the whole dictionary rather than an explicit, human-authored override.
 
+A collision *within the same pass* — two different words (or the same word, by two different
+directions) composing the exact same text before either is committed — is not decided by whichever
+one the pass happens to visit first. Every pass first collects every direction's every candidate
+for every word, then, text by text, keeps only the one minimizing `weight(word) * cost(outline)` —
+the identical formula, and the identical frequency weighting, the real solver uses for every
+word's own primary outline (see [collisions](collisions.md)) — before committing any of the pass's
+winners. Only a collision against a text an *earlier* pass already settled still works the old way
+(first pass to settle it keeps it), since a later pass's own compositions genuinely depend on what
+an earlier pass already committed and can't be reopened to a full solve the way primary outlines
+were.
+
 Next: **[when two words sound the same](collisions.md)**.

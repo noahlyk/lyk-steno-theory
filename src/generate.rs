@@ -552,26 +552,39 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMa
     result
 }
 
-/// One candidate composed outline from the exhaustive backup pass in [`generate`]: checked for a
+/// One candidate composed outline from the exhaustive backup pass in [`generate`], checked for a
 /// real fragment (the same safety net every composition kind already used before this pass was
-/// unified) and for a collision, then either added as a new [`Origin::Backup`] entry or counted
-/// in `backup_skipped`. `added_this_round` is what the fixed-point loop in `generate` watches to
-/// know when nothing further is left to find.
-#[allow(clippy::too_many_arguments)]
-fn try_add_backup(
-    setup: &Setup,
+/// unified) but not yet checked against `taken` or against anything else this same round is also
+/// composing - that has to wait until every word's every direction has been tried, so a text two
+/// different words both compose this round can be arbitrated by cost instead of by whichever one
+/// happened to be found first. Returns `None` when the fragment check alone already rules the
+/// composition out, which never counts toward `backup_skipped` (it was never a real candidate to
+/// begin with, the same as before this pass was split in two).
+fn compose_backup(setup: &Setup, word: &str, sounds: &[String], composed: Vec<Stroke>) -> Option<(Vec<Stroke>, String)> {
+    if !setup.rules.matches_real_consonants(&composed, word, sounds) {
+        return None;
+    }
+    let text = render_outline(&composed);
+    Some((composed, text))
+}
+
+/// Commits one backup candidate that has already won its text for this round - either outright,
+/// the only candidate anyone composed for it, or by the cost arbitration in `generate`'s own
+/// round loop below - as a new [`Origin::Backup`] entry, or counts it in `backup_skipped` if an
+/// earlier round (or any other already-settled entry) already holds that exact text. This is the
+/// only remaining "first wins" check in the whole pass, and it is across rounds, not within one:
+/// a round's own internal contention is already resolved by the time anything reaches here.
+/// `added_this_round` is what the fixed-point loop in `generate` watches to know when nothing
+/// further is left to find.
+fn commit_backup(
     entries: &mut Vec<Entry>,
     taken: &mut HashMap<String, String>,
     backup_skipped: &mut usize,
     added_this_round: &mut usize,
     word: &str,
-    sounds: &[String],
     composed: Vec<Stroke>,
+    text: String,
 ) {
-    if !setup.rules.matches_real_consonants(&composed, word, sounds) {
-        return;
-    }
-    let text = render_outline(&composed);
     if taken.contains_key(&text) {
         *backup_skipped += 1;
         return;
@@ -584,6 +597,45 @@ fn try_add_backup(
         lost_to: None,
     });
     *added_this_round += 1;
+}
+
+/// For one round's full list of composed backup candidates (word, outline, text - see
+/// [`compose_backup`]), which indices win their text: `true` for a candidate whose text no other
+/// candidate in this same list also wants, or whose `weight(word) * candidate_cost(outline)` is
+/// the smallest among every candidate that does share its text. This mirrors `solve_contested`'s
+/// own `edge_cost` formula and its `setup.count`-based frequency weighting exactly (see its doc
+/// above `generate`'s own component-solving loop) - no second, parallel cost system - just applied
+/// locally, to one round's own text collisions, rather than as a full bipartite solve, since a
+/// later round's own compositions still depend on this round's committed choices and so can't be
+/// folded into one global solve the way primary outlines were.
+///
+/// A tie (possible when two candidates carry the same frequency weight - most commonly two words
+/// both absent from the frequency corpus, both defaulting to a weight of 0) breaks on the word's
+/// own spelling, the same deterministic tie-break `remaining`'s own candidate sort in `generate`
+/// already uses, so a true tie is exactly as reproducible as a real difference, not however the
+/// candidates happened to be ordered going in.
+fn arbitrate_backup_round(candidates: &[(String, Vec<Stroke>, String)], weight_of: impl Fn(&str) -> u64) -> Vec<bool> {
+    let mut by_text: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (i, (_, _, text)) in candidates.iter().enumerate() {
+        by_text.entry(text.as_str()).or_default().push(i);
+    }
+    let mut is_winner = vec![true; candidates.len()];
+    for indices in by_text.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let winner = *indices
+            .iter()
+            .min_by_key(|&&i| {
+                let (word, composed, _) = &candidates[i];
+                (weight_of(word) * u64::from(candidate_cost(composed)), word.clone())
+            })
+            .expect("by_text only ever groups indices that exist");
+        for &i in indices {
+            is_winner[i] = i == winner;
+        }
+    }
+    is_winner
 }
 
 /// The shortest outline (fewest strokes, then fewest keys) from a list.
@@ -1091,6 +1143,16 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // round. Collisions are skipped and counted, never a hard failure, since this is a
     // best-effort pass over the whole dictionary, not an explicit human-authored override.
     //
+    // A collision within the same round - two different words (or the same word, by two
+    // different directions) composing the exact same text before either is committed - is not
+    // decided by which one happened to be tried first: every round first collects every
+    // direction's every candidate for every word, then, text by text, keeps only the one
+    // minimizing `weight(word) * candidate_cost(outline)` - the same formula, and the same
+    // `setup.count`-based frequency weighting, `solve_contested`'s own `edge_cost` uses above -
+    // before committing any of the round's winners against `taken`. A collision against a text
+    // some *earlier* round already settled is unaffected: that word already won, fair and square,
+    // under this same rule when its own round ran.
+    //
     // Capped at a small, fixed number of rounds: growth should already have stopped well before
     // that in practice (each round can only add entries built from the *previous* round's new
     // stems, so the search space shrinks every round rather than compounding), and hitting the
@@ -1126,6 +1188,10 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
 
         let mut added_this_round = 0usize;
+        // Every direction's every valid composition found this round, word and text alongside
+        // the outline, collected before any of them is checked against `taken` - see the
+        // arbitration block after this word loop for why.
+        let mut round_candidates: Vec<(String, Vec<Stroke>, String)> = Vec::new();
 
         for word in word_outline.keys().cloned().collect::<Vec<_>>() {
             let Some(sounds) = setup.pron.get(&word).and_then(|prons| prons.first()) else {
@@ -1152,16 +1218,9 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 let mut composed = word_outline[stem].clone();
                 composed.push(bare);
                 setup.rules.joined(&mut composed);
-                try_add_backup(
-                    setup,
-                    &mut entries,
-                    &mut taken,
-                    &mut backup_skipped,
-                    &mut added_this_round,
-                    &word,
-                    sounds,
-                    composed,
-                );
+                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
+                    round_candidates.push((word.clone(), composed, text));
+                }
             }
 
             // (a2) stem + a known two-stroke suffix (`-ism`, `-ary`/`-ery`/`-ory`, `-ical`,
@@ -1174,16 +1233,9 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                     let mut composed = stem_outline.clone();
                     composed.extend_from_slice(suffix_strokes);
                     setup.rules.joined(&mut composed);
-                    try_add_backup(
-                        setup,
-                        &mut entries,
-                        &mut taken,
-                        &mut backup_skipped,
-                        &mut added_this_round,
-                        &word,
-                        sounds,
-                        composed,
-                    );
+                    if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
+                        round_candidates.push((word.clone(), composed, text));
+                    }
                 }
             }
 
@@ -1216,16 +1268,9 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 }
                 let mut composed = word_outline[stem].clone();
                 composed[0] = Stroke(leading.0 | target_first.0);
-                try_add_backup(
-                    setup,
-                    &mut entries,
-                    &mut taken,
-                    &mut backup_skipped,
-                    &mut added_this_round,
-                    &word,
-                    sounds,
-                    composed,
-                );
+                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
+                    round_candidates.push((word.clone(), composed, text));
+                }
             }
 
             // (c) two whole placed words back to back (`myself` -> `my` + `self`), composed as
@@ -1264,16 +1309,22 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 let mut composed = word_outline[first].clone();
                 composed.extend(word_outline[second].iter().copied());
                 setup.rules.joined(&mut composed);
-                try_add_backup(
-                    setup,
-                    &mut entries,
-                    &mut taken,
-                    &mut backup_skipped,
-                    &mut added_this_round,
-                    &word,
-                    sounds,
-                    composed,
-                );
+                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
+                    round_candidates.push((word.clone(), composed, text));
+                }
+            }
+        }
+
+        // Cost arbitration: see `arbitrate_backup_round`'s own doc for the rule. Every winner is
+        // then committed exactly as before (still subject to `commit_backup`'s own `taken` check,
+        // for a text an *earlier* round already settled); every loser - cost-arbitrated away here,
+        // or simply already `taken` - counts toward `backup_skipped` all the same.
+        let is_winner = arbitrate_backup_round(&round_candidates, |word| setup.count.get(word).copied().unwrap_or(0));
+        for (i, (word, composed, text)) in round_candidates.into_iter().enumerate() {
+            if is_winner[i] {
+                commit_backup(&mut entries, &mut taken, &mut backup_skipped, &mut added_this_round, &word, composed, text);
+            } else {
+                backup_skipped += 1;
             }
         }
 
@@ -2038,5 +2089,50 @@ mod tests {
         ];
         let best = cheapest(&entries);
         assert_eq!(best.get("less").copied(), Some(&parse_outline("HRES").unwrap()[..]));
+    }
+
+    #[test]
+    fn backup_round_arbitration_picks_lowest_weighted_cost_not_whoever_is_tried_first() {
+        // Two words whose composed backup both land on the exact same text within one round:
+        // before this fix, `try_add_backup` kept whichever one `generate`'s own round loop
+        // happened to visit first (`word_outline`'s `HashMap` iteration order, undefined from the
+        // caller's point of view) and silently discarded the other - no cost or frequency
+        // comparison at all. The fix mirrors `solve_contested`'s own `edge_cost` exactly:
+        // `weight(word) * candidate_cost(outline)`. `common` is struck far more often (weight
+        // 1,000) but its own composed outline costs much more (two strokes, "TK/TK"); `rare` is
+        // struck far less often (weight 5) but composes to a single, cheap stroke, "TK" - cheap
+        // enough that `rare`'s own weighted cost still comes in well below `common`'s, so `rare`
+        // must win this collision however the two candidates are ordered going in.
+        let cheap = parse_outline("TK").unwrap();
+        let costly = parse_outline("TK/TK").unwrap();
+        assert!(
+            u64::from(candidate_cost(&cheap)) * 5 < u64::from(candidate_cost(&costly)) * 1_000,
+            "this test's own premise (rare's weighted cost is the smaller one) must hold"
+        );
+        let weight_of = |word: &str| match word {
+            "common" => 1_000,
+            "rare" => 5,
+            other => unreachable!("unexpected word in this test: {other}"),
+        };
+
+        let forward = vec![
+            ("common".to_owned(), costly, "SAME".to_owned()),
+            ("rare".to_owned(), cheap, "SAME".to_owned()),
+        ];
+        assert_eq!(
+            arbitrate_backup_round(&forward, weight_of),
+            vec![false, true],
+            "rare's lower weighted cost should win even when common is listed (and so would have \
+             been visited) first"
+        );
+
+        // Same two candidates, reversed input order: the winner must still be `rare`, confirming
+        // the outcome depends on cost and frequency, never on processing order.
+        let backward = vec![forward[1].clone(), forward[0].clone()];
+        assert_eq!(
+            arbitrate_backup_round(&backward, weight_of),
+            vec![true, false],
+            "the winner must not depend on which candidate was tried first"
+        );
     }
 }
