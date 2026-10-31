@@ -134,8 +134,20 @@ struct Stats {
     word_more_keys_lapwing: u32,
     word_fewer_strokes_plover: u32,
     word_fewer_strokes_lapwing: u32,
+    /// Lyk's key total over *every* word it resolves a cost for, regardless of whether Plover or
+    /// Lapwing have an entry at all - a "full coverage" figure, not comparable on its own to either
+    /// theory's total below (see `total_keys_lyk_vs_plover`/`_vs_lapwing` for the numbers that are).
     total_keys_lyk: u64,
+    /// Lyk's key total, but only summed over the words Plover also has an entry for - the same
+    /// population `total_keys_plover` sums over, so the two are a fair, apples-to-apples
+    /// comparison. (Summing lyk's cost over every word it resolves while summing Plover's only
+    /// over words Plover has was a real bug here once: on a corpus dense with proper nouns neither
+    /// gold dictionary carries, lyk's uncounterweighted fallback cost made it look worse in
+    /// aggregate even when it won on every shared word - see `docs/decisions.md`.)
+    total_keys_lyk_vs_plover: u64,
     total_keys_plover: u64,
+    /// As `total_keys_lyk_vs_plover`, but scoped to the words Lapwing has an entry for instead.
+    total_keys_lyk_vs_lapwing: u64,
     total_keys_lapwing: u64,
 }
 
@@ -184,8 +196,17 @@ impl Stats {
             Self::pct(self.word_fewer_strokes_lapwing, self.words)
         );
         println!(
-            "total keys: lyk {} plover {} lapwing {}",
-            self.total_keys_lyk, self.total_keys_plover, self.total_keys_lapwing
+            "total keys (shared vocabulary only, fair comparison): lyk-vs-plover {} plover {}   \
+             lyk-vs-lapwing {} lapwing {}",
+            self.total_keys_lyk_vs_plover,
+            self.total_keys_plover,
+            self.total_keys_lyk_vs_lapwing,
+            self.total_keys_lapwing
+        );
+        println!(
+            "lyk full-coverage total (every word lyk resolves, including ones neither gold \
+             dictionary has at all): {}",
+            self.total_keys_lyk
         );
     }
 }
@@ -197,15 +218,18 @@ fn score(passages: &[&str]) -> Stats {
 
     for &passage in passages {
         let rows = rows_for(setup, &lyk, passage);
-        let (mut p_keys, mut l_keys, mut w_keys) = (0u64, 0u64, 0u64);
+        let mut p_keys_full = 0u64;
+        let (mut p_keys_vs_plover, mut l_keys) = (0u64, 0u64);
+        let (mut p_keys_vs_lapwing, mut w_keys) = (0u64, 0u64);
         for row in &rows {
             stats.words += 1;
             let ours = cost(&row.lyk);
             if let Some((_, k)) = ours {
-                p_keys += u64::from(k);
+                p_keys_full += u64::from(k);
             }
             if let (Some((os, ok)), Some((ps, pk))) = (ours, cost(&row.plover)) {
                 l_keys += u64::from(pk);
+                p_keys_vs_plover += u64::from(ok);
                 match ok.cmp(&pk) {
                     std::cmp::Ordering::Less => stats.word_fewer_keys_plover += 1,
                     std::cmp::Ordering::Greater => stats.word_more_keys_plover += 1,
@@ -217,6 +241,7 @@ fn score(passages: &[&str]) -> Stats {
             }
             if let (Some((os, ok)), Some((ws, wk))) = (ours, cost(&row.lapwing)) {
                 w_keys += u64::from(wk);
+                p_keys_vs_lapwing += u64::from(ok);
                 match ok.cmp(&wk) {
                     std::cmp::Ordering::Less => stats.word_fewer_keys_lapwing += 1,
                     std::cmp::Ordering::Greater => stats.word_more_keys_lapwing += 1,
@@ -228,15 +253,20 @@ fn score(passages: &[&str]) -> Stats {
             }
         }
         stats.passages += 1;
-        stats.total_keys_lyk += p_keys;
+        stats.total_keys_lyk += p_keys_full;
+        stats.total_keys_lyk_vs_plover += p_keys_vs_plover;
         stats.total_keys_plover += l_keys;
+        stats.total_keys_lyk_vs_lapwing += p_keys_vs_lapwing;
         stats.total_keys_lapwing += w_keys;
-        match p_keys.cmp(&l_keys) {
+        // Compared against each theory's own total over the *same* shared-vocabulary words, not
+        // lyk's full-coverage total - otherwise a passage with a proper noun neither gold
+        // dictionary knows would silently charge lyk for it without ever charging the other side.
+        match p_keys_vs_plover.cmp(&l_keys) {
             std::cmp::Ordering::Less => stats.passage_wins_plover += 1,
             std::cmp::Ordering::Greater => stats.passage_losses_plover += 1,
             std::cmp::Ordering::Equal => {}
         }
-        match p_keys.cmp(&w_keys) {
+        match p_keys_vs_lapwing.cmp(&w_keys) {
             std::cmp::Ordering::Less => stats.passage_wins_lapwing += 1,
             std::cmp::Ordering::Greater => stats.passage_losses_lapwing += 1,
             std::cmp::Ordering::Equal => {}
@@ -264,11 +294,17 @@ mod threshold {
     /// fragment-safety filter that briefly regressed `which`/`on`/`from`/`no`/`then`/`day` back to
     /// their full phonetic readings before being reverted as contradicting the day-4 philosophy
     /// reversal (both in `docs/decisions.md`).
-    pub const PASSAGE_WIN_PCT_PLOVER: f64 = 74.0;
-    pub const PASSAGE_WIN_PCT_LAPWING: f64 = 87.5;
+    ///
+    /// Raised again here, substantially, after fixing a real asymmetry bug in how `score()` summed
+    /// lyk's total against each theory's: lyk's side was summed over *every* word it resolves, the
+    /// other theory's only over words it has an entry for, so a passage with even one word neither
+    /// gold dictionary knows charged lyk without ever charging the other side. Fixing that raised
+    /// the real measured win rate from 76.7%/89.3% to 85.4%/97.1% - see `docs/decisions.md`.
+    pub const PASSAGE_WIN_PCT_PLOVER: f64 = 82.0;
+    pub const PASSAGE_WIN_PCT_LAPWING: f64 = 95.0;
     /// Share of individual words where lyk strictly beats the other theory on keys.
-    pub const WORD_FEWER_KEYS_PCT_PLOVER: f64 = 24.0;
-    pub const WORD_FEWER_KEYS_PCT_LAPWING: f64 = 39.0;
+    pub const WORD_FEWER_KEYS_PCT_PLOVER: f64 = 23.0;
+    pub const WORD_FEWER_KEYS_PCT_LAPWING: f64 = 38.0;
     /// Share of individual words where lyk strictly *loses* on keys - capped, so a change that
     /// quietly makes more words worse doesn't hide behind an unrelated set of words getting better.
     ///
@@ -280,13 +316,18 @@ mod threshold {
     /// fragment-safety filter that briefly regressed `which`/`on`/`from`/`no`/`then`/`day` back to
     /// their full phonetic readings was found and reverted (see `docs/decisions.md`) - removing an
     /// over-strict filter freed up real wins the solver couldn't reach before.
-    pub const WORD_MORE_KEYS_PCT_PLOVER_MAX: f64 = 6.5;
-    pub const WORD_MORE_KEYS_PCT_LAPWING_MAX: f64 = 3.0;
+    pub const WORD_MORE_KEYS_PCT_PLOVER_MAX: f64 = 6.2;
+    pub const WORD_MORE_KEYS_PCT_LAPWING_MAX: f64 = 2.8;
     /// How much cheaper lyk's aggregate key total must be, as a percentage of the other theory's
     /// own total - the single hardest number to fake, since it is not swayed by lots of tiny common
     /// words tying (`a`, `the`, `is` cost the same everywhere) the way a per-word percentage is.
-    pub const AGGREGATE_SAVINGS_PCT_PLOVER: f64 = 7.0;
-    pub const AGGREGATE_SAVINGS_PCT_LAPWING: f64 = 13.0;
+    ///
+    /// Computed from `total_keys_lyk_vs_plover`/`_vs_lapwing`, not `total_keys_lyk` - see those
+    /// fields' own doc comments on `Stats` for why using lyk's unscoped full-coverage total here
+    /// was a real bug, not a stricter-but-valid alternative metric. Raised from 7.0/13.0 to the real
+    /// fixed numbers (9.97%/18.02% measured) once that bug was found - see `docs/decisions.md`.
+    pub const AGGREGATE_SAVINGS_PCT_PLOVER: f64 = 9.0;
+    pub const AGGREGATE_SAVINGS_PCT_LAPWING: f64 = 17.0;
 }
 
 /// Prints the full breakdown (`cargo test --release quote_corpus -- --nocapture` to see it) and
@@ -303,9 +344,143 @@ fn lyk_beats_plover_and_lapwing_across_a_hundred_unpicked_passages() {
     let word_fewer_keys_pct_lapwing = Stats::pct(stats.word_fewer_keys_lapwing, stats.words);
     let word_more_keys_pct_plover = Stats::pct(stats.word_more_keys_plover, stats.words);
     let word_more_keys_pct_lapwing = Stats::pct(stats.word_more_keys_lapwing, stats.words);
-    let savings_pct_plover = (stats.total_keys_plover as f64 - stats.total_keys_lyk as f64) * 100.0
+    let savings_pct_plover = (stats.total_keys_plover as f64 - stats.total_keys_lyk_vs_plover as f64) * 100.0
         / stats.total_keys_plover as f64;
-    let savings_pct_lapwing = (stats.total_keys_lapwing as f64 - stats.total_keys_lyk as f64) * 100.0
+    let savings_pct_lapwing = (stats.total_keys_lapwing as f64 - stats.total_keys_lyk_vs_lapwing as f64) * 100.0
+        / stats.total_keys_lapwing as f64;
+
+    assert!(
+        passage_win_pct_plover >= t::PASSAGE_WIN_PCT_PLOVER,
+        "only {passage_win_pct_plover:.1}% of passages beat Plover outright, want >= {}%",
+        t::PASSAGE_WIN_PCT_PLOVER
+    );
+    assert!(
+        passage_win_pct_lapwing >= t::PASSAGE_WIN_PCT_LAPWING,
+        "only {passage_win_pct_lapwing:.1}% of passages beat Lapwing outright, want >= {}%",
+        t::PASSAGE_WIN_PCT_LAPWING
+    );
+    assert!(
+        word_fewer_keys_pct_plover >= t::WORD_FEWER_KEYS_PCT_PLOVER,
+        "only {word_fewer_keys_pct_plover:.1}% of words beat Plover on keys, want >= {}%",
+        t::WORD_FEWER_KEYS_PCT_PLOVER
+    );
+    assert!(
+        word_fewer_keys_pct_lapwing >= t::WORD_FEWER_KEYS_PCT_LAPWING,
+        "only {word_fewer_keys_pct_lapwing:.1}% of words beat Lapwing on keys, want >= {}%",
+        t::WORD_FEWER_KEYS_PCT_LAPWING
+    );
+    assert!(
+        word_more_keys_pct_plover <= t::WORD_MORE_KEYS_PCT_PLOVER_MAX,
+        "{word_more_keys_pct_plover:.1}% of words cost more than Plover's, want <= {}%",
+        t::WORD_MORE_KEYS_PCT_PLOVER_MAX
+    );
+    assert!(
+        word_more_keys_pct_lapwing <= t::WORD_MORE_KEYS_PCT_LAPWING_MAX,
+        "{word_more_keys_pct_lapwing:.1}% of words cost more than Lapwing's, want <= {}%",
+        t::WORD_MORE_KEYS_PCT_LAPWING_MAX
+    );
+    assert!(
+        savings_pct_plover >= t::AGGREGATE_SAVINGS_PCT_PLOVER,
+        "lyk is only {savings_pct_plover:.2}% cheaper than Plover in aggregate, want >= {}%",
+        t::AGGREGATE_SAVINGS_PCT_PLOVER
+    );
+    assert!(
+        savings_pct_lapwing >= t::AGGREGATE_SAVINGS_PCT_LAPWING,
+        "lyk is only {savings_pct_lapwing:.2}% cheaper than Lapwing in aggregate, want >= {}%",
+        t::AGGREGATE_SAVINGS_PCT_LAPWING
+    );
+}
+
+/// The five Gutenberg books `fetch` downloads for this corpus (see `src/fetch.rs`), in the order
+/// their sentences get concatenated before sampling - public domain, pre-1929, across different
+/// registers and eras the same way the 103 hand-picked passages above already lean on in
+/// miniature (a novel of manners, frontier vernacular, a historical novel, a whaling epic, and the
+/// same transcendentalist essay tradition `PASSAGES` already draws several lines from).
+const CORPUS_BOOKS: &[&str] = &[
+    "data/corpus/pride-and-prejudice.txt",
+    "data/corpus/huckleberry-finn.txt",
+    "data/corpus/tale-of-two-cities.txt",
+    "data/corpus/moby-dick.txt",
+    "data/corpus/walden.txt",
+];
+
+/// Roughly how many passages `corpus_extract::sample` thins the five books' combined sentences
+/// down to.
+const EXTRACTED_TARGET: usize = 400;
+
+/// Reads and extracts the larger corpus from the books `fetch` downloaded, sampling down to
+/// [`EXTRACTED_TARGET`] - deterministic, so repeated runs against the same downloaded files always
+/// score the exact same set of passages.
+fn extracted_passages() -> Vec<String> {
+    let mut all = Vec::new();
+    for path in CORPUS_BOOKS {
+        let raw = std::fs::read_to_string(path).unwrap_or_else(|e| {
+            panic!("{path}: {e} - run `cargo run --release -- fetch` first")
+        });
+        all.extend(crate::corpus_extract::extract(&raw));
+    }
+    crate::corpus_extract::sample(&all, EXTRACTED_TARGET)
+}
+
+/// Thresholds for the larger, extracted-prose corpus below, calibrated the same way as
+/// [`threshold`] above: set a few points under a real, measured run - see `docs/decisions.md`'s
+/// entry for this corpus for the full numbers. Kept as a separate module, and deliberately not
+/// merged with [`threshold`], because this corpus's numbers are not expected to match the
+/// hand-picked 103's exactly - measured: 416 passages, lyk beats Plover outright on 80.8% (vs. the
+/// 103's 85.4%) and Lapwing on 95.0% (vs. 97.1%); of 5,595 words, lyk costs fewer keys than Plover
+/// on 21.9% and Lapwing on 34.5% (close to the 103's own 24.8%/40.2%); in aggregate, over the words
+/// each theory actually has an entry for, lyk is cheaper than both: 18,916 keys vs. Plover's 20,384
+/// (7.2% cheaper) and 18,254 vs. Lapwing's 21,313 (14.4% cheaper) - consistent with the hand-picked
+/// 103's own 9.97%/18.02%, which is the real point of running a larger, unpicked corpus at all:
+/// confirming the win isn't an artifact of which 103 passages got chosen.
+///
+/// An earlier version of this corpus's numbers looked like a flip (lyk *more* expensive in
+/// aggregate) because `score()` had a real asymmetry bug: lyk's total was summed over every word it
+/// resolves, while each gold theory's total was summed only over words it has an entry for. Real
+/// public-domain fiction is dense with proper nouns neither gold dictionary carries at all
+/// (`netherfield`, `pemberley`, `queequeg`) - lyk's phonetic fallback resolves nearly all of them,
+/// and that cost landed in lyk's aggregate with no counterweight on the other side (322 such words,
+/// 3,769 keys on this corpus). The hand-picked 103 never hit this because nobody picked a passage
+/// with a proper noun absent from Plover's own dictionary. Fixed by scoring each side over the
+/// *same* shared vocabulary (`total_keys_lyk_vs_plover`/`_vs_lapwing`, see their doc comments on
+/// `Stats`) - see `docs/decisions.md` for the full before/after. `total_keys_lyk` (lyk's
+/// full-coverage total, uncomparable on its own) is kept and still printed by `report()` as a
+/// separate, clearly-labeled figure, since "lyk resolves words the others can't at all" is a real
+/// strength worth keeping visible, just not one that belongs mixed into a "which costs less" ratio.
+mod extracted_threshold {
+    pub const PASSAGE_WIN_PCT_PLOVER: f64 = 76.0;
+    pub const PASSAGE_WIN_PCT_LAPWING: f64 = 90.0;
+    pub const WORD_FEWER_KEYS_PCT_PLOVER: f64 = 20.0;
+    pub const WORD_FEWER_KEYS_PCT_LAPWING: f64 = 32.0;
+    pub const WORD_MORE_KEYS_PCT_PLOVER_MAX: f64 = 7.2;
+    pub const WORD_MORE_KEYS_PCT_LAPWING_MAX: f64 = 3.4;
+    pub const AGGREGATE_SAVINGS_PCT_PLOVER: f64 = 6.0;
+    pub const AGGREGATE_SAVINGS_PCT_LAPWING: f64 = 13.0;
+}
+
+/// The same benchmark as `lyk_beats_plover_and_lapwing_across_a_hundred_unpicked_passages`, over a
+/// larger, non-hand-picked sample of real connected prose instead of a hand-picked list - see
+/// `docs/decisions.md` for why both run side by side rather than one replacing the other. Needs
+/// `cargo run --release -- fetch` to have downloaded the books first; panics with that instruction
+/// if they're missing rather than silently skipping.
+#[test]
+fn lyk_beats_plover_and_lapwing_across_extracted_gutenberg_prose() {
+    use extracted_threshold as t;
+    let passages = extracted_passages();
+    let refs: Vec<&str> = passages.iter().map(String::as_str).collect();
+    let stats = score(&refs);
+    stats.report();
+
+    let passage_win_pct_plover = Stats::pct(stats.passage_wins_plover, stats.passages);
+    let passage_win_pct_lapwing = Stats::pct(stats.passage_wins_lapwing, stats.passages);
+    let word_fewer_keys_pct_plover = Stats::pct(stats.word_fewer_keys_plover, stats.words);
+    let word_fewer_keys_pct_lapwing = Stats::pct(stats.word_fewer_keys_lapwing, stats.words);
+    let word_more_keys_pct_plover = Stats::pct(stats.word_more_keys_plover, stats.words);
+    let word_more_keys_pct_lapwing = Stats::pct(stats.word_more_keys_lapwing, stats.words);
+    let savings_pct_plover = (stats.total_keys_plover as f64 - stats.total_keys_lyk_vs_plover as f64) * 100.0
+        / stats.total_keys_plover as f64;
+    let savings_pct_lapwing = (stats.total_keys_lapwing as f64 - stats.total_keys_lyk_vs_lapwing as f64)
+        * 100.0
         / stats.total_keys_lapwing as f64;
 
     assert!(

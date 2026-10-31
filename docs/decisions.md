@@ -685,3 +685,168 @@ this fix eliminated, which is itself the point. **If this gets reverted to eager
 commits "for simplicity," the backup pass goes back to being non-deterministic across runs**, not
 just unfair in the abstract - re-confirm the 259-mapping, two-identical-runs test above before
 assuming a revert is harmless.
+
+**A second, much larger `quote_corpus` benchmark over real Project Gutenberg prose, run side by
+side with the 103 hand-picked passages rather than replacing them.** A prior read-only research
+pass raised a fair concern about the original corpus (`src/quote_corpus.rs`'s `PASSAGES`): 103
+lines picked by a person, even one trying to be fair, is small enough that nobody could rule out
+unconscious cherry-picking toward sentences that happen to flatter lyk's own brief list. The fix
+isn't to delete the hand-picked corpus (it's cheap, fast, and still a real regression trip-wire)
+but to add a much bigger, mechanically-sampled one nobody hand-picked at all, and compare the two
+side by side for a cycle before trusting either alone. `src/fetch.rs` now downloads five
+pre-1929, public-domain Gutenberg books across different registers into `data/corpus/` (not
+committed, same as every other `data/` source): *Pride and Prejudice* (Austen, 1813, `files/1342/
+1342-0.txt`), *Adventures of Huckleberry Finn* (Twain, 1884, `files/76/76-0.txt`), *A Tale of Two
+Cities* (Dickens, 1859, `files/98/98-0.txt`), *Moby-Dick* (Melville, 1851, `files/2701/2701-0.txt`),
+and *Walden* (Thoreau, 1854, `files/205/205-0.txt`) - the same transcendentalist tradition
+`PASSAGES` already draws several of its own lines from, in full this time. A new, dependency-free
+module, `src/corpus_extract.rs`, turns each raw download into short passages: strips the standard
+`*** START OF ... ***`/`*** END OF ... ***` boilerplate markers, joins each blank-line-delimited
+paragraph's wrapped lines and drops anything that reads as structure rather than prose (a heading,
+an `[Illustration: ...]` caption - no lowercase letter, or a leftover `[`/`_` formatting marker),
+splits on `.`/`!`/`?` with an abbreviation list (`Mr`, `Dr`, `St`, ...) and a single-capital-initial
+check so "Mr. Darcy" and "J. Austen" don't get cut in half, keeps only 8-20 word sentences of
+ordinary prose (no stray digits or brackets), and samples every Nth sentence (a fixed stride, not
+random) down to roughly the target count - all unit-tested in isolation in the same file. A new
+test, `lyk_beats_plover_and_lapwing_across_extracted_gutenberg_prose`, runs the identical scoring
+code (`quote::rows_for`/`quote::cost`, same as the original) over the resulting 416 passages, with
+its own threshold module (`extracted_threshold`) calibrated the same way as the original: measured
+first, set a few points under. Needs `cargo run --release -- fetch` to have downloaded the books;
+panics with that instruction rather than silently skipping if they're missing. Both tests share the
+one production-scale dictionary build the whole suite already shares, so the second test adds
+negligible wall-clock time to `cargo test --release` - the fixed dictionary-build cost (several
+seconds) dominates either way; scoring 416 passages instead of 103 is sub-second extra work.
+
+**One real formatting bug found and fixed along the way, worth flagging since it would otherwise
+silently bias any text pulled from this era's prose against lyk specifically.** Gutenberg's own
+plain-text convention writes an em dash as two bare hyphens with no surrounding space
+(`word--word`), and this era's prose hyphenates whole multi-word phrases far more freely than
+modern English does (`four-and-twenty`, `bread-and-cheese`, `printing-office`,
+`Season-on-the-Line`). Left alone, either one reads as a single whitespace-delimited token, and
+`quote::clean` (shared, unchanged, by both corpora and the live `quote` command) strips the
+punctuation but keeps the letters - fusing two or more real words into one nonsense word
+(`candlesthats`, `fourandtwenty`, `bathingplace`) that costs lyk an expensive spelled-out fallback
+outline for a "word" that doesn't exist, while Plover and Lapwing simply have no entry for it
+either and are silently excluded from that word's comparison entirely (`score`'s own
+`if let (Some(ours), Some(theirs))` pattern) - inflating lyk's aggregate key total with no
+counterweight on the other side, over a pure formatting artifact. `corpus_extract::normalize_dashes`
+fixes this at the source by turning every hyphen and em/en dash into a literal space before
+sentence-splitting, so a hyphenated phrase becomes separate real words - the fair, representative
+choice anyway, since this theory's whole join-key design (`docs/join-key.md`) already treats
+word boundaries as explicit and types a hyphenated phrase as separate strokes for its separate
+words, never as one fused compound entry. Confirmed directly: before this fix, 374 words had a lyk
+outline but no Plover/Lapwing entry at all, totaling 5,454 keys; after it, 322 words and 3,769 keys
+- the remainder is genuine proper nouns and period vocabulary (`netherfield`, `pemberley`,
+`queequeg`, `breezelessness`), not a tokenization bug. **If `normalize_dashes` gets simplified back
+to only handling `--`/em-dash "for clarity," every hyphenated phrase in this corpus goes back to
+being silently mangled into a fake word** - re-run `cargo test --release
+lyk_beats_plover_and_lapwing_across_extracted_gutenberg_prose -- --nocapture` and check the "more
+keys" and aggregate-savings lines haven't quietly gotten worse before assuming it's harmless.
+
+**Measured, real numbers - and one genuinely surprising result among them, not swept under a
+rug.** Today's run of the original 103-passage corpus (the baseline this entry's own thresholds
+track, now ahead of this session's solver-rewrite threshold raises - see the "A real test suite"
+entry above, whose own quoted 58.3%/73.8%/18.2%/33.0% numbers predate that rewrite and are stale
+relative to current code): lyk beat Plover outright on 79/103 (76.7%) and Lapwing on 92/103
+(89.3%); of 1,216 words, lyk cost fewer keys than Plover on 24.8% and Lapwing on 40.2% (more on
+only 5.7%/2.5%); aggregate keys lyk 4,341 vs. Plover 4,694 vs. Lapwing 5,039 (lyk 7.5% cheaper than
+Plover, 13.9% cheaper than Lapwing). The new 416-passage extracted corpus: lyk beat Plover outright
+on only 177/416 (42.5%) and Lapwing on 201/416 (48.3%); of 5,595 words, lyk cost fewer keys than
+Plover on 21.9% and Lapwing on 34.5% (close to the hand-picked corpus's own 24.8%/40.2% - individual
+words are not where these two corpora disagree), more on 6.7%/3.1%; but in aggregate, lyk is
+*more* expensive than both - 22,867 keys vs. Plover's 20,384 (12.2% worse) and Lapwing's 21,313
+(7.3% worse). That aggregate flip is real and explained, not noise: real public-domain fiction is
+dense with proper nouns and period-specific rare words Plover and Lapwing have no entry for at all
+(see the formatting-bug paragraph above for the exact count - 322 words, 3,769 keys, all landing on
+lyk's side of the ledger with zero counterweight on the other), which the clean, modern-vocabulary
+103 essentially never hits. **This complicates, rather than confirms or refutes, the cherry-picking
+concern that motivated adding this corpus**: the per-word numbers say the rules themselves aren't
+meaningfully different on real prose than on the hand-picked lines, but the *aggregate* benchmark
+headline number both corpora are built around turns out to be sensitive to a corpus's own
+proper-noun density in a way that has nothing to do with how good the theory is - worth watching
+before leaning on either corpus's aggregate-savings number alone in the future. The extracted
+corpus's thresholds (`extracted_threshold` in `src/quote_corpus.rs`) are set a few points under
+these measured numbers, same practice as everywhere else in this project - `AGGREGATE_SAVINGS_PCT_
+PLOVER`/`_LAPWING` are deliberately negative (`-14.0`/`-9.0`), not a typo, to honestly reflect what
+this corpus actually measures rather than silently exempting it from that assertion. **If these
+negative thresholds get "fixed" to positive numbers without re-measuring, the test will simply fail
+on the very first `cargo test` run** - re-run with `--nocapture` and read the real number before
+touching either threshold module.
+
+**Audited the top 20 Category-B (stray-fragment-leftover) words by usage weight from
+`dump_stray_fragment_leftovers` (`src/rules.rs`); no `rules/briefs.toml` change resulted, and that
+is the correct outcome, not a dodge.** The post-reversal philosophy (see the "core philosophy
+reversed" entry above) already says a candidate holding only part of a required multi-key chord is
+fine as long as it's cheapest, including a literal gold-dictionary entry - so the test applied here
+was objective: is each word's *exact deployed outline* a real, literal entry in Plover's
+(`data/dictionaries/plover-main.json`) or Lapwing's (`data/dictionaries/lapwing-base.json`) own
+dictionary for that word? Checked directly against both files (the same two `Gold` loads, see
+`src/gold.rs`) via `cargo run --release -- explain <word>`, not by eye. 19 of the 20 - `that` (TA),
+`on` (OB), `no` (PHO), `like` (HRAOEUB), `got` (TKWOT), `from` (PR), `going` (KPW-G), `them` (THEP),
+`then` (THEB), `day` (TAEU), `than` (THAP), `guys` (TKPAOEUS), `guy` (TKPAOEU), `which` (KH),
+`believe` (PHREF), `next` (TPHEGT), `seen` (SAOEB), `guess` (TKWES), `open` (OEP) - are confirmed
+verbatim in Plover's or Lapwing's own listing for that exact word: a real, established convention
+these rules happened to reproduce, not an accident of `drop_fragments`'s own repair logic. Overriding
+any of these would mean lyk diverging from steno convention for no benefit, so none were touched.
+
+**The 20th, `beautiful` (deployed `PW-FL`), is not a literal gold entry, but turned out to be a
+diagnostic false positive, not a real defect - confirmed experimentally, not assumed.** Gold's own
+shortest single-stroke answer for this word is `PWAOUFL` (both Plover and Lapwing list it; lyk's
+own full-phonetic two-stroke reading, `PWAOUT/-FL`, is also a literal Plover/Lapwing entry but costs
+an extra stroke). Temporarily pinning `beautiful = "PWAOUFL"` and re-running the diagnostic
+reproduced the *identical* flag (`onset /B/ (PW) stray=W; onset /Y/ (KWR) stray=W`) on gold's own
+literal, fully-phonetic candidate - proof the flag isn't about which candidate wins, since even the
+dictionaries' own real answer trips it. Root cause: `explained_elsewhere` (`src/rules.rs`) ORs in
+every *other* syllable's own onset/coda target chord unconditionally, regardless of whether the
+final outline actually spells that other syllable's sound at all. Here, the last syllable's onset
+`F` has a plain target of `TP`, which shares the `P` key with the first syllable's `B Y` cluster
+target `PW` - so `explained_elsewhere` strips `P` out of the first syllable's own onset bits as
+"already accounted for," even though no candidate for this word ever puts a `T` anywhere near its
+first stroke; `beautiful` never had `TP`'s own `T` down to begin with. That false subtraction leaves
+only `W`, which then reads as a partial hit against both `B`'s target (`PW`) and `Y`'s target
+(`KWR`) - a bug in the *checker*, not in outline selection, and unfixable by picking a different
+candidate, since every real candidate shares the same first-syllable cluster and last-syllable `F`.
+Left `beautiful` alone (no override - one would be pure churn, since the flag follows the word, not
+the outline) and made no change to `explained_elsewhere` itself: this is the same shape of bug the
+`district`/`describe`/`captain` fix already solved for a *shared coda*, now found going the other
+direction (a *later* syllable's onset clashing with the *first* syllable's own onset cluster) -
+`explained_elsewhere` would need to check that the other syllable's target chord is actually present
+in the candidate's own bits before subtracting it, not just that the syllable exists. **If someone
+revisits `dump_stray_fragment_leftovers`'s own word list later and sees `beautiful` (or anything
+built from an onset cluster whose own consonants recur as a later syllable's plain onset) still
+flagged, re-derive this analysis before assuming it needs a brief - check whether the flag survives
+swapping in the word's own literal gold candidate first, the same test used here.**
+
+**Correction to the entry immediately above this one: the extracted-corpus "aggregate flip" was a
+real bug in `score()` itself, not an honest property of the corpus - found and fixed, not merely
+documented.** The entry above describes `total_keys_lyk` (lyk's key total summed over *every* word
+it resolves) being compared against `total_keys_plover`/`total_keys_lapwing` (each summed only over
+words *that theory* has an entry for) and calls the resulting "aggregate flip" real and explained.
+That framing was wrong about what kind of problem this was: comparing a sum over one population
+(all words) against a sum over a different, smaller population (shared words) isn't a surprising
+property of proper-noun-dense prose, it's an apples-to-oranges arithmetic error - the "explanation"
+in the prior entry was actually a description of the bug's mechanism, not a justification for
+leaving it. Fixed in `src/quote_corpus.rs`: `Stats` now tracks `total_keys_lyk_vs_plover` and
+`total_keys_lyk_vs_lapwing` separately, each summed over exactly the same word population as the
+gold theory it's compared against (see their doc comments on `Stats` for the exact reasoning);
+`total_keys_lyk` is kept as a distinct, clearly-labeled "full coverage" figure in `report()`'s
+output, never mixed into a savings ratio. The per-passage win/loss tally (`passage_wins_plover`
+etc.) had the identical bug one level up - `p_keys` (lyk's whole-passage total) was compared against
+`l_keys`/`w_keys` (each gold theory's shared-vocabulary total) - and is fixed the same way.
+
+**The corrected numbers reverse the prior entry's headline finding entirely.** Both corpora now
+show lyk cheaper than both theories, in aggregate, by consistent margins: the hand-picked 103 at
+9.97% cheaper than Plover and 18.02% cheaper than Lapwing (passage win rate 85.4%/97.1%, up from the
+stale pre-fix 76.7%/89.3% quoted above, which had the identical passage-level bug); the 416-passage
+extracted corpus at 7.20% cheaper than Plover and 14.35% cheaper than Lapwing (passage win rate
+80.8%/95.0%, not the prior entry's 42.5%/48.3%). That consistency between a hand-picked and a real,
+unpicked corpus is the actual answer to the cherry-picking concern that motivated building the
+extracted corpus in the first place: the win is real, not an artifact of which 103 passages got
+picked, and it was never actually in doubt - the measurement was. Per-word numbers are essentially
+unchanged by this fix (they were never part of the bug), confirming the prior entry's own aside that
+"individual words are not where these two corpora disagree" was correct even though its aggregate
+conclusion wasn't. Both `threshold` and `extracted_threshold` in `src/quote_corpus.rs` are
+recalibrated to these corrected numbers, a few points under each as usual;
+`AGGREGATE_SAVINGS_PCT_PLOVER`/`_LAPWING` for the extracted corpus are positive again (`6.0`/`13.0`,
+not `-14.0`/`-9.0`) - if a future change makes them need to go negative again, that is a real
+regression to investigate, not a number to "fix" by reverting this entry's logic.

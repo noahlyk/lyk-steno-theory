@@ -13,6 +13,7 @@ const WIKIPRON: &str = "https://raw.githubusercontent.com/CUNY-CL/wikipron/maste
 const PLOVER: &str = "https://raw.githubusercontent.com/openstenoproject/plover/main/plover/assets";
 const LAPWING: &str =
     "https://raw.githubusercontent.com/aerickt/plover-lapwing-aio/main/plover_lapwing/dictionaries";
+const GUTENBERG: &str = "https://www.gutenberg.org/files";
 
 /// Where each file goes under the data folder, and where it comes from.
 fn sources() -> Vec<(String, String)> {
@@ -55,6 +56,22 @@ fn sources() -> Vec<(String, String)> {
         files.push((
             format!("dictionaries/{name}.json"),
             format!("{LAPWING}/{name}.json"),
+        ));
+    }
+    // Public-domain (pre-1929, no translator/editor claim) connected prose for
+    // `quote_corpus`'s larger, non-hand-picked benchmark corpus (see `src/corpus_extract.rs`
+    // and `docs/decisions.md`): five books across different registers and eras, the same way the
+    // 103 hand-picked passages already lean on Austen/Twain/Dickens/Melville/Thoreau in miniature.
+    for (slug, gutenberg_id) in [
+        ("pride-and-prejudice", 1342), // Jane Austen, 1813
+        ("huckleberry-finn", 76),      // Mark Twain, 1884
+        ("tale-of-two-cities", 98),    // Charles Dickens, 1859
+        ("moby-dick", 2701),           // Herman Melville, 1851
+        ("walden", 205),               // Henry David Thoreau, 1854
+    ] {
+        files.push((
+            format!("corpus/{slug}.txt"),
+            format!("{GUTENBERG}/{gutenberg_id}/{gutenberg_id}-0.txt"),
         ));
     }
     files
