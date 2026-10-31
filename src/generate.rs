@@ -601,13 +601,21 @@ fn commit_backup(
 
 /// For one round's full list of composed backup candidates (word, outline, text - see
 /// [`compose_backup`]), which indices win their text: `true` for a candidate whose text no other
-/// candidate in this same list also wants, or whose `weight(word) * candidate_cost(outline)` is
-/// the smallest among every candidate that does share its text. This mirrors `solve_contested`'s
-/// own `edge_cost` formula and its `setup.count`-based frequency weighting exactly (see its doc
-/// above `generate`'s own component-solving loop) - no second, parallel cost system - just applied
-/// locally, to one round's own text collisions, rather than as a full bipartite solve, since a
-/// later round's own compositions still depend on this round's committed choices and so can't be
-/// folded into one global solve the way primary outlines were.
+/// candidate in this same list also wants, or whose own frequency weight is the *largest* among
+/// every candidate that does share its text - the commoner word keeps the shortcut, the same
+/// "commonest word wins contested real estate" principle used everywhere else in this project
+/// (`solve_contested`'s own primary-outline assignment, `which` evicting `charge` from `KH`, and
+/// every other collision this session resolved). This is deliberately *not* a literal mirror of
+/// `solve_contested`'s `edge_cost` minimization: that formula picks the assignment minimizing total
+/// cost across every word's own *required* outline, where losing a slot means taking a specific,
+/// costed alternative instead. A backup entry is optional - losing one here means getting no extra
+/// shortcut at all, not a forced worse outline - so there is no real alternative-cost tradeoff to
+/// minimize, only a question of which word benefits more from the shortcut existing, and that's the
+/// one typed more often. (An earlier version of this function minimized `weight * candidate_cost`
+/// directly, which - since tied candidates always share the same rendered text and therefore the
+/// same cost - collapsed to "the *rarer* word wins," the opposite of the intended rule; caught when
+/// a concrete real example, `spade` (weight 1,796) losing `SPAEUD` to `spayed` (weight 76), was
+/// checked against this project's own established tie-break convention and found to contradict it.)
 ///
 /// A tie (possible when two candidates carry the same frequency weight - most commonly two words
 /// both absent from the frequency corpus, both defaulting to a weight of 0) breaks on the word's
@@ -626,9 +634,9 @@ fn arbitrate_backup_round(candidates: &[(String, Vec<Stroke>, String)], weight_o
         }
         let winner = *indices
             .iter()
-            .min_by_key(|&&i| {
-                let (word, composed, _) = &candidates[i];
-                (weight_of(word) * u64::from(candidate_cost(composed)), word.clone())
+            .max_by_key(|&&i| {
+                let (word, _, _) = &candidates[i];
+                (weight_of(word), std::cmp::Reverse(word.clone()))
             })
             .expect("by_text only ever groups indices that exist");
         for &i in indices {
@@ -2092,23 +2100,17 @@ mod tests {
     }
 
     #[test]
-    fn backup_round_arbitration_picks_lowest_weighted_cost_not_whoever_is_tried_first() {
-        // Two words whose composed backup both land on the exact same text within one round:
-        // before this fix, `try_add_backup` kept whichever one `generate`'s own round loop
-        // happened to visit first (`word_outline`'s `HashMap` iteration order, undefined from the
-        // caller's point of view) and silently discarded the other - no cost or frequency
-        // comparison at all. The fix mirrors `solve_contested`'s own `edge_cost` exactly:
-        // `weight(word) * candidate_cost(outline)`. `common` is struck far more often (weight
-        // 1,000) but its own composed outline costs much more (two strokes, "TK/TK"); `rare` is
-        // struck far less often (weight 5) but composes to a single, cheap stroke, "TK" - cheap
-        // enough that `rare`'s own weighted cost still comes in well below `common`'s, so `rare`
-        // must win this collision however the two candidates are ordered going in.
-        let cheap = parse_outline("TK").unwrap();
-        let costly = parse_outline("TK/TK").unwrap();
-        assert!(
-            u64::from(candidate_cost(&cheap)) * 5 < u64::from(candidate_cost(&costly)) * 1_000,
-            "this test's own premise (rare's weighted cost is the smaller one) must hold"
-        );
+    fn backup_round_arbitration_picks_the_commoner_word_not_whoever_is_tried_first() {
+        // Two words whose composed backup both land on the exact same text within one round -
+        // which, since text is `render_outline` of the composed outline, means they are the exact
+        // same outline and so always carry the exact same `candidate_cost`. Before this fix,
+        // `try_add_backup` kept whichever one `generate`'s own round loop happened to visit first
+        // (`word_outline`'s `HashMap` iteration order, undefined from the caller's point of view)
+        // and silently discarded the other - no frequency comparison at all. The fix gives it to
+        // whichever word is struck more often: `common` (weight 1,000) over `rare` (weight 5) -
+        // the same "commonest word wins contested real estate" rule used everywhere else in this
+        // project, however the two candidates are ordered going in.
+        let same_outline = parse_outline("TK").unwrap();
         let weight_of = |word: &str| match word {
             "common" => 1_000,
             "rare" => 5,
@@ -2116,18 +2118,17 @@ mod tests {
         };
 
         let forward = vec![
-            ("common".to_owned(), costly, "SAME".to_owned()),
-            ("rare".to_owned(), cheap, "SAME".to_owned()),
+            ("rare".to_owned(), same_outline.clone(), "SAME".to_owned()),
+            ("common".to_owned(), same_outline.clone(), "SAME".to_owned()),
         ];
         assert_eq!(
             arbitrate_backup_round(&forward, weight_of),
             vec![false, true],
-            "rare's lower weighted cost should win even when common is listed (and so would have \
-             been visited) first"
+            "common should win even when rare is listed (and so would have been visited) first"
         );
 
-        // Same two candidates, reversed input order: the winner must still be `rare`, confirming
-        // the outcome depends on cost and frequency, never on processing order.
+        // Same two candidates, reversed input order: the winner must still be `common`, confirming
+        // the outcome depends on frequency alone, never on processing order.
         let backward = vec![forward[1].clone(), forward[0].clone()];
         assert_eq!(
             arbitrate_backup_round(&backward, weight_of),
