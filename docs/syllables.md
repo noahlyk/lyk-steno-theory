@@ -107,4 +107,4 @@ winners. Only a collision against a text an *earlier* pass already settled still
 an earlier pass already committed and can't be reopened to a full solve the way primary outlines
 were.
 
-Next: **[when two words sound the same](collisions.md)**.
+Next: **[phrase-briefing](phrases.md)**.

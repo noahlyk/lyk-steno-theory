@@ -850,3 +850,71 @@ recalibrated to these corrected numbers, a few points under each as usual;
 `AGGREGATE_SAVINGS_PCT_PLOVER`/`_LAPWING` for the extracted corpus are positive again (`6.0`/`13.0`,
 not `-14.0`/`-9.0`) - if a future change makes them need to go negative again, that is a real
 regression to investigate, not a number to "fix" by reverting this entry's logic.
+
+**Phrase-briefing: two already-settled single-stroke primaries merged into one new, unclaimed
+stroke when their keys are disjoint.** `setup.bigrams` (Norvig's Google Books Ngrams, loaded since
+the ergonomics-model session but explicitly marked unused pending this work) finally gets a
+consumer. Two candidate mechanisms for a phrase entry's key were considered: naive concatenation
+(a word's own stroke sequence followed by the other's, joined normally) was rejected as a measured
+no-op - it costs exactly `strokes(w1) + strokes(w2)`, identical to striking the two words
+separately, nothing for the entry to actually do. Merging the two words' own single-stroke
+*primaries* into one brand-new stroke (their bitwise OR, when disjoint) is the only one of the two
+that moves any number this project measures: a real 2-strokes-to-1 compression. See
+[phrase-briefing](phrases.md) for the full mechanism, scope boundary, and reasoning - this entry
+covers only what was measured and decided, not re-derived here.
+
+Scoped deliberately narrow for this first increment: both words' own settled *primaries* only
+(never a bonus Short/Alternate/Backup entry, even a cheaper one - a primary is this project's most
+stable invariant, and phrase-briefing is new enough to want the simplest possible correctness
+argument), single-stroke components only (no reaching into a multi-stroke word's own join-key
+structure), no phrase chaining (3+ words), a single non-fixed-point pass run once after the
+backup-composition pass's own fixed-point loop finishes. `Origin::Phrase` is a new variant;
+`generate::single_stroke_stems` (feeds `Rules::resolve`'s stem-recognition fallback - the `explain`
+command and the deployed keymux WASM plugin's own fallback source) had to add it to its existing
+`Origin::Suffix` exclusion, since a phrase's own "word" is two words' text, not a real single word a
+continuation stroke could ever sensibly follow - confirmed by reading `resolve` in full, not just
+tracing the one call site: `resolve` only ever *consumes* whatever map it's handed, so
+`single_stroke_stems`'s own filter is the only place this needed fixing.
+
+**The real eligible-set size was measured before picking a cutoff, not guessed.** The planning
+pass's own placeholder, N=300 (ranked by raw bigram count), was explicitly flagged as unmeasured.
+Scanning `setup.bigrams` (245,803 vocabulary-filtered pairs) sorted by count and checking each
+prefix against the real, built dictionary: top 300 by count yields only 108 real (eligible *and*
+still-unclaimed) phrase entries; the yield doesn't taper off sharply going further out - roughly a
+third of any prefix of the sorted list converts into a real entry all the way past rank 10,000 (top
+1,000 → 346; top 3,000 → 994; top 10,000 → 3,123; top 30,000 → 8,332). Chose **`PHRASE_TOP_N` =
+10,000**: raw counts at that cutoff are still in the low millions (comfortably above the point
+where a pair's commonality starts looking like coincidence rather than habit), and the real yield
+(3,123 entries in the measured build) is substantial, not a token gesture. Full table and method in
+[phrases.md](phrases.md)'s own "The threshold" section.
+
+**A hand-worked check against "of the", "in the", and "I am" (per the verification plan) found a
+real, honest mix, not a uniform win.** "of the" - the single highest-count bigram in the whole
+corpus (2,766,332,391) - has genuinely disjoint primaries (`-F`/`-T`) and its merged stroke (`-FT`)
+was genuinely free; it is the clearest, highest-value real hit this mechanism produces. "in the" is
+*also* genuinely disjoint, but its merged stroke (`TPH-T`) was already claimed by `antonio` - an
+honest miss, not a bug. "I am" surfaced a real, pre-existing data wrinkle: the bigram corpus's own
+lowercase `"i"` is this project's single *letter* "i", not the capitalized pronoun (CMUdict/the
+frequency corpus can't tell them apart; the letter won that one shared slot - see `generate()`'s own
+comment on the pronoun "I"'s carve-out) - so `("i", "am")` is mechanically "letter i" + "am", and its
+merged stroke (`AOEUPL`) was already claimed by the contraction "i'm" regardless. No incorrect
+lowercase-"i" phrase text has ever shipped from this, but it's worth re-checking if `PHRASE_TOP_N`
+is ever raised far enough for a different "i"-led bigram to win a free stroke under the same quirk.
+
+**`quote_corpus.rs` gained a phrase-aware scoring extension, reported as its own, separate figures -
+and it surfaced a real, honest lesson about which metric actually matters.** A naive
+"total keys with phrases vs. without" comparison looked like a wash on the 103-passage corpus (0 net
+change) and a very slight *regression* on the larger 416-passage corpus (-4 keys) - not a bug: a
+phrase's merged stroke is, by construction, the bitwise OR of two disjoint strokes, so its key count
+is always exactly the sum of the two words' own *primary* key counts, never fewer - merging only
+ever drops the *stroke* count, by exactly one per hit, never the key count. The tiny net key
+regression on the larger corpus comes from a second-order interaction: `generate::cheapest` credits
+each word with its own globally cheapest entry of *any* origin (occasionally a backup cheaper than
+that word's own primary - `sit`'s backup `ST` versus its own primary `SEUT`), while a firing phrase
+is necessarily built from both words' own primaries specifically. Once this was understood, the
+benchmark was changed to report *strokes* as the headline phrase-aware number (keys kept alongside,
+for transparency) - strokes are the number this mechanism was built to move, and on both corpora
+they strictly improve: 103 fewer strokes on the 103-passage corpus (1,266 → 1,163), 495 fewer on the
+416-passage corpus (6,757 → 6,262). **Do not revert to a keys-only phrase-aware metric** - it
+measures the wrong thing for this mechanism and will look flat or slightly negative even when the
+feature is working exactly as designed.

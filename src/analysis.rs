@@ -106,9 +106,9 @@ pub struct Setup {
     /// How often one word is immediately followed by another (Norvig's Google Books Ngrams,
     /// `data/frequency/bigrams_en.txt`), kept only where both words are in `rank` - this
     /// generator's own vocabulary, not the raw corpus's (see `data::load_bigrams` for what that
-    /// filters out). Not read anywhere yet: loaded ahead of the phrase-brief work that will
-    /// consume it, so the data and its doc coverage land before the feature does.
-    #[allow(dead_code)]
+    /// filters out). Consumed by `generate`'s phrase-briefing pass (`enumerate_phrase_candidates`)
+    /// to rank which bigrams are worth attempting to merge into a single stroke - see
+    /// `docs/phrases.md`.
     pub bigrams: HashMap<(String, String), u64>,
 }
 

@@ -235,8 +235,8 @@ pub fn report(root: &Path) -> Result<()> {
         .filter(|(first, second, _)| union.contains(first.as_str()) && union.contains(second.as_str()))
         .count();
     println!(
-        "\nbigram pairs (Norvig count_2w, American English, not yet used by the generator): \
-         {bigrams_known} of {bigram_pairs} have both words pronounceable"
+        "\nbigram pairs (Norvig count_2w, American English, consumed by phrase-briefing - see \
+         docs/phrases.md): {bigrams_known} of {bigram_pairs} have both words pronounceable"
     );
 
     println!("\nthe 5000 most common words that have a pronunciation");

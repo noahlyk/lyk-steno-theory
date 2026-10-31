@@ -115,6 +115,33 @@ fn the_contested_set_after_peeling_stays_a_minority_of_the_dictionary() {
     );
 }
 
+/// `generate::single_stroke_stems` feeds `Rules::resolve`'s own stem-recognition fallback (the
+/// `explain` command, and the deployed keymux WASM plugin's own fallback source) - a known word
+/// found there stands in for a continuation run's own raw phonemes. A phrase entry's `word` is two
+/// words' own text ("of the"), not a real single word a continuation stroke could ever sensibly
+/// follow (`"of the" + "-s"` would read back as "of thes", nonsense) - see `docs/phrases.md`. This
+/// is the regression guard for that exclusion: a future change to `single_stroke_stems`'s own
+/// filter that drops the `Origin::Phrase` exclusion would otherwise only surface live, the way
+/// "don't" and "quitters" both did.
+#[test]
+fn single_stroke_stems_never_contains_a_phrase_entry() {
+    let generated = dictionary_fixture::generated();
+    assert!(
+        generated.entries.iter().any(|e| e.origin == generate::Origin::Phrase),
+        "this guard is only meaningful once the real dictionary actually has at least one phrase \
+         entry to exclude - if this fails, phrase-briefing itself stopped producing any entries"
+    );
+    let stems = generate::single_stroke_stems(generated);
+    let phrase_words: std::collections::HashSet<&str> = generated
+        .entries
+        .iter()
+        .filter(|e| e.origin == generate::Origin::Phrase)
+        .map(|e| e.word.as_str())
+        .collect();
+    let leaked: Vec<&String> = stems.values().filter(|w| phrase_words.contains(w.as_str())).collect();
+    assert!(leaked.is_empty(), "phrase entries leaked into single_stroke_stems: {leaked:?}");
+}
+
 /// `generate::reserved_outlines` is seeded into `taken` before a single word is placed
 /// specifically so this can never happen; this confirms it from the outside, against the real
 /// built dictionary, rather than trusting the seeding order inside `generate()` never regresses.

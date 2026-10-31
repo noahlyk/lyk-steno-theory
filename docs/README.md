@@ -35,20 +35,22 @@ generated entries.
    `under-`, `inter-`.
 7. **[Syllables & folding](syllables.md)** — how an unstressed syllable joins the stroke before
    it, or becomes a continuation stroke of its own.
-8. **[When two words sound the same](collisions.md)** — briefs, spelling, and the star ladder, all
+8. **[Phrase-briefing](phrases.md)** — two already-settled whole words merged into one brand-new
+   stroke when their keys don't collide, a real 2-strokes-to-1 compression for a common word pair.
+9. **[When two words sound the same](collisions.md)** — briefs, spelling, and the star ladder, all
    settled together by one global optimization instead of a fixed order of passes.
-9. **[How short](brevity.md)** — the brevity steps that shrink a long word's outline, by hand or
-   by rule.
-10. **[The full suffix table](suffixes.md)** — every standalone continuation stroke a suffix gets
+10. **[How short](brevity.md)** — the brevity steps that shrink a long word's outline, by hand or
+    by rule.
+11. **[The full suffix table](suffixes.md)** — every standalone continuation stroke a suffix gets
     on its own (`+-G` "ing", `+-D` "ed", and the rest), the one rule they're all derived from, and
     which ones aren't covered yet.
-11. **[Punctuation & commands](punctuation.md)** — the actual content of the punctuation and
+12. **[Punctuation & commands](punctuation.md)** — the actual content of the punctuation and
     command strokes reserved back in chapter 2.
-12. **[Fingerspelling & misc keys](fingerspelling.md)** ("Emily's") — the alphabet, numbers,
+13. **[Fingerspelling & misc keys](fingerspelling.md)** ("Emily's") — the alphabet, numbers,
     function keys, symbols, and OS-modifier chording, likewise reserved back in chapter 2.
-13. **[The fallback](fallback.md)** — what happens when a stroke misses every dictionary above
+14. **[The fallback](fallback.md)** — what happens when a stroke misses every dictionary above
     outright, and how that same logic becomes keymux's WASM fallback plugin.
-14. **[Spelling mode](spelling-mode.md)** — a deliberate, letter-exact way to type a word with no
+15. **[Spelling mode](spelling-mode.md)** — a deliberate, letter-exact way to type a word with no
     pronunciation to generate from at all, reusing the join key's own multi-stroke mechanism.
 
 The benchmarks come last, as a measured result of everything above rather than a rule of their

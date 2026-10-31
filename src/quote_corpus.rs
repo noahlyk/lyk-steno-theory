@@ -149,6 +149,29 @@ struct Stats {
     /// As `total_keys_lyk_vs_plover`, but scoped to the words Lapwing has an entry for instead.
     total_keys_lyk_vs_lapwing: u64,
     total_keys_lapwing: u64,
+    /// Lyk's full-coverage *stroke* total, word by word (the same population as `total_keys_lyk`,
+    /// just counting strokes instead of keys) - the baseline `total_strokes_lyk_with_phrases` is
+    /// compared against, since strokes (not keys) are what phrase-briefing actually exists to
+    /// reduce. See `quote::total_cost_with_phrases`'s own doc for why keys alone can be a
+    /// misleading way to see this mechanism's real effect.
+    total_strokes_lyk: u64,
+    /// Lyk's full-coverage stroke total, walked phrase-aware (`quote::total_cost_with_phrases`): a
+    /// phrase entry covering two consecutive words wins over scoring them separately, dropping two
+    /// strokes to one wherever it fires. A genuinely separate, additive figure - not folded into
+    /// `total_strokes_lyk`, `total_keys_lyk`, or either `_vs_plover`/`_vs_lapwing` total above, none
+    /// of which this benchmark's own thresholds (calibrated word-by-word) should ever move because
+    /// of phrase entries existing. See `docs/phrases.md`.
+    total_strokes_lyk_with_phrases: u64,
+    /// Lyk's full-coverage key total, walked the same phrase-aware way - reported alongside the
+    /// stroke figures above, but see `quote::total_cost_with_phrases`'s own doc for why this number
+    /// can legitimately come out roughly flat (or very slightly worse) even when the stroke total
+    /// clearly improves: a firing phrase is built from both words' own *primaries*, while
+    /// `total_keys_lyk` already credits each word with its own globally cheapest entry of any
+    /// origin, which can occasionally be a cheaper non-primary backup.
+    total_keys_lyk_with_phrases: u64,
+    /// How many times a phrase entry actually fired across the whole corpus - zero is itself a
+    /// real, honest result worth seeing directly, not just the key total it would imply.
+    phrase_hits: u32,
 }
 
 impl Stats {
@@ -208,15 +231,41 @@ impl Stats {
              dictionary has at all): {}",
             self.total_keys_lyk
         );
+        let signed = |n: u64| i64::try_from(n).unwrap_or(i64::MAX);
+        let stroke_savings = signed(self.total_strokes_lyk) - signed(self.total_strokes_lyk_with_phrases);
+        let key_savings = signed(self.total_keys_lyk) - signed(self.total_keys_lyk_with_phrases);
+        println!(
+            "phrase-aware walk (greedy longest-match over word pairs - see docs/phrases.md; a \
+             separate, additive figure, never folded into any total above): {} phrase entries \
+             fired over {} words",
+            self.phrase_hits, self.words
+        );
+        println!(
+            "  strokes: {} with phrases vs {} word-by-word ({} fewer strokes) - this is the real \
+             number phrase-briefing exists to move",
+            self.total_strokes_lyk_with_phrases, self.total_strokes_lyk, stroke_savings
+        );
+        println!(
+            "  keys:    {} with phrases vs {} word-by-word ({} fewer keys) - expected to stay \
+             roughly flat, see docs/phrases.md",
+            self.total_keys_lyk_with_phrases, self.total_keys_lyk, key_savings
+        );
     }
 }
 
 fn score(passages: &[&str]) -> Stats {
     let setup = dictionary_fixture::setup();
     let lyk = dictionary_fixture::cheapest();
+    let phrases = crate::quote::phrase_map(dictionary_fixture::generated());
     let mut stats = Stats::default();
 
     for &passage in passages {
+        let (phrase_strokes, phrase_keys, phrase_hits) =
+            crate::quote::total_cost_with_phrases(setup, &lyk, &phrases, passage);
+        stats.total_strokes_lyk_with_phrases += phrase_strokes;
+        stats.total_keys_lyk_with_phrases += phrase_keys;
+        stats.phrase_hits += phrase_hits;
+
         let rows = rows_for(setup, &lyk, passage);
         let mut p_keys_full = 0u64;
         let (mut p_keys_vs_plover, mut l_keys) = (0u64, 0u64);
@@ -224,8 +273,9 @@ fn score(passages: &[&str]) -> Stats {
         for row in &rows {
             stats.words += 1;
             let ours = cost(&row.lyk);
-            if let Some((_, k)) = ours {
+            if let Some((s, k)) = ours {
                 p_keys_full += u64::from(k);
+                stats.total_strokes_lyk += s as u64;
             }
             if let (Some((os, ok)), Some((ps, pk))) = (ours, cost(&row.plover)) {
                 l_keys += u64::from(pk);

@@ -85,6 +85,13 @@ pub enum Origin {
     /// each piece is actually briefed or folded, so a learner who knows the pieces can always
     /// reach the word that way too (see the backup-entry pass in [`generate`]).
     Backup,
+    /// Two already-placed words' own settled single-stroke *primaries*, merged into one new,
+    /// previously-unclaimed stroke when their key-bitmasks are disjoint — a real 2-strokes-to-1
+    /// compression for a common bigram (`setup.bigrams`), not a cosmetic one. The entry's `word`
+    /// field holds the two-word phrase text ("of the"), never a real single word competing for
+    /// anything. Never a stem a continuation stroke can follow — see `single_stroke_stems`'s own
+    /// exclusion filter and `docs/phrases.md`, which this whole mechanism is documented in.
+    Phrase,
 }
 
 pub struct Entry {
@@ -109,6 +116,12 @@ pub struct Generated {
     /// augmenting paths over this subgraph, not dense Hungarian over the full dictionary) rests on
     /// this staying small; see `quality::the_contested_set_after_peeling_stays_small`.
     pub contested: usize,
+    /// How many [`Origin::Phrase`] entries the phrase-briefing pass actually committed - see
+    /// `docs/phrases.md`.
+    pub phrases_added: usize,
+    /// A phrase candidate that lost its merged stroke, either to something `taken` already held
+    /// or to another eligible bigram this same pass arbitrated away (see `arbitrate_phrase_round`).
+    pub phrases_skipped: usize,
 }
 
 /// Among words that all share one exact pronunciation, the one whose own spelling also agrees
@@ -637,6 +650,96 @@ fn arbitrate_backup_round(candidates: &[(String, Vec<Stroke>, String)], weight_o
             .max_by_key(|&&i| {
                 let (word, _, _) = &candidates[i];
                 (weight_of(word), std::cmp::Reverse(word.clone()))
+            })
+            .expect("by_text only ever groups indices that exist");
+        for &i in indices {
+            is_winner[i] = i == winner;
+        }
+    }
+    is_winner
+}
+
+/// Each word's own settled *primary* outline, single-stroke only - exactly the entry `generate`'s
+/// own peeling/solver/literal-override step assigned, never a bonus [`Origin::Short`],
+/// [`Origin::Alternate`], or [`Origin::Backup`] entry. Feeds [`phrase_candidate`]: a backup entry
+/// is itself contingent on composition-pass ordering and can change if the backup pass's own
+/// internals change, so building a phrase on top of one would stack one best-effort pass on
+/// another; a primary assignment is `generate`'s own invariant instead - one single-stroke outline
+/// per word, stable and already heavily tested - and that is what phrase-briefing is built on. See
+/// `docs/phrases.md`'s "why primary-only" section for the full reasoning.
+fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
+    entries
+        .iter()
+        .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_)))
+        .filter_map(|e| match e.outline[..] {
+            [stroke] => Some((e.word.as_str(), stroke)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// One eligible phrase candidate: the two words' own primary strokes OR'd together, when
+/// disjoint - `None` when either word has no single-stroke primary, or their keys overlap
+/// (including the star bit). This is the only one of the two mechanisms this project considered
+/// for a phrase entry's key that is a real compression rather than a no-op: naively concatenating
+/// `w1`'s own strokes with `w2`'s own strokes costs exactly `strokes(w1) + strokes(w2)`, identical
+/// to just striking the two words separately - nothing for such an entry to actually do. Merging
+/// into one brand-new, previously-unclaimed stroke genuinely halves the stroke count instead. See
+/// `docs/phrases.md`.
+fn phrase_candidate(primary: &HashMap<&str, Stroke>, w1: &str, w2: &str) -> Option<Stroke> {
+    let &a = primary.get(w1)?;
+    let &b = primary.get(w2)?;
+    (a.0 & b.0 == 0).then_some(Stroke(a.0 | b.0))
+}
+
+/// The top-`top_n` bigrams by raw count (`setup.bigrams`), each paired with its candidate merged
+/// stroke where one exists - not yet checked against `taken` or against each other, mirroring
+/// `compose_backup`'s own "found, not yet committed" boundary. `top_n` bounds the raw bigram list
+/// scanned, ranked by count, *before* the eligibility filter - not the number of phrase entries
+/// that end up committed, which is smaller once ineligible pairs, round-internal collisions, and
+/// `taken` are all accounted for. See `docs/phrases.md`'s threshold section for how the real
+/// eligible-set size was measured and why raw count (not a PMI/collocation ratio) is what ranks
+/// bigrams here.
+fn enumerate_phrase_candidates(
+    setup: &Setup,
+    primary: &HashMap<&str, Stroke>,
+    top_n: usize,
+) -> Vec<((String, String), Stroke, u64)> {
+    let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
+    by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+    by_count
+        .into_iter()
+        .take(top_n)
+        .filter_map(|((w1, w2), &count)| {
+            phrase_candidate(primary, w1, w2).map(|stroke| ((w1.clone(), w2.clone()), stroke, count))
+        })
+        .collect()
+}
+
+/// For one pass's full list of eligible phrase candidates (phrase words, merged stroke, the
+/// bigram's own raw count), which indices win their stroke: mirrors `arbitrate_backup_round`'s own
+/// tie-break rule exactly (see its doc) rather than a new formula, adapted only for a phrase
+/// candidate's key being a *pair* of words rather than one, and its weight already carried
+/// alongside each candidate (the bigram's own raw count) rather than looked up by word. Two
+/// different eligible bigrams can coincidentally OR to the identical merged stroke even though the
+/// words differ (`setup.bigrams[(w1, w2)]`'s own bits happening to union the same way as some
+/// other pair's) - the winner is whichever bigram was actually said more often, with a lexical
+/// tie-break on the phrase text for determinism.
+fn arbitrate_phrase_round(candidates: &[((String, String), Stroke, u64)]) -> Vec<bool> {
+    let mut by_text: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, (_, stroke, _)) in candidates.iter().enumerate() {
+        by_text.entry(render_outline(&[*stroke])).or_default().push(i);
+    }
+    let mut is_winner = vec![true; candidates.len()];
+    for indices in by_text.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let winner = *indices
+            .iter()
+            .max_by_key(|&&i| {
+                let ((w1, w2), _, count) = &candidates[i];
+                (*count, std::cmp::Reverse(format!("{w1} {w2}")))
             })
             .expect("by_text only ever groups indices that exist");
         for &i in indices {
@@ -1341,6 +1444,47 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
     }
 
+    // Phrase entries: a new, independent, single-pass post-pass (no chaining, no multi-stroke
+    // component words, no 3+-word phrases in this increment - see `docs/phrases.md`'s scope
+    // boundary) that merges two already-settled single-stroke *primaries* into one brand-new,
+    // previously-unclaimed stroke when their keys are disjoint - a real 2-strokes-to-1 compression
+    // for a common bigram, not a cosmetic one. Runs once, here, after the backup pass's own
+    // fixed-point loop finishes (so it sees every backup entry already committed to `taken`) and
+    // before `stranded` is computed (so that diagnostic still runs against the dictionary's true
+    // final state). `PHRASE_TOP_N` bounds the raw bigram list scanned, ranked by count - see
+    // `docs/phrases.md`'s threshold section for how this number was measured and chosen, not
+    // guessed (`generate::tests::dump_phrase_eligible_set_sizes`'s own real output: roughly a
+    // third of the first 10,000 raw bigrams scanned are both eligible and genuinely unclaimed,
+    // ~3,100 real entries, at raw counts still in the low millions - not yet into the long tail).
+    const PHRASE_TOP_N: usize = 10_000;
+    let mut phrases_added = 0usize;
+    let mut phrases_skipped = 0usize;
+    {
+        let primary = primary_single_strokes(&entries);
+        let phrase_candidates = enumerate_phrase_candidates(setup, &primary, PHRASE_TOP_N);
+        let is_winner = arbitrate_phrase_round(&phrase_candidates);
+        for (i, ((w1, w2), stroke, _count)) in phrase_candidates.into_iter().enumerate() {
+            if !is_winner[i] {
+                phrases_skipped += 1;
+                continue;
+            }
+            let text = render_outline(&[stroke]);
+            if taken.contains_key(&text) {
+                phrases_skipped += 1;
+                continue;
+            }
+            let word = format!("{w1} {w2}");
+            taken.insert(text, word.clone());
+            entries.push(Entry {
+                word,
+                outline: vec![stroke],
+                origin: Origin::Phrase,
+                lost_to: None,
+            });
+            phrases_added += 1;
+        }
+    }
+
     // A word is stranded when its own plain-rules outline would cost less than whatever it
     // actually settled for, and that cheaper outline's text is sitting completely unclaimed - the
     // only way that happens today is an automatic brief that Plover or Lapwing mark with a star
@@ -1374,6 +1518,8 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         backup_skipped,
         stranded,
         contested: contested_count,
+        phrases_added,
+        phrases_skipped,
     })
 }
 
@@ -1413,13 +1559,17 @@ pub fn index(generated: &Generated) -> HashMap<String, &str> {
 /// word's own real text ("ander") instead of garbling the word itself ("sper", "and"'s own `SKP`
 /// read as if it meant nothing). A standalone suffix's own entry is excluded the same way
 /// [`cheapest`] excludes it everywhere else — its outline is a continuation-stroke fragment, never
-/// a real word struck alone. Collision-free by construction: `taken` already guarantees one word
-/// per outline text, so there is never more than one candidate for a given stroke here.
+/// a real word struck alone. An [`Origin::Phrase`] entry is excluded for the same reason as a
+/// suffix, for the opposite reason: its `word` field is two words' own text ("of the"), not a real
+/// single word a continuation stroke could sensibly follow at all (`"of the" + "-s"` would read
+/// back as "of thes", nonsense) — see `docs/phrases.md`. Collision-free by construction: `taken`
+/// already guarantees one word per outline text, so there is never more than one candidate for a
+/// given stroke here.
 pub fn single_stroke_stems(generated: &Generated) -> HashMap<Stroke, String> {
     generated
         .entries
         .iter()
-        .filter(|e| e.origin != Origin::Suffix)
+        .filter(|e| !matches!(e.origin, Origin::Suffix | Origin::Phrase))
         .filter_map(|e| match e.outline[..] {
             [stroke] => Some((stroke, e.word.clone())),
             _ => None,
@@ -1475,6 +1625,11 @@ pub fn build(
     println!(
         "  words still contested after fixed-point peeling (the real solver's own input): {}",
         generated.contested
+    );
+    println!("  phrase entries added: {}", generated.phrases_added);
+    println!(
+        "  phrase entries skipped as collisions: {}",
+        generated.phrases_skipped
     );
     println!(
         "  words stranded on a worse outline than their own, unclaimed plain reading: {}",
@@ -2100,6 +2255,137 @@ mod tests {
     }
 
     #[test]
+    fn phrase_candidate_merges_disjoint_primaries_and_rejects_everything_else() {
+        let mut primary: HashMap<&str, Stroke> = HashMap::new();
+        primary.insert("of", parse_outline("-F").unwrap()[0]);
+        primary.insert("the", parse_outline("-T").unwrap()[0]);
+        primary.insert("on", parse_outline("O").unwrap()[0]);
+        // Shares no key with "of"'s "-F" or "the"'s "-T" in steno order, but does share the star
+        // with a hand-built overlapping candidate below.
+        primary.insert("starred", parse_outline("O*").unwrap()[0]);
+
+        // A genuinely disjoint pair merges to the bitwise OR of both strokes.
+        let merged = phrase_candidate(&primary, "of", "the").expect("of/the keys are disjoint");
+        assert_eq!(merged, parse_outline("-FT").unwrap()[0]);
+
+        // An overlapping pair - including an overlap on the star bit specifically, not just an
+        // ordinary consonant - is never eligible, however common either word is on its own.
+        assert_eq!(phrase_candidate(&primary, "on", "starred"), None, "O and *O share the O key");
+        let mut star_primary = primary.clone();
+        star_primary.insert("star1", parse_outline("*F").unwrap()[0]);
+        star_primary.insert("star2", parse_outline("*T").unwrap()[0]);
+        assert_eq!(
+            phrase_candidate(&star_primary, "star1", "star2"),
+            None,
+            "both strokes carry the star bit - that overlap must be caught too, not just an \
+             ordinary consonant key"
+        );
+
+        // Either word missing a single-stroke primary at all (never in the map) is never eligible.
+        assert_eq!(phrase_candidate(&primary, "of", "nonexistent"), None);
+        assert_eq!(phrase_candidate(&primary, "nonexistent", "the"), None);
+    }
+
+    #[test]
+    fn a_few_real_high_value_bigrams_checked_by_hand_against_the_real_dictionary() {
+        // Plan verification step 2: a hand-worked check against the real, settled dictionary for a
+        // few of the highest-raw-count function-word bigrams - "of the", "in the", and "I am" were
+        // named by the plan as the first candidates to check, with no assumption going in about
+        // whether their key-bitmasks would actually turn out disjoint in practice. Reporting the
+        // real outcome for each, honestly, including the two that do NOT end up as a committed
+        // phrase entry and exactly why not:
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+        let primary = primary_single_strokes(&generated.entries);
+        let lyk = crate::dictionary_fixture::cheapest();
+
+        // "of the": both words' own real primaries are genuinely disjoint ("of" -> "-F", "the" ->
+        // "-T"), the merged stroke "-FT" was genuinely free, and it is the highest-raw-count bigram
+        // in the whole corpus (2,766,332,391) - so this is both the clearest and the single
+        // highest-value real hit the whole mechanism produces.
+        assert_eq!(primary.get("of").copied(), Some(parse_outline("-F").unwrap()[0]));
+        assert_eq!(primary.get("the").copied(), Some(parse_outline("-T").unwrap()[0]));
+        assert_eq!(
+            phrase_candidate(&primary, "of", "the"),
+            Some(parse_outline("-FT").unwrap()[0]),
+            "\"of\" and \"the\"'s own real primaries are disjoint"
+        );
+        assert_eq!(lyk.get("of the").map(|o| render_outline(o)), Some("-FT".to_owned()));
+
+        // "in the": "in"'s own real primary and "the"'s are genuinely disjoint too (this project's
+        // own real data, not assumed) - but the merged stroke, "TPH-T", was NOT free: some other
+        // word already real-dictionary-settled on it before the phrase pass ever runs (confirmed:
+        // `antonio`, a proper noun whose own plain-rules outline happens to land there). So this
+        // bigram is genuinely eligible but does not actually produce a phrase entry in the real,
+        // deployed dictionary - an honest miss, not a bug.
+        let in_the = phrase_candidate(&primary, "in", "the");
+        assert_eq!(
+            in_the,
+            Some(parse_outline("TPH-T").unwrap()[0]),
+            "\"in\" and \"the\"'s own real primaries are disjoint"
+        );
+        assert_ne!(
+            lyk.get("in the").map(|o| render_outline(o)),
+            in_the.map(|s| render_outline(&[s])),
+            "\"in the\" is eligible but its merged stroke is genuinely already taken (by \
+             \"antonio\"), so it must not have been committed"
+        );
+
+        // "I am": the bigram corpus only ever records the lowercase spelling \"i\", which in this
+        // dictionary is not the pronoun at all - it's the single LETTER \"i\" (see `generate`'s own
+        // comment on the pronoun \"I\"'s carve-out: the frequency corpus can't tell \"I\" and the
+        // letter name apart, and the letter won that one shared slot). So this bigram's own real
+        // primary for its first word is the letter's outline, not the capitalized pronoun's -
+        // `setup.bigrams` has no way to express the capitalized pronoun at all. The pair is still
+        // genuinely disjoint by that same (surprising) primary, but the merged stroke, "AOEUPL", is
+        // already taken by the contraction "i'm" - another honest miss, and a real, pre-existing
+        // ambiguity in this project's data (not introduced by phrase-briefing) worth knowing about
+        // before raising `PHRASE_TOP_N` far enough for a different "i"-led bigram to ever win a
+        // free stroke under this same quirk.
+        assert!(setup.bigrams.contains_key(&("i".to_owned(), "am".to_owned())));
+        assert_eq!(primary.get("i").copied(), Some(parse_outline("AOEU").unwrap()[0]));
+        let i_am = phrase_candidate(&primary, "i", "am");
+        assert_eq!(
+            i_am,
+            Some(parse_outline("AOEUPL").unwrap()[0]),
+            "the letter \"i\"'s own primary and \"am\"'s are disjoint"
+        );
+        assert!(
+            !generated
+                .entries
+                .iter()
+                .any(|e| e.origin == Origin::Phrase && e.word == "i am"),
+            "\"i am\" is eligible but its merged stroke is genuinely already taken (by \"i'm\"), \
+             so it must not have been committed"
+        );
+    }
+
+    #[test]
+    fn arbitrate_phrase_round_picks_the_commoner_bigram_not_whoever_is_tried_first() {
+        // Mirrors `backup_round_arbitration_picks_the_commoner_word_not_whoever_is_tried_first`
+        // exactly, for phrase candidates: two different eligible bigrams that happen to OR to the
+        // identical merged stroke are arbitrated by the bigram's own raw count, not insertion
+        // order.
+        let same_stroke = parse_outline("TK").unwrap()[0];
+        let forward = vec![
+            (("rare".to_owned(), "pair".to_owned()), same_stroke, 5u64),
+            (("common".to_owned(), "pair".to_owned()), same_stroke, 1_000u64),
+        ];
+        assert_eq!(
+            arbitrate_phrase_round(&forward),
+            vec![false, true],
+            "the commoner bigram should win even when the rarer one is tried first"
+        );
+
+        let backward = vec![forward[1].clone(), forward[0].clone()];
+        assert_eq!(
+            arbitrate_phrase_round(&backward),
+            vec![true, false],
+            "the winner must not depend on which candidate was tried first"
+        );
+    }
+
+    #[test]
     fn backup_round_arbitration_picks_the_commoner_word_not_whoever_is_tried_first() {
         // Two words whose composed backup both land on the exact same text within one round -
         // which, since text is `render_outline` of the composed outline, means they are the exact
@@ -2135,5 +2421,111 @@ mod tests {
             vec![true, false],
             "the winner must not depend on which candidate was tried first"
         );
+    }
+
+    #[test]
+    #[ignore = "diagnostic: checks a few specific high-value bigrams by hand, run with --ignored \
+                --nocapture"]
+    fn dump_specific_bigram_eligibility() {
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+        let primary = primary_single_strokes(&generated.entries);
+        // Excludes the dictionary's own already-committed `Origin::Phrase` entries - see
+        // `dump_phrase_eligible_set_sizes`'s identical note on why, otherwise a bigram the current
+        // `PHRASE_TOP_N` already settled would show as "held by" itself.
+        let index: HashMap<String, &str> = generated
+            .entries
+            .iter()
+            .filter(|e| e.origin != Origin::Phrase)
+            .map(|e| (render_outline(&e.outline), e.word.as_str()))
+            .collect();
+        for (w1, w2) in [
+            ("of", "the"),
+            ("in", "the"),
+            ("to", "the"),
+            ("i", "am"),
+            ("i", "have"),
+            ("it", "is"),
+            ("i", "will"),
+            ("i", "was"),
+            ("for", "the"),
+            ("on", "the"),
+            ("and", "the"),
+            ("is", "a"),
+        ] {
+            let count = setup.bigrams.get(&(w1.to_owned(), w2.to_owned())).copied();
+            let p1 = primary.get(w1);
+            let p2 = primary.get(w2);
+            match phrase_candidate(&primary, w1, w2) {
+                Some(stroke) => {
+                    let text = render_outline(&[stroke]);
+                    let holder = index.get(&text);
+                    println!(
+                        "{w1:?}+{w2:?} count={count:?} {w1}={p1:?} {w2}={p2:?} -> {text} \
+                         (held by: {holder:?})"
+                    );
+                }
+                None => println!("{w1:?}+{w2:?} count={count:?} {w1}={p1:?} {w2}={p2:?} -> NOT ELIGIBLE"),
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "diagnostic: measures the real phrase-briefing eligible-set size at a few N values, \
+                run with --ignored --nocapture"]
+    fn dump_phrase_eligible_set_sizes() {
+        // Plan open question #1: the real eligible-set size (both words single-stroke-primary,
+        // keys disjoint, merged stroke still free) was unmeasured before this pass existed. This
+        // scans the real, built dictionary's real bigram data and reports, for the raw-count-sorted
+        // bigram list truncated to a few different N, how many of the first N are eligible at all,
+        // and how many of those are still free once `taken` and within-scan collisions are
+        // accounted for (first-come within this already-sorted-by-count scan, same outcome
+        // `arbitrate_phrase_round` would reach for the winner).
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+        let primary = primary_single_strokes(&generated.entries);
+
+        // Exclude the dictionary's own already-committed `Origin::Phrase` entries from the
+        // baseline: `dictionary_fixture` builds the real, full dictionary, phrase pass included,
+        // so without this exclusion a bigram this project's own current `PHRASE_TOP_N` already
+        // settled would show up as "taken" by *itself*, undercounting what's genuinely free.
+        let mut taken: HashSet<String> = reserved_outlines().unwrap().into_keys().collect();
+        taken.extend(
+            generated
+                .entries
+                .iter()
+                .filter(|e| e.origin != Origin::Phrase)
+                .map(|e| render_outline(&e.outline)),
+        );
+
+        let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
+        by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+        println!("total vocabulary-filtered bigrams on record: {}", by_count.len());
+
+        let checkpoints = [100usize, 300, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000, 9_000, 10_000, 15_000, 20_000, 30_000, 50_000, 100_000];
+        let mut eligible = 0usize;
+        let mut free = 0usize;
+        let mut claimed_this_scan: HashSet<Stroke> = HashSet::new();
+        let mut next_checkpoint = 0usize;
+        for (i, &((w1, w2), &count)) in by_count.iter().enumerate() {
+            if let Some(stroke) = phrase_candidate(&primary, w1, w2) {
+                eligible += 1;
+                let text = render_outline(&[stroke]);
+                if !taken.contains(&text) && claimed_this_scan.insert(stroke) {
+                    free += 1;
+                    if i < 20 && next_checkpoint == 0 {
+                        println!("  e.g. {w1:?} + {w2:?} (count {count}) -> {text}");
+                    }
+                }
+            }
+            while next_checkpoint < checkpoints.len() && i + 1 == checkpoints[next_checkpoint] {
+                println!(
+                    "top {} raw bigrams (count at cutoff: {}): {} eligible (disjoint primaries), \
+                     {} still free (unclaimed, deduplicated)",
+                    checkpoints[next_checkpoint], count, eligible, free
+                );
+                next_checkpoint += 1;
+            }
+        }
     }
 }

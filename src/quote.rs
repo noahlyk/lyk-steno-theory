@@ -2,10 +2,11 @@
 //! and Lapwing, so the dictionaries can be compared on text nobody picked to flatter one of them.
 
 use crate::analysis::Setup;
-use crate::generate::{self, Briefs};
+use crate::generate::{self, Briefs, Generated, Origin};
 use crate::stroke::{Stroke, render_outline};
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 /// zenquotes.io needs no key and returns a one-element array: `[{"q": "...", "a": "..."}]`.
 const SOURCE: &str = "https://zenquotes.io/api/random";
@@ -112,6 +113,77 @@ pub fn rows_for(setup: &Setup, lyk: &std::collections::HashMap<&str, &[Stroke]>,
         .collect()
 }
 
+/// Every [`Origin::Phrase`] entry in a generated dictionary, by the exact two-word text it covers,
+/// to the single stroke that writes it - built once per `Generated` and shared across every
+/// passage scored, the same way `lyk` (`generate::cheapest`) already is. See
+/// `total_keys_with_phrases`, the only consumer.
+pub fn phrase_map(generated: &Generated) -> HashMap<(String, String), Vec<Stroke>> {
+    generated
+        .entries
+        .iter()
+        .filter(|e| e.origin == Origin::Phrase)
+        .filter_map(|e| {
+            let (w1, w2) = e.word.split_once(' ')?;
+            Some(((w1.to_owned(), w2.to_owned()), e.outline.clone()))
+        })
+        .collect()
+}
+
+/// The strokes and keys lyk would actually spend typing `text`, walked greedily left to right: at
+/// each position, a phrase entry covering this word and the next one wins over scoring the two
+/// words separately - the same longest-match-first walk Plover/keymux's own stroke-stream
+/// resolution already does when reading strokes back, just over *words* here instead, since a
+/// bigram phrase entry is keyed by the pair of words it covers rather than by any one stroke.
+/// Falls back to the ordinary single-word lookup (`outline_of`) whenever no phrase entry covers
+/// the current position. Returns `(total strokes, total keys, phrase hits)`.
+///
+/// **Strokes, not keys, are the number phrase-briefing actually exists to move.** A phrase entry
+/// merges two disjoint-key single strokes into one new single stroke - the key *count* is
+/// unchanged by construction (`count_ones(a.0 | b.0) == count_ones(a.0) + count_ones(b.0)` for
+/// disjoint `a`/`b`), only the *stroke* count drops, by exactly one per hit. The key total is still
+/// tracked and reported here too (see `quote_corpus::Stats`), but it can legitimately come out
+/// roughly flat, or even very slightly worse, on a real passage - not because phrase-briefing
+/// failed, but because `lyk` (`generate::cheapest`) picks each word's own globally cheapest entry
+/// *of any origin*, including a backup composition cheaper than that word's own primary (see
+/// `docs/phrases.md`'s note on this interaction), while a firing phrase is necessarily built from
+/// both words' own *primaries* specifically (see `docs/phrases.md`'s "why primary-only"). Comparing
+/// key totals alone can therefore slightly understate or even invert the real win; the stroke total
+/// is the metric that is never ambiguous about which direction is better.
+///
+/// A genuinely separate figure from `rows_for`'s own per-word rows, which never consult `phrases`
+/// at all - `quote_corpus` reports this as its own, additive stat rather than folding it into the
+/// existing word-by-word totals, so a change here can never quietly move the thresholds those
+/// numbers are calibrated against.
+pub fn total_cost_with_phrases(
+    setup: &Setup,
+    lyk: &std::collections::HashMap<&str, &[Stroke]>,
+    phrases: &HashMap<(String, String), Vec<Stroke>>,
+    text: &str,
+) -> (u64, u64, u32) {
+    let words: Vec<String> = text.split_whitespace().filter_map(clean).collect();
+    let mut total_strokes = 0u64;
+    let mut total_keys = 0u64;
+    let mut phrase_hits = 0u32;
+    let mut i = 0;
+    while i < words.len() {
+        if i + 1 < words.len()
+            && let Some(outline) = phrases.get(&(words[i].clone(), words[i + 1].clone()))
+        {
+            total_strokes += outline.len() as u64;
+            total_keys += u64::from(generate::keys(outline));
+            phrase_hits += 1;
+            i += 2;
+            continue;
+        }
+        if let Some((s, k)) = cost(&outline_of(setup, lyk, &words[i])) {
+            total_strokes += s as u64;
+            total_keys += u64::from(k);
+        }
+        i += 1;
+    }
+    (total_strokes, total_keys, phrase_hits)
+}
+
 /// An outline's cost, `None` for `"-"` (nothing on record) or anything else unparseable: strokes,
 /// then keys.
 pub fn cost(outline: &str) -> Option<(usize, u32)> {
@@ -153,5 +225,22 @@ pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> R
         "{:<width$}  {:<12}  {:<12}  {:<12}",
         "— keys —", total[0], total[1], total[2]
     );
+
+    // Phrase-aware: did this quote happen to contain any of the dictionary's own real phrase
+    // entries back to back? See `total_cost_with_phrases`'s own doc for why strokes, not keys, are
+    // the number that actually matters here.
+    let phrases = phrase_map(&generated);
+    let (phrase_strokes, phrase_keys, phrase_hits) = total_cost_with_phrases(setup, &lyk, &phrases, &quote);
+    if phrase_hits > 0 {
+        let word_by_word_strokes: u64 = rows.iter().filter_map(|r| cost(&r.lyk)).map(|(s, _)| s as u64).sum();
+        println!(
+            "\n{phrase_hits} phrase entr{} fired in this quote: {phrase_strokes} strokes with \
+             phrases vs {word_by_word_strokes} word-by-word ({} fewer strokes); {phrase_keys} keys \
+             with phrases vs {} word-by-word",
+            if phrase_hits == 1 { "y" } else { "ies" },
+            i64::try_from(word_by_word_strokes).unwrap_or(i64::MAX) - i64::try_from(phrase_strokes).unwrap_or(i64::MAX),
+            total[0]
+        );
+    }
     Ok(())
 }
