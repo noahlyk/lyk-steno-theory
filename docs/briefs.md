@@ -5,8 +5,9 @@
 **Briefs** (`rules/briefs.toml`). A brief is a word's outline taken from Plover's or Lapwing's own
 gold dictionary instead of derived fresh from lyk's own phonetic rules — `he` as `HE`, not `HAOE`.
 It is free to be a pure memorized shortcut with no phonetic connection to its word at all — that's
-the point of a brief, and nothing about it needs to be "learnable from the rules" the way a
-generated outline is.
+the point of a brief. A rules-derived outline isn't held to a stricter standard either: since the
+day-4 philosophy reversal (see [`docs/decisions.md`](decisions.md)), a word's primary outline, from
+any source, only has to be the cheapest one available, not a guessable one.
 
 **Every word's primary outline is settled by one global optimization, not a sequence of passes.**
 `generate()` enumerates every legal candidate for every word at once — both gold dictionaries'

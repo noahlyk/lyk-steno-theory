@@ -100,6 +100,7 @@ found: it counts what keys Plover and Lapwing use where they agree.
 |---|---|
 | Pronunciations | CMUdict, MFA US dictionary, WikiPron US broad |
 | Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018) |
+| Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`) — fetched and counted, not yet used by the generator |
 | Dictionaries to match | Plover `main.json` and `commands.json`, Lapwing dictionaries |
 
 ## Full benchmarks

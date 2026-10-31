@@ -80,6 +80,27 @@ pub fn load_frequency_bounded(path: &Path, limit: usize) -> Result<Vec<(String, 
         .collect())
 }
 
+/// Bigram counts (Norvig's Google Books Ngrams, `count_2w.txt`): `word1 word2<TAB>count` per
+/// line, always exactly one space between the pair and one tab before the count. Verified against
+/// a full download (286,358 lines, every one shaped exactly this way; min count 100,000, so the
+/// file itself is already a frequent-pairs cut, not a full corpus). Lowercased here (the source
+/// keeps sentence-initial capitals, e.g. `Über uns`), and *not* vocabulary-filtered - the raw
+/// corpus also has `<S>` sentence-start markers, foreign-language text and numbers glued to words
+/// (`14kt gold`, `0Uplink verified`) that a caller filters out by checking both words against
+/// whatever word list counts as "vocabulary" in its own context; see `report`'s and
+/// `analysis::Setup::load`'s own filters.
+pub fn load_bigrams(path: &Path) -> Result<Vec<(String, String, u64)>> {
+    let text = fs::read_to_string(path).with_context(|| path.display().to_string())?;
+    Ok(text
+        .lines()
+        .filter_map(|line| {
+            let (pair, count) = line.rsplit_once('\t')?;
+            let (first, second) = pair.split_once(' ')?;
+            Some((first.to_lowercase(), second.to_lowercase(), count.parse().ok()?))
+        })
+        .collect())
+}
+
 /// A Plover dictionary: outline (strokes joined by `/`) to translation.
 pub fn load_dictionary(path: &Path) -> Result<BTreeMap<String, String>> {
     let text = fs::read_to_string(path).with_context(|| path.display().to_string())?;
@@ -206,6 +227,17 @@ pub fn report(root: &Path) -> Result<()> {
     }
     let have_any = wanted.iter().filter(|w| union.contains(w.as_str())).count();
     println!("  {:<12} {have_any:>7} of {}", "all together", wanted.len());
+
+    let bigrams = load_bigrams(&root.join("frequency/bigrams_en.txt"))?;
+    let bigram_pairs = bigrams.len();
+    let bigrams_known = bigrams
+        .iter()
+        .filter(|(first, second, _)| union.contains(first.as_str()) && union.contains(second.as_str()))
+        .count();
+    println!(
+        "\nbigram pairs (Norvig count_2w, American English, not yet used by the generator): \
+         {bigrams_known} of {bigram_pairs} have both words pronounceable"
+    );
 
     println!("\nthe 5000 most common words that have a pronunciation");
     let top = frequency.iter().take(5000);

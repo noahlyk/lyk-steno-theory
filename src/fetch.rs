@@ -35,6 +35,12 @@ fn sources() -> Vec<(String, String)> {
             "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_full.txt"
                 .into(),
         ),
+        // How often two words appear next to each other (Norvig's Google Books Ngrams), for the
+        // phrase-brief work this only lays the groundwork for: see `data::load_bigrams`.
+        (
+            "frequency/bigrams_en.txt".into(),
+            "https://www.norvig.com/ngrams/count_2w.txt".into(),
+        ),
         // The dictionaries to match
         ("dictionaries/plover-main.json".into(), format!("{PLOVER}/main.json")),
         ("dictionaries/plover-commands.json".into(), format!("{PLOVER}/commands.json")),

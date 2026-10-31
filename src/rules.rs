@@ -2243,4 +2243,167 @@ mod tests {
             "{information:?}"
         );
     }
+
+    /// Diagnostic: measures how often the *final, settled* dictionary (what `build` actually
+    /// ships, after briefs/compressions/backups all compete) lands on an outline that keeps a
+    /// stray, partial trace of one of this theory's required multi-key chords — the thing
+    /// [`Rules::matches_real_consonants`] flags, now that `gold_candidates` (`src/generate.rs`,
+    /// commit b070938) no longer blanket-rejects those candidates before they can win. Two
+    /// outcomes for a word whose chosen outline shares *any* key with its own first syllable's
+    /// onset chord or last syllable's coda chord: holding *none* of that chord's keys is a clean,
+    /// deliberate drop (Category A, already accepted); holding *some* but not all of them is a
+    /// misleading leftover (Category B, e.g. `form` -> `HORPL`, a stray `H`) — see this module's
+    /// own `fragments`/`fragment_bits` for the exact bit test this reuses.
+    ///
+    /// Run with `cargo test --release -- --ignored --nocapture dump_stray_fragment_leftovers`.
+    #[test]
+    #[ignore = "diagnostic: measures stray-fragment leftovers in the final, settled dictionary"]
+    fn dump_stray_fragment_leftovers() {
+        let setup = crate::dictionary_fixture::setup();
+        let cheapest = crate::dictionary_fixture::cheapest();
+        let rules = &setup.rules;
+
+        struct Hit {
+            word: String,
+            outline: String,
+            sounds: String,
+            detail: String,
+            weight: f64,
+        }
+
+        let mut total_words = 0usize;
+        let mut total_weight = 0f64;
+        let (mut cat_a, mut cat_a_weight) = (0usize, 0f64);
+        let (mut cat_b, mut cat_b_weight) = (0usize, 0f64);
+        let mut hits: Vec<Hit> = Vec::new();
+        let mut chord_counts: HashMap<String, usize> = HashMap::new();
+        let mut chord_weight: HashMap<String, f64> = HashMap::new();
+
+        for (&word, outline) in &cheapest {
+            // Needs a real CMUdict pronunciation and a syllable split to know where the word's
+            // own first onset / last coda even are; skip anything the rules can't label at all
+            // (a few dozen words, e.g. acronyms with no CMUdict entry) rather than guess.
+            let Some(sounds) = setup.pron.get(word).and_then(|variants| variants.first()) else {
+                continue;
+            };
+            let labelled = rules.label(word, sounds);
+            let Some(syllables) = rules.syllables(&labelled) else {
+                continue;
+            };
+            let (Some(first_syl), Some(last_syl), Some(&first_stroke), Some(&last_stroke)) = (
+                syllables.first(),
+                syllables.last(),
+                outline.first(),
+                outline.last(),
+            ) else {
+                continue;
+            };
+
+            let weight = setup.count.get(word).copied().unwrap_or(0) as f64;
+            total_words += 1;
+            total_weight += weight;
+
+            let last_index = syllables.len() - 1;
+            let onset_bits =
+                first_stroke.0 & Stroke::LEFT & !rules.explained_elsewhere(&syllables, 0);
+            let coda_bits = last_stroke.0
+                & (Stroke::RIGHT | Stroke::STAR)
+                & !rules.explained_elsewhere(&syllables, last_index);
+            let onset_fragment =
+                Rules::fragment_bits(&first_syl.onset, onset_bits, &rules.onset, &rules.onset_cluster);
+            let coda_fragment =
+                Rules::fragment_bits(&last_syl.coda, coda_bits, &rules.coda, &rules.coda_cluster);
+
+            if onset_fragment == 0 && coda_fragment == 0 {
+                cat_a += 1;
+                cat_a_weight += weight;
+                continue;
+            }
+            cat_b += 1;
+            cat_b_weight += weight;
+
+            let mut details: Vec<String> = Vec::new();
+            let describe = |tokens: &[String],
+                             bits: u32,
+                             table: &HashMap<String, Stroke>,
+                             cluster: &HashMap<String, Stroke>,
+                             side: &str,
+                             details: &mut Vec<String>,
+                             chord_counts: &mut HashMap<String, usize>,
+                             chord_weight: &mut HashMap<String, f64>| {
+                for token in tokens {
+                    let Some(target) = Rules::token_bits(token, table, cluster) else { continue };
+                    if Rules::fragments(bits, target) {
+                        let stray = render_outline(&[Stroke(bits & target.0)]);
+                        let full = render_outline(&[target]);
+                        let label = format!("{side} /{token}/ ({full})");
+                        details.push(format!("{label} stray={stray}"));
+                        *chord_counts.entry(label.clone()).or_default() += 1;
+                        *chord_weight.entry(label).or_default() += weight;
+                    }
+                }
+            };
+            describe(
+                &first_syl.onset,
+                onset_bits,
+                &rules.onset,
+                &rules.onset_cluster,
+                "onset",
+                &mut details,
+                &mut chord_counts,
+                &mut chord_weight,
+            );
+            describe(
+                &last_syl.coda,
+                coda_bits,
+                &rules.coda,
+                &rules.coda_cluster,
+                "coda",
+                &mut details,
+                &mut chord_counts,
+                &mut chord_weight,
+            );
+
+            hits.push(Hit {
+                word: word.to_owned(),
+                outline: render_outline(outline),
+                sounds: sounds.join(" "),
+                detail: details.join("; "),
+                weight,
+            });
+        }
+
+        hits.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+
+        println!(
+            "words checked: {total_words} (usage weight {total_weight:.0})\n\
+             Category A (clean drop):   {cat_a:>6} words ({:.3}% of words), \
+             {cat_a_weight:.0} usage ({:.3}% of weighted typing)\n\
+             Category B (stray leftover): {cat_b:>6} words ({:.3}% of words), \
+             {cat_b_weight:.0} usage ({:.3}% of weighted typing)",
+            100.0 * cat_a as f64 / total_words as f64,
+            100.0 * cat_a_weight / total_weight,
+            100.0 * cat_b as f64 / total_words as f64,
+            100.0 * cat_b_weight / total_weight,
+        );
+
+        println!("\n--- top 40 Category B words by usage weight ---");
+        for hit in hits.iter().take(40) {
+            println!(
+                "{:<16} outline={:<14} sounds=[{}]  {}  weight={:.0}",
+                hit.word, hit.outline, hit.sounds, hit.detail, hit.weight
+            );
+        }
+
+        let mut chord_rows: Vec<(&String, &usize)> = chord_counts.iter().collect();
+        chord_rows.sort_by(|a, b| {
+            chord_weight[b.0]
+                .partial_cmp(&chord_weight[a.0])
+                .unwrap()
+        });
+        println!("\n--- stray chord/sound breakdown (by distinct-word count and usage weight) ---");
+        for (label, count) in chord_rows {
+            println!("{label:<28} words={count:<6} weight={:.0}", chord_weight[label]);
+        }
+    }
 }

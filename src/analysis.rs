@@ -1,6 +1,6 @@
 //! Judging the rules against Plover and Lapwing, and learning which rules are missing.
 
-use crate::data::{Pronunciations, load_cmudict, load_frequency_bounded};
+use crate::data::{Pronunciations, load_bigrams, load_cmudict, load_frequency_bounded};
 use crate::generate;
 use crate::gold::Gold;
 use crate::rules::Rules;
@@ -103,6 +103,13 @@ pub struct Setup {
     pub rank: HashMap<String, usize>,
     /// How often each word is said
     pub count: HashMap<String, u64>,
+    /// How often one word is immediately followed by another (Norvig's Google Books Ngrams,
+    /// `data/frequency/bigrams_en.txt`), kept only where both words are in `rank` - this
+    /// generator's own vocabulary, not the raw corpus's (see `data::load_bigrams` for what that
+    /// filters out). Not read anywhere yet: loaded ahead of the phrase-brief work that will
+    /// consume it, so the data and its doc coverage land before the feature does.
+    #[allow(dead_code)]
+    pub bigrams: HashMap<(String, String), u64>,
 }
 
 impl Setup {
@@ -120,16 +127,19 @@ impl Setup {
             common.map_or(usize::MAX, |c| c.saturating_add(c / 5).max(c.saturating_add(10_000)));
         let freq_path = data.join("frequency/en_full.txt");
         let pron_path = data.join("pronunciation/cmudict.dict");
-        // Three independent files, none needed before another: load them on their own threads
+        let bigrams_path = data.join("frequency/bigrams_en.txt");
+        // Four independent files, none needed before another: load them on their own threads
         // instead of one after another.
-        let (frequency, pron, gold) = std::thread::scope(|scope| {
+        let (frequency, pron, gold, bigrams) = std::thread::scope(|scope| {
             let frequency = scope.spawn(|| load_frequency_bounded(&freq_path, freq_limit));
             let pron = scope.spawn(|| load_cmudict(&pron_path));
             let gold = scope.spawn(|| Gold::load(data));
+            let bigrams = scope.spawn(|| load_bigrams(&bigrams_path));
             (
                 frequency.join().expect("frequency load panicked"),
                 pron.join().expect("pronunciation load panicked"),
                 gold.join().expect("gold dictionary load panicked"),
+                bigrams.join().expect("bigram load panicked"),
             )
         });
         let pron = pron?;
@@ -149,12 +159,20 @@ impl Setup {
                 rank.insert(real.to_owned(), n);
             }
         }
+        // Vocabulary-filtered here, not in `load_bigrams`: "vocabulary" means this generator's
+        // own ranked words, which only exist once `rank` above is built.
+        let bigrams = bigrams?
+            .into_iter()
+            .filter(|(first, second, _)| rank.contains_key(first) && rank.contains_key(second))
+            .map(|(first, second, times)| ((first, second), times))
+            .collect();
         Ok(Self {
             rules,
             pron,
             gold: gold?,
             rank,
             count,
+            bigrams,
         })
     }
 
