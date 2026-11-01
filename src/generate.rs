@@ -678,6 +678,22 @@ fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
         .collect()
 }
 
+/// Each word's own settled *primary* outline, any length - the generalized counterpart of
+/// [`primary_single_strokes`] used as the "host" side of a merge in [`phrase_candidate_outline`]:
+/// the word whose stroke *sequence* beyond the merged first stroke is carried into a phrase entry
+/// completely unchanged. Exactly the same `word_outline`/`word_outline[stem]` index the
+/// backup-composition pass's own direction (b) already reads a stem's outline from regardless of
+/// its length - that pass already merges a leading consonant onto `word_outline[stem][0]` and
+/// leaves every later stroke (join bits included) untouched, real, shipped, tested code this
+/// mirrors rather than a new risk. See `docs/phrases.md`.
+fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
+    entries
+        .iter()
+        .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_)))
+        .map(|e| (e.word.as_str(), e.outline.as_slice()))
+        .collect()
+}
+
 /// One eligible phrase candidate: the two words' own primary strokes OR'd together, when
 /// disjoint - `None` when either word has no single-stroke primary, or their keys overlap
 /// (including the star bit). This is the only one of the two mechanisms this project considered
@@ -686,14 +702,62 @@ fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
 /// to just striking the two words separately - nothing for such an entry to actually do. Merging
 /// into one brand-new, previously-unclaimed stroke genuinely halves the stroke count instead. See
 /// `docs/phrases.md`.
+///
+/// Kept, alongside [`phrase_candidate_outline`], as the original both-single-stroke-only check:
+/// still exactly what every existing test and diagnostic in this module exercises directly. No
+/// longer called from `generate` itself (superseded there by `phrase_candidate_outline`, which
+/// reduces to this exact behavior when both words happen to be single-stroke) - hence
+/// `#[allow(dead_code)]` outside tests, the same vestigial-but-still-meaningful pattern `Briefs`'s
+/// own `count`/`default` fields already use above.
+#[allow(dead_code)]
 fn phrase_candidate(primary: &HashMap<&str, Stroke>, w1: &str, w2: &str) -> Option<Stroke> {
     let &a = primary.get(w1)?;
     let &b = primary.get(w2)?;
     (a.0 & b.0 == 0).then_some(Stroke(a.0 | b.0))
 }
 
+/// OR's `filler` (a single stroke) into `host`'s own first stroke, when the two are disjoint,
+/// carrying every one of `host`'s later strokes through completely unchanged - the same
+/// "disjoint-OR the first stroke, leave the rest alone" trick `compose_backup`'s own direction (b)
+/// already uses on `word_outline[stem]`. `None` when `host` is empty (never true for a real
+/// primary) or the two strokes overlap.
+fn merge_into_host_first_stroke(filler: Stroke, host: &[Stroke]) -> Option<Vec<Stroke>> {
+    let &first = host.first()?;
+    if filler.0 & first.0 != 0 {
+        return None;
+    }
+    let mut outline = vec![Stroke(filler.0 | first.0)];
+    outline.extend_from_slice(&host[1..]);
+    Some(outline)
+}
+
+/// The generalized form of [`phrase_candidate`]: eligible whenever *at least one* of `w1`/`w2` has
+/// a single-stroke primary (`single`) and the other has a primary of *any* length, one or more
+/// strokes (`any_len`) - the single-stroke side's whole primary is OR'd into the other's own first
+/// stroke only, via [`merge_into_host_first_stroke`]. When both happen to be single-stroke, this
+/// reduces to exactly [`phrase_candidate`]'s own original behavior (the "host"'s one stroke merges
+/// with the filler, nothing left over to carry through). A pair where *neither* word has a
+/// single-stroke primary - both multi-stroke - stays out of scope entirely (`None`): reaching into
+/// *both* words' internal join-key structure at once is a different, bigger risk than folding one
+/// whole single-stroke word onto one multi-stroke word's first stroke, and isn't attempted here.
+/// See `docs/phrases.md`'s "What qualifies" and "Not in scope" sections.
+fn phrase_candidate_outline(
+    single: &HashMap<&str, Stroke>,
+    any_len: &HashMap<&str, &[Stroke]>,
+    w1: &str,
+    w2: &str,
+) -> Option<Vec<Stroke>> {
+    if let (Some(&filler), Some(&host)) = (single.get(w1), any_len.get(w2)) {
+        return merge_into_host_first_stroke(filler, host);
+    }
+    if let (Some(&host), Some(&filler)) = (any_len.get(w1), single.get(w2)) {
+        return merge_into_host_first_stroke(filler, host);
+    }
+    None
+}
+
 /// The top-`top_n` bigrams by raw count (`setup.bigrams`), each paired with its candidate merged
-/// stroke where one exists - not yet checked against `taken` or against each other, mirroring
+/// outline where one exists - not yet checked against `taken` or against each other, mirroring
 /// `compose_backup`'s own "found, not yet committed" boundary. `top_n` bounds the raw bigram list
 /// scanned, ranked by count, *before* the eligibility filter - not the number of phrase entries
 /// that end up committed, which is smaller once ineligible pairs, round-internal collisions, and
@@ -702,33 +766,37 @@ fn phrase_candidate(primary: &HashMap<&str, Stroke>, w1: &str, w2: &str) -> Opti
 /// bigrams here.
 fn enumerate_phrase_candidates(
     setup: &Setup,
-    primary: &HashMap<&str, Stroke>,
+    single: &HashMap<&str, Stroke>,
+    any_len: &HashMap<&str, &[Stroke]>,
     top_n: usize,
-) -> Vec<((String, String), Stroke, u64)> {
+) -> Vec<((String, String), Vec<Stroke>, u64)> {
     let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
     by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
     by_count
         .into_iter()
         .take(top_n)
         .filter_map(|((w1, w2), &count)| {
-            phrase_candidate(primary, w1, w2).map(|stroke| ((w1.clone(), w2.clone()), stroke, count))
+            phrase_candidate_outline(single, any_len, w1, w2).map(|outline| ((w1.clone(), w2.clone()), outline, count))
         })
         .collect()
 }
 
-/// For one pass's full list of eligible phrase candidates (phrase words, merged stroke, the
-/// bigram's own raw count), which indices win their stroke: mirrors `arbitrate_backup_round`'s own
-/// tie-break rule exactly (see its doc) rather than a new formula, adapted only for a phrase
-/// candidate's key being a *pair* of words rather than one, and its weight already carried
-/// alongside each candidate (the bigram's own raw count) rather than looked up by word. Two
-/// different eligible bigrams can coincidentally OR to the identical merged stroke even though the
-/// words differ (`setup.bigrams[(w1, w2)]`'s own bits happening to union the same way as some
-/// other pair's) - the winner is whichever bigram was actually said more often, with a lexical
-/// tie-break on the phrase text for determinism.
-fn arbitrate_phrase_round(candidates: &[((String, String), Stroke, u64)]) -> Vec<bool> {
+/// For one pass's full list of eligible phrase candidates (phrase words, merged outline, the
+/// bigram's own raw count), which indices win their outline's text: mirrors
+/// `arbitrate_backup_round`'s own tie-break rule exactly (see its doc) rather than a new formula,
+/// adapted only for a phrase candidate's key being a *pair* of words rather than one, and its
+/// weight already carried alongside each candidate (the bigram's own raw count) rather than looked
+/// up by word. Grouped by the full rendered outline text - not just the merged first stroke - the
+/// same text `taken` keys every other entry in the dictionary by, since that's what a genuine
+/// collision actually means once an outline can be more than one stroke long. Two different
+/// eligible bigrams can coincidentally land on the identical rendered text even though the words
+/// differ (`setup.bigrams[(w1, w2)]`'s own bits happening to union the same way as some other
+/// pair's) - the winner is whichever bigram was actually said more often, with a lexical tie-break
+/// on the phrase text for determinism.
+fn arbitrate_phrase_round(candidates: &[((String, String), Vec<Stroke>, u64)]) -> Vec<bool> {
     let mut by_text: HashMap<String, Vec<usize>> = HashMap::new();
-    for (i, (_, stroke, _)) in candidates.iter().enumerate() {
-        by_text.entry(render_outline(&[*stroke])).or_default().push(i);
+    for (i, (_, outline, _)) in candidates.iter().enumerate() {
+        by_text.entry(render_outline(outline)).or_default().push(i);
     }
     let mut is_winner = vec![true; candidates.len()];
     for indices in by_text.values() {
@@ -1439,31 +1507,32 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
     }
 
-    // Phrase entries: a new, independent, single-pass post-pass (no chaining, no multi-stroke
-    // component words, no 3+-word phrases in this increment - see `docs/phrases.md`'s scope
-    // boundary) that merges two already-settled single-stroke *primaries* into one brand-new,
-    // previously-unclaimed stroke when their keys are disjoint - a real 2-strokes-to-1 compression
-    // for a common bigram, not a cosmetic one. Runs once, here, after the backup pass's own
-    // fixed-point loop finishes (so it sees every backup entry already committed to `taken`) and
-    // before `stranded` is computed (so that diagnostic still runs against the dictionary's true
-    // final state). `PHRASE_TOP_N` bounds the raw bigram list scanned, ranked by count - see
-    // `docs/phrases.md`'s threshold section for how this number was measured and chosen, not
-    // guessed (`generate::tests::dump_phrase_eligible_set_sizes`'s own real output: roughly a
-    // third of the first 10,000 raw bigrams scanned are both eligible and genuinely unclaimed,
-    // ~3,100 real entries, at raw counts still in the low millions - not yet into the long tail).
+    // Phrase entries: a new, independent, single-pass post-pass (no chaining, no 3+-word phrases
+    // in this increment - see `docs/phrases.md`'s scope boundary) that merges two already-settled
+    // primaries into one brand-new, previously-unclaimed outline when at least one side is
+    // single-stroke and the two strokes being joined (the single-stroke side's whole primary, the
+    // other side's own first stroke) are disjoint - a real 2-strokes-to-1 compression for a common
+    // bigram, not a cosmetic one, that now also reaches a multi-stroke "host" word's first stroke
+    // the same way `compose_backup`'s own direction (b) already does (see `phrase_candidate_outline`
+    // and `docs/phrases.md`). Runs once, here, after the backup pass's own fixed-point loop finishes
+    // (so it sees every backup entry already committed to `taken`) and before `stranded` is computed
+    // (so that diagnostic still runs against the dictionary's true final state). `PHRASE_TOP_N`
+    // bounds the raw bigram list scanned, ranked by count - see `docs/phrases.md`'s threshold
+    // section for how this number was measured and chosen, not guessed.
     const PHRASE_TOP_N: usize = 10_000;
     let mut phrases_added = 0usize;
     let mut phrases_skipped = 0usize;
     {
-        let primary = primary_single_strokes(&entries);
-        let phrase_candidates = enumerate_phrase_candidates(setup, &primary, PHRASE_TOP_N);
+        let single = primary_single_strokes(&entries);
+        let any_len = primary_outlines(&entries);
+        let phrase_candidates = enumerate_phrase_candidates(setup, &single, &any_len, PHRASE_TOP_N);
         let is_winner = arbitrate_phrase_round(&phrase_candidates);
-        for (i, ((w1, w2), stroke, _count)) in phrase_candidates.into_iter().enumerate() {
+        for (i, ((w1, w2), outline, _count)) in phrase_candidates.into_iter().enumerate() {
             if !is_winner[i] {
                 phrases_skipped += 1;
                 continue;
             }
-            let text = render_outline(&[stroke]);
+            let text = render_outline(&outline);
             if taken.contains_key(&text) {
                 phrases_skipped += 1;
                 continue;
@@ -1472,7 +1541,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             taken.insert(text, word.clone());
             entries.push(Entry {
                 word,
-                outline: vec![stroke],
+                outline,
                 origin: Origin::Phrase,
                 lost_to: None,
             });
@@ -2370,14 +2439,72 @@ mod tests {
     }
 
     #[test]
+    fn two_real_multi_stroke_host_bigrams_checked_by_hand_against_the_real_dictionary() {
+        // Plan verification step 4's real-dictionary check for the multi-stroke-host update: two
+        // real bigrams, one for each direction `phrase_candidate_outline` now supports, hand-worked
+        // against the real, settled dictionary (`cargo run --release -- lookup "<phrase>"` confirms
+        // each word's own real primary independently of this test).
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+        let single = primary_single_strokes(&generated.entries);
+        let any_len = primary_outlines(&generated.entries);
+
+        // Direction (B): "a" (single-stroke primary "A") + "working" (host, a real two-stroke
+        // primary "WORBG/+-G") - a real bigram in `setup.bigrams`. The filler "A" merges into
+        // "working"'s own first stroke "WORBG" (disjoint: "A" shares no key with "WORBG"), and
+        // "working"'s own second stroke "+-G" - join bit included - carries through unchanged.
+        assert!(setup.bigrams.contains_key(&("a".to_owned(), "working".to_owned())));
+        assert_eq!(single.get("a").copied(), Some(parse_outline("A").unwrap()[0]));
+        assert_eq!(any_len.get("working").copied(), Some(&parse_outline("WORBG/+-G").unwrap()[..]));
+        let a_working = phrase_candidate_outline(&single, &any_len, "a", "working");
+        assert_eq!(
+            a_working,
+            Some(parse_outline("WAORBG/+-G").unwrap()),
+            "\"a\"'s whole primary should merge into \"working\"'s own first stroke only"
+        );
+        assert_eq!(
+            generated
+                .entries
+                .iter()
+                .find(|e| e.origin == Origin::Phrase && e.word == "a working")
+                .map(|e| e.outline.clone()),
+            a_working,
+            "\"a working\" should have actually committed with this exact two-stroke outline"
+        );
+
+        // Direction (C), the symmetric case: "accompanied" (host, a real two-stroke primary
+        // "A/+K-PD") + "by" (single-stroke primary "PWEU") - also a real bigram. "by"'s whole
+        // primary merges into "accompanied"'s own first stroke "A" (disjoint), and
+        // "accompanied"'s own second stroke "+K-PD" carries through unchanged.
+        assert!(setup.bigrams.contains_key(&("accompanied".to_owned(), "by".to_owned())));
+        assert_eq!(any_len.get("accompanied").copied(), Some(&parse_outline("A/+K-PD").unwrap()[..]));
+        assert_eq!(single.get("by").copied(), Some(parse_outline("PWEU").unwrap()[0]));
+        let accompanied_by = phrase_candidate_outline(&single, &any_len, "accompanied", "by");
+        assert_eq!(
+            accompanied_by,
+            Some(parse_outline("PWAEU/+K-PD").unwrap()),
+            "\"by\"'s whole primary should merge into \"accompanied\"'s own first stroke only"
+        );
+        assert_eq!(
+            generated
+                .entries
+                .iter()
+                .find(|e| e.origin == Origin::Phrase && e.word == "accompanied by")
+                .map(|e| e.outline.clone()),
+            accompanied_by,
+            "\"accompanied by\" should have actually committed with this exact two-stroke outline"
+        );
+    }
+
+    #[test]
     fn arbitrate_phrase_round_picks_the_commoner_bigram_not_whoever_is_tried_first() {
         // Mirrors `backup_round_arbitration_picks_the_commoner_word_not_whoever_is_tried_first`
         // exactly, for phrase candidates: two different eligible bigrams that happen to OR to the
         // identical merged stroke are arbitrated by the bigram's own raw count, not insertion
         // order.
-        let same_stroke = parse_outline("TK").unwrap()[0];
+        let same_stroke = parse_outline("TK").unwrap();
         let forward = vec![
-            (("rare".to_owned(), "pair".to_owned()), same_stroke, 5u64),
+            (("rare".to_owned(), "pair".to_owned()), same_stroke.clone(), 5u64),
             (("common".to_owned(), "pair".to_owned()), same_stroke, 1_000u64),
         ];
         assert_eq!(
@@ -2665,5 +2792,171 @@ mod tests {
             }
         }
         (eligible, free)
+    }
+
+    #[test]
+    fn merge_into_host_first_stroke_preserves_every_later_stroke_untouched() {
+        // Hand-worked synthetic case, step 2 of the multi-stroke-host plan: a small multi-stroke
+        // word's own primary (`"ample"`, made up for this test as a two-stroke outline `APL/+PL`,
+        // chosen only so its first stroke `APL` is disjoint from the filler below - no real
+        // dictionary word needs to actually exist with this outline) and a real single-stroke
+        // filler word's primary (`"of"`'s own real `-F`). Confirms the merge produces the right
+        // combined outline, with the host's own second stroke - join bit included - carried
+        // through completely unchanged, exactly the invariant `compose_backup`'s direction (b)
+        // already guarantees for a leading consonant folded onto `word_outline[stem][0]`.
+        let filler = parse_outline("-F").unwrap()[0];
+        let host = parse_outline("APL/+PL").unwrap();
+        assert_eq!(host.len(), 2, "test setup: host must be genuinely two strokes");
+        assert_eq!(filler.0 & host[0].0, 0, "test setup: filler and the host's first stroke must be disjoint");
+
+        let merged = merge_into_host_first_stroke(filler, &host).expect("disjoint filler and host first stroke");
+        assert_eq!(merged.len(), 2, "the host's second stroke must be carried through, not dropped");
+        assert_eq!(merged[0], Stroke(filler.0 | host[0].0), "the first stroke is the bitwise OR of filler and host[0]");
+        assert_eq!(merged[1], host[1], "the host's later stroke(s) - join bit included - must be byte-for-byte unchanged");
+
+        // An overlapping filler/host-first-stroke pair is rejected, exactly as `phrase_candidate`
+        // already rejects an overlapping single+single pair.
+        let overlapping_filler = parse_outline("A").unwrap()[0]; // shares the "A" vowel with host[0] ("APL")
+        assert_eq!(merge_into_host_first_stroke(overlapping_filler, &host), None);
+
+        // An empty host (never real, but checked for completeness) is also rejected rather than
+        // panicking.
+        assert_eq!(merge_into_host_first_stroke(filler, &[]), None);
+    }
+
+    #[test]
+    fn phrase_candidate_outline_handles_both_host_directions_and_still_excludes_both_multi() {
+        // `phrase_candidate_outline`'s own three cases, hand-built: (1) both single-stroke reduces
+        // to exactly `phrase_candidate`'s old behavior; (2) w1 single + w2 a multi-stroke host; (3)
+        // the symmetric w2 single + w1 a multi-stroke host; (4) both multi-stroke stays out of
+        // scope entirely, `None`, regardless of disjointness.
+        let mut single: HashMap<&str, Stroke> = HashMap::new();
+        single.insert("of", parse_outline("-F").unwrap()[0]);
+        single.insert("the", parse_outline("-T").unwrap()[0]);
+
+        let ample_outline = parse_outline("APL/+PL").unwrap();
+        let of_outline = parse_outline("-F").unwrap();
+        let the_outline = parse_outline("-T").unwrap();
+        let mut any_len: HashMap<&str, &[Stroke]> = HashMap::new();
+        any_len.insert("of", &of_outline[..]);
+        any_len.insert("the", &the_outline[..]);
+        any_len.insert("ample", &ample_outline[..]);
+
+        // (1) both single-stroke: identical to `phrase_candidate`'s own merged stroke, wrapped in a
+        // one-element outline.
+        assert_eq!(
+            phrase_candidate_outline(&single, &any_len, "of", "the"),
+            Some(vec![parse_outline("-FT").unwrap()[0]])
+        );
+
+        // (2) "of" (single) + "ample" (multi-stroke host): merges into "ample"'s own first stroke,
+        // keeps "ample"'s own second stroke untouched.
+        assert_eq!(
+            phrase_candidate_outline(&single, &any_len, "of", "ample"),
+            Some(vec![Stroke(single["of"].0 | ample_outline[0].0), ample_outline[1]])
+        );
+
+        // (3) the symmetric direction: "ample" (multi-stroke host) + "of" (single).
+        assert_eq!(
+            phrase_candidate_outline(&single, &any_len, "ample", "of"),
+            Some(vec![Stroke(ample_outline[0].0 | single["of"].0), ample_outline[1]])
+        );
+
+        // (4) a pair where *neither* side has a single-stroke primary stays out of scope.
+        let mut any_len_both_multi = any_len.clone();
+        any_len_both_multi.insert("another", &ample_outline[..]);
+        let no_single: HashMap<&str, Stroke> = HashMap::new();
+        assert_eq!(phrase_candidate_outline(&no_single, &any_len_both_multi, "ample", "another"), None);
+    }
+
+    #[test]
+    #[ignore = "diagnostic: measures the real yield of allowing a multi-stroke host word on either \
+                side of a phrase bigram, run with --ignored --nocapture"]
+    fn dump_multistroke_host_phrase_yield() {
+        const PHRASE_TOP_N: usize = 10_000;
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+
+        let single = primary_single_strokes(&generated.entries);
+        let any_len = primary_outlines(&generated.entries);
+
+        // Baseline `taken`: every non-`Phrase` entry's own rendered outline, so a bigram this
+        // project's own current phrase pass already settled doesn't show up as "taken by itself".
+        let mut taken: HashSet<String> = reserved_outlines().unwrap().into_keys().collect();
+        taken.extend(
+            generated
+                .entries
+                .iter()
+                .filter(|e| e.origin != Origin::Phrase)
+                .map(|e| render_outline(&e.outline)),
+        );
+
+        let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
+        by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+        let by_count: Vec<&(String, String)> = by_count.into_iter().take(PHRASE_TOP_N).map(|(k, _)| k).collect();
+
+        // (A) today's both-single-stroke-only rule - the pre-existing baseline.
+        let mut eligible_a = 0usize;
+        let mut committed_a: HashSet<String> = HashSet::new();
+        // (B) w1 single-stroke + w2 a *strictly* multi-stroke host (the new direction named first
+        // in the plan).
+        let mut eligible_b = 0usize;
+        let mut committed_b: HashSet<String> = HashSet::new();
+        // (C) the symmetric direction: w2 single-stroke + w1 a strictly multi-stroke host.
+        let mut eligible_c = 0usize;
+        let mut committed_c: HashSet<String> = HashSet::new();
+
+        for (w1, w2) in &by_count {
+            if let (Some(&a), Some(&b)) = (single.get(w1.as_str()), single.get(w2.as_str()))
+                && a.0 & b.0 == 0
+            {
+                eligible_a += 1;
+                let text = render_outline(&[Stroke(a.0 | b.0)]);
+                if !taken.contains(&text) {
+                    committed_a.insert(text);
+                }
+            }
+            if let (Some(&filler), Some(&host)) = (single.get(w1.as_str()), any_len.get(w2.as_str()))
+                && host.len() > 1
+                && let Some(outline) = merge_into_host_first_stroke(filler, host)
+            {
+                eligible_b += 1;
+                let text = render_outline(&outline);
+                if !taken.contains(&text) {
+                    committed_b.insert(text);
+                }
+            }
+            if let (Some(&host), Some(&filler)) = (any_len.get(w1.as_str()), single.get(w2.as_str()))
+                && host.len() > 1
+                && let Some(outline) = merge_into_host_first_stroke(filler, host)
+            {
+                eligible_c += 1;
+                let text = render_outline(&outline);
+                if !taken.contains(&text) {
+                    committed_c.insert(text);
+                }
+            }
+        }
+
+        println!("PHRASE_TOP_N={PHRASE_TOP_N}");
+        println!(
+            "  (A) both single-stroke only (today's rule): {eligible_a} eligible, {} distinct free texts",
+            committed_a.len()
+        );
+        println!(
+            "  (B) w1 single + w2 strictly-multi host:      {eligible_b} eligible, {} distinct free texts",
+            committed_b.len()
+        );
+        println!(
+            "  (C) w2 single + w1 strictly-multi host:      {eligible_c} eligible, {} distinct free texts",
+            committed_c.len()
+        );
+        let b_only_new: HashSet<&String> = committed_b.difference(&committed_a).collect();
+        let c_only_new: HashSet<&String> = committed_c.difference(&committed_a).collect();
+        let union_new: HashSet<&String> = b_only_new.union(&c_only_new).copied().collect();
+        println!(
+            "  net new multi-stroke-host texts (B ∪ C, deduplicated, not already free under A): {}",
+            union_new.len()
+        );
     }
 }

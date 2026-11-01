@@ -1292,3 +1292,71 @@ letter-spelled word that is at least honest about not knowing the word, remains 
 available as before for anything this fallback still can't translate (24,008 of the original
 32,182 have no entry in MFA or WikiPron either, and fall through to spelling mode exactly as they
 always did).
+
+**Phrase-briefing can now reach a multi-stroke "host" word's first stroke, not just
+both-single-stroke pairs.** A read-only research pass this session found the first version of
+[phrase-briefing](phrases.md)'s own "multi-stroke component words" exclusion overly cautious: this
+project already had real, shipped, tested precedent for exactly the pattern it worried about -
+`compose_backup`'s own direction (b) ("fold a leading consonant onto a placed word's first stroke")
+already merges a fragment into `word_outline[stem][0]` - a stem's outline of *any* length - and
+leaves every later stroke, join bits included, completely untouched. `word_outline` was never
+restricted to single-stroke stems to begin with. The only thing `compose_backup` does that doesn't
+apply here is re-validating `matches_real_consonants` against a target word's own phonemes after
+merging - irrelevant for a phrase entry, whose `word` field is two words' text with no
+phonetic-coherence claim to protect.
+
+Implemented as `generate::phrase_candidate_outline`/`merge_into_host_first_stroke`: a bigram
+`(w1, w2)` is now also eligible when one word (the "filler") has a single-stroke primary and the
+other (the "host") has a primary of *any* length - the filler's whole primary OR's into the host's
+own first stroke only, the host's later strokes carried through byte for byte. Both directions
+(filler-then-host and host-then-filler) are supported - measured, not assumed, to matter about
+equally (88 vs. 108 newly-eligible-and-free bigrams at `PHRASE_TOP_N = 10,000`, 190 net new after
+deduplication; supporting only one direction would have left roughly half the real yield on the
+table). `enumerate_phrase_candidates`/`arbitrate_phrase_round`/the commit loop in `generate()` and
+`quote::phrase_map`/`total_cost_with_phrases` all already operated on a full outline (`Vec<Stroke>`)
+or used `outline.len()`/`generate::keys(outline)` generically rather than assuming one stroke, so
+`quote.rs` needed no changes at all - confirmed by reading both functions directly, not assumed.
+`generate::single_stroke_stems`'s explicit `Origin::Phrase` exclusion stays load-bearing: its own
+`[stroke] => ...` length-one match would, on its own, already exclude a *multi*-stroke phrase entry,
+but the original both-single-stroke phrase entries (still the large majority) are exactly one stroke
+long, so the length check alone would not have excluded those - the origin filter is still what
+protects the plugin fallback from reading `"of the"` back as some unrelated word's own text.
+
+**Real impact, measured with both builds verified clean** (`src/generate.rs` reverted to `HEAD` with
+its hash confirmed to match `HEAD`'s own content before the "before" build, restored with its hash
+confirmed to match the working copy exactly before the "after" build, both `out/lyk.json`s diffed by
+word with a `python3 -I` script). `build`'s default (`common = 100,000`): entries written rose from
+122,496 to 122,686 (+190), every one of the 190 a new phrase entry with a multi-stroke outline
+(confirmed by inspecting the diff directly - e.g. `"a working"` → `WAORBG/+-G`, `"accompanied by"` →
+`PWAEU/+K-PD`, `"anniversary of"` → `AFPB/+SRER/+SAER`); **zero existing entries changed or were
+lost** (0 removed, 0 changed) - strictly additive, exactly as the mechanism's own design predicts
+(a brand-new, previously-unclaimed outline text per hit, never competing with anything already
+placed). At `PHRASE_TOP_N = 10,000`, the both-single-stroke-only rule alone commits 3,034 real
+entries (down from the figure in `docs/phrases.md`'s own original measurement, purely from the
+unrelated MFA/WikiPron vocabulary expansion two entries above - not from this change); allowing a
+multi-stroke host on either side adds the 190 above, for 3,224 total.
+
+`quote_corpus`'s phrase-aware benchmark, before vs. after this change specifically (same
+revert/restore/hash-check methodology): on the hand-picked 103-passage corpus, phrase hits rose from
+102 to 103, full-coverage strokes-with-phrases from 1,144 to 1,143 against an unchanged 1,246
+word-by-word baseline (one additional real stroke saved), keys-with-phrases unchanged at 4,333 both
+times. On the larger, 416-passage extracted corpus, phrase hits rose from 479 to 483,
+strokes-with-phrases from 5,922 to 5,918 against an unchanged 6,401 word-by-word baseline (four more
+strokes saved), while keys-with-phrases went from 4 keys worse than word-by-word (22,311 vs. 22,307)
+to 8 keys worse (22,315 vs. 22,307) - the same already-documented `sit`/`ST`-style second-order
+effect firing a few more times, not a new problem. Neither `quote_corpus` threshold needed
+recalibrating - both still pass unchanged. Full suite: 75 passing/5 ignored before this change, 78
+passing/6 ignored after (4 new tests added, none removed: 3 regular plus the new `#[ignore]`d
+`dump_multistroke_host_phrase_yield` diagnostic). `cargo clippy --release --all-targets` unchanged at
+117 warnings before and after (one pre-existing "function has too many lines" count ticked up by
+exactly one line, no new warning categories). `cargo run --release -- score --check-readme` still
+matches every table.
+
+**Honest read: a small, real win, not a second v1 - shipped anyway.** The newly-eligible
+multi-stroke-host population is a real but modest slice of the whole mechanism (190 of 3,224 total
+committed entries, 6.3%), consistent with this project's own backup-component precedent (92 words
+with a multi-stroke primary and a single-stroke `Backup` entry, which only added 7-9 phrase entries
+when tried) predicting a "low hundreds at best" yield before this was built. `PHRASE_TOP_N` was left
+at 10,000 rather than raised to chase a larger multi-stroke-host yield specifically - the risk this
+change turned out not to carry (see above) means there is no urgency to decide that separately from
+whatever eventually motivates raising the threshold for the mechanism as a whole.
