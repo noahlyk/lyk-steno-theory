@@ -2213,12 +2213,17 @@ mod tests {
     fn a_word_with_no_pronunciation_can_be_spelled_letter_by_letter() {
         let rules = Rules::built_in().unwrap();
         let read = |text: &str| rules.resolve(&parse_outline(text).unwrap(), None);
-        // "stenography" has no CMUdict entry at all, so the phonetic rules have nothing to
+        // "aboveground" has no entry in CMUdict, MFA, or WikiPron (see `crate::ipa` and
+        // `crate::data::fallback_pronunciations`), so the phonetic rules have nothing at all to
         // generate from; spelling mode (the `~` marker on the first stroke, `+` continuing every
         // one after it, same as any other multi-stroke word) reads it back letter-exact instead.
+        // `spell_word` itself is a pure letter-to-chord table lookup with no pronunciation input,
+        // so this and the next test would pass for any a-z word regardless - "aboveground" is
+        // used because it is real, still-unrescued example data, not because the mechanism here
+        // depends on it specifically.
         assert_eq!(
-            read("~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH"),
-            Some("stenography".to_owned())
+            read("~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK"),
+            Some("aboveground".to_owned())
         );
         // A chord with no entry in rules/spelling.toml is a true miss, same as any other.
         assert_eq!(read("~*"), None);
@@ -2229,11 +2234,12 @@ mod tests {
         let rules = Rules::built_in().unwrap();
         // The encode direction: given just the word, not a stroke sequence someone already wrote
         // out by hand, produce the same outline `docs/spelling-mode.md` hand-writes for
-        // "stenography" - a word with no pronunciation at all for the phonetic rules to run from.
-        let outline = rules.spell_word("stenography").unwrap();
-        assert_eq!(render_outline(&outline), "~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH");
+        // "aboveground" - a word with no pronunciation on record anywhere (CMUdict, MFA, or
+        // WikiPron) for the phonetic rules to run from.
+        let outline = rules.spell_word("aboveground").unwrap();
+        assert_eq!(render_outline(&outline), "~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK");
         // Round-trips back through the decode direction exactly.
-        assert_eq!(rules.resolve(&outline, None), Some("stenography".to_owned()));
+        assert_eq!(rules.resolve(&outline, None), Some("aboveground".to_owned()));
         // A character spelling mode has no chord for (anything but a-z) is a true miss, same as
         // a stroke chord with no entry in the table.
         assert_eq!(rules.spell_word("o'clock"), None);

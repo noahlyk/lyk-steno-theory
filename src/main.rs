@@ -12,6 +12,7 @@ mod dictionary_fixture;
 mod fetch;
 mod generate;
 mod gold;
+mod ipa;
 mod quote;
 #[cfg(test)]
 mod quote_corpus;

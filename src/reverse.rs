@@ -4,8 +4,9 @@
 //! the two answer the same way: a query with no lowercase letter that parses as a stroke outline
 //! resolves forward (what does this stroke type); anything else is text to find the stroke(s)
 //! for, a single word or a whole phrase, word by word, next to Plover's and Lapwing's. A word with
-//! no pronunciation at all falls back to [`crate::rules::Rules::spell_word`]'s spelling-mode
-//! outline rather than going unanswered - see `docs/spelling-mode.md`.
+//! no pronunciation at all anywhere (CMUdict, MFA, or WikiPron - see `crate::ipa`) falls back to
+//! [`crate::rules::Rules::spell_word`]'s spelling-mode outline rather than going unanswered - see
+//! `docs/spelling-mode.md`.
 
 use crate::analysis::Setup;
 use crate::stroke::{self, Stroke, render_outline};
@@ -47,8 +48,9 @@ pub struct WordLookup {
 /// whatever `common` the dictionary was built with, or not a real English word - `ander` has no
 /// dictionary entry of its own, since nobody writes "ander", but the rules can still read it back
 /// once struck; see `Rules::resolve`'s own stem-recognition fallback for that case instead), then
-/// to spelling mode for a word with no pronunciation on record for the rules to run from at all
-/// (`stenography`; see `Rules::spell_word`).
+/// to spelling mode for a word with no pronunciation on record anywhere (CMUdict, nor MFA or
+/// WikiPron's translated fallback - see `crate::ipa`) for the rules to run from at all
+/// (`aboveground`; see `Rules::spell_word`).
 #[must_use]
 pub fn reverse_word(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str) -> WordLookup {
     let lower = word.to_lowercase();
@@ -102,7 +104,11 @@ mod tests {
     #[test]
     fn a_word_with_no_pronunciation_falls_back_to_spelling_mode() {
         let setup = Setup::load(std::path::Path::new("data"), None, Some(1_000)).unwrap();
-        let found = reverse_word(&setup, &HashMap::new(), "stenography");
-        assert_eq!(found.lyk.as_deref(), Some("~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH"));
+        // "stenography" no longer qualifies - it now has an MFA-derived fallback pronunciation
+        // (see `crate::ipa`) and a real phonetic outline, so this uses "aboveground" instead: a
+        // real word with no entry in CMUdict, MFA, or WikiPron at all (checked directly against
+        // the real downloaded files, not assumed).
+        let found = reverse_word(&setup, &HashMap::new(), "aboveground");
+        assert_eq!(found.lyk.as_deref(), Some("~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK"));
     }
 }

@@ -60,6 +60,37 @@ pub fn load_wikipron(path: &Path) -> Result<Pronunciations> {
     Ok(words)
 }
 
+/// For every word CMUdict has no entry for at all, a translated ARPAbet pronunciation from MFA or
+/// WikiPron (see `crate::ipa`) - never for a word CMUdict already covers, so a caller that merges
+/// this in with `Pronunciations::entry(..).or_insert(..)` leaves every CMUdict-covered word
+/// byte-for-byte untouched. MFA is preferred over WikiPron whenever a word has a usable
+/// pronunciation in both: its single, well-documented symbol inventory translates more reliably
+/// than WikiPron's noisier, multi-dialect Wiktionary scrape (see `crate::ipa`'s module doc and
+/// `docs/decisions.md`). A word's own variants are tried in file order and kept only if they
+/// translate; a word with every variant rejected by `crate::ipa::translate` (an IPA symbol or
+/// cluster this module does not recognise) is simply absent here, exactly as if neither source had
+/// it - the caller's `or_insert` then leaves it to fall through to spelling mode, same as today.
+pub fn fallback_pronunciations(
+    cmudict: &Pronunciations,
+    mfa: &Pronunciations,
+    wikipron: &Pronunciations,
+) -> Pronunciations {
+    let translate_missing = |source: &Pronunciations| -> Pronunciations {
+        source
+            .iter()
+            .filter(|(word, _)| !cmudict.contains_key(word.as_str()))
+            .filter_map(|(word, variants)| {
+                let translated: Vec<Vec<String>> =
+                    variants.iter().filter_map(|v| crate::ipa::translate(v)).collect();
+                (!translated.is_empty()).then(|| (word.clone(), translated))
+            })
+            .collect()
+    };
+    let mut fallback = translate_missing(wikipron);
+    fallback.extend(translate_missing(mfa)); // MFA overwrites WikiPron where both exist
+    fallback
+}
+
 /// Word counts, most common first: `word count` per line.
 pub fn load_frequency(path: &Path) -> Result<Vec<(String, u64)>> {
     load_frequency_bounded(path, usize::MAX)

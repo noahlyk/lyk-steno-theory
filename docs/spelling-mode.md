@@ -4,10 +4,18 @@
 
 [The fallback](fallback.md) reads a missed stroke back into sounds — a reasonable last resort for
 any word the rules *can* generate from, since it has a real pronunciation to work from. Some words
-have no pronunciation on record at all: `stenography` isn't in CMUdict, so the generator has
-nothing to run its onset/vowel/coda tables against, and the phonetic fallback has nothing better
-to do than guess at sounds nobody struck. Spelling mode is a second, deliberate way to type a word
-like that: not a guess, every letter struck explicitly.
+have no pronunciation on record anywhere at all: `aboveground` isn't in CMUdict, MFA's dictionary,
+or WikiPron, so the generator has nothing to run its onset/vowel/coda tables against, and the
+phonetic fallback has nothing better to do than guess at sounds nobody struck. Spelling mode is a
+second, deliberate way to type a word like that: not a guess, every letter struck explicitly.
+
+Most of CMUdict's own gaps don't reach this chapter at all any more. `src/ipa.rs` translates MFA's
+and WikiPron's own IPA pronunciations into the same ARPAbet CMUdict uses, and `Setup::load` fills
+one of those in — MFA preferred over WikiPron when both have one — for any word CMUdict has
+genuinely no entry for, before the rules ever see it; see `docs/decisions.md`'s entry on this for
+the real measured numbers and its honest quality caveats (neither source marks lexical stress, so
+a translated word's stress is a crude first-syllable-primary guess, not a known fact). This chapter
+is for what's left once that fallback has also come up empty.
 
 ## The marker
 
@@ -41,17 +49,17 @@ stroke, concatenated in order. There's no ambiguity to resolve the way a missed 
 has — no ten-way vowel-key collision, no ranking a plain sound over a spelling variant — because
 each letter was struck explicitly rather than inferred from a sound.
 
-`stenography` spelled out is eleven strokes, one letter each:
+`aboveground` spelled out is eleven strokes, one letter each:
 
 ```
-~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH
+~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK
 ```
 
 ```
-cargo run --release -- resolve -- "~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH"
+cargo run --release -- resolve -- "~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK"
 ```
 
-reads back `stenography`, letter for letter — compare that to the garbled guess the ordinary
+reads back `aboveground`, letter for letter — compare that to the garbled guess the ordinary
 phonetic fallback would produce for a stroke sequence that happened to share some of those keys,
 since it has no way to know the word wasn't meant to be sounded out at all.
 
@@ -64,7 +72,7 @@ second, hand-maintained copy of this rule either.
 
 Everything above reads a spelling-mode outline back into a word — useful once you already know
 you're going to spell something out, but no help deciding *how* to spell it: hand-writing
-`~S/+T/+E/+TPH/+O/+TKPW/+R/+A/+P/+H/+KWH` for `stenography` letter by letter, by eye, against
+`~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK` for `aboveground` letter by letter, by eye, against
 `rules/spelling.toml`, isn't something a learner should have to do. `Rules::spell_word` is the
 exact inverse of `resolve_spelling`: given the word, it looks each letter up in the same table and
 produces that same outline directly, `~` on the first stroke and `+` on every one after it — `None`

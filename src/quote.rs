@@ -71,7 +71,8 @@ fn outline_of(
                 .find_map(|sounds| setup.rules.outline(word, sounds))
                 .map(|o| render_outline(&o))
         })
-        // No pronunciation on record at all (`stenography`-class words): spell it out letter by
+        // No pronunciation on record anywhere at all - not CMUdict, nor MFA or WikiPron's
+        // translated fallback (`crate::ipa`; `aboveground`-class words): spell it out letter by
         // letter rather than reporting the word as simply untypeable.
         .or_else(|| setup.rules.spell_word(word).map(|o| render_outline(&o)))
         .unwrap_or_else(|| "-".to_owned())

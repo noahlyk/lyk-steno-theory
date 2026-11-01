@@ -6,10 +6,12 @@
 //! found the hard way, so a future change that reintroduces one of them fails immediately instead
 //! of waiting for someone to notice live, the way "don't" and "quitters" both were noticed.
 
+use crate::data;
 use crate::dictionary_fixture;
 use crate::generate;
 use crate::stroke::render_outline;
 use std::collections::HashMap;
+use std::path::Path;
 
 /// No two different words were ever meant to share a stroke - `generate()`'s own `taken` map
 /// exists specifically to prevent it. This re-checks the invariant from the outside, on the real
@@ -208,4 +210,36 @@ fn no_generated_outline_collides_with_a_reserved_stroke() {
     }
     collisions.sort();
     assert!(collisions.is_empty(), "words colliding with a reserved stroke: {collisions:#?}");
+}
+
+/// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and
+/// `data::fallback_pronunciations`) for any word CMUdict has no entry for at all - this is the
+/// regression guard that the fallback is actually wired in and still reaches a real number of
+/// words, not just the hand-picked ones `rules::tests`/`reverse::tests` check individually. A real
+/// run measured 8,174 of the 32,182 words with zero CMUdict entry among the top 100,000 by
+/// frequency rank (`dictionary_fixture`'s own `COMMON`) as rescuable this way (see
+/// `docs/decisions.md`'s entry on this fallback); the threshold below is set well under that
+/// measured count, the same way `CONTESTED_SHARE_MAX` and the stranded-word baseline are - a
+/// regression guard against the fallback's own reach quietly narrowing (an over-tightened phone
+/// table, a broken merge order, a symbol table that stops loading), not a tight pin on the exact
+/// count, which drifts slightly with the frequency corpus and the downloaded data files
+/// themselves.
+#[test]
+fn the_ipa_fallback_rescues_a_real_minimum_of_cmudict_gap_words() {
+    const RESCUED_FLOOR: usize = 7_000;
+    let setup = dictionary_fixture::setup();
+    let cmudict = data::load_cmudict(&Path::new("data").join("pronunciation/cmudict.dict"))
+        .expect("cmudict loads");
+    let rescued = setup
+        .rank
+        .iter()
+        .filter(|&(w, &r)| r < 100_000 && !cmudict.contains_key(w.as_str()))
+        .filter(|&(w, _)| setup.pron.contains_key(w.as_str()))
+        .count();
+    assert!(
+        rescued >= RESCUED_FLOOR,
+        "only {rescued} of the top-100,000 words with no CMUdict entry got a translated MFA/\
+         WikiPron fallback pronunciation, want >= {RESCUED_FLOOR} - the fallback (`crate::ipa`, \
+         `data::fallback_pronunciations`) likely regressed"
+    );
 }

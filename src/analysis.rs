@@ -1,6 +1,9 @@
 //! Judging the rules against Plover and Lapwing, and learning which rules are missing.
 
-use crate::data::{Pronunciations, load_bigrams, load_cmudict, load_frequency_bounded};
+use crate::data::{
+    Pronunciations, fallback_pronunciations, load_bigrams, load_cmudict, load_frequency_bounded,
+    load_mfa, load_wikipron,
+};
 use crate::generate;
 use crate::gold::Gold;
 use crate::rules::Rules;
@@ -127,22 +130,36 @@ impl Setup {
             common.map_or(usize::MAX, |c| c.saturating_add(c / 5).max(c.saturating_add(10_000)));
         let freq_path = data.join("frequency/en_full.txt");
         let pron_path = data.join("pronunciation/cmudict.dict");
+        let mfa_path = data.join("pronunciation/english_us_mfa.dict");
+        let wikipron_path = data.join("pronunciation/wikipron_us_broad.tsv");
         let bigrams_path = data.join("frequency/bigrams_en.txt");
-        // Four independent files, none needed before another: load them on their own threads
+        // Six independent files, none needed before another: load them on their own threads
         // instead of one after another.
-        let (frequency, pron, gold, bigrams) = std::thread::scope(|scope| {
+        let (frequency, pron, mfa, wikipron, gold, bigrams) = std::thread::scope(|scope| {
             let frequency = scope.spawn(|| load_frequency_bounded(&freq_path, freq_limit));
             let pron = scope.spawn(|| load_cmudict(&pron_path));
+            let mfa = scope.spawn(|| load_mfa(&mfa_path));
+            let wikipron = scope.spawn(|| load_wikipron(&wikipron_path));
             let gold = scope.spawn(|| Gold::load(data));
             let bigrams = scope.spawn(|| load_bigrams(&bigrams_path));
             (
                 frequency.join().expect("frequency load panicked"),
                 pron.join().expect("pronunciation load panicked"),
+                mfa.join().expect("mfa pronunciation load panicked"),
+                wikipron.join().expect("wikipron pronunciation load panicked"),
                 gold.join().expect("gold dictionary load panicked"),
                 bigrams.join().expect("bigram load panicked"),
             )
         });
-        let pron = pron?;
+        let mut pron = pron?;
+        // Every word CMUdict has no entry for at all gets a translated ARPAbet pronunciation from
+        // MFA or WikiPron instead, if either has one that translates - a genuine fallback, never a
+        // replacement: `or_insert` only ever fires for a key `pron` does not already have, so a
+        // CMUdict-covered word is completely unaffected. See `data::fallback_pronunciations` and
+        // `crate::ipa`.
+        for (word, variants) in fallback_pronunciations(&pron, &mfa?, &wikipron?) {
+            pron.entry(word).or_insert(variants);
+        }
         let mut rank = HashMap::new();
         let mut count = HashMap::new();
         for (n, (word, times)) in frequency?.into_iter().enumerate() {

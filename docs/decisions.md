@@ -1211,3 +1211,84 @@ sense for this spelling, never the metal sense `HRED` that was deployed).
 - `console` → not a live sense collision: both pronunciations fold to the identical outline in
   lyk's own rules; deployed's two-stroke composed form is phonetically close to and no worse than
   gold's own listed forms.
+
+**MFA/WikiPron wired in as a real CMUdict-gap fallback, not just `report` statistics
+(`src/ipa.rs`).** `data::load_mfa`/`load_wikipron` were already fetched and parsed, but
+`Setup::load` only ever built `pron` from CMUdict - the two extra sources sat unused except for
+`report`'s own coverage printout. The scope was re-derived, not assumed from an earlier guess of
+"~300 words": of the 89,616 valid-shaped words in the top 100,000 by frequency rank, 32,182 have no
+CMUdict entry at all. Most of that 32,182 is frequency-corpus noise, not real missing vocabulary -
+696 are apostrophe-stripped contraction stems (`didn`, `wasn`, `'ll`), 275 are g-dropped informal
+spellings (`comin`, `gettin`) the frequency list counts separately from their `-ing` form, and a
+further large share is caption/subtitle-transcript artifacts (`exhales`, `indistinctly`, `chffffff`)
+- but 8,174 of the 32,182 (about a quarter) have a pronunciation in MFA and/or WikiPron that
+translates cleanly to ARPAbet, including real words this session's own background notes flagged as
+the known gap: `hobgoblin` and `stenography` are both rescued by this (see below; `aboveground`
+replaces `stenography` as `docs/spelling-mode.md`'s and the relevant tests' own no-pronunciation
+example, since `stenography` no longer qualifies).
+
+`src/ipa.rs` is the translation table: the base ARPAbet↔IPA correspondence is the standard one
+(Wikipedia's ARPABET article, itself citing the usual speech-processing references), cross-checked
+against `cmudict.phones`' own exact 39 symbols so the output alphabet is always one
+`rules/plover.toml` already understands - CMUdict never uses ARPAbet's extended symbols (`DX`,
+`NX`, `Q`, `WH`, `AX`, `IX`, `UX`), so this table doesn't either; a flap, nasalized flap, or glottal
+stop is spelled as its underlying `T`/`D`/`N`, exactly as CMUdict itself always does. MFA's and
+WikiPron's own IPA conventions were checked directly against the real downloaded files, not
+assumed, and turned out to be two different conventions, not one: MFA writes each diphthong as one
+token (`aw`, `ej`) and marks aspiration/palatalization with modifier letters; WikiPron splits a
+diphthong across two adjacent tokens instead (`b a ʊ t` for "bout") and inconsistently marks the
+offglide with a diacritic or not. Any IPA symbol or cluster the table doesn't recognise makes the
+whole pronunciation variant translate to `None` rather than guess - confirmed necessary by sampling
+WikiPron directly: its "us broad" file is considerably noisier than its name suggests (240 distinct
+phone symbols actually appear in it, many narrow or dialectal; "bird" alone has eleven wildly
+different transcriptions on file, several not General American at all, e.g. `b eː d` with no rhotic
+vowel whatsoever). **MFA is preferred over WikiPron whenever a word has a usable pronunciation in
+both** (`data::fallback_pronunciations`), precisely because of that gap in reliability.
+
+**Neither source marks lexical stress at all** - confirmed directly, not assumed: zero `ˈ`/`ˌ`
+characters anywhere in either real downloaded file (`english_us_mfa.dict`,
+`wikipron_us_broad.tsv`), yet `Rules::syllables` only recognises a token as a vowel at all when it
+ends in a stress digit. With no signal to translate, `ipa::translate` assigns the crudest
+defensible default instead of guessing per-word: the first vowel is primary stress, every other
+vowel unstressed. This matches English's common trochaic (first-syllable-stressed) pattern often
+enough to be useful (`hobgoblin` → `HOB/TKPWOBL/-PB`, genuinely plausible) but is frequently wrong
+for a word stressed later (`began`, `suppose`) - a known, documented limitation of translating
+stress-blind source data, not a bug to chase further without a better source.
+
+**Real impact, measured with both builds verified clean** (changed files copied aside, reverted to
+`HEAD` with each hash confirmed to differ from the backup before the "before" build, restored with
+each hash confirmed to match the backup exactly before the "after" build, both `out/lyk.json`s
+diffed by word with a `python3 -I` script - not the same code built against itself twice, the
+mistake this exact kind of measurement made earlier this session). `build`'s default
+(`common = 100,000`): entries written rose from 109,481 to 122,496 (+13,015); "words the rules
+could not place" rose from 303 to 447 (+144) - expected, not a regression: this count only tracks
+words that *have* a pronunciation but no candidate outline fits it, and a word with zero
+pronunciation was never counted in it before, so handing more words a pronunciation can only grow
+it, never shrink it. 7,997 words that had zero entry in the dictionary before (not spelled, simply
+absent - `generate::ranked_words` requires a pronunciation to be considered at all) now have one.
+Side effects of adding that much vocabulary to one global collision-resolution pass, same category
+of churn any vocabulary-expanding change causes here, not specific to this one: 2,838 already-placed
+words landed on a different outline set (a new competitor can still win a shorter stroke a CMUdict
+word's own `pron` entry was never touched for - `pron.entry(word).or_insert(..)` leaves every
+CMUdict-covered word's *pronunciation* byte-for-byte untouched, confirmed directly, but the
+*generated dictionary*'s collision outcomes are a separate, always-shiftable thing); 100 phrase
+entries and 12 single real words (all pre-existing CMUdict words, e.g. `aprile`, `boe`, `korn`) lost
+their prior outline to a new competitor entirely. The stranded-word count stayed at its 0 baseline
+(`quality::stranded_word_count_has_not_grown_past_its_known_baseline` still passes) and the
+contested-set share stayed under `quality::CONTESTED_SHARE_MAX`, so neither quality guard moved.
+README's score/usage/syllable-share tables shifted by a point or two (re-run via
+`score --check-readme` and pasted in, not hand-typed); the single overall weighted number did not
+move (it's dominated by the few thousand most common words, which this fallback barely touches).
+
+**Honest read on quality: worth shipping, not without caveats.** Spot-checking the newly-rescued
+words (`cargo run -- explain <word>` on a sample) shows plausible, usually-correct-looking outlines
+for ordinary words and compounds (`hobgoblin` → `HOB/TKPWOBL/-PB`, `stenography` → `STOPB/A/TKPWRO/
+TPEU`), but the stress heuristic above is a real, acknowledged weak point for anything not
+first-syllable-stressed, and WikiPron-sourced entries in particular inherit whatever dialectal
+variant Wiktionary happened to list first for a word MFA didn't have. This ships as a genuine
+fallback, never touching a CMUdict-covered word, with a regression guard
+(`quality::the_ipa_fallback_rescues_a_real_minimum_of_cmudict_gap_words`) - the alternative, a
+letter-spelled word that is at least honest about not knowing the word, remains exactly as
+available as before for anything this fallback still can't translate (24,008 of the original
+32,182 have no entry in MFA or WikiPron either, and fall through to spelling mode exactly as they
+always did).
