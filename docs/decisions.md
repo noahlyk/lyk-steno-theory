@@ -1360,3 +1360,27 @@ when tried) predicting a "low hundreds at best" yield before this was built. `PH
 at 10,000 rather than raised to chase a larger multi-stroke-host yield specifically - the risk this
 change turned out not to carry (see above) means there is no urgency to decide that separately from
 whatever eventually motivates raising the threshold for the mechanism as a whole.
+
+**`lookup` now says plainly when its answer isn't actually deployed (`WordLookup::lyk_deployed`,
+`src/reverse.rs`).** A much earlier entry above (`lookup`/`explain` now read the real dictionary,
+`62a2dae`) fixed `lookup` to prefer the real, generated dictionary over a raw rules-only candidate,
+"falling back to the raw candidate only for a word that never made it into the generated dictionary
+at all" - a deliberate, documented fallback, not a bug. What that fix left unfinished: the fallback
+and the real answer printed identically, with nothing to tell them apart. `explain` already solved
+exactly this split for its own two views (`ours` vs. `deployed`, same entry) - `lookup` never got the
+equivalent. Surfaced by a live report that read as "stenography has no proper reading" when the real
+problem was narrower: the word has a real phonetic outline from this session's own IPA fallback, it
+simply isn't assigned a slot in a dictionary built with the default `--common 100,000` (its real
+frequency rank is past that cutoff) - `lookup` showed the real reading with no indication it wasn't
+live, which is precisely the "tool itself is lying" failure mode the `62a2dae` entry already names.
+
+Fixed the same way: `WordLookup` gained `lyk_deployed: bool`, `true` only when `dictionary` (the
+real `generate()` + `cheapest()` output) has the word, `false` for either fallback tier (the raw
+rules candidate, or spelling mode) - both tiers still show `lyk` (a real, typeable reading is useful
+even when it isn't the word's own assigned slot today), but `run_lookup`'s own printout now labels it
+plainly: `lyk (not deployed - rules' own reading)` instead of a bare `lyk` that looks identical to a
+real hit. New test: `reverse::tests::lyk_deployed_tells_a_real_dictionary_hit_from_every_fallback_
+tier`, alongside the existing spelling-mode test's own new assertion that `lyk_deployed` is `false`
+there too. **If `lyk_deployed` is ever dropped from the printed label again**, this exact confusion
+comes back - a caller cannot infer "is this real" from `lyk.is_some()` alone, since every fallback
+tier also returns `Some`.

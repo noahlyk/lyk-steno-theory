@@ -412,12 +412,20 @@ fn run_lookup(
             let generated = generate::generate(&setup, &briefs, common)?;
             let dictionary = generate::cheapest(&generated.entries);
             for found in reverse::reverse_phrase(&setup, &dictionary, &phrase) {
+                let lyk_label = if found.lyk_deployed {
+                    "lyk"
+                } else {
+                    "lyk (not deployed - rules' own reading)"
+                };
                 println!(
-                    "{}\n  lyk      {}\n  plover   {}\n  lapwing  {}",
+                    "{}\n  {lyk_label:<width$} {}\n  {:<width$} {}\n  {:<width$} {}",
                     found.word,
                     found.lyk.as_deref().unwrap_or("?"),
+                    "plover",
                     found.plover.as_deref().unwrap_or("?"),
+                    "lapwing",
                     found.lapwing.as_deref().unwrap_or("?"),
+                    width = lyk_label.len().max(7),
                 );
             }
             Ok(())
