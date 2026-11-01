@@ -2528,4 +2528,133 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    #[ignore = "diagnostic: measures real counts for the phrase-briefing-v2 plan's gate (Backup as \
+                a phrase component), run with --ignored --nocapture"]
+    fn dump_backup_phrase_component_gate() {
+        const PHRASE_TOP_N: usize = 10_000;
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+
+        // Cheapest single-stroke entry per origin bucket, by word.
+        let mut primary_single: HashMap<&str, Stroke> = HashMap::new();
+        let mut backup_single: HashMap<&str, Stroke> = HashMap::new();
+        let mut has_multistroke_primary: HashSet<&str> = HashSet::new();
+        for e in &generated.entries {
+            match e.origin {
+                Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_) => match e.outline[..] {
+                    [stroke] => {
+                        primary_single
+                            .entry(e.word.as_str())
+                            .and_modify(|cur| if stroke.0.count_ones() < cur.0.count_ones() { *cur = stroke })
+                            .or_insert(stroke);
+                    }
+                    _ => {
+                        has_multistroke_primary.insert(e.word.as_str());
+                    }
+                },
+                Origin::Backup => {
+                    if let [stroke] = e.outline[..] {
+                        backup_single
+                            .entry(e.word.as_str())
+                            .and_modify(|cur| if stroke.0.count_ones() < cur.0.count_ones() { *cur = stroke })
+                            .or_insert(stroke);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // (1) words with a multi-stroke primary but a single-stroke Backup entry - plan predicts ~0.
+        let rescued_multistroke_primary = has_multistroke_primary
+            .iter()
+            .filter(|w| backup_single.contains_key(*w))
+            .count();
+        println!(
+            "words with multi-stroke primary AND single-stroke Backup (plan predicts ~0): \
+             {rescued_multistroke_primary}"
+        );
+
+        // (2) words with a single-stroke primary AND a cheaper single-stroke Backup (the sit/ST case).
+        let mut cheaper_backup_examples: Vec<(&str, Stroke, Stroke)> = Vec::new();
+        for (word, &p) in &primary_single {
+            if let Some(&b) = backup_single.get(word)
+                && b.0.count_ones() < p.0.count_ones()
+            {
+                cheaper_backup_examples.push((word, p, b));
+            }
+        }
+        let cheaper_backup_count = cheaper_backup_examples.len();
+        println!("words with single-stroke primary AND a cheaper single-stroke Backup: {cheaper_backup_count}");
+        cheaper_backup_examples.sort_by_key(|(w, _, _)| *w);
+        for (word, p, b) in cheaper_backup_examples.iter().take(15) {
+            println!(
+                "  e.g. {word:?}: primary={} ({} keys) backup={} ({} keys)",
+                render_outline(&[*p]),
+                p.0.count_ones(),
+                render_outline(&[*b]),
+                b.0.count_ones()
+            );
+        }
+
+        // (3) delta in eligible/free phrase-candidate counts at PHRASE_TOP_N between today's
+        // `primary_single_strokes` and a component map that also considers each word's cheapest
+        // single-stroke Backup entry when it's cheaper than the primary.
+        let primary = primary_single_strokes(&generated.entries);
+        let mut component = primary.clone();
+        for (word, &b) in &backup_single {
+            component
+                .entry(word)
+                .and_modify(|cur| if b.0.count_ones() < cur.0.count_ones() { *cur = b })
+                .or_insert(b);
+        }
+
+        let mut taken: HashSet<String> = reserved_outlines().unwrap().into_keys().collect();
+        taken.extend(
+            generated
+                .entries
+                .iter()
+                .filter(|e| e.origin != Origin::Phrase)
+                .map(|e| render_outline(&e.outline)),
+        );
+
+        let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
+        by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+        let by_count: Vec<&(String, String)> = by_count.into_iter().take(PHRASE_TOP_N).map(|(k, _)| k).collect();
+
+        let (eligible_before, free_before) = count_eligible_free(&by_count, &primary, &taken);
+        let (eligible_after, free_after) = count_eligible_free(&by_count, &component, &taken);
+        println!(
+            "PHRASE_TOP_N={PHRASE_TOP_N}: primary_single_strokes -> {eligible_before} eligible, \
+             {free_before} free"
+        );
+        println!(
+            "PHRASE_TOP_N={PHRASE_TOP_N}: + cheapest single-stroke Backup -> {eligible_after} \
+             eligible, {free_after} free"
+        );
+        let eligible_delta = eligible_after.abs_diff(eligible_before);
+        let free_delta = free_after.abs_diff(free_before);
+        println!("delta: {eligible_delta} more eligible, {free_delta} more free");
+    }
+
+    /// How many of `by_count`'s bigrams are eligible (disjoint primaries in `map`) and how many of
+    /// those land on a stroke text not already in `taken` and not claimed earlier in this same scan.
+    /// A helper for [`dump_backup_phrase_component_gate`] so it can run the identical count twice,
+    /// once per candidate component map, without duplicating the scan itself.
+    fn count_eligible_free(by_count: &[&(String, String)], map: &HashMap<&str, Stroke>, taken: &HashSet<String>) -> (usize, usize) {
+        let mut eligible = 0usize;
+        let mut free = 0usize;
+        let mut claimed_this_scan: HashSet<Stroke> = HashSet::new();
+        for (w1, w2) in by_count {
+            if let Some(stroke) = phrase_candidate(map, w1, w2) {
+                eligible += 1;
+                let text = render_outline(&[stroke]);
+                if !taken.contains(&text) && claimed_this_scan.insert(stroke) {
+                    free += 1;
+                }
+            }
+        }
+        (eligible, free)
+    }
 }

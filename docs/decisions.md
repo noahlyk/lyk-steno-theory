@@ -978,3 +978,25 @@ physical key - given this narrower, already-understood fix alone already moved 3
 assumed safe by analogy. Revisit only with the same before/after whole-dictionary diff and real
 `quote_corpus`/README numbers this fix was ultimately measured against, and expect to make the same
 kind of explicit speed-versus-correctness call this entry records.
+
+**Phrase-briefing v2 (letting a word's cheaper `Origin::Backup` entry stand in for its primary as a
+phrase component, not just `Origin::Brief|Rules|Spelling|Ladder(_)`) was measured and found not worth
+building - a negative result worth recording, not a dead end to silently drop.** The idea (plan at
+`/home/fib/.claude/plans/phrase-briefing-v2.md`, which also considered and rejected 3+-word chaining
+for lack of any real trigram data source) was gated on a real measurement before writing any merge
+logic, the same discipline `PHRASE_TOP_N` itself was chosen with. Real counts against the built
+dictionary: 89 words have a multi-stroke primary but a single-stroke `Backup` entry (the plan's own
+structural reasoning predicted ~0 here - a real, minor correction: direction-(b) backup composition's
+stem lookup can pull from an *earlier round's own Backup entry*, not only a primary, so a chain of
+backups can occasionally end up single-stroke even when the primary never was); 224 words have a
+single-stroke primary *and* a cheaper single-stroke `Backup` (the real `sit`/`ST`-style count). Despite
+313 candidate words between the two, letting them compete for a phrase merge at `PHRASE_TOP_N =
+10,000` only added **7 more free entries** (3,119 → 3,126) from **10 more eligible candidates** (5,257
+→ 5,267) - two orders of magnitude below the plan's own "material" bar (at least low hundreds, a
+visible fraction of the existing ~3,108). Almost none of the 313 candidate words happen to also sit in
+a top-10,000 bigram whose merge is both disjoint and still unclaimed. **Not implemented** - no
+`phrase_component_strokes` function, no change to the phrase pass's call site. The diagnostic that
+measured this (`generate::tests::dump_backup_phrase_component_gate`, `#[ignore]`d) is kept, the same
+way `dump_phrase_eligible_set_sizes` was kept after informing `PHRASE_TOP_N`'s own choice - if
+`PHRASE_TOP_N` is ever raised substantially, or the backup-composition pass changes meaningfully, this
+is the diagnostic to re-run before assuming the conclusion still holds, rather than re-deriving it.
