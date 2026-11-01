@@ -224,3 +224,8 @@ protect = "PHREBGT"
 # below, compounded by its own coda). Plover's own "PRAPGS" (score 7) adds a "G" (6 keys instead of
 # 5) and resolves a transition in the coda - a real reduction for one extra key.
 perhaps = "PRAPGS"
+
+# "govern": deployed TKPWOFPB (5 keys) drops the "er" sound's own R entirely. Plover's own fuller
+# "TKPWOFRPB" (6 keys) keeps it, reading phonetically closer to the actual word - a maintainer
+# preference, not an ergonomics or cost finding like the entries above.
+govern = "TKPWOFRPB"
