@@ -222,11 +222,11 @@ exist.
 so that distinction is visible, not papered over.** A phrase entry's merged stroke is, by
 construction, the bitwise OR of two disjoint strokes, so its key count is always exactly the sum of
 the two words' own primary key counts — merging never changes the key total, only the stroke count,
-which drops by exactly one per hit. On the hand-picked 103-passage corpus, 103 phrase entries fired,
-dropping the full-coverage stroke total from 1,266 to 1,163 (103 fewer strokes, exactly one per hit)
-while the key total stayed exactly flat (4,341 either way). On the larger, 416-passage extracted
-corpus, 495 phrase entries fired, 6,757 strokes down to 6,262 (495 fewer), while the key total came
-out *four keys worse* (22,871 vs. 22,867) — not a bug, but a real, honest second-order effect: `lyk`
+which drops by exactly one per hit. On the hand-picked 103-passage corpus, 105 phrase entries fired,
+dropping the full-coverage stroke total from 1,266 to 1,161 (105 fewer strokes, exactly one per hit)
+while the key total stayed exactly flat (4,355 either way). On the larger, 416-passage extracted
+corpus, 492 phrase entries fired, 6,756 strokes down to 6,264 (492 fewer), while the key total came
+out *four keys worse* (22,901 vs. 22,897) — not a bug, but a real, honest second-order effect: `lyk`
 (`generate::cheapest`) credits each word with its own globally cheapest entry of *any* origin,
 including a backup composition cheaper than that word's own primary (`sit`'s `ST` versus its own
 primary `SEUT`, the same gap "Why primary-only" describes above), while a firing phrase is

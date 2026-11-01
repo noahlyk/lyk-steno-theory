@@ -914,7 +914,67 @@ that word's own primary - `sit`'s backup `ST` versus its own primary `SEUT`), wh
 is necessarily built from both words' own primaries specifically. Once this was understood, the
 benchmark was changed to report *strokes* as the headline phrase-aware number (keys kept alongside,
 for transparency) - strokes are the number this mechanism was built to move, and on both corpora
-they strictly improve: 103 fewer strokes on the 103-passage corpus (1,266 → 1,163), 495 fewer on the
-416-passage corpus (6,757 → 6,262). **Do not revert to a keys-only phrase-aware metric** - it
+they strictly improve: 105 fewer strokes on the 103-passage corpus (1,266 → 1,161), 492 fewer on the
+416-passage corpus (6,756 → 6,264) - these exact counts shifted slightly from the numbers first
+measured here once the `explained_elsewhere` fix below changed which candidates compete, but the
+mechanism's own real effect (strictly fewer strokes, roughly flat keys) is unchanged. **Do not
+revert to a keys-only phrase-aware metric** - it
 measures the wrong thing for this mechanism and will look flat or slightly negative even when the
 feature is working exactly as designed.
+
+**Fixed the real root cause behind `beautiful`'s diagnostic false positive (the entry above left it
+unfixed, correctly, since the fix wasn't understood yet) - `explained_elsewhere` (`src/rules.rs`)
+was subtracting bits a later syllable's own sound merely *intended*, not ones it actually struck on
+the stroke being checked.** `explained_elsewhere` ORs every *other* syllable's own onset/coda target
+chord into "already explained" bits unconditionally - it never checked whether that target's own
+keys were actually present on the stroke at all. Concretely: `beautiful`'s last syllable's onset
+"f" has a plain target of `TP`; its own gold brief, `PWAOUFL`, never has a `T` down anywhere, so
+"f"'s sound isn't struck on this stroke at all - but `explained_elsewhere` subtracted `TP`'s `P` key
+from the *first* syllable's own onset-fragment check regardless, since all that mattered before this
+fix was that a later syllable existed, not whether its sound was actually there. Fixed by requiring
+full containment - `bits & target.0 == target.0`, not just `syllable.len() > exclude` - before
+treating a target as explained; this doesn't disturb the cases `explained_elsewhere` exists for
+(`district`/`describe`/`captain`, see its own doc comment), where the other syllable's target really
+is the stroke's whole content, not just a partial trace.
+
+**Real impact, measured, not assumed: this was never a one-word bug, and it is not a diagnostic-only
+change either - an earlier version of this entry claimed it was, from a flawed before/after
+comparison (both "before" and "after" snapshots were accidentally built from the same, pre-fix
+`rules.rs`, so the diff trivially showed nothing). Redone correctly, it shows a real, measurable
+effect.** Re-running `dump_stray_fragment_leftovers`: Category B (stray leftover) dropped from 5,852
+words (10.23% of words, 6.28% of weighted typing) to 2,950 words (5.159%, 5.890%) - nearly halved.
+Rebuilding `out/lyk.json` from the real committed (pre-fix) `rules.rs` and from this fix, properly
+isolated this time (one file reverted to `HEAD`, built, restored, built again, diffed both outputs
+directly): **3,739 of 60,377 distinct words land on a different outline**, cascading through backup
+composition and even which bigrams win a phrase-briefing merge (since both pull from the same
+settled primaries). The headline frequency-weighted numbers move slightly against raw terseness -
+overall keys/stroke 3.31 → 3.32, with every syllable tier at 2+ syllables also very slightly higher
+(see this session's README table updates) - because the old, buggy `explained_elsewhere` was
+*over*-stripping bits it wrongly treated as explained, which by accident often produced a shorter
+(if mislabeled) repair candidate; correcting the check means some of those words lose that accidental
+extra compression. **Surfaced this exact tradeoff - correctness of a still-current, documented policy
+(README's own "Main features": a candidate may be arbitrary or a clean drop, never a confusing
+partial fragment) versus this session's speed-above-nearly-everything direction - and the fix was
+kept anyway**: the cost is small (≈0.3% on the overall number) and, per that explicit choice, not
+worth keeping a bug whose only virtue was accidentally overachieving on a number nobody vouches for
+dishonestly. If a future audit of this fix ever needs to re-derive why the dictionary's real output
+changed here, this is the actual mechanism - not "none, it was diagnostic-only."
+
+**A second, separate, genuinely unfixed bug remains in `beautiful` specifically - documented, not
+swept under the rug.** `PWAOUFL`'s first syllable has *two* onset tokens, "b" (target `PW`) and "y"
+(target `KWR`) - both legitimately struck at once on the same stroke (the brief's own real content).
+"b"'s own flag is gone after this fix. "y"'s is not: "y"'s target `KWR` shares its `W` key with "b"'s
+own, separate, legitimate `PW` - since "b" genuinely does strike `W`, checking "y"'s token against
+the *same shared* onset bits finds a real partial overlap that has nothing to do with cross-syllable
+explanation at all, since both tokens live in the *same* syllable. `explained_elsewhere` only ever
+excludes *other syllables'* fully-struck targets - it has no notion of a *sibling* onset/coda token
+within the same syllable explaining away a key that token legitimately needs too. Confirmed via
+`rules::tests::beautiful_s_cross_syllable_false_flag_is_fixed_but_a_separate_sibling_token_overlap_
+remains`, which asserts the real, current behavior (fixed half, unfixed half) rather than papering
+over it. **Deliberately not fixed here**: a sibling-token-aware version would need to change what
+counts as "explained" for *every* word whose onset or coda cluster has component tokens sharing a
+physical key - given this narrower, already-understood fix alone already moved 3,739 words' outlines
+(see above), a sibling-token-aware version should be assumed to have at least as broad a reach, not
+assumed safe by analogy. Revisit only with the same before/after whole-dictionary diff and real
+`quote_corpus`/README numbers this fix was ultimately measured against, and expect to make the same
+kind of explicit speed-versus-correctness call this entry records.
