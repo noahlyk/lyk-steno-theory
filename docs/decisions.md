@@ -1000,3 +1000,88 @@ measured this (`generate::tests::dump_backup_phrase_component_gate`, `#[ignore]`
 way `dump_phrase_eligible_set_sizes` was kept after informing `PHRASE_TOP_N`'s own choice - if
 `PHRASE_TOP_N` is ever raised substantially, or the backup-composition pass changes meaningfully, this
 is the diagnostic to re-run before assuming the conclusion still holds, rather than re-deriving it.
+
+**The sibling-token gap the entry above left deliberately open is now fixed - after two false starts,
+both caught by measurement and reverted before landing, not assumed safe by analogy.**
+`explained_elsewhere` (`src/rules.rs`) only ever cleared bits belonging to some *other syllable's* own
+onset/coda target; it had no notion of a *sibling* token within the *same* syllable explaining away a
+key a different sibling's own target also needs. `beautiful`'s own gold brief `PWAOUFL` is the worked
+case the prior entry already diagnosed: its first syllable has two onset tokens, "b" (target `PW`) and
+"y" (target `KWR`), both legitimately struck at once, sharing the `W` key between two completely
+different chords - "b"'s own check correctly saw its full `PW`; "y"'s own check, run against that same
+shared bits, saw only the stray `W` of its own `KWR`, nothing to do with "y" being a fragment of
+anything.
+
+**First attempt, reverted: let any other token's fully-struck target explain a bit away, same
+syllable or not, no further condition.** This is the most direct generalization of the existing
+cross-syllable rule, and it does fix `beautiful` - but `cargo test --release rules::tests::
+dump_stray_fragment_leftovers -- --ignored --nocapture`, re-run before calling it done, showed Category
+B (stray leftover) *rising* from 2,950 to 3,024 words, not falling. `film`'s coda is two tokens, "l"
+(target `-L`, one key) and "m" (target `-PL`, two keys) - Plover's own outline, `TPEUPL`, folds "l"
+entirely into "m"'s own `-PL` chord; there is no separate `-L` key struck at all. Treating "l"'s own
+trivially-always-fully-struck single-key target as a legitimate explaining source subtracted the very
+`L` key "m"'s own two-key chord needs, wrongly turning a genuinely complete `-PL` into a reported
+fragment (`frank`'s "ng"/"k" pair regressed the same way). Reverted before it ever reached a
+before/after dictionary diff.
+
+**Second attempt, also reverted: restrict a same-syllable sibling's explaining power to multi-key
+targets (`count_ones() > 1`).** This blocks "l" (`-L`, one key) correctly, fixing `film` - but
+`frank`'s own coda tokens are "ng" (target `-PBG`, three keys) and "k" (target `-BG`, two keys), and
+"k"'s own two-key target is *itself* a subset of "ng"'s three-key target; a two-key target clears a
+`count_ones() > 1` bar exactly as easily as a genuinely independent sibling like "beautiful"'s "b". The
+diagnostic still showed `frank`/`bank` as new false positives under this version.
+
+**Landed: a same-syllable sibling only explains a bit away when its own target is not a subset of the
+checked token's own target - multi-key or not.** `explained_elsewhere` now takes the checked token's
+own target chord (`own_target`) and, only for a same-syllable candidate, requires `target.0 &
+own_target != target.0` (the candidate is not fully contained in what's being checked) before letting
+it subtract anything. This is the actual distinguishing fact between the two shapes of case: `PW` is
+not a subset of `KWR` or vice versa (`beautiful`'s "b"/"y" are two independent chords that merely
+happen to share one key), while `-L` *is* a subset of `-PL` and `-BG` *is* a subset of `-PBG` (`film`'s
+"l" and `frank`'s "k" are entirely folded inside their sibling's own chord by Plover's own convention,
+never a separate, competing sound). A genuinely *other syllable's* target keeps the old, unrestricted
+rule exactly as before the subset check exists only for the same-syllable case: `captain`'s own real
+case still needs its first syllable's single-key coda "p" (`-P`, itself a literal subset of the dropped
+last syllable's `-PB`) to explain away that very `P`, and cross-syllable sounds are never folded into
+each other the way same-syllable tokens can be. `rules::tests::
+a_sibling_token_folded_entirely_into_a_bigger_ones_chord_never_explains_it_away` pins the `film`/`frank`
+case down directly so it can't silently regress again; `rules::tests::
+beautifuls_cross_syllable_and_sibling_token_false_flags_are_both_fixed` (renamed from the previous
+entry's own test, which this fix turns fully green) confirms `beautiful`'s own gold brief now clears
+`matches_real_consonants` entirely, both tokens.
+
+**Real impact, measured the same careful way as the entry above, including the same trap: one file
+reverted to `HEAD`, built, restored, built again, diffed directly, with a `sha256sum` of `src/rules.rs`
+checked immediately before and after every build this time** (a first pass at this exact comparison
+silently compared the fixed `rules.rs` against itself, because a revert command was rejected outright
+by the sandbox and the rejection was missed - caught only because the resulting "zero words changed"
+read as suspiciously total for a fix this real, and the hash check that followed proved the "before"
+build had never actually run the reverted code at all). With that fixed: **170 of 60,310 distinct
+words land on a different stroke set** - far narrower than the previous entry's 3,739, exactly as
+expected for a fix scoped to the much rarer case of a multi-token onset/coda cluster sharing a key
+within one syllable, rather than any cross-syllable overlap. One cleanly-verified example: `lunch` used
+to deploy `HRUBS` - not Plover's own listed brief (`HRUPBS`), not Lapwing's, not lyk's own rules
+reading (`HRUFRPB`), a `compose_backup` composition that used to slip past the old, buggy check and
+then out-cost the real brief by one key; it now correctly deploys `HRUPBS`, Plover's own real brief,
+once the composition that used to beat it on cost stopped being legal. Total distinct word count drops
+by exactly 2 (60,310 → 60,308), entirely from phrase-briefing's own documented cascade (two entries
+above), not lost coverage: 7 phrase entries that fired before no longer do (`different from`,
+`much for`, `output of`, `the purpose`, `to launch`, `up your`, `view the`) because the single-stroke
+primaries they merged changed shape, while 5 new ones fire instead (`are different`, `bunch of`,
+`in different`, `purpose of`, `two different`).
+
+**Every headline number this project tracks moves in lyk's favor or stays flat - a small, clean win,
+not the previous entry's deliberate correctness-for-speed tradeoff.** `cargo run --release -- score
+--check-readme`: 1-syllable Keys/Stroke (Lyk) drops from 5.57 to 5.56; every other syllable tier and
+the full frequency-weighted table are unchanged to two decimals. `dump_stray_fragment_leftovers`:
+Category B (stray leftover) drops from 2,950 words (5.159% of words, 5.890% of weighted typing) to
+2,945 words (5.150%, 5.865%) - a small, real improvement over the already-fixed baseline the entry
+above left behind. Full suite: 65 passing (one new test added, none removed), `cargo clippy --release
+--all-targets` unchanged at 85 warnings before and after (independently re-verified). Neither
+`quote_corpus` threshold needed
+recalibrating - both still pass against their existing numbers untouched. The two reverted false starts
+documented above are exactly why this took three attempts, not one: the prior entry's own warning that
+a sibling-token fix "should be assumed to have at least as broad a reach" as the cross-syllable fix was
+correct, and the only way to find the version that doesn't trade one false positive for another was to
+measure each attempt against the real dictionary and the real diagnostic, not reason about it in the
+abstract.

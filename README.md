@@ -113,7 +113,7 @@ they put on a continuation stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 90% | 78% | 83% | 5.57 | 5.66 | 5.83 |
+| 1 | 90% | 78% | 83% | 5.56 | 5.66 | 5.83 |
 | 2 | 59% | 45% | 52% | 5.60 | 4.93 | 5.27 |
 | 3 | 38% | 26% | 32% | 5.24 | 4.80 | 5.15 |
 | 4+ | 23% | 17% | 18% | 5.40 | 4.97 | 5.22 |
@@ -182,7 +182,7 @@ By how common the word is (`build` prints this), keys per word:
 |---|---|---|---|---|
 | top 100 | 58% | 2.15 | 2.48 | 2.91 |
 | 100 to 1,000 | 28% | 4.54 | 4.81 | 5.17 |
-| 1,000 to 5,000 | 10% | 5.55 | 6.14 | 6.42 |
+| 1,000 to 5,000 | 10% | 5.54 | 6.14 | 6.42 |
 | 5,000 to 20,000 | 4% | 6.83 | 7.47 | 7.88 |
 | 20,000+ | 1% | 8.63 | 8.91 | 9.29 |
 

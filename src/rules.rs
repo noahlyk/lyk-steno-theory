@@ -1246,46 +1246,81 @@ impl Rules {
         table.get(token).or_else(|| cluster.get(token)).copied()
     }
 
-    /// Bits legitimately spoken for by some syllable *other than* `exclude`'s own onset or
-    /// coda — a one-stroke brief for a multi-syllable word routinely holds more than one
-    /// syllable's sounds at once, and a bit that's already a different syllable's own complete
-    /// sound isn't a fragment of anything, no matter which unrelated cluster it also happens to
-    /// overlap. Used to clear a stray bit before checking it against the *first* syllable's onset
-    /// or the *last* syllable's coda, so a real, complete middle (or, symmetrically, first/last)
-    /// cluster can never be mistaken for a partial attempt at some other syllable's own sound —
-    /// see [`Self::matches_real_consonants`]'s own doc comment for the `district`/`describe`/
-    /// `captain` cases this resolves.
+    /// Bits legitimately spoken for by some *other* onset or coda token than the one at
+    /// `exclude` (a `(syllable index, is-coda-list, token index within that list)` triple) — a
+    /// one-stroke brief for a multi-syllable word routinely holds more than one syllable's sounds
+    /// at once, and a bit that's already some other token's own complete sound isn't a fragment of
+    /// anything, no matter which unrelated cluster it also happens to overlap. This covers two
+    /// different shapes of "other": every *other syllable's* own onset/coda tokens (used to clear
+    /// a stray bit before checking it against the *first* syllable's onset or the *last*
+    /// syllable's coda, so a real, complete middle — or, symmetrically, first/last — cluster can
+    /// never be mistaken for a partial attempt at some other syllable's own sound; see
+    /// [`Self::matches_real_consonants`]'s own doc comment for the `district`/`describe`/
+    /// `captain` cases this resolves), and every *sibling* token within the exact same syllable as
+    /// `exclude` (every onset/coda token of that syllable except `exclude` itself — two consonants
+    /// struck on the same stroke can legitimately share a physical key between their own,
+    /// completely different target chords, without either being a fragment of the other).
     ///
     /// `bits` is the actual stroke being checked (the one `onset_bits`/`coda_bits` is computed
     /// from) — only a target chord *fully* present in `bits` counts as explained; one merely
-    /// *intended* by some other syllable's own sound, but not actually struck here at all, must
-    /// never be subtracted. Missing this check was a real bug (`beautiful`, deployed `PW-FL`):
-    /// the last syllable's onset `/f/` has a plain target of `TP`, which shares its `P` key with
-    /// the first syllable's own `/b/`+`/y/` cluster target (`PW`+`KWR`) — but `PW-FL` never has a
-    /// `T` down anywhere, so `/f/`'s sound isn't actually on this stroke at all, and subtracting
-    /// its target's `P` unconditionally wrongly stripped a bit the first syllable's own check
-    /// still needed. Checking `bits & target.0 == target.0` (not just that the other syllable
-    /// exists) fixes this without disturbing `district`/`describe`/`captain`'s own real cases,
-    /// where the other syllable's target genuinely is the stroke's whole content. This only fixes
-    /// the *cross-syllable* case — `beautiful` itself still has a second, separate, deliberately
-    /// unfixed gap from two *sibling* onset tokens in the same syllable ("b" and "y") sharing a
-    /// physical key; see `docs/decisions.md` and
-    /// `rules::tests::beautiful_s_cross_syllable_false_flag_is_fixed_but_a_separate_sibling_token_
-    /// overlap_remains` for the full story.
-    fn explained_elsewhere(&self, syllables: &[Syllable], exclude: usize, bits: u32) -> u32 {
+    /// *intended* by some other token's own sound, but not actually struck here at all, must never
+    /// be subtracted. Requiring `bits & target.0 == target.0` (not just that the other token
+    /// exists) is what fixes the cross-syllable case without disturbing `district`/`describe`/
+    /// `captain`'s own real cases, where the other syllable's target genuinely is the stroke's
+    /// whole content — see `docs/decisions.md` for the `beautiful` bug (`PW-FL`'s last syllable's
+    /// onset `/f/`, target `TP`, sharing its `P` key with the first syllable's own cluster) this
+    /// containment check was originally added for.
+    ///
+    /// The sibling-token half of this (excluding only `exclude`'s own list position, not its
+    /// whole syllable) is what fixes `beautiful`'s own remaining gap: its first syllable's two
+    /// onset tokens, "b" (target `PW`) and "y" (target `KWR`), are both legitimately struck at
+    /// once on `PWAOUFL`, sharing the `W` key between their two separate chords. "b"'s own target
+    /// is fully present, so checking "y" now finds `W` already explained by "b" (a sibling, not
+    /// "y" itself) and clears before `y`'s own, now-unrelated, partial `KWR` overlap is tested —
+    /// see `rules::tests::beautifuls_cross_syllable_and_sibling_token_false_flags_are_both_fixed`,
+    /// which this fix turns into a fully-passing case for both tokens.
+    ///
+    /// `own_target` is `exclude`'s own target chord — needed only to guard the sibling case. A
+    /// same-syllable *sibling*'s target only explains a bit away when it is not itself a (possibly
+    /// equal) *subset* of `own_target`: Plover sometimes folds one token's entire sound into
+    /// another, bigger token's own chord on purpose (`film`'s "l", target `-L`, is exactly the `L`
+    /// key inside "m"'s own `-PL`; `frank`'s "k", target `-BG`, is exactly the `B G` inside "ng"'s
+    /// own `-PBG`) — the smaller token is never a separate, independently-struck sound competing
+    /// for the same key the way `beautiful`'s "b"/"y" genuinely are, so letting it "explain away"
+    /// a key its own bigger sibling needs would wrongly turn that sibling's genuinely complete
+    /// chord into a reported fragment. A genuinely *other syllable's* target has no such
+    /// restriction (unchanged from before this sibling case existed, subset or not): `captain`'s
+    /// own real case needs its first syllable's single-key coda "p" (`-P`, a subset of the *last*
+    /// syllable's own dropped "n" target `-PB`) to explain away that very `P` - cross-syllable
+    /// sounds are independent, never folded into each other the way same-syllable tokens can be.
+    fn explained_elsewhere(&self, syllables: &[Syllable], exclude: (usize, bool, usize), own_target: u32, bits: u32) -> u32 {
+        let (ex_syllable, ex_coda, ex_token) = exclude;
         syllables
             .iter()
             .enumerate()
-            .filter(|&(i, _)| i != exclude)
-            .flat_map(|(_, syllable)| {
-                syllable
+            .flat_map(|(i, syllable)| {
+                let skip_onset = i == ex_syllable && !ex_coda;
+                let skip_coda = i == ex_syllable && ex_coda;
+                let same_syllable = i == ex_syllable;
+                let onset = syllable
                     .onset
                     .iter()
-                    .filter_map(|t| Self::token_bits(t, &self.onset, &self.onset_cluster))
-                    .chain(syllable.coda.iter().filter_map(|t| Self::token_bits(t, &self.coda, &self.coda_cluster)))
+                    .enumerate()
+                    .filter(move |&(j, _)| !(skip_onset && j == ex_token))
+                    .filter_map(move |(_, t)| Self::token_bits(t, &self.onset, &self.onset_cluster).map(|tb| (same_syllable, tb)));
+                let coda = syllable
+                    .coda
+                    .iter()
+                    .enumerate()
+                    .filter(move |&(j, _)| !(skip_coda && j == ex_token))
+                    .filter_map(move |(_, t)| Self::token_bits(t, &self.coda, &self.coda_cluster).map(|tb| (same_syllable, tb)));
+                onset.chain(coda)
             })
-            .filter(|target| bits & target.0 == target.0)
-            .fold(0, |acc, stroke| acc | stroke.0)
+            .filter(|&(same_syllable, target)| {
+                let folded_into_own = same_syllable && target.0 & own_target == target.0;
+                !folded_into_own && bits & target.0 == target.0
+            })
+            .fold(0, |acc, (_, stroke)| acc | stroke.0)
     }
 
     /// Whether this outline's first onset and last coda are each a whole key or cluster toward
@@ -1315,7 +1350,12 @@ impl Rules {
     /// legitimate coda "p" shares a key with the word's entirely-dropped final syllable's own "n"
     /// cluster (`-PB`), which used to flag the brief `KAPT` as holding only a fragment of "n" and
     /// offer `KAT` — `cat`'s own natural outline — as a "repair", displacing `cat` onto a starred
-    /// variant for no reason related to `cat` at all.
+    /// variant for no reason related to `cat` at all. [`Self::explained_elsewhere`] also clears a
+    /// *sibling* token's own fully-struck target within the very same syllable being checked —
+    /// `beautiful`'s first syllable has two onset tokens, "b" (`PW`) and "y" (`KWR`), sharing a `W`
+    /// key between their two separate, legitimately-struck chords; without this, "y"'s own check
+    /// would see a stray partial `KWR` hit that is really just "b"'s own `W`, not a fragment of
+    /// "y" at all.
     pub fn matches_real_consonants(&self, outline: &[Stroke], word: &str, sounds: &[String]) -> bool {
         let Some(syllables) = self.syllables(&self.label(word, sounds)) else {
             return true;
@@ -1329,26 +1369,47 @@ impl Rules {
             return true;
         };
         let last_index = syllables.len() - 1;
-        let onset_bits = first_stroke.0 & Stroke::LEFT & !self.explained_elsewhere(&syllables, 0, first_stroke.0);
-        let coda_bits = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR) & !self.explained_elsewhere(&syllables, last_index, last_stroke.0);
-        let no_fragment = |tokens: &[String], bits: u32, table: &HashMap<String, Stroke>, cluster: &HashMap<String, Stroke>| {
-            tokens
-                .iter()
-                .filter_map(|t| Self::token_bits(t, table, cluster))
-                .all(|target| !Self::fragments(bits, target))
-        };
-        no_fragment(&first.onset, onset_bits, &self.onset, &self.onset_cluster)
-            && no_fragment(&last.coda, coda_bits, &self.coda, &self.coda_cluster)
+        let onset_mask = first_stroke.0 & Stroke::LEFT;
+        let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
+        self.fragment_bits(&syllables, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster) == 0
+            && self.fragment_bits(&syllables, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster) == 0
     }
 
-    /// The bits of `bits` that are a fragment of one of `tokens`' own multi-key sounds — the part
-    /// [`Self::matches_real_consonants`] rejects a candidate for holding.
-    fn fragment_bits(tokens: &[String], bits: u32, table: &HashMap<String, Stroke>, cluster: &HashMap<String, Stroke>) -> u32 {
+    /// The bits of `masked_bits` that are a fragment of one of `tokens`' own multi-key sounds —
+    /// the part [`Self::matches_real_consonants`] rejects a candidate for holding. Each token is
+    /// judged against its own, token-specific explained-bits set (see
+    /// [`Self::explained_elsewhere`]): `full_bits` is the whole stroke being checked (what
+    /// `explained_elsewhere` tests containment against), `masked_bits` is that same stroke
+    /// narrowed to the side actually being checked (left for an onset, right/star for a coda) —
+    /// a sibling token elsewhere in `tokens` (same syllable, same list, a different index) that is
+    /// itself fully struck explains away the bits it owns before this token's own fragment test
+    /// runs, exactly like another syllable's fully-struck target already did.
+    #[allow(clippy::too_many_arguments)] // one small, cohesive bit-test; splitting it apart would
+    // only scatter the same handful of values this one test needs together
+    fn fragment_bits(
+        &self,
+        syllables: &[Syllable],
+        syllable_index: usize,
+        in_coda: bool,
+        tokens: &[String],
+        full_bits: u32,
+        masked_bits: u32,
+        table: &HashMap<String, Stroke>,
+        cluster: &HashMap<String, Stroke>,
+    ) -> u32 {
         tokens
             .iter()
-            .filter_map(|t| Self::token_bits(t, table, cluster))
-            .filter(|target| Self::fragments(bits, *target))
-            .fold(0, |acc, target| acc | (bits & target.0))
+            .enumerate()
+            .filter_map(|(i, t)| Self::token_bits(t, table, cluster).map(|target| (i, target)))
+            .fold(0, |acc, (i, target)| {
+                let explained = self.explained_elsewhere(syllables, (syllable_index, in_coda, i), target.0, full_bits);
+                let bits = masked_bits & !explained;
+                if Self::fragments(bits, target) {
+                    acc | (bits & target.0)
+                } else {
+                    acc
+                }
+            })
     }
 
     /// A shorter, equally legitimate alternative to completing a fragment: drop it instead. A
@@ -1369,10 +1430,10 @@ impl Rules {
             outline.last()?,
         );
         let last_index = syllables.len() - 1;
-        let onset_bits = first_stroke.0 & Stroke::LEFT & !self.explained_elsewhere(&syllables, 0, first_stroke.0);
-        let coda_bits = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR) & !self.explained_elsewhere(&syllables, last_index, last_stroke.0);
-        let onset_fragment = Self::fragment_bits(&first.onset, onset_bits, &self.onset, &self.onset_cluster);
-        let coda_fragment = Self::fragment_bits(&last.coda, coda_bits, &self.coda, &self.coda_cluster);
+        let onset_mask = first_stroke.0 & Stroke::LEFT;
+        let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
+        let onset_fragment = self.fragment_bits(&syllables, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster);
+        let coda_fragment = self.fragment_bits(&syllables, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster);
         if onset_fragment == 0 && coda_fragment == 0 {
             return None;
         }
@@ -2229,25 +2290,30 @@ mod tests {
         // Full containment: the stroke genuinely has every one of "f"'s own keys down (T and P
         // both) - this is "d"/"tr" (`district`) and "n"/"p" (`captain`)'s own real shape above,
         // and must still be explained away.
-        assert_eq!(rules.explained_elsewhere(&syllables, 0, f_target), f_target);
+        // `exclude` is `(0, false, 0)`: syllable 0's own (empty) onset, token index 0 - a no-op
+        // exclusion, since syllable 0 has no tokens at all; what's actually being measured here is
+        // whether syllable 1's own "f" is counted as explained. `own_target` (0 here) only matters
+        // for a same-syllable sibling, which this test never exercises (the one real candidate,
+        // "f", always comes from the *other* syllable).
+        assert_eq!(rules.explained_elsewhere(&syllables, (0, false, 0), 0, f_target), f_target);
         // Partial containment: only one of "f"'s two keys is actually down on this stroke - "f"'s
         // sound was never struck here at all, so none of its target should be treated as
         // explained. This is "beautiful"'s own real case: `PWAOUFL` has one of "f"'s `TP` keys
         // down (borrowed from "b"'s own, separate, legitimate `PW`), but not the other at all.
         let one_key_only = f_target.isolate_lowest_one();
-        assert_eq!(rules.explained_elsewhere(&syllables, 0, one_key_only), 0);
+        assert_eq!(rules.explained_elsewhere(&syllables, (0, false, 0), 0, one_key_only), 0);
         // Absent entirely: nothing of "f" struck at all - also not explained, trivially.
-        assert_eq!(rules.explained_elsewhere(&syllables, 0, 0), 0);
+        assert_eq!(rules.explained_elsewhere(&syllables, (0, false, 0), 0, 0), 0);
     }
 
     #[test]
-    fn beautiful_s_cross_syllable_false_flag_is_fixed_but_a_separate_sibling_token_overlap_remains() {
+    fn beautifuls_cross_syllable_and_sibling_token_false_flags_are_both_fixed() {
         // "beautiful"'s own gold brief, `PWAOUFL` (B Y UW1 T AH0 F AH0 L), used to fail
         // `matches_real_consonants` entirely over a cross-syllable bug: the *last* syllable's own
         // onset "f" (target `TP`) shares its `P` key with "b"'s own, separate, legitimate `PW` -
         // but `PWAOUFL` never has a `T` down anywhere, so "f"'s sound isn't struck here at all, and
         // `explained_elsewhere` used to subtract "f"'s target unconditionally regardless. Fixed by
-        // requiring full containment (see the test above) - "b"'s own flag is gone:
+        // requiring full containment - "b"'s own flag is gone:
         let rules = Rules::built_in().unwrap();
         let beautiful = sounds("B Y UW1 T AH0 F AH0 L");
         let pwaoufl = parse_outline("PWAOUFL").unwrap();
@@ -2256,23 +2322,56 @@ mod tests {
             !Rules::fragments(pwaoufl[0].0 & Stroke::LEFT, b_target),
             "\"b\"'s own target (PW) is now recognized as fully present, not a fragment"
         );
-        // A second, separate, *not* fixed here: "y"'s own target (`KWR`) shares its `W` key with
-        // "b"'s own `PW` - since "b"'s own chord genuinely does strike `W`, and "y"'s target also
-        // needs that same physical key, checking "y" against the syllable's shared onset bits
-        // finds a real partial overlap that has nothing to do with cross-syllable explanation at
-        // all (both tokens are in the *same* first syllable). This is a different, deeper gap -
-        // `explained_elsewhere` only excludes *other syllables'* fully-struck targets, never a
-        // *sibling* onset/coda token's own fully-struck target within the same syllable - left
-        // open, not fixed here, since a fix risks changing `drop_fragments`'s repair candidates
-        // for every word with an onset/coda cluster whose component tokens share a key (a strictly
-        // bigger, riskier change than this fix). Confirmed this is still exactly what fires, so a
-        // future fix attempt starts from a correct diagnosis instead of re-deriving it:
-        assert!(!rules.matches_real_consonants(&pwaoufl, "beautiful", &beautiful));
+        // A second, separate bug, previously left deliberately unfixed: "y"'s own target (`KWR`)
+        // shares its `W` key with "b"'s own `PW` - since "b"'s own chord genuinely does strike `W`,
+        // and "y"'s target also needs that same physical key, checking "y" against the syllable's
+        // shared onset bits used to find a real partial overlap that had nothing to do with
+        // cross-syllable explanation at all (both tokens are in the *same* first syllable).
+        // `explained_elsewhere` now also excludes a *sibling* onset/coda token's own fully-struck
+        // target within the same syllable - "b"'s own full `PW` explains away the shared `W` before
+        // "y"'s own check runs, so "y" sees nothing left to overlap with its `KWR` at all, and the
+        // word's own gold brief now clears `matches_real_consonants` entirely, both tokens:
+        assert!(rules.matches_real_consonants(&pwaoufl, "beautiful", &beautiful));
         let y_target = Rules::token_bits("Y", &rules.onset, &rules.onset_cluster).unwrap();
+        let syllables = rules.syllables(&rules.label("beautiful", &beautiful)).unwrap();
+        let onset_mask = pwaoufl[0].0 & Stroke::LEFT;
+        let explained = rules.explained_elsewhere(&syllables, (0, false, 1), y_target.0, pwaoufl[0].0);
         assert!(
-            Rules::fragments(pwaoufl[0].0 & Stroke::LEFT, y_target),
-            "\"y\"'s own target (KWR) still partially overlaps via the shared W key"
+            !Rules::fragments(onset_mask & !explained, y_target),
+            "\"y\"'s own shared W key is now explained away by its sibling \"b\", not a fragment"
         );
+    }
+
+    #[test]
+    fn a_sibling_token_folded_entirely_into_a_bigger_ones_chord_never_explains_it_away() {
+        // "film" (F IH1 L M): the coda is two tokens, "l" (target `-L`, one key) and "m" (target
+        // `-PL`, two keys) - Plover's own outline, `TPEUPL`, folds "l" entirely into "m"'s own `-PL`
+        // chord (there's no separate `-L` key struck for "l" at all, just the `P L` that spells
+        // "m"). A naive sibling fix (exclude any *other* token's fully-struck target, with no
+        // further check) would see "l"'s own trivial single-key target fully present and subtract
+        // its `L` key before checking "m" - wrongly turning "m"'s genuinely complete `-PL` into a
+        // reported fragment (`stray=-P`), since "l"'s target is really just a subset of "m"'s own,
+        // not a separate, competing sound sharing a key the way `beautiful`'s "b"/"y" do.
+        let rules = Rules::built_in().unwrap();
+        let film = sounds("F IH1 L M");
+        let tpeupl = parse_outline("TPEUPL").unwrap();
+        assert!(
+            rules.matches_real_consonants(&tpeupl, "film", &film),
+            "\"m\"'s complete -PL must not be flagged just because \"l\"'s own target is a subset of it"
+        );
+        assert_eq!(rules.drop_fragments(&tpeupl, "film", &film), None);
+        // "frank" (F R AE1 NG K): same shape, but with a *two*-key subset this time - the coda
+        // tokens are "ng" (target `-PBG`, three keys) and "k" (target `-BG`, two keys), and "k"'s
+        // own `-BG` is a strict subset of "ng"'s own `-PBG`. A fix that only special-cased
+        // single-key siblings (an earlier, narrower version of this fix) would still wrongly flag
+        // "ng" here even after fixing "film".
+        let frank = sounds("F R AE1 NG K");
+        let tprapbg = parse_outline("TPRAPBG").unwrap();
+        assert!(
+            rules.matches_real_consonants(&tprapbg, "frank", &frank),
+            "\"ng\"'s complete -PBG must not be flagged just because \"k\"'s own target is a subset of it"
+        );
+        assert_eq!(rules.drop_fragments(&tprapbg, "frank", &frank), None);
     }
 
     #[test]
@@ -2384,15 +2483,28 @@ mod tests {
             total_weight += weight;
 
             let last_index = syllables.len() - 1;
-            let onset_bits =
-                first_stroke.0 & Stroke::LEFT & !rules.explained_elsewhere(&syllables, 0, first_stroke.0);
-            let coda_bits = last_stroke.0
-                & (Stroke::RIGHT | Stroke::STAR)
-                & !rules.explained_elsewhere(&syllables, last_index, last_stroke.0);
-            let onset_fragment =
-                Rules::fragment_bits(&first_syl.onset, onset_bits, &rules.onset, &rules.onset_cluster);
-            let coda_fragment =
-                Rules::fragment_bits(&last_syl.coda, coda_bits, &rules.coda, &rules.coda_cluster);
+            let onset_mask = first_stroke.0 & Stroke::LEFT;
+            let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
+            let onset_fragment = rules.fragment_bits(
+                &syllables,
+                0,
+                false,
+                &first_syl.onset,
+                first_stroke.0,
+                onset_mask,
+                &rules.onset,
+                &rules.onset_cluster,
+            );
+            let coda_fragment = rules.fragment_bits(
+                &syllables,
+                last_index,
+                true,
+                &last_syl.coda,
+                last_stroke.0,
+                coda_mask,
+                &rules.coda,
+                &rules.coda_cluster,
+            );
 
             if onset_fragment == 0 && coda_fragment == 0 {
                 cat_a += 1;
@@ -2403,16 +2515,27 @@ mod tests {
             cat_b_weight += weight;
 
             let mut details: Vec<String> = Vec::new();
-            let describe = |tokens: &[String],
-                             bits: u32,
+            // Per-token, like `Rules::fragment_bits` itself: each token's own explained bits
+            // exclude every *other* token (other syllables, and siblings in this same syllable),
+            // never itself.
+            #[allow(clippy::too_many_arguments)]
+            let describe = |rules: &Rules,
+                             syllables: &[Syllable],
+                             syllable_index: usize,
+                             in_coda: bool,
+                             tokens: &[String],
+                             full_bits: u32,
+                             masked_bits: u32,
                              table: &HashMap<String, Stroke>,
                              cluster: &HashMap<String, Stroke>,
                              side: &str,
                              details: &mut Vec<String>,
                              chord_counts: &mut HashMap<String, usize>,
                              chord_weight: &mut HashMap<String, f64>| {
-                for token in tokens {
+                for (i, token) in tokens.iter().enumerate() {
                     let Some(target) = Rules::token_bits(token, table, cluster) else { continue };
+                    let explained = rules.explained_elsewhere(syllables, (syllable_index, in_coda, i), target.0, full_bits);
+                    let bits = masked_bits & !explained;
                     if Rules::fragments(bits, target) {
                         let stray = render_outline(&[Stroke(bits & target.0)]);
                         let full = render_outline(&[target]);
@@ -2424,8 +2547,13 @@ mod tests {
                 }
             };
             describe(
+                rules,
+                &syllables,
+                0,
+                false,
                 &first_syl.onset,
-                onset_bits,
+                first_stroke.0,
+                onset_mask,
                 &rules.onset,
                 &rules.onset_cluster,
                 "onset",
@@ -2434,8 +2562,13 @@ mod tests {
                 &mut chord_weight,
             );
             describe(
+                rules,
+                &syllables,
+                last_index,
+                true,
                 &last_syl.coda,
-                coda_bits,
+                last_stroke.0,
+                coda_mask,
                 &rules.coda,
                 &rules.coda_cluster,
                 "coda",
