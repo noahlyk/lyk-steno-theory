@@ -1085,3 +1085,129 @@ a sibling-token fix "should be assumed to have at least as broad a reach" as the
 correct, and the only way to find the version that doesn't trade one false positive for another was to
 measure each attempt against the real dictionary and the real diagnostic, not reason about it in the
 abstract.
+
+**`Origin::Alternate` actually never competes with the primary now, plus a curated heteronym fix
+(`lead`).** While reviewing a live typing session, `lead` deployed `HRED` (the metal/short-e sense)
+even though Plover's and Lapwing's own gold dictionaries only ever list the guide/long-e sense
+(`HRAED`/`HRAOED`) for that spelling. Tracing it down found two separate root causes in
+`src/generate.rs`. **Cause 1**: `enumerate_candidates`'s rules-derived candidate always comes from
+`prons.first()`, whichever pronunciation CMUdict happens to list first, with zero sense-awareness -
+CMUdict lists `lead L EH1 D` (metal) before `lead(2) L IY1 D` (guide), so the rarer sense wins the
+cheap candidate purely by listing order. **Cause 2, the more serious one**: `Origin::Alternate`
+(added by `generate()` for a word's non-dominant pronunciation) carried its own doc comment
+claiming it "never competes with the primary" - but `cheapest()` and the backup-composition pass's
+own local `word_outline` index both folded every entry for a word by raw `(len, keys)`, ignoring
+`Origin` entirely except to exclude `Suffix`. An `Alternate` entry could silently outrank a word's
+real primary in `cheapest()`'s own output - exactly what `explain`, the score table, and backup
+composition all read. The claimed safety property was false downstream of where it was supposed to
+hold, and meant a literal `[word]` brief override alone wasn't reliable protection either, since the
+`Alternate` loop has no awareness of overrides.
+
+**Fix**: one shared helper, `best_entry_per_word` (`src/generate.rs`), used by both `cheapest()` and
+the backup pass's `word_outline` construction, adding exactly one sort tier ahead of `(len, keys)`:
+an `Origin::Alternate` entry can never win against any other origin for the same word on raw cost
+alone. A no-op for the vast majority of words with no `Alternate` entry at all (the tuple reduces to
+the original comparison). `Short`/`Backup` origins are unaffected - both stay in the same
+"non-Alternate" tier as primaries, so `primary_single_strokes`'s existing reliance on `Short`/
+`Backup` legitimately beating a primary on cost is untouched. Regression guard:
+`quality::an_alternate_pronunciation_entry_never_outranks_its_word_own_primary_in_cheapest`, guarded
+to only be meaningful once an `Alternate` entry genuinely exists in the real dictionary.
+
+**Real impact, measured the careful way this log's own earlier entries warned to use - one file
+reverted to `HEAD`, built, restored, built again, diffed by word, with `sha256sum` checked
+immediately before and after every build.** 22 of 60,308 distinct words land on a different stroke
+set - small and structural, as expected for a fix scoped to the narrow case of a backup-composed
+stem losing to a cheaper `Alternate` entry it should never have had to compete with at all (examples:
+`craftsmen`, `friendlier`, `unfriendly`, `presented`, `tantalizing` - all backup-composition stems
+that now build on the word's real primary instead of an alternate pronunciation's outline). Total
+distinct word count unchanged (60,308 → 60,308). `cargo run --release -- score --check-readme`: a
+small, real, *worse*-direction move, not an improvement - 2-syllable Keys/Stroke (Lyk) rises from
+5.60 to 5.61, 3-syllable from 5.24 to 5.25, the frequency-weighted 2-syllable row from 4.75 to 4.76;
+every other row unchanged to two decimals. This is the honest cost of correctness here: the
+backup-composition stems affected now build on a word's real (often slightly longer) primary instead
+of the shorter `Alternate` outline that used to leak through. README.md's score and usage tables
+updated to match. Full suite: 66 passing (one new test added, none removed), `cargo clippy --release
+--all-targets` unchanged (no new warnings; the existing ~85 are all pre-existing pedantic/nursery
+lints unrelated to this change).
+
+**Part 2: curated heteronym overrides (`rules/briefs.toml`).** With Part 1 landed, 25 classic English
+heteronyms (more than one CMUdict pronunciation that changes *meaning*, not just accent) were
+checked one at a time: `cargo run --release -- explain <word>`, comparing `deployed` against what
+Plover's and Lapwing's own gold dictionaries (`data/dictionaries/plover-main.json`,
+`lapwing-base.json`) converge on. Pinned only where `deployed` didn't already match the dominant
+sense *and* both gold dictionaries actually converged on one sense's outline *and* the gold outline
+was reachable without stranding another real word. That last condition cost a second candidate:
+`invalid` looked identical to `lead` (deployed folds the rarer noun sense - "an invalid", a
+sick/disabled person - while both gold dictionaries converge on the adjective sense, "not valid") and
+was pinned the same way, to Lapwing's own `EUPB/SRALD` - but this tripped
+`quality::stranded_word_count_has_not_grown_past_its_known_baseline`: a literal `[word]` override
+forces *exactly one* candidate, and the `Origin::Alternate` loop deliberately skips adding an entry
+for the word's *first* CMUdict pronunciation (assuming, normally correctly, that pronunciation is
+already covered by the primary candidate path) - so once the brief, not that first pronunciation's
+own outline, became the committed primary, the noun sense's own natural unfolded reading
+(`EUPB/-FLD`/`EUFPBLD`) was left completely unclaimed, a real regression this guard exists
+specifically to catch. `lead` avoids this by coincidence, not by any property of the fix: `HRED` (the
+metal sense's own first-pronunciation outline) is already claimed by the unrelated word `led`, so
+pinning `lead` away from it never strands anything. `invalid` was reverted and left unpinned rather
+than silently bumping the stranded-word baseline.
+
+**Pinned (1):** `lead` → `HRAED` (guide/long-e sense; gold dictionaries only ever list the guide
+sense for this spelling, never the metal sense `HRED` that was deployed).
+
+**Considered, not pinned (24), with the honest reason each:**
+- `read` → already correct (`RAED`, matches both gold dictionaries exactly).
+- `bow` → genuinely ambiguous: both gold dictionaries list *both* senses' outlines (`PWOE`, `PWOU`)
+  as real, separate entries - no single convergent sense to pin to.
+- `bass` → already correct (`PWAS`, matches both gold dictionaries' dominant/shared entry).
+- `object` → not a live sense collision here: both pronunciations fold to the exact same outline in
+  lyk's own rules (`OB/SKWREBGT`), and the deployed `O*B` is already one of Plover's own listed
+  candidates.
+- `record` → already correct (`RORD`, both gold dictionaries' first-listed entry).
+- `present` → already correct (`PREPBT`, both gold dictionaries' first-listed entry).
+- `content` → already correct (`KAUPBT`, both gold dictionaries' first-listed entry); also not a
+  live sense collision, both pronunciations fold to the same outline in lyk's own rules.
+- `desert` → judgment call: deployed already selects the dominant (noun, dry-land) sense's own
+  pronunciation; the mismatch from gold's own listed text is an ordinary ending-sound rendering
+  difference, not a wrong-sense pick.
+- `project` → judgment call: deployed (`PROPL`) is a Backup-composed outline, not a clean
+  single-pronunciation brevity derivation, so it isn't a clean apples-to-apples sense comparison
+  against gold's own per-sense outlines; not confirmed as a wrong-sense pick via `explain`.
+- `wind` → genuinely ambiguous: both gold dictionaries list *both* senses' outlines (`WEUPBD`,
+  `WAOEUPBD`) as real, separate entries; deployed already matches both dictionaries' first-listed
+  (dominant) form.
+- `tear` → already correct (`TAER`); gold dictionaries never list an outline for the other (crying)
+  sense at all.
+- `close` → genuinely ambiguous: both gold dictionaries list *both* senses' outlines (`KHROES`,
+  `KHROEZ`) as real, separate entries - a true minimal pair by voicing, both needed.
+- `live` → already correct: deployed matches both gold dictionaries' plain/dominant (verb) sense;
+  the adjective (long-i) sense only appears star-marked in one gold dictionary, not a clean
+  convergence.
+- `minute` → already correct: deployed (`PHEUP`) matches Plover's own exact shortest entry for the
+  dominant (unit-of-time) sense.
+- `wound` → already correct (`WOUPBD`, both gold dictionaries' first-listed entry).
+- `invalid` → confirmed sense mismatch (see above), but pinning strands the noun sense's own
+  natural outline - not pinned to keep the stranded-word regression guard clean.
+- `does` → not a real meaning-changing heteronym: CMUdict's two listed pronunciations are full vs.
+  reduced/weak-form variants of the same verb, not a different-meaning pair; deployed's short `OS`
+  is a legitimate backup-composed form, not a wrong-sense pick.
+- `moderate` → ordinary phonetic-rule difference, not a sense issue: the mismatch from gold is a
+  different vowel-chording convention (`PHO` vs `PHA`) for the same stressed syllable, and the
+  adjective/verb senses already share the same stem in lyk's own rules.
+- `separate` → ordinary brevity-step cost choice, not a sense issue: the adjective and verb senses
+  collapse to the identical vowelless skeleton (`S-PT`) regardless of ending, and that skeleton
+  legitimately outranks the fuller form on keys.
+- `advocate` → not confirmed: none of gold's own listed outlines appear among lyk's own
+  rules-derived candidates at all (a different phonetic-rendering convention, not a reachable sense
+  swap) - pinning would import a foreign outline, not correct a sense pick among real candidates.
+- `refuse` → not confirmed: CMUdict's own pronunciations here never include the noun/garbage
+  voiceless-S ending gold dictionaries use throughout: a CMUdict-coverage gap, not a wrong-sense
+  pick among outlines actually reachable by lyk's own rules.
+- `conflict` → already correct: deployed derives from the noun pronunciation (the dominant sense,
+  "armed conflict"); gold's listed outlines are all built from the rarer verb pronunciation.
+- `decrease` → real-looking but out of scope: deployed (`KRAOES`) drops the "de-" prefix entirely,
+  which neither gold dictionary does and none of lyk's own rules-derived candidates do either - not
+  a sense-ambiguity bug (both pronunciations' own derived forms keep the prefix), so not a
+  heteronym pin; worth a separate investigation into the backup-composition path that produced it.
+- `console` → not a live sense collision: both pronunciations fold to the identical outline in
+  lyk's own rules; deployed's two-stroke composed form is phonetically close to and no worse than
+  gold's own listed forms.

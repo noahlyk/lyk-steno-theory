@@ -1272,16 +1272,11 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     const MAX_BACKUP_ROUNDS: usize = 5;
     let mut backup_skipped = 0usize;
     for _round in 0..MAX_BACKUP_ROUNDS {
-        let mut word_outline: HashMap<String, Vec<Stroke>> = HashMap::new();
-        for entry in entries.iter().filter(|e| e.origin != Origin::Suffix) {
-            let cost = (entry.outline.len(), keys(&entry.outline));
-            match word_outline.get(&entry.word) {
-                Some(current) if (current.len(), keys(current)) <= cost => {}
-                _ => {
-                    word_outline.insert(entry.word.clone(), entry.outline.clone());
-                }
-            }
-        }
+        let word_outline: HashMap<String, Vec<Stroke>> =
+            best_entry_per_word(entries.iter().filter(|e| e.origin != Origin::Suffix))
+                .into_iter()
+                .map(|(word, entry)| (word.to_string(), entry.outline.clone()))
+                .collect();
         let mut by_sounds: HashMap<&[String], Vec<&str>> = HashMap::new();
         // A stress-insensitive copy of the same index, for the compound direction (c) only: a
         // word keeps its own primary stress when struck alone (`my` is `M AY1`) but a compound's
@@ -1523,25 +1518,39 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     })
 }
 
+/// Each word's single best entry among a list, respecting `Origin`: an `Origin::Alternate` entry
+/// can never outrank any other entry for the same word on raw stroke/key cost alone - its own doc
+/// comment already claims it "never competes with the primary"; this is what actually makes that
+/// true downstream, in both places that used to compare entries by `(len, keys)` alone.
+fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
+    let priority = |e: &Entry| (e.origin == Origin::Alternate, e.outline.len(), keys(&e.outline));
+    let mut best: HashMap<&str, &Entry> = HashMap::new();
+    for entry in entries {
+        match best.get(entry.word.as_str()) {
+            Some(&current) if priority(current) <= priority(entry) => {}
+            _ => {
+                best.insert(entry.word.as_str(), entry);
+            }
+        }
+    }
+    best
+}
+
 /// Each word's cheapest outline (fewest strokes, then fewest keys) among a list of entries.
 ///
 /// A standalone suffix's own entry (`rules/suffixes.toml`) never counts, even when its own
 /// display text happens to also be a real word (`less`, `age`, `some`, `ism`, and 17 others): its
 /// outline is a continuation-stroke fragment that is never a word by itself when struck alone
 /// (the join key it carries refuses that, by design — see [the join key](../docs/join-key.md)),
-/// so it is never really "the outline" for that word even when it numerically looks cheapest.
+/// so it is never really "the outline" for that word even when it numerically looks cheapest. An
+/// `Origin::Alternate` entry (another pronunciation's outline) is excluded from winning against
+/// any other origin for the same word by [`best_entry_per_word`]'s own priority tier - see its
+/// doc comment.
 pub fn cheapest(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
-    let mut best: HashMap<&str, &[Stroke]> = HashMap::new();
-    for entry in entries.iter().filter(|e| e.origin != Origin::Suffix) {
-        let cost = |o: &[Stroke]| (o.len(), keys(o));
-        match best.get(entry.word.as_str()) {
-            Some(current) if cost(current) <= cost(&entry.outline) => {}
-            _ => {
-                best.insert(&entry.word, &entry.outline);
-            }
-        }
-    }
-    best
+    best_entry_per_word(entries.iter().filter(|e| e.origin != Origin::Suffix))
+        .into_iter()
+        .map(|(word, entry)| (word, entry.outline.as_slice()))
+        .collect()
 }
 
 /// Every outline in a generated dictionary, by its rendered text, to the word it writes.

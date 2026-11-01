@@ -229,3 +229,22 @@ perhaps = "PRAPGS"
 # "TKPWOFRPB" (6 keys) keeps it, reading phonetically closer to the actual word - a maintainer
 # preference, not an ergonomics or cost finding like the entries above.
 govern = "TKPWOFRPB"
+
+# The entry below fixes a real heteronym: a word with more than one CMUdict pronunciation that
+# changes *meaning*, where `cheapest()` had settled on the rarer sense's outline - confirmed by
+# `explain <word>` against Plover's and Lapwing's own gold dictionaries converging on the other,
+# dominant sense (see `docs/decisions.md` for the full 25-word survey this was picked out of; most
+# surveyed words were already correct, genuinely ambiguous between two real gold outlines, or not
+# actually a sense mismatch at all once `explain` was checked, so are not listed here - including
+# "invalid", a near-identical case to "lead" below that was deliberately left unpinned; see
+# `docs/decisions.md` for why).
+
+# "lead": deployed HRED is /L EH1 D/, the metal - rare as a bare noun relative to the verb "to
+# lead/guide". Both Plover and Lapwing only ever list outlines for the guide sense, /L IY1 D/
+# (HRAED, HRAOED) - never the metal sense at all. Pinned to HRAED, the cheaper of the two (5 keys
+# vs 6) and already one of this word's own rules-derived candidates, just never winning on cost
+# against the metal sense's shorter HRED before this fix. Safe from the stranding problem that
+# blocked an otherwise-identical pin for "invalid" (see `docs/decisions.md`): "led" (the past
+# tense) already claims HRED, so the metal sense's own first-pronunciation outline is never left
+# stranded unclaimed by pinning "lead" away from it.
+lead = "HRAED"

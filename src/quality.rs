@@ -142,6 +142,56 @@ fn single_stroke_stems_never_contains_a_phrase_entry() {
     assert!(leaked.is_empty(), "phrase entries leaked into single_stroke_stems: {leaked:?}");
 }
 
+/// `Origin::Alternate`'s own doc comment claims an alternate-pronunciation entry "never competes
+/// with the primary" - but `generate::cheapest` used to fold every entry for a word by raw
+/// `(len, keys)` alone, ignoring `Origin` except to exclude `Suffix`, so a shorter `Alternate`
+/// outline (the rarer sense, added on top of an already-settled primary) could silently outrank
+/// that word's own primary/non-`Alternate` entry in `cheapest()`'s output - exactly what `explain`,
+/// the score table, and backup composition all read. This is the regression guard for that gap:
+/// for every word with both an `Alternate` entry and some other-origin entry, `cheapest()`'s own
+/// pick must never be the `Alternate` one's outline unless no other-origin entry exists for that
+/// word at all.
+#[test]
+fn an_alternate_pronunciation_entry_never_outranks_its_word_own_primary_in_cheapest() {
+    let generated = dictionary_fixture::generated();
+    assert!(
+        generated.entries.iter().any(|e| e.origin == generate::Origin::Alternate),
+        "this guard is only meaningful once the real dictionary actually has at least one \
+         Alternate entry to check against - if this fails, the alternate-pronunciation pass \
+         itself stopped producing any entries"
+    );
+
+    let mut non_alternate_outline: HashMap<&str, &[crate::stroke::Stroke]> = HashMap::new();
+    for entry in &generated.entries {
+        if entry.origin != generate::Origin::Alternate && entry.origin != generate::Origin::Suffix
+        {
+            non_alternate_outline.entry(entry.word.as_str()).or_insert(&entry.outline);
+        }
+    }
+
+    let lyk = dictionary_fixture::cheapest();
+    let mut violations = Vec::new();
+    for entry in generated.entries.iter().filter(|e| e.origin == generate::Origin::Alternate) {
+        let Some(&primary_outline) = non_alternate_outline.get(entry.word.as_str()) else {
+            // No other-origin entry exists for this word at all - nothing for the Alternate
+            // entry to outrank.
+            continue;
+        };
+        if let Some(&deployed) = lyk.get(entry.word.as_str())
+            && deployed == entry.outline.as_slice()
+            && deployed != primary_outline
+        {
+            violations.push(format!(
+                "{:?}: cheapest() picked the Alternate outline {:?} over the primary {:?}",
+                entry.word,
+                render_outline(deployed),
+                render_outline(primary_outline),
+            ));
+        }
+    }
+    assert!(violations.is_empty(), "Alternate entries outranking their word's primary: {violations:?}");
+}
+
 /// `generate::reserved_outlines` is seeded into `taken` before a single word is placed
 /// specifically so this can never happen; this confirms it from the outside, against the real
 /// built dictionary, rather than trusting the seeding order inside `generate()` never regresses.
