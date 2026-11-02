@@ -187,6 +187,73 @@ pub fn root<'a>(links: &'a HashMap<String, Link>, word: &'a str) -> &'a str {
     current
 }
 
+/// The word `word`'s family is rooted at, and every ending's keys along the way OR'd together -
+/// `None` when any ending on the way is more than one stroke or touches a key outside the right
+/// bank (`-ship`, `-hood`), or two endings share a key, since those can't fold into one stroke.
+pub fn chain<'a>(links: &'a HashMap<String, Link>, word: &'a str) -> Option<(&'a str, u32)> {
+    let right = parse_outline("-FRPBLGTSDZ").expect("the right bank parses")[0].0;
+    let mut keys = 0u32;
+    let mut current = word;
+    for _ in 0..8 {
+        let Some(link) = links.get(current) else { break };
+        let [stroke] = link.strokes[..] else { return None };
+        let bits = stroke.0 & !Stroke::JOIN;
+        if bits & !right != 0 || bits & keys != 0 {
+            return None;
+        }
+        keys |= bits;
+        current = &link.stem;
+    }
+    (current != word).then_some((current, keys))
+}
+
+/// Every way to write a family member as its root's outline plus its
+/// endings' keys, on the root's last stroke - the family rules, in order:
+///
+/// 1. the endings' keys added (`build` `PWHR` -> `builds` `PWHR-Z`, `building` `PWHR-G`);
+/// 2. when the root already holds an ending's key, the star added too (`need` `TPHAED` ->
+///    `needed` `TPHA*ED`, `think` `-PBG` -> `thinking` `*PBG`);
+/// 3. "-ing" on a root ending in the K chord `-BG` swaps it for a bare `-G`, Plover's own
+///    convention (`talk` `TAUBG` -> `talking` `TAUG`, `look` `HRAOBG` -> `looking` `HRAOG`).
+pub fn shapes(root: &[Stroke], keys: u32) -> Vec<Vec<Stroke>> {
+    let Some(&last) = root.last() else { return Vec::new() };
+    let b = parse_outline("-B").expect("-B parses")[0].0;
+    let g = parse_outline("-G").expect("-G parses")[0].0;
+    let with_last = |stroke: u32| {
+        let mut outline = root.to_vec();
+        if let Some(l) = outline.last_mut() {
+            l.0 = stroke;
+        }
+        outline
+    };
+    let mut out = Vec::new();
+    if last.0 & keys == 0 {
+        out.push(with_last(last.0 | keys));
+    } else if last.0 & Stroke::STAR == 0 {
+        out.push(with_last(last.0 | keys | Stroke::STAR));
+    }
+    if keys & g != 0 && last.0 & (b | g) == b | g {
+        out.push(with_last((last.0 & !b) | keys));
+    }
+    out
+}
+
+/// Whether `member` follows its family: its outline is one of [`shapes`] of its root's, or it
+/// keeps every key of its direct stem's outline ([`contains_stem`]).
+pub fn follows_family(links: &HashMap<String, Link>, outlines: &HashMap<&str, &[Stroke]>, member: &str) -> bool {
+    let Some(&own) = outlines.get(member) else { return false };
+    if let Some((root, keys)) = chain(links, member)
+        && let Some(&root_outline) = outlines.get(root)
+        && shapes(root_outline, keys).iter().any(|s| s.as_slice() == own)
+    {
+        return true;
+    }
+    links
+        .get(member)
+        .and_then(|link| outlines.get(link.stem.as_str()))
+        .is_some_and(|&stem| contains_stem(stem, own))
+}
+
 /// Whether `member`'s outline visibly starts from `stem`'s: stroke by stroke, every key of each
 /// stem stroke (star and join aside) is also down in the member's stroke at the same position.
 /// `start`/`STARTD`, `day`/`TKAEUZ`, and `starter`/`starters` (`SART/+-R`, `SART/+-RZ`) count;
@@ -270,5 +337,11 @@ mod tests {
         assert!(contains_stem(&o("KAUL"), &o("KAUL/+-D")));
         assert!(contains_stem(&o("SART/+-R"), &o("SART/+-RZ")));
         assert!(!contains_stem(&o("SART/+-R"), &o("SART")));
+        let text = |v: Vec<Vec<Stroke>>| v.iter().map(|s| crate::stroke::render_outline(s)).collect::<Vec<_>>();
+        let g = o("-G")[0].0;
+        let d = o("-D")[0].0;
+        assert_eq!(text(shapes(&o("PWHR"), g)), ["PWHR-G"]);
+        assert_eq!(text(shapes(&o("TPHAED"), d)), ["TPHA*ED"]);
+        assert_eq!(text(shapes(&o("TAUBG"), g)), ["TA*UBG", "TAUG"]);
     }
 }

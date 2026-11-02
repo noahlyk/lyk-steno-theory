@@ -1853,3 +1853,20 @@ every short-stem link are listed as `not_family`. Effect against the previous co
 per word `-0.0004`; *moment* back to `PHOELT`, *living* `HREUFG` and *lived* `HREUFD` now match *live*
 `HREUF`, *died* `TKAOEUD` matches *die* `TKAOEU`. Words that lose a cheap but coincidental family
 shape: *forest* (`-FRT`, "for" + "est") is now `TPO*RS`, *truly* `TRAOUL`, *upper* `AURP`.
+
+**Family rules for an ending whose key the root already holds, and family roots locked after the
+first pass.** Two more rules join "add the ending's key": if the root's last stroke already holds
+it, add the star too (*needed* `TPHA*ED`, *thinking* `*PBG`); and "-ing" on a root ending in the K
+chord `-BG` swaps it for bare `-G`, Plover's own convention (*talking* `TAUG`, *looking* `HRAOG`).
+The star alone wasn't enough: *talking* `TA*UBG` is two keys over `TAUG`, and even a three-key
+preference (measured: +0.006 weighted keys/word) left *looking*, *taking* unchanged. Separately,
+roots drifted: in a later pass *come* gave `KUPL` to *cum* for the equally long `KOPL`, after
+*coming*/*comes* had been offered `KUPLG`/`KUPLZ`. Every family root is now locked to its
+first-pass outline (won on cost alone), which nothing else may take, moving only to a strictly
+cheaper outline of its own - an early version without that escape stranded *russian* and *wince*,
+and one without reserving the outline left *ed* with no outline at all. `cheapest` now applies the
+same two-key family preference, so *talked* reports its family primary `TAUBGD` rather than a tied
+bonus `TO*BGT`. Against the previous commit: weighted keys/word -0.0046, strokes/word -0.0014;
+top-10k members following their family: -ed 85% -> 89%, -s 89% -> 92%, -ing 71% -> 83%, -er 86% ->
+90%. `build` 18 s -> ~12 s (fewer passes needed). Four top-10k words gained a stroke (*relatively*,
+*openly*, *releasing*, *argh*).

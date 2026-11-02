@@ -596,11 +596,7 @@ fn print_family(setup: &analysis::Setup, generated: &generate::Generated, word: 
                 .map_or_else(|| format!("backup {text} not built"), |other| format!("backup {text} lost to {other:?}")),
             None => "stem has no outline".to_owned(),
         };
-        let starts = match (stem_outline, cheapest.get(member)) {
-            (Some(s), Some(m)) if family::contains_stem(s, m) => "starts from the stem",
-            (Some(_), Some(_)) => "own shape",
-            _ => "",
-        };
+        let starts = if family::follows_family(links, &cheapest, member) { "follows the family" } else { "own shape" };
         println!(
             "  {member:<18} {own:<22} = {} + -{:<5} {backup_note}  [{starts}]",
             link.stem, link.suffix
@@ -632,7 +628,7 @@ fn family_report(setup: &analysis::Setup, generated: &generate::Generated, show:
         if index.get(&stroke::render_outline(&composed)) == Some(&word.as_str()) {
             tally[1] += 1;
         }
-        if family::contains_stem(stem, own) {
+        if family::follows_family(&generated.links, &cheapest, word) {
             tally[2] += 1;
         } else {
             odd.push((rank, word, stroke::render_outline(own), link.stem.as_str(), stroke::render_outline(stem)));
@@ -640,19 +636,19 @@ fn family_report(setup: &analysis::Setup, generated: &generate::Generated, show:
     }
     let mut out = format!(
         "word families in the top {TOP}: members by ending, how many can be typed as stem + ending, \
-         and how many have an outline that starts from the stem's own keys\n"
+         and how many have an outline that follows the family's shape\n"
     );
     let pct = |part: usize, whole: usize| part * 100 / whole.max(1);
     for (suffix, [n, backup, starts]) in &by_suffix {
         let _ = writeln!(
             out,
-            "  -{suffix:<6} {n:>5} members   stem + ending {backup:>5} ({:>3}%)   starts from stem {starts:>5} ({:>3}%)",
+            "  -{suffix:<6} {n:>5} members   stem + ending {backup:>5} ({:>3}%)   follows family {starts:>5} ({:>3}%)",
             pct(*backup, *n),
             pct(*starts, *n),
         );
     }
     odd.sort();
-    out += "the commonest members whose outline doesn't start from the stem's\n";
+    out += "the commonest members whose outline doesn't follow the family\n";
     for (rank, word, own, stem, stem_outline) in odd.into_iter().take(show) {
         let _ = writeln!(out, "  #{rank:<6} {word:<16} {own:<14} stem {stem} {stem_outline}");
     }

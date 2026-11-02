@@ -129,33 +129,45 @@ ending. The rare misses are texts a primary outline already holds (*needed*'s `T
 
 **Families share one shape in their one-stroke outlines too.** Backups make every member
 reachable as stem plus ending, but a member's own fastest outline used to be chosen alone, so
-*build* was Plover's `PWHR` while *builds* was the unrelated `PWEULDZ`. Now settling primaries runs
-in passes: after the first, every family member is offered one more candidate, `Origin::Family`,
-its *root's* settled outline with each ending's key added to the last stroke (*build* `PWHR` →
-*builds* `PWHR-Z`, *building* `PWHR-G`, *buildings* `PWHR-GZ`, *builder* `PWHR-R`, *builders*
-`PWHR-RZ`; *day* `AEU` → *days* `AEUZ`, *daily* `AEUL`; *start* `SART` → *started* `SARTD`). Only
-one-stroke, right-hand-only endings that share no key with that stroke qualify (`-S`, `-Z`, `-D`,
-`-G`, `-R`, `-L`, `-FT`, `-PBS`, ...), so the offer always reads as the root plus the ending. Every
-word is then settled again from scratch with those offers in its pool, repeating until the offers
-stop changing (three re-solves in practice).
+*build* was Plover's `PWHR` while *builds* was the unrelated `PWEULDZ`. Settling primaries now
+runs twice. The first pass settles every word on cost alone. Every family root (a word with
+family members) is then locked to the outline it won there, and every member is offered its
+root's outline written by the **family rules**, applied to the root's last stroke
+(`src/family.rs`, `shapes`):
+
+1. **Add the ending's key.** *build* `PWHR` → *builds* `PWHR-Z`, *building* `PWHR-G`, *buildings*
+   `PWHR-GZ`, *builder* `PWHR-R`, *builders* `PWHR-RZ`; *day* `AEU` → *days* `AEUZ`, *daily*
+   `AEUL`; *start* `SART` → *started* `SARTD`, *starting* `SARGT`.
+2. **If the root already holds that key, add the star too.** *need* `TPHAED` → *needed*
+   `TPHA*ED`; *think* `-PBG` → *thinking* `*PBG`.
+3. **"-ing" on a root ending in the K chord `-BG` swaps it for a bare `-G`** (Plover's own
+   convention): *talk* `TAUBG` → *talking* `TAUG`, *look* `HRAOBG` → *looking* `HRAOG`, *speak*
+   `SPAEBG` → *speaking* `SPAEG`. Rule 2 offers the star form as well, and cost picks.
+
+Only one-stroke, right-hand-only endings take part (`-S`, `-Z`, `-D`, `-G`, `-R`, `-L`, `-FT`,
+`-PBS`, ...). Then every word is settled again from scratch with those offers in its pool.
+Locking the roots matters: without it, a root could trade its outline away in the second pass
+(*come* gave `KUPL` to *cum* for the equally long `KOPL`) after its members had been offered shapes
+built on the old one. A locked root may still move to a strictly cheaper outline of its own if the
+re-solve frees one up; its family is then re-offered shapes on the new outline in the next pass.
+Roots only ever get cheaper, so this settles, usually within two or three solves.
 
 A family offer counts two keys cheaper than its raw cost (`FAMILY_DISCOUNT`). Without that, cost
 alone kept a shorter unrelated brief (*building* stayed Plover's 4-key `PW-LG` over the 5-key
 `PWHR-G`); with it, a member takes its family's shape unless that costs more than two extra keys.
-The discount still never buys a stroke: a stroke weighs 25 keys. In the top 10,000, members whose
-own outline starts from their stem's keys went from 66% to 83% for "-ed", 77% to 88% for "-s",
-and 56% to 71% for "-ing".
-
-The biggest remaining gap is "-ing" after a K sound (*talking* `TAUG`, *looking* `HRAOG`,
-*working* `WOG`): the stem's own `-BG` already holds the `G`, so there is no key to add. That needs
-a convention of its own, not yet chosen.
+The discount never buys a stroke: a stroke weighs 25 keys. In the top 10,000, members whose own
+outline follows their family went from 66% to 89% for "-ed", 77% to 92% for "-s", and 56% to 83%
+for "-ing". The same two-key preference applies when choosing which of a word's entries to call its
+outline (`cheapest`, used by `lookup`, `quote`, and phrases), so a family shape isn't shadowed by a
+bonus short form that only ties it (*talked* `TAUBGD`, not the bonus `TO*BGT`).
 
 `cargo run --release -- family build` prints one family: every member, its stem and ending, its
-own outline, its stem-plus-ending entry, and whether its own outline starts from the stem's keys.
-`cargo run --release -- family` with no word prints the whole dictionary's numbers by ending and
-the commonest members whose own outline doesn't start from the stem's (*doing* `TK*G` against
-*do* `-D`, *looking* `HRAOG` against *look* `HRAOBG`). Those are one-stroke primaries chosen for
-speed; the stem-plus-ending entry is always there as the predictable way in.
+own outline, its stem-plus-ending entry, and whether its own outline follows the family (one of
+the rule shapes above, or keeping every key of its stem's outline). `cargo run --release --
+family` with no word prints the whole dictionary's numbers by ending and the commonest members
+that don't (*guys* `AOEUS` against *guy* `TKPAOEU`, *needs* `AOEDZ` against *need* `TPHAED`):
+one-stroke briefs that beat the family shape by more than two keys. The stem-plus-ending entry is
+always there for them as the predictable way in.
 
 A collision *within the same pass* — two different words (or the same word, by two different
 directions) composing the exact same text before either is committed — is not decided by whichever

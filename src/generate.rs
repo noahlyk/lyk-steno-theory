@@ -180,7 +180,8 @@ const STROKE_WEIGHT: u32 = 25_000;
 /// keys, so a member takes its root's shape (`building` `PWHR-G`, not Plover's `PW-LG`) unless
 /// that costs more than two extra keys. See `docs/syllables.md`.
 const FAMILY_DISCOUNT: u32 = 2_000;
-/// Settling passes at most: the family offers converge within three re-solves in practice.
+/// Settling passes at most. Family roots are locked after the first (moving only to something
+/// cheaper), so the offers settle within a pass or two after that.
 const MAX_FAMILY_PASSES: usize = 4;
 const KEY_WEIGHT: u32 = 1_000;
 
@@ -1005,40 +1006,23 @@ fn ladder(outline: &[Stroke], join: bool) -> Vec<(u8, Vec<Stroke>)> {
     steps
 }
 
-/// For every linked family member, its root's settled outline with every ending's keys along the
-/// way added to the last stroke (`build` `PWHR`: `builds` `PWHRZ`, `building` `PWHRG`,
-/// `buildings` `PWHRGZ`). Only one-stroke, right-hand-only endings (`-S`, `-Z`, `-D`, `-G`, `-R`,
-/// `-L`, `-FT`, ...) that share no key with that stroke qualify, so the result always reads as the
-/// root plus the ending. `entries` must hold every settled primary.
-fn family_offers(links: &HashMap<String, crate::family::Link>, entries: &[Entry]) -> HashMap<String, Vec<Stroke>> {
-    let right = parse_outline("-FRPBLGTSDZ").expect("the right bank parses")[0].0;
+/// For every linked family member, every [`crate::family::shapes`] of its root's settled outline
+/// with its endings' keys (`build` `PWHR`: `builds` `PWHR-Z`, `building` `PWHR-G`; `talk`
+/// `TAUBG`: `talking` `TA*UBG` or `TAUG`). `entries` must hold every settled primary.
+fn family_offers(links: &HashMap<String, crate::family::Link>, entries: &[Entry]) -> HashMap<String, Vec<Vec<Stroke>>> {
     let primary: HashMap<&str, &[Stroke]> = entries
         .iter()
         .filter(|e| e.origin != Origin::Suffix)
         .map(|e| (e.word.as_str(), e.outline.as_slice()))
         .collect();
     let mut out = HashMap::new();
-    'words: for word in links.keys() {
-        let mut keys = 0u32;
-        let mut current = word.as_str();
-        for _ in 0..8 {
-            let Some(link) = links.get(current) else { break };
-            let [stroke] = link.strokes[..] else { continue 'words };
-            let bits = stroke.0 & !Stroke::JOIN;
-            if bits & !right != 0 || bits & keys != 0 {
-                continue 'words;
-            }
-            keys |= bits;
-            current = &link.stem;
+    for word in links.keys() {
+        let Some((root, keys)) = crate::family::chain(links, word) else { continue };
+        let Some(root_outline) = primary.get(root) else { continue };
+        let shapes = crate::family::shapes(root_outline, keys);
+        if !shapes.is_empty() {
+            out.insert(word.clone(), shapes);
         }
-        let Some(root) = primary.get(current) else { continue };
-        let mut outline = root.to_vec();
-        let Some(last) = outline.last_mut() else { continue };
-        if last.0 & keys != 0 {
-            continue;
-        }
-        last.0 |= keys;
-        out.insert(word.clone(), outline);
     }
     out
 }
@@ -1199,14 +1183,36 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     let base_taken = taken.clone();
     let base_entries = entries.len();
     let base_unresolved = unresolved.len();
-    let mut offers: HashMap<String, Vec<Stroke>> = HashMap::new();
+    let mut offers: HashMap<String, Vec<Vec<Stroke>>> = HashMap::new();
+    // Every family root's outline from the first pass, which it won on cost alone. Later passes
+    // keep each root on it, so the shapes its members are offered stay built on the root's real
+    // outline instead of one it gives up (`come` once traded `KUPL` for `KOPL` after `coming`,
+    // `comes` had already been offered `KUPLG`, `KUPLZ`).
+    // A root may still move to a strictly cheaper outline of its own in a later pass (its first
+    // choice can be freed up by the re-solve); its family is then re-offered shapes on the new one.
+    // Roots only ever get cheaper, so this settles.
+    let mut roots: HashMap<String, (String, u32)> = HashMap::new();
+    let mut root_texts: HashSet<String> = HashSet::new();
     let mut contested_count = 0;
     for pass in 0..MAX_FAMILY_PASSES {
         if pass > 0 {
+            let settled: HashMap<&str, &[Stroke]> = entries[base_entries..]
+                .iter()
+                .map(|e| (e.word.as_str(), e.outline.as_slice()))
+                .collect();
+            let next_roots: HashMap<String, (String, u32)> = links
+                .keys()
+                .filter_map(|w| crate::family::chain(&links, w))
+                .filter_map(|(root, _)| {
+                    settled.get(root).map(|o| (root.to_owned(), (render_outline(o), candidate_cost(o))))
+                })
+                .collect();
             let next = family_offers(&links, &entries);
-            if next == offers {
+            if next == offers && next_roots == roots {
                 break;
             }
+            roots = next_roots;
+            root_texts = roots.values().map(|(text, _)| text.clone()).collect();
             offers = next;
             taken.clone_from(&base_taken);
             entries.truncate(base_entries);
@@ -1214,13 +1220,21 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
         let mut remaining: HashMap<&str, Vec<Candidate>> = HashMap::new();
         for (word, candidates) in pool_words.iter().zip(&pools) {
-            let family = offers.get(word.as_str()).map(|outline| Candidate {
+            let family = offers.get(word.as_str()).into_iter().flatten().map(|outline| Candidate {
                 outline: outline.clone(),
                 origin: Origin::Family,
                 cost: candidate_cost(outline).saturating_sub(FAMILY_DISCOUNT),
             });
+            let pinned = roots.get(word.as_str());
             let mut by_text: HashMap<String, Candidate> = HashMap::new();
             for candidate in candidates.iter().cloned().chain(family) {
+                // A locked root keeps exactly its first-pass outline, and nobody else may take it.
+                let text = render_outline(&candidate.outline);
+                match pinned {
+                    Some((p, cost)) if *p != text && candidate.cost >= *cost => continue,
+                    None if root_texts.contains(&text) => continue,
+                    _ => {}
+                }
                 let text = render_outline(&candidate.outline);
                 if taken.contains_key(&text) {
                     continue;
@@ -1803,12 +1817,15 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
     // Ergonomics, then the outline itself, settle what strokes and keys leave tied, so the answer
     // depends only on which entries exist, never on the order they were pushed in.
+    // Within a stroke count, keys and ergonomics as one number, with a family-shaped entry's
+    // `FAMILY_DISCOUNT` applied the same way the solver applied it, so a word's family shape isn't
+    // shadowed by a bonus short form that merely ties it.
     let priority = |e: &'a Entry| {
+        let discount = if e.origin == Origin::Family { FAMILY_DISCOUNT } else { 0 };
         (
             e.origin == Origin::Alternate,
             e.outline.len(),
-            keys(&e.outline),
-            ergonomics::weighted_outline(&e.outline),
+            (KEY_WEIGHT * keys(&e.outline) + ergonomics::weighted_outline(&e.outline)).saturating_sub(discount),
             e.outline.as_slice(),
         )
     };
