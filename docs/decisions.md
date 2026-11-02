@@ -1528,3 +1528,23 @@ problems. README.md's score table also moved by this (one word's key count chang
 **If this gets reverted to a binary top/bottom row model "for simplicity," problems 1-3 above all
 come back**, including the specific bug that started this revision: two fingers that differ in
 reach can share a row label and silently score zero.
+
+**`quote`'s own "— keys —" totals had the exact already-fixed `quote_corpus` asymmetry bug, still
+live (`src/quote.rs`).** `quote_corpus::Stats` was split into `total_keys_lyk_vs_plover`/
+`_vs_lapwing` specifically because summing lyk's keys over every word it resolves, while summing
+each other theory's keys only over words *it* has an entry for, silently charges lyk for words
+neither gold dictionary knows without ever charging the other side - see that entry above. `quote`
+(the live, single-passage command) shares `rows_for`/`cost` with `quote_corpus` but had never
+received the fix itself: its totals loop summed all three columns independently, each skipping only
+its own "-" rows. Caught live by the user running `cargo run --release -- quote` on a real quote
+containing "devils" (no entry in either gold dictionary): lyk paid "devils"'s real 6 keys while
+Plover and Lapwing paid nothing for it, so the printed totals (32/30/33) made lyk look worse than
+Plover on that quote when the fair, shared-vocabulary comparison would have shown lyk strictly
+ahead (26 vs. 30). Fixed the same way `quote_corpus` already is: `lyk_vs_plover`/`plover_total` and
+`lyk_vs_lapwing`/`lapwing_total` only grow when *both* sides of that one comparison have an entry,
+printed as "keys (shared vocabulary only, fair comparison)", plus a separate, clearly-labeled
+`lyk_full` full-coverage number - never pooled into the fair comparison, mirroring
+`quote_corpus`'s own `total_keys_lyk` vs. `_vs_plover`/`_vs_lapwing` split. **If `quote` or any
+future command built on `rows_for`/`cost` ever sums a theory's keys without gating on every other
+column's `Some`-ness in the same comparison, this exact bug is back** - `cost(text) == None` means
+"no real cost exists for this theory on this word," not "zero."

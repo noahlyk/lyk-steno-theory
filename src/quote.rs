@@ -213,18 +213,35 @@ pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> R
         "{:<width$}  {:<12}  {:<12}  {:<12}",
         "word", "lyk", "plover", "lapwing"
     );
-    let mut total = [0u32; 3];
+    // Paired, not pooled: a word neither gold dictionary knows (shown "-") must never silently
+    // charge lyk for it while charging the other theory nothing - the exact bug
+    // `quote_corpus::Stats` was split into `total_keys_lyk_vs_plover`/`_vs_lapwing` to fix (see
+    // `docs/decisions.md`). Each pair below only grows when *both* sides of that one comparison
+    // actually have an entry for the word.
+    let mut lyk_full = 0u32;
+    let (mut lyk_vs_plover, mut plover_total) = (0u32, 0u32);
+    let (mut lyk_vs_lapwing, mut lapwing_total) = (0u32, 0u32);
     for row in &rows {
-        for (n, text) in [&row.lyk, &row.plover, &row.lapwing].into_iter().enumerate() {
-            if let Some((_, keys)) = cost(text) {
-                total[n] += keys;
-            }
+        let ours = cost(&row.lyk);
+        if let Some((_, k)) = ours {
+            lyk_full += k;
+        }
+        if let (Some((_, ok)), Some((_, pk))) = (ours, cost(&row.plover)) {
+            lyk_vs_plover += ok;
+            plover_total += pk;
+        }
+        if let (Some((_, ok)), Some((_, wk))) = (ours, cost(&row.lapwing)) {
+            lyk_vs_lapwing += ok;
+            lapwing_total += wk;
         }
         println!("{:<width$}  {:<12}  {:<12}  {:<12}", row.word, row.lyk, row.plover, row.lapwing);
     }
     println!(
-        "{:<width$}  {:<12}  {:<12}  {:<12}",
-        "— keys —", total[0], total[1], total[2]
+        "\nkeys (shared vocabulary only, fair comparison): lyk-vs-plover {lyk_vs_plover} plover {plover_total}   \
+         lyk-vs-lapwing {lyk_vs_lapwing} lapwing {lapwing_total}"
+    );
+    println!(
+        "lyk full-coverage total (every word lyk resolves, including ones neither gold dictionary has at all): {lyk_full}"
     );
 
     // Phrase-aware: did this quote happen to contain any of the dictionary's own real phrase
@@ -240,7 +257,7 @@ pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> R
              with phrases vs {} word-by-word",
             if phrase_hits == 1 { "y" } else { "ies" },
             i64::try_from(word_by_word_strokes).unwrap_or(i64::MAX) - i64::try_from(phrase_strokes).unwrap_or(i64::MAX),
-            total[0]
+            lyk_full
         );
     }
     Ok(())

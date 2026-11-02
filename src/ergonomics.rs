@@ -167,7 +167,7 @@ type FingerState = Option<(Reach, bool)>;
 /// A plain two-key column (a home key and the top key directly above it): `T-`/`K-`, `P-`/`W-`,
 /// `H-`/`R-` on the left; `F`/`R2`, `P2`/`B`, `L`/`G` on the right. Neither key has a lateral
 /// stretch counterpart.
-fn pair_reach(bits: u32, top_bit: u32, home_bit: u32) -> FingerState {
+const fn pair_reach(bits: u32, top_bit: u32, home_bit: u32) -> FingerState {
     match (bits & top_bit != 0, bits & home_bit != 0) {
         (true, is_double) => Some((TOP, is_double)),
         (false, true) => Some((HOME, false)),
@@ -255,7 +255,7 @@ pub fn score(stroke: Stroke) -> Score {
     let walk = |fingers: &[FingerState; 4], trans: &[u32; 4], gap: &[u32; 4]| -> (u32, u32, u32, u32, u32) {
         let active: Vec<(usize, Reach)> =
             fingers.iter().enumerate().filter_map(|(i, f)| f.map(|(r, _)| (i, r))).collect();
-        let doubles = fingers.iter().filter(|f| f.is_some_and(|(_, d)| d)).count() as u32;
+        let doubles = u32::try_from(fingers.iter().filter(|f| f.is_some_and(|(_, d)| d)).count()).unwrap_or(u32::MAX);
 
         let mut transitions = 0;
         let mut reach_cost = 0;
@@ -387,6 +387,12 @@ pub fn explain(stroke: Stroke) -> String {
         let _ = writeln!(out, "double press(es): {doubles} x 1 = +{doubles}");
         total += doubles;
     }
+    let s = score(stroke);
+    let _ = writeln!(
+        out,
+        "summary: {} transition(s), {} gap(s), {} stretch key(s), {} double press(es)",
+        s.transitions, s.gaps, s.stretch_keys, s.double_presses
+    );
     let _ = write!(out, "total: {total}");
     debug_assert_eq!(total, weighted(stroke), "explain and weighted drifted apart");
     out
@@ -534,10 +540,10 @@ mod tests {
             if scores.is_empty() {
                 continue;
             }
-            let n = scores.len();
-            let avg = scores.iter().map(|&s| f64::from(s)).sum::<f64>() / n as f64;
+            let n = f64::from(u32::try_from(scores.len()).unwrap());
+            let avg = scores.iter().map(|&s| f64::from(s)).sum::<f64>() / n;
             let bad = scores.iter().filter(|&&s| s >= BAD_SCORE).count();
-            let bad_pct = f64::from(u32::try_from(bad).unwrap()) * 100.0 / n as f64;
+            let bad_pct = f64::from(u32::try_from(bad).unwrap()) * 100.0 / n;
             assert!(
                 avg <= band.avg_ceiling,
                 "{}: average ergonomic score {avg:.2} exceeds ceiling {}",
