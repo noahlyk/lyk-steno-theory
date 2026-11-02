@@ -53,17 +53,20 @@ Beyond the sentence-ending marks, the same file carries:
 
 ## Commands (`rules/reserved/commands.json`)
 
-41 strokes, smaller and more purpose-built than the punctuation file. Grouped by what they do:
+66 strokes, smaller and more purpose-built than the punctuation file. Grouped by what they do:
 
 | Group | Strokes | What they send |
 |---|---|---|
 | Cursor movement | `STPH-R`/`-B`/`-P`/`-G` | Left / Down / Up / Right |
 | Word-at-a-time movement | `STPH-RB`/`-BG` | Ctrl+Left / Ctrl+Right |
+| Line and page movement | `STPH-FR`/`-LG`/`-RPG`/`-FBL` | Home / End / Page Up / Page Down |
+| Selecting (any movement above, plus `*`) | `STPH*R`/`*B`/`*P`/`*G`, `STPH*RB`/`*BG`, `STPH*FR`/`*LG`/`*RPG`/`*FBL` | the same key with Shift (Ctrl+Shift for the word-at-a-time pair) |
 | Select to start/end of line | `SH-FT`/`SR-RS` | Ctrl+Shift+Home / Ctrl+Shift+End |
 | Alt-tabbing between apps | `TPW-R`/`TPW-G`, `TA*BT` | Alt+Left / Alt+Right / Alt+Tab Tab |
 | Editing | `TK*EL`, `PW*FP`/`PW-FP`, `TA*B` | Delete, Backspace, Tab |
 | Newline / paragraph break | `SKW-BGS`, `R*R`, `SKWRAEURBGS` | Return, or a blank-line paragraph break with the next word capitalized |
 | Escape | `TPEFBG`, `EFBG` | Escape |
+| Function keys | `TPWUPB` F1, `TPWO` F2, `TPWAOE` F3, `TPWOUR` F4, `TPWAOEUF` F5, `TPWEUBGS` F6, `TPWEFPB` F7, `TPWAEUT` F8, `TPWAOEUPB` F9, `TPWEPB` F10, `TPHREFPB` F11, `TPWEFL` F12 | F1–F12 (Lapwing's own strokes: `TPW` "f", then the number's own sound) |
 | App shortcuts via Super | `KPH*F`/`KPH*BG`/`KPH*T`/`KPH-BG` | Super+V / Super+K / Super+W / Super+C |
 | App shortcuts via Ctrl | `KHR*F`/`KHR*BG`/`KHR*T`/`KHR-BG` | Ctrl+V / Ctrl+K / Ctrl+W / Ctrl+C |
 | Capitalize the next word | `KPA*L`, `KPAD`, `KA*PD` | `{<}` / `{*-\|}` |
@@ -74,5 +77,10 @@ Beyond the sentence-ending marks, the same file carries:
 Plover's own engine-control strokes (suspend/resume/toggle, add-translation) are here because
 they're reserved the same way any other command is: a word can never silently take over the
 stroke a steno engine itself depends on to keep working.
+
+The `STPH` movement family and the F-keys are Lapwing's own strokes (`data/dictionaries/lapwing-commands.json`),
+minus its number-key (`#`) variants, which lyk's stroke model has no key for. Lapwing's repeated-arrow chords
+(`STPH-RS` for Left twice, and so on) and its Plover-engine-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`)
+were left out.
 
 Next: **[fingerspelling & misc keys](fingerspelling.md)**.

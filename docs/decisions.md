@@ -1790,3 +1790,10 @@ keys by text and would silently drop a duplicate; the existing collision test on
 word's cheapest entry), `cheapest_does_not_depend_on_entry_order`, and
 `the_commonest_words_have_one_stroke_and_no_ladder_marker` (top 1,000: no `/+*` marker outline,
 and only `american`/`lt`, which have no one-stroke candidate at all, may be multi-stroke).
+
+**26 Lapwing commands ported into `rules/reserved/commands.json`: Home/End/Page Up/Page Down on the
+`STPH` movement family, Shift-select versions of every movement (`STPH*...`), and F1-F12.** The
+handoff's Lapwing parity check found these as the real gaps (lyk had 100% of Plover's commands but
+lacked 71 Lapwing outputs). Lapwing's `#` number-key variants, repeated-arrow chords, and
+Plover-engine commands with no keymux equivalent were left out. Only `foi` (`TPWO` -> `TPWO*`) and
+the phrase "if one" (`TPWUPB`) lost a stroke; no measurable cost.
