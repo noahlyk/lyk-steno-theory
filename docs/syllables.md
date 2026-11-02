@@ -144,6 +144,16 @@ root's outline written by the **family rules**, applied to the root's last strok
    convention): *talk* `TAUBG` → *talking* `TAUG`, *look* `HRAOBG` → *looking* `HRAOG`, *speak*
    `SPAEBG` → *speaking* `SPAEG`. Rule 2 offers the star form as well, and cost picks.
 
+**Irregular forms follow the same rules.** `rules/families.toml`'s `[past]` table ties about 150
+irregular past tenses and participles to their stem as if they ended in "-ed", and `[plural]` ties
+irregular plurals to theirs as if they ended in "-s". So a past tense is always written as its
+stem plus `D`, however it's spelled: *built* `PWHR-D` (*build* `PWHR`), *said* `SAEUD` (*say*
+`SAEU`), *told* `TELD`, *made* `AEUBGD`, *left* `HREFD` (*leave* `HREF`), *came* `KUPLD`, *given*
+`EUFD`, *did* `*D` (*do* `-D` already holds the `D`, so rule 2 adds the star); plurals likewise:
+*men* `PHAPBZ`, *women* `WOPLZ`, *children* `AOEULDZ`. A literal pin in `rules/briefs.toml` still
+wins (*knew* `-PZ`, *thought* `-LGT`, *got* `-GTD`); each irregular form also gets its stem plus
+`+-D`/`+-Z` as a backup.
+
 Only one-stroke, right-hand-only endings take part (`-S`, `-Z`, `-D`, `-G`, `-R`, `-L`, `-FT`,
 `-PBS`, ...). Then every word is settled again from scratch with those offers in its pool.
 Locking the roots matters: without it, a root could trade its outline away in the second pass

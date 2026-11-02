@@ -1870,3 +1870,15 @@ bonus `TO*BGT`. Against the previous commit: weighted keys/word -0.0046, strokes
 top-10k members following their family: -ed 85% -> 89%, -s 89% -> 92%, -ing 71% -> 83%, -er 86% ->
 90%. `build` 18 s -> ~12 s (fewer passes needed). Four top-10k words gained a stroke (*relatively*,
 *openly*, *releasing*, *argh*).
+
+**Irregular past forms and plurals join their stem's family by rule.** `rules/families.toml` now has
+`[past]` (about 150 verbs: past tense and participle to stem) and `[plural]` (men, women, children,
+feet, teeth, mice, geese). They're linked as stem + "-ed" / stem + "-s" without the spelling or
+sound check, so the family rules write a past tense as its stem plus `D` however it's spelled:
+*built* `PWHR-D`, *said* `SED` -> `SAEUD`, *told* `TOLD` -> `TELD`, *made* `PHAED` -> `AEUBGD`,
+*left* `HREFT` -> `HREFD`, *came* `KAEPL` -> `KUPLD`, *took* `TAOBG` -> `TAEBGD`, *given*
+`TKPWEUF` -> `EUFD`, *did* `TK` -> `*D`, *been* `PW` -> `-BD`, *children* `KHEURPB` -> `AOEULDZ`.
+Several of these are a key or two longer than the brief they replace; that's the trade - one rule
+("past = stem + D") instead of a separate memorized brief per verb. Weighted keys per word +0.002,
+strokes unchanged, no top-10k word gained a stroke. *wound* and *found* were left out: their other
+senses (an injury; to establish) carry their own families (*wounded*, *founded*).

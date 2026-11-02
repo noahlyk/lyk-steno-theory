@@ -17,13 +17,22 @@ const FAMILIES: &str = include_str!("../rules/families.toml");
 #[derive(serde::Deserialize)]
 struct Families {
     not_family: Vec<String>,
+    /// Irregular past tenses and participles, each to its stem (`built` -> `build`).
+    #[serde(default)]
+    past: BTreeMap<String, String>,
+    /// Irregular plurals, each to its stem (`men` -> `man`).
+    #[serde(default)]
+    plural: BTreeMap<String, String>,
+}
+
+fn families() -> Families {
+    toml::from_str(FAMILIES).expect("rules/families.toml parses")
 }
 
 /// Words that pass the spelling and sound checks by coincidence (`better` is not `bet` + "-er"),
 /// from `rules/families.toml`.
 fn not_family() -> std::collections::HashSet<String> {
-    let families: Families = toml::from_str(FAMILIES).expect("rules/families.toml parses");
-    families.not_family.into_iter().collect()
+    families().not_family.into_iter().collect()
 }
 
 /// The endings a family link may use, as written in `rules/suffixes.toml`. Inflections plus the
@@ -170,6 +179,21 @@ pub fn links<'a>(
             let Some(chosen) = chosen else { continue };
             out.insert(word.to_owned(), Link { stem, suffix: ending, strokes: chosen.clone() });
             break 'endings;
+        }
+    }
+    // Irregular forms from `rules/families.toml`, by rule rather than by spelling or sound: a past
+    // form is its stem plus -ed's stroke, a plural its stem plus -s's (`+-S` after an "s" sound).
+    let families = families();
+    for (table, ending) in [(&families.past, "ed"), (&families.plural, "s")] {
+        for (word, stem) in table {
+            if !known.contains(word.as_str()) || !known.contains(stem.as_str()) {
+                continue;
+            }
+            let Some(options) = strokes.get(ending) else { continue };
+            let ends_in_s = pron.get(word.as_str()).and_then(|p| p.first()).and_then(|p| p.last()).is_some_and(|s| s == "S");
+            let want = if ending == "s" && !ends_in_s { "Z" } else if ending == "s" { "S" } else { "D" };
+            let Some(chosen) = options.iter().find(|o| crate::stroke::render_outline(o).ends_with(want)) else { continue };
+            out.insert(word.clone(), Link { stem: stem.clone(), suffix: ending, strokes: chosen.clone() });
         }
     }
     out
