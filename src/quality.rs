@@ -244,3 +244,77 @@ fn the_ipa_fallback_rescues_a_real_minimum_of_cmudict_gap_words() {
          `data::fallback_pronunciations`) likely regressed"
     );
 }
+
+/// `write_json` keys the deployed file by outline text, so two raw entries sharing a text would
+/// silently lose one of them on the way out. `no_two_words_share_the_same_deployed_outline` only
+/// sees each word's cheapest entry and can't catch this; this checks every entry `generate` made.
+#[test]
+fn no_two_raw_entries_share_an_outline_text() {
+    let mut seen: HashMap<String, &str> = HashMap::new();
+    let mut duplicates = Vec::new();
+    for entry in &dictionary_fixture::generated().entries {
+        let text = render_outline(&entry.outline);
+        if let Some(other) = seen.insert(text.clone(), entry.word.as_str()) {
+            duplicates.push(format!("{text:?}: {other:?} and {:?}", entry.word));
+        }
+    }
+    duplicates.sort();
+    assert!(duplicates.is_empty(), "entries sharing an outline text: {duplicates:#?}");
+}
+
+/// Each word's cheapest outline must depend only on which entries exist, not on the order
+/// `generate` pushed them in (the backup pass walks a `HashMap`): `quote`, `explain`, `lookup`,
+/// and phrase-briefing all read `cheapest`.
+#[test]
+fn cheapest_does_not_depend_on_entry_order() {
+    let generated = dictionary_fixture::generated();
+    let forward = generate::cheapest(&generated.entries);
+    let reversed: Vec<generate::Entry> = generated
+        .entries
+        .iter()
+        .rev()
+        .map(|e| generate::Entry {
+            word: e.word.clone(),
+            outline: e.outline.clone(),
+            origin: e.origin,
+            lost_to: e.lost_to.clone(),
+        })
+        .collect();
+    let backward = generate::cheapest(&reversed);
+    let mut differ: Vec<String> = forward
+        .iter()
+        .filter(|&(word, outline)| backward.get(word) != Some(outline))
+        .map(|(word, outline)| format!("{word}: {}", render_outline(outline)))
+        .collect();
+    differ.sort();
+    assert!(differ.is_empty(), "cheapest() changed with entry order: {differ:#?}");
+}
+
+/// The commonest words are typed thousands of times a day: none of them may sit on a star-ladder
+/// marker outline (`.../+*`, an extra stroke nobody can predict), and only the named exceptions
+/// may take more than one stroke at all. A new multi-stroke word here usually means a rarer word
+/// out-arbitrated it, the way `early` once lost `ERL` to `errol` (see `docs/decisions.md`).
+/// Extend `MULTI_STROKE_OK` only with a reason.
+#[test]
+fn the_commonest_words_have_one_stroke_and_no_ladder_marker() {
+    const TOP_N: usize = 1_000;
+    // Neither has a one-stroke candidate at all: "american"'s M-R-K-N coda has no cluster, and
+    // "lt" (lieutenant) has no gold brief.
+    const MULTI_STROKE_OK: &[&str] = &["american", "lt"];
+    let setup = dictionary_fixture::setup();
+    let lyk = dictionary_fixture::cheapest();
+    let mut problems: Vec<String> = Vec::new();
+    for (&word, outline) in &lyk {
+        if setup.rank.get(word).is_none_or(|&r| r >= TOP_N) {
+            continue;
+        }
+        let text = render_outline(outline);
+        if text.contains("/+*") {
+            problems.push(format!("{word}: ladder marker {text}"));
+        } else if outline.len() > 1 && !MULTI_STROKE_OK.contains(&word) {
+            problems.push(format!("{word}: {} strokes ({text})", outline.len()));
+        }
+    }
+    problems.sort();
+    assert!(problems.is_empty(), "common words on a slow or unpredictable outline: {problems:#?}");
+}

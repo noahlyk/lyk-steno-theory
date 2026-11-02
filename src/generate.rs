@@ -1690,7 +1690,17 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 /// comment already claims it "never competes with the primary"; this is what actually makes that
 /// true downstream, in both places that used to compare entries by `(len, keys)` alone.
 fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
-    let priority = |e: &Entry| (e.origin == Origin::Alternate, e.outline.len(), keys(&e.outline));
+    // Ergonomics, then the outline itself, settle what strokes and keys leave tied, so the answer
+    // depends only on which entries exist, never on the order they were pushed in.
+    let priority = |e: &'a Entry| {
+        (
+            e.origin == Origin::Alternate,
+            e.outline.len(),
+            keys(&e.outline),
+            ergonomics::weighted_outline(&e.outline),
+            e.outline.as_slice(),
+        )
+    };
     let mut best: HashMap<&str, &Entry> = HashMap::new();
     for entry in entries {
         match best.get(entry.word.as_str()) {
@@ -2648,27 +2658,28 @@ mod tests {
         let single = primary_single_strokes(&generated.entries);
         let any_len = primary_outlines(&generated.entries);
 
-        // Direction (B): "a" (single-stroke primary "A") + "working" (host, a real two-stroke
-        // primary "WORBG/+-G") - a real bigram in `setup.bigrams`. The filler "A" merges into
-        // "working"'s own first stroke "WORBG" (disjoint: "A" shares no key with "WORBG"), and
-        // "working"'s own second stroke "+-G" - join bit included - carries through unchanged.
-        assert!(setup.bigrams.contains_key(&("a".to_owned(), "working".to_owned())));
+        // Direction (B): "a" (single-stroke primary "A") + "currency" (host, a real two-stroke
+        // primary "KURPB/+SEU") - a real bigram in `setup.bigrams`. The filler "A" merges into
+        // "currency"'s own first stroke "KURPB" (disjoint: "A" shares no key with "KURPB"), and
+        // "currency"'s own second stroke "+SEU" - join bit included - carries through unchanged.
+        // (This used "working" until it became the one-stroke `WOG`.)
+        assert!(setup.bigrams.contains_key(&("a".to_owned(), "currency".to_owned())));
         assert_eq!(single.get("a").copied(), Some(parse_outline("A").unwrap()[0]));
-        assert_eq!(any_len.get("working").copied(), Some(&parse_outline("WORBG/+-G").unwrap()[..]));
-        let a_working = phrase_candidate_outline(&single, &any_len, "a", "working");
+        assert_eq!(any_len.get("currency").copied(), Some(&parse_outline("KURPB/+SEU").unwrap()[..]));
+        let a_currency = phrase_candidate_outline(&single, &any_len, "a", "currency");
         assert_eq!(
-            a_working,
-            Some(parse_outline("WAORBG/+-G").unwrap()),
-            "\"a\"'s whole primary should merge into \"working\"'s own first stroke only"
+            a_currency,
+            Some(parse_outline("KAURPB/+SEU").unwrap()),
+            "\"a\"'s whole primary should merge into \"currency\"'s own first stroke only"
         );
         assert_eq!(
             generated
                 .entries
                 .iter()
-                .find(|e| e.origin == Origin::Phrase && e.word == "a working")
+                .find(|e| e.origin == Origin::Phrase && e.word == "a currency")
                 .map(|e| e.outline.clone()),
-            a_working,
-            "\"a working\" should have actually committed with this exact two-stroke outline"
+            a_currency,
+            "\"a currency\" should have actually committed with this exact two-stroke outline"
         );
 
         // Direction (C), the symmetric case: "accompanied" (host, a real two-stroke primary

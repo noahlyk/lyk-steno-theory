@@ -1774,3 +1774,19 @@ rare names. The `eye`/`oh` pins stay - the tape shows those are the strokes reac
 --check-readme` generated the whole dictionary once per README table (five times, ~28 s); it now
 tallies once (~5 s), and `score --write-readme` rewrites stale tables in place between their own
 markers. (The solver's own speedup is logged with the no-match change above.)
+
+**`working` repinned to `WOG`; `cheapest()` ties settled by ergonomics, then the outline; three
+new quality tests.** `working` (rank 377) was pinned to the two-stroke `WORBG/+-G` for family
+consistency with `work`, on the old "no partial chords" objection - which the cost-only rule
+retired. The live tape shows `WOG` struck for "working" eight times. `wog` moves to `WO*G`; the
+`work` family's compounds follow (`hardworking` `HARD/+WOG`), and `WORBG/+-G` stays as a backup
+entry. Weighted strokes per word `-0.0003`. Separately, `best_entry_per_word` (behind `cheapest`
+and the backup pass's stem index) broke `(strokes, keys)` ties by whichever entry was pushed first,
+and the backup pass pushes in `HashMap` order - 2,080 words could flip their reported cheapest
+outline run to run. It now breaks ties on ergonomics, then on the outline itself; primaries are
+unchanged, about 100 extra backup entries appear from the now-stable stem choice, and three builds
+in a row hash identically. New tests: `no_two_raw_entries_share_an_outline_text` (`write_json`
+keys by text and would silently drop a duplicate; the existing collision test only sees each
+word's cheapest entry), `cheapest_does_not_depend_on_entry_order`, and
+`the_commonest_words_have_one_stroke_and_no_ladder_marker` (top 1,000: no `/+*` marker outline,
+and only `american`/`lt`, which have no one-stroke candidate at all, may be multi-stroke).
