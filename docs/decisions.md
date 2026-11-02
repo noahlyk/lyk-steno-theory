@@ -1637,3 +1637,47 @@ it to `5.56`, by an unrelated mechanism; not a revert of that change.
 has the same underlying gap in its own forward-generation direction, never offering both letters as
 competing candidates.** Not investigated here - flagged as a possible separate follow-up, not
 assumed to be a real issue until someone actually measures it.
+
+**24 words checked by hand against an unattributed phrase-briefing cheat sheet; 22 pinned as
+deliberately arbitrary briefs, 2 pinned with a frequency trade-off, 1 rejected outright.** The
+source was never actually Magnum's own theory - it was an unattributed README the user happened to
+like the look of, not something to treat as authoritative on its own. Every entry was checked
+individually against lyk's own real, deployed outline and the real dictionary's own collisions
+before being pinned (`cargo run -- lookup <word>`, `generate::index` for collision text) - nothing
+was imported wholesale. This is not a new mechanism: these are plain `[word]` literal overrides,
+the same ones `up`, `against`, `perhaps`, and the rest already use, and this project's own stated
+position already permits a brief with zero phonetic connection to its word (see `docs/briefs.md`
+and the README's own "Lyk beats Plover here" paragraph) - the only thing new here is sourcing a
+batch of them from outside Plover's and Lapwing's own gold dictionaries.
+
+22 pinned clean, no collision, each one a real, measured drop in keys for a word common enough
+that it matters daily: `knew` (`TKPHAOU` 7 keys -> `-PZ` 2), `liked` (`HRAOEUBGD` 9 -> `-FLD` 3),
+`found` (`TPOUPBD` 7 -> `-FBD` 3), `believed` (`PWHREFD` 7 -> `-BLD` 3), `believe` (`PHREF` 5 ->
+`-BL` 2), `can't` (`KAPBTS` 6 -> `*BG` 3), `find` (`TPAOEUD` 7 -> `-FPBD` 4), `means` (`PHAOES` 6
+-> `-PLS` 3), `bring` (`PWREU` 5 -> `PWR` 3), `their` (`THAER` 5 -> `-BLS` 3), `thing` (`THEUPG` 6
+-> `-FRLG` 4), `thought` (`THAUT` 5 -> `-LGT` 3), `wasn't` (`WAEPT` 5 -> `-FSZ` 3), `weren't`
+(`WR-PBT` 5 -> `*RP` 3), `wouldn't` (`WOPBT` 5 -> `*LD` 3), `got` (`TPWOT` 5 -> `-GTD` 3),
+`couldn't` (`KUPBD` 5 -> `*BGD` 4), `think` (`THEU` 4 -> `-PBG` 3), `these` (`THEZ` 4 -> `-RPG`
+3), `those` (`THOZ` 4 -> `-FBL` 3), `doesn't` (`TKUPBT` 6 -> `*RBGZ` 5).
+
+2 pinned with a deliberate, checked trade: `keep` (`KAOEP` 5 keys -> `KP` 2) bumps `examine` off
+`KP` - confirmed `examine` has other legal candidates and lands on `KP-PB` (4 keys), not
+unresolved. `has` (`HAZ` 3 keys -> `HA` 2) bumps `ha` (the interjection) off `HA` - confirmed `ha`
+lands on `HAE`, not unresolved. Both are the obviously-correct side of the trade: `keep` and `has`
+are far more common than `examine` and the interjection `ha`.
+
+1 rejected before it ever shipped: `like` -> `-FPL` would have collided with a *reserved* stroke,
+not another word - `-FPL` is `rules/reserved/punctuation.json`'s own chord for `{.}`, the period.
+`build` catches this today with a hard error ("wants the outline... which 'reserved (a punctuation
+mark)' already has"), so it never reached the dictionary, but the diagnostic that first screened
+all 24 candidates had only checked collisions against other *words* (`generate::index`), not
+against the reserved-stroke set - a real gap in that check, not just bad luck. Anyone running a
+similar word-vs-word diagnostic in the future should check `rules/reserved/*.json` too, not just
+`generate::index`'s word collisions.
+
+**Measured, not guessed.** Full test suite still 84/84, clippy warning count unchanged (115), no
+new unresolved words (445, same as before this batch) and no new stranded words (0). README's own
+aggregate numbers moved for real: overall Keys/Stroke (Lyk) `3.32 -> 3.29`, and the
+frequency-weighted usage table's one- and two-syllable rows `2.95 -> 2.92` and `4.76 -> 4.74` -
+this batch of 22 words is common enough to move the dictionary-wide average even though it's a
+tiny fraction of the vocabulary by word count.

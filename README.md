@@ -19,7 +19,7 @@ once would be.
 <!-- lyk:overall-table:start -->
 | Theory | Keys/Stroke, weighted by how often each word is said |
 |---|---|
-| Lyk | 3.32 |
+| Lyk | 3.29 |
 | Plover | 3.52 |
 | Lapwing | 3.94 |
 <!-- lyk:overall-table:end -->
@@ -128,8 +128,8 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.95 | 3.17 | 3.59 |
-| 2 | 4.76 | 4.70 | 4.99 |
+| 1 | 2.92 | 3.17 | 3.59 |
+| 2 | 4.74 | 4.70 | 4.99 |
 | 3 | 4.60 | 4.93 | 5.25 |
 | 4+ | 4.96 | 5.24 | 5.50 |
 <!-- lyk:usage-table:end -->

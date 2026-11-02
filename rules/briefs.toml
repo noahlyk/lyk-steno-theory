@@ -267,3 +267,40 @@ which = "KH"
 # tense) already claims HRED, so the metal sense's own first-pronunciation outline is never left
 # stranded unclaimed by pinning "lead" away from it.
 lead = "HRAED"
+
+# Arbitrary short briefs for a batch of extremely common words, with little or no phonetic
+# connection to the word itself - a deliberate, scoped exception to this project's usual
+# "exhaustively derivable" ethos (see `docs/README.md`), chosen on purpose: for a word common
+# enough, the time saved by typing one key instead of five or seven beats being able to
+# reconstruct it from sound alone. Sourced from an unattributed phrase-briefing cheat sheet that
+# was liked on sight, not copied wholesale - each one checked individually against lyk's own real
+# candidate pool and the real dictionary's own collisions before being pinned here. Key counts in
+# the comments are both sides' real, measured values (`cargo run -- lookup <word>`), not
+# estimates; see `docs/decisions.md` for the full before/after.
+knew = "-PZ"          # was TKPHAOU, 7 keys -> 2
+liked = "-FLD"        # was HRAOEUBGD, 9 keys -> 3
+found = "-FBD"        # was TPOUPBD, 7 keys -> 3
+believed = "-BLD"     # was PWHREFD, 7 keys -> 3
+believe = "-BL"       # was PHREF, 5 keys -> 2
+"can't" = "*BG"       # was KAPBTS, 6 keys -> 3
+find = "-FPBD"        # was TPAOEUD, 7 keys -> 4
+means = "-PLS"        # was PHAOES, 6 keys -> 3
+bring = "PWR"         # was PWREU, 5 keys -> 3
+their = "-BLS"        # was THAER, 5 keys -> 3
+thing = "-FRLG"       # was THEUPG, 6 keys -> 4
+thought = "-LGT"      # was THAUT, 5 keys -> 3
+"wasn't" = "-FSZ"     # was WAEPT, 5 keys -> 3
+"weren't" = "*RP"     # was WR-PBT, 5 keys -> 3
+"wouldn't" = "*LD"    # was WOPBT, 5 keys -> 3
+got = "-GTD"          # was TPWOT, 5 keys -> 3
+"couldn't" = "*BGD"   # was KUPBD, 5 keys -> 4
+think = "-PBG"        # was THEU, 4 keys -> 3
+these = "-RPG"        # was THEZ, 4 keys -> 3
+those = "-FBL"        # was THOZ, 4 keys -> 3
+"doesn't" = "*RBGZ"   # was TKUPBT, 6 keys -> 5
+
+# These two also bump another word off the stroke they're pinned to; checked that the bumped
+# word has other legal candidates of its own and doesn't go unresolved - see `docs/decisions.md`
+# for the real before/after of both.
+keep = "KP"  # was KAOEP, 5 keys -> 2; bumps "examine" off this stroke
+has = "HA"   # was HAZ, 3 keys -> 2; bumps "ha" off this stroke
