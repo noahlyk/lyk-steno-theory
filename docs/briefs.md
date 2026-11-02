@@ -59,11 +59,17 @@ generates for them unprompted now is each word's own correct, full phonetic read
 fallback each override's own comment already named as the alternative to its exploit.
 
 **Cost, for ranking candidates against each other, is strokes first, then keys, then physical
-ergonomics as the final tie-break** — the same priority `shortest`/the star ladder always encoded
-informally, now a single explicit function (`candidate_cost`, `src/generate.rs`) applied uniformly
-everywhere a candidate's intrinsic cost matters. Fewer strokes always wins outright; among
+ergonomics as the final tie-break** — one explicit function (`candidate_cost`, `src/generate.rs`)
+applied uniformly everywhere a candidate's intrinsic cost matters: 25,000 per stroke, 1,000 per
+key, and an ergonomics score that always stays under 1,000. A stroke costs more than every key a
+single stroke can hold (24), so for any one word fewer strokes always wins outright; among
 equal-stroke candidates, fewer keys wins; among candidates tied on both, the physically more
-comfortable one wins (see [`src/ergonomics.rs`](../src/ergonomics.rs)). This replaces an older,
+comfortable one wins (see [`src/ergonomics.rs`](../src/ergonomics.rs)). Where the stroke weight's
+size actually matters is *between* words, once frequency is folded in: a stroke used to weigh
+1,000 keys, which let any rare word saving itself one stroke beat any number of extra keys on a
+far commoner word (`you` was once pushed from `U` to the 7-key `KWRAOU` that way). At 25 keys a
+stroke, `like` is `HRAOEU` instead of `HRAOEUB`, `day` `AEU` instead of `TAEU`, `young` `HUPBG`
+instead of `KWHUPBG` - see [`docs/decisions.md`](decisions.md) for the measured trade. This replaces an older,
 narrower tie-break that preferred a star-free candidate specifically when two of a word's own gold
 outlines tied on every other measure (Plover's own list for `best` has both `PW*ES` and `PWEFT`,
 costing exactly the same 5 keys, with the star there just a list-order artifact of Plover's own

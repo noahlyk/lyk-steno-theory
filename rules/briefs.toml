@@ -308,7 +308,8 @@ has = "HA"   # was HAZ, 3 keys -> 2; bumps "ha" off this stroke
 # Two words the live steno tape (keymux's own log) shows being reached for by their plain
 # phonetic stroke and getting something else: `AOEU` came out as the bare letter "i" or "aye",
 # `OE` as "owe", and "oh" itself was typed out letter by letter instead of as its 7-key brief.
-# Both lose to rarer words only because one extra stroke for the rarer word outweighs any number
-# of extra keys for the commoner one (see `docs/briefs.md`); pinned, see `docs/decisions.md`.
+# Both lost to rarer words because one extra stroke for the rarer word outweighed any number of
+# extra keys for the commoner one, before `STROKE_WEIGHT` became finite (see `docs/briefs.md`);
+# kept pinned because the tape shows these are the strokes actually reached for.
 eye = "AOEU"   # was KWRAOEU, 7 keys -> 4; bumps "aye" off this stroke
 oh = "OE"      # was O*ERBGS, 7 keys -> 2; bumps "owe" off this stroke

@@ -1751,3 +1751,17 @@ of the 52 strokes was already reserved. Cost, measured: frequency-weighted keys 
 trailing-hyphen and initial-with-period variants were left out - the number bar isn't in lyk's
 stroke model, and the rest double the stroke count for little use. This is also what
 `no_match_cost` prices an unplaced word as.
+
+**A stroke now weighs 25 keys in `candidate_cost`, not 1,000.** Three fixes in a row (`you`/`'ve`,
+`eye`/`aye`, `oh`/`owe`) had the same root: once the solver multiplies cost by frequency, a
+1,000-key stroke let any rare word saving itself one stroke beat any number of extra keys on a far
+commoner word. 25 is the smallest round number above the 24 keys one stroke can hold, so for any
+single word fewer strokes still wins outright; only cross-word trades change. Measured
+against the build before it, sweeping 5 / 10 / 20 / 25 keys per stroke: frequency-weighted keys per
+word `-0.027 / -0.026 / -0.025 / -0.024`, strokes per word `+0.0004 / +0.0003 / +0.0002 /
++0.0002`, top-10k words gaining a stroke `- / 16 / 11 / 8` (commonest: `wagon`, rank 4,331,
+`WA*PB` -> `WAG/+-PB`). Improvements include `like` (`HRAOEUB` -> `HRAOEU`), `hey` (`HAEU` ->
+`HAE`), `day` (`TAEU` -> `AEU`), `better` (`PWOERT` -> `PWERT`), `wanna` (`WA*UPB` -> `WAPB`),
+`young` (`KWHUPBG` -> `HUPBG`), `another`, `next`, `care`. `build`'s keys per word on the shared
+vocabulary went `3.349 -> 3.303` at an unchanged `1.015` strokes. Unplaced words 489 -> 504, all
+rare names. The `eye`/`oh` pins stay - the tape shows those are the strokes reached for.

@@ -167,7 +167,7 @@ pub struct Candidate {
     pub cost: u32,
 }
 
-const STROKE_WEIGHT: u32 = 1_000_000;
+const STROKE_WEIGHT: u32 = 25_000;
 const KEY_WEIGHT: u32 = 1_000;
 
 /// What it costs a word, in `edge_cost` units, to end up with no primary outline at all: it is
@@ -184,12 +184,11 @@ fn no_match_cost(word: &str, weight: u64, candidates: &[Candidate]) -> u64 {
 }
 
 /// Intrinsic cost of an outline alone, independent of word or frequency: fewer strokes dominates,
-/// fewer keys breaks ties within that, ergonomics only breaks ties within *that* - the same
-/// priority `shortest`/`ladder` already encoded informally before this existed, made explicit and
-/// total. The weight separation is deliberate: ergonomics (bounded well under 1,000 per its own
-/// ceiling test) can never override a key-count difference, and a key-count difference can never
-/// override a stroke-count difference - this preserves the theory's already-tuned priority order
-/// rather than re-litigating it.
+/// fewer keys breaks ties within that, ergonomics only breaks ties within *that*. `STROKE_WEIGHT`
+/// is 25 keys - more than the 24 keys one stroke can hold - so no word ever prefers a longer
+/// outline for itself; it is finite, rather than effectively infinite, so that once frequency is
+/// folded in, one extra stroke for a rare word is weighed against extra keys for a common one
+/// instead of always winning (see `docs/briefs.md`). Ergonomics stays bounded under `KEY_WEIGHT`.
 ///
 /// Frequency does NOT belong here - it is a property of a *word* wanting a candidate, not of the
 /// candidate itself, reusable as-is by any other word considering the exact same outline. Frequency
@@ -907,7 +906,7 @@ pub fn keys(outline: &[Stroke]) -> u32 {
 /// as "i" plus "'ve"). Never a word by itself - struck alone it would type " 've" with a space -
 /// but with the full contraction's count it out-arbitrates real words for short strokes (it once
 /// pushed "you" off `U`). Colloquial clipped words ("'cause", "'em", "'til") are real words and stay.
-pub(crate) const CONTRACTION_TAILS: &[&str] = &["'s", "'d", "'ll", "'re", "'m", "'ve", "'t", "'n", "'a"];
+pub const CONTRACTION_TAILS: &[&str] = &["'s", "'d", "'ll", "'re", "'m", "'ve", "'t", "'n", "'a"];
 
 /// Every word `generate` is willing to consider at all, most common first: a real pronunciation on
 /// record, inside the requested frequency window, plain lowercase (apostrophes aside), with "a" the
@@ -2484,14 +2483,14 @@ mod tests {
                 seed ^= seed << 17;
                 seed
             };
-            let word_count = 3 + (rand() % 6) as usize;
+            let word_count = 3 + usize::try_from(rand() % 6).unwrap();
             let mut options: Vec<Vec<(usize, u64)>> = Vec::new();
             let mut escape: Vec<u64> = Vec::new();
             for _ in 0..word_count {
-                let n = 1 + (rand() % 3) as usize;
+                let n = 1 + usize::try_from(rand() % 3).unwrap();
                 let mut chosen: Vec<usize> = Vec::new();
                 while chosen.len() < n {
-                    let t = (rand() % texts.len() as u64) as usize;
+                    let t = usize::try_from(rand() % 6).unwrap();
                     if !chosen.contains(&t) {
                         chosen.push(t);
                     }
