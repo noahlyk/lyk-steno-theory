@@ -245,6 +245,40 @@ fn the_ipa_fallback_rescues_a_real_minimum_of_cmudict_gap_words() {
     );
 }
 
+/// Nearly every family member among the common words can be typed as its stem's own outline plus
+/// the ending's stroke (see `crate::family` and `docs/syllables.md`): measured at 94-100% per
+/// ending when the family direction landed, held here at 90% for the three biggest endings, plus
+/// a few hand-checked members.
+#[test]
+fn common_family_members_are_reachable_as_stem_plus_ending() {
+    let setup = dictionary_fixture::setup();
+    let generated = dictionary_fixture::generated();
+    let index = generate::index(generated);
+    for (word, text) in [("called", "KAUL/+-D"), ("looks", "HRAOBG/+-S"), ("fighting", "TPAOEUT/+-G")] {
+        assert_eq!(index.get(text), Some(&word), "{word} should be reachable as {text}");
+    }
+    let cheapest = generate::cheapest(&generated.entries);
+    let mut tally: HashMap<&str, (usize, usize)> = HashMap::new();
+    for (word, link) in &generated.links {
+        if setup.rank.get(word).is_none_or(|&r| r >= 10_000) || !["s", "ed", "ing"].contains(&link.suffix) {
+            continue;
+        }
+        let Some(stem) = cheapest.get(link.stem.as_str()) else { continue };
+        let mut composed = stem.to_vec();
+        composed.extend_from_slice(&link.strokes);
+        setup.rules.joined(&mut composed);
+        let entry = tally.entry(link.suffix).or_default();
+        entry.0 += 1;
+        entry.1 += usize::from(index.get(&render_outline(&composed)) == Some(&word.as_str()));
+    }
+    for (suffix, (members, reachable)) in tally {
+        assert!(
+            reachable * 10 >= members * 9,
+            "-{suffix}: only {reachable} of {members} common members reachable as stem + ending"
+        );
+    }
+}
+
 /// `write_json` keys the deployed file by outline text, so two raw entries sharing a text would
 /// silently lose one of them on the way out. `no_two_words_share_the_same_deployed_outline` only
 /// sees each word's cheapest entry and can't catch this; this checks every entry `generate` made.

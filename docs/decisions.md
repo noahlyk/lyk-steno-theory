@@ -1797,3 +1797,21 @@ handoff's Lapwing parity check found these as the real gaps (lyk had 100% of Plo
 lacked 71 Lapwing outputs). Lapwing's `#` number-key variants, repeated-arrow chords, and
 Plover-engine commands with no keymux equivalent were left out. Only `foi` (`TPWO` -> `TPWO*`) and
 the phrase "if one" (`TPWUPB`) lost a stroke; no measurable cost.
+
+**Word families: `src/family.rs` links a word to its stem by spelling, confirmed by sound, and the
+backup pass gives every linked word its stem's own outline plus the ending's stroke.** Before this,
+the only stem-plus-ending backups came from the sound-based direction (a), which needs the ending
+to be a syllable of its own: in the top 10,000, 78% of "-ing" forms, 22% of "-ed" forms, and 7% of
+"-s" forms had one, so `called` had no `KAUL/+-D` and `looks` no `HRAOBG/+-S`. A link needs the
+stem's spelling (with e-drop, consonant undoubling, i-to-y, and "-es"/"-ies" handled), the exact
+sounds that ending adds after some pronunciation of the stem, and a stem said at least 1/50th as
+often as the word (`need` is not `ne` + "-ed": 1,040,131 uses against 4,128). Family backups skip
+the fragment check: both halves are already real outlines, and the check was refusing honest ones
+built on briefs (`fight` `TPAOEUT` + `+-G`). Result, top 10,000: 94-100% of every ending's members
+reachable as stem plus ending (`-s` 1,370/1,372, `-ed` 644/648, `-ing` 601/606); backup entries
+24,000 -> 38,600; no primary changed; frequency-weighted keys per word `-0.005` because some words'
+cheapest path is now the family entry (`instructions` `STRUBGS/+-Z` instead of three strokes).
+`gettis` lost a coincidental `ET/+-S` to `gets`. README syllable tables moved for 2+ syllables (3
+syllables 5.25 -> 5.17 keys/stroke). New `cargo run -- family [word]` prints one family or the whole
+dictionary's numbers, including how often a member's own one-stroke primary starts from its stem's
+keys (`-s` 77%, `-ed` 66%, `-ing` 56%) - the primaries themselves are untouched by this change.

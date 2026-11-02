@@ -19,11 +19,13 @@ mod quote_corpus;
 #[cfg(test)]
 mod quality;
 mod ergonomics;
+mod family;
 mod reverse;
 mod rules;
 mod stroke;
 
 use anyhow::{Context, Result};
+use std::fmt::Write as _;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
@@ -176,6 +178,18 @@ enum Command {
         #[arg(long)]
         briefs: Option<PathBuf>,
     },
+    /// Show a word's whole family (`build`, `builds`, `building`, `buildings`, ...): each member's
+    /// stem and ending, its outline, its stem-plus-ending backup, and whether its outline starts
+    /// from the stem's own keys. With no word, prints the family report for the whole dictionary.
+    Family {
+        word: Option<String>,
+        /// Words to cover when building the dictionary, most common first
+        #[arg(long, default_value_t = 100_000)]
+        common: usize,
+        /// Briefs to use instead of the built-in ones
+        #[arg(long)]
+        briefs: Option<PathBuf>,
+    },
     /// Score a stroke outline or word's physical comfort, term by term: which finger reaches
     /// where, which pairs cost a transition, which finger is a gap, and the pinky tax - not just
     /// the one number `score`/`build` otherwise sum into `candidate_cost`. See `src/ergonomics.rs`.
@@ -309,6 +323,20 @@ fn main() -> Result<()> {
             common,
             briefs,
         } => run_lookup(&setup, query, *common, briefs.as_deref()),
+        Command::Family { word, common, briefs } => {
+            let setup = setup(Some(*common))?;
+            let briefs = match briefs {
+                Some(path) => generate::Briefs::load(path)?,
+                None => generate::Briefs::built_in()?,
+            };
+            let generated = generate::generate(&setup, &briefs, *common)?;
+            if let Some(word) = word {
+                print_family(&setup, &generated, word);
+            } else {
+                print!("{}", family_report(&setup, &generated, 25));
+            }
+            Ok(())
+        }
         Command::Ergonomics { query, common, briefs } => {
             run_ergonomics(&setup, query, *common, briefs.as_deref())
         }
@@ -532,4 +560,101 @@ fn write_plugin(
     std::fs::write(out, source).with_context(|| out.display().to_string())?;
     println!("wrote {}", out.display());
     Ok(())
+}
+
+/// Every member of `word`'s family, root first, then by frequency: see `Command::Family`.
+fn print_family(setup: &analysis::Setup, generated: &generate::Generated, word: &str) {
+    let links = &generated.links;
+    let root = family::root(links, word);
+    let cheapest = generate::cheapest(&generated.entries);
+    let index = generate::index(generated);
+    let mut members: Vec<&str> = links
+        .keys()
+        .map(String::as_str)
+        .filter(|w| family::root(links, w) == root)
+        .collect();
+    members.sort_by_key(|w| (setup.rank.get(*w).copied().unwrap_or(usize::MAX), *w));
+    members.insert(0, root);
+    println!("family of {root:?}: {} member(s)", members.len());
+    for member in members {
+        let own = cheapest.get(member).map_or_else(|| "-".to_owned(), |o| stroke::render_outline(o));
+        let Some(link) = links.get(member) else {
+            println!("  {member:<18} {own:<22} (root)");
+            continue;
+        };
+        let stem_outline = cheapest.get(link.stem.as_str());
+        let backup = stem_outline.map(|s| {
+            let mut composed = s.to_vec();
+            composed.extend_from_slice(&link.strokes);
+            setup.rules.joined(&mut composed);
+            stroke::render_outline(&composed)
+        });
+        let backup_note = match &backup {
+            Some(text) if index.get(text) == Some(&member) => format!("backup {text}"),
+            Some(text) => index
+                .get(text)
+                .map_or_else(|| format!("backup {text} not built"), |other| format!("backup {text} lost to {other:?}")),
+            None => "stem has no outline".to_owned(),
+        };
+        let starts = match (stem_outline, cheapest.get(member)) {
+            (Some(s), Some(m)) if family::contains_stem(s, m) => "starts from the stem",
+            (Some(_), Some(_)) => "own shape",
+            _ => "",
+        };
+        println!(
+            "  {member:<18} {own:<22} = {} + -{:<5} {backup_note}  [{starts}]",
+            link.stem, link.suffix
+        );
+    }
+}
+
+/// The whole dictionary's family numbers for the top `TOP` words, and the commonest members whose
+/// own outline doesn't start from their stem's: printed by `family` with no word and by `build`.
+fn family_report(setup: &analysis::Setup, generated: &generate::Generated, show: usize) -> String {
+    const TOP: usize = 10_000;
+    let cheapest = generate::cheapest(&generated.entries);
+    let index = generate::index(generated);
+    let mut by_suffix: std::collections::BTreeMap<&str, [usize; 3]> = std::collections::BTreeMap::new();
+    let mut odd: Vec<(usize, &str, String, &str, String)> = Vec::new();
+    for (word, link) in &generated.links {
+        let rank = setup.rank.get(word).copied().unwrap_or(usize::MAX);
+        if rank >= TOP {
+            continue;
+        }
+        let (Some(stem), Some(own)) = (cheapest.get(link.stem.as_str()), cheapest.get(word.as_str())) else {
+            continue;
+        };
+        let tally = by_suffix.entry(link.suffix).or_default();
+        tally[0] += 1;
+        let mut composed = stem.to_vec();
+        composed.extend_from_slice(&link.strokes);
+        setup.rules.joined(&mut composed);
+        if index.get(&stroke::render_outline(&composed)) == Some(&word.as_str()) {
+            tally[1] += 1;
+        }
+        if family::contains_stem(stem, own) {
+            tally[2] += 1;
+        } else {
+            odd.push((rank, word, stroke::render_outline(own), link.stem.as_str(), stroke::render_outline(stem)));
+        }
+    }
+    let mut out = format!(
+        "word families in the top {TOP}: members by ending, how many can be typed as stem + ending, \
+         and how many have an outline that starts from the stem's own keys\n"
+    );
+    let pct = |part: usize, whole: usize| part * 100 / whole.max(1);
+    for (suffix, [n, backup, starts]) in &by_suffix {
+        let _ = writeln!(
+            out,
+            "  -{suffix:<6} {n:>5} members   stem + ending {backup:>5} ({:>3}%)   starts from stem {starts:>5} ({:>3}%)",
+            pct(*backup, *n),
+            pct(*starts, *n),
+        );
+    }
+    odd.sort();
+    out += "the commonest members whose outline doesn't start from the stem's\n";
+    for (rank, word, own, stem, stem_outline) in odd.into_iter().take(show) {
+        let _ = writeln!(out, "  #{rank:<6} {word:<16} {own:<14} stem {stem} {stem_outline}");
+    }
+    out
 }

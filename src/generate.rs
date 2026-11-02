@@ -126,6 +126,8 @@ pub struct Generated {
     /// A phrase candidate that lost its merged stroke, either to something `taken` already held
     /// or to another eligible bigram this same pass arbitrated away (see `arbitrate_phrase_round`).
     pub phrases_skipped: usize,
+    /// Every word that is another word plus a regular ending, by word - see `crate::family`.
+    pub links: HashMap<String, crate::family::Link>,
 }
 
 /// Among words that all share one exact pronunciation, the one whose own spelling also agrees
@@ -1436,6 +1438,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // cap is worth investigating as a sign something is matching too permissively, not a reason
     // to just raise it further.
     const MAX_BACKUP_ROUNDS: usize = 5;
+    let links = crate::family::links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
     let mut backup_skipped = 0usize;
     for _round in 0..MAX_BACKUP_ROUNDS {
         let word_outline: HashMap<String, Vec<Stroke>> =
@@ -1543,6 +1546,23 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
                     round_candidates.push((word.clone(), composed, text));
                 }
+            }
+
+            // (d) family: the stem's own outline, whatever it is, plus the ending's standalone
+            // stroke from `rules/suffixes.toml` (`call` + "-ed" -> `KAUL/+-D`). Unlike (a), the
+            // ending need not be a syllable of its own, so "-s" and "-ed" are covered too, and the
+            // stem is found by spelling confirmed by sound (`crate::family::links`).
+            if let Some(link) = links.get(&word)
+                && let Some(stem_outline) = word_outline.get(&link.stem)
+            {
+                // No fragment check: both halves are already real outlines (the stem's own entry and
+                // the ending's standalone stroke), so there is no partial chord to catch, and a
+                // stem stroked by brief (`fight` `TPAOEUT` + "-ing") would otherwise be refused.
+                let mut composed = stem_outline.clone();
+                composed.extend_from_slice(&link.strokes);
+                setup.rules.joined(&mut composed);
+                let text = render_outline(&composed);
+                round_candidates.push((word.clone(), composed, text));
             }
 
             // (c) two whole placed words back to back (`myself` -> `my` + `self`), composed as
@@ -1682,6 +1702,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         contested: contested_count,
         phrases_added,
         phrases_skipped,
+        links,
     })
 }
 

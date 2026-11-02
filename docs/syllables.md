@@ -36,7 +36,7 @@ primary (shown by `explain` and used everywhere else); it only ever adds an extr
 learner who knows the stem and the ending can always reach the word that way too.
 
 **This pass is exhaustive, and runs to a fixed point.** Every word tries every split of its own
-sounds against all three directions below — not just the first one that works — and every safe,
+sounds against every direction below — not just the first one that works — and every safe,
 non-colliding composed outline it finds is added; a word regularly ends up with several backup
 entries at once, not just one. The index of "already-placed words" this searches is rebuilt after
 each pass over the whole dictionary, now including whatever the previous pass just added, and the
@@ -84,7 +84,7 @@ stress-blind one) can see past, so these are correctly left alone rather than gu
 accepted gap, not a bug to chase. `everyone`, `yourself`, `cannot`, and `anybody` all miss this way
 today.
 
-None of these three directions requires the match to *mean* anything: `doctor`'s own sounds happen
+None of the three sound-based directions above requires the match to *mean* anything: `doctor`'s own sounds happen
 to be exactly `docked`'s plus an "-er", and `crash`'s are exactly a "k" in front of `rash`'s —
 coincidences with no relation to either word's own sense, reused anyway, the same way a brief never
 needed one either (see [the main README](../README.md#where-lyk-stands)). When more than one
@@ -95,6 +95,38 @@ spelling already settles a tie between words that sound alike elsewhere in this 
 alone rather than guessed at. A collision with an outline something else already has is skipped and
 counted (`build`'s own report line), never a hard failure, since this is a best-effort pass over
 the whole dictionary rather than an explicit, human-authored override.
+
+**A fourth direction: word families.** The directions above find a stem by sound, and the first
+only fires when the ending is a syllable of its own, so `called` (`call` + a bare "d") and `looks`
+(`look` + a bare "s") got no stem-plus-ending entry at all: in the top 10,000 words, only 22% of
+"-ed" forms and 7% of "-s" forms had one. `src/family.rs` links words by *spelling*, confirmed by
+*sound*: a word is a stem plus one of the endings `-s`, `-ed`, `-ing`, `-er`, `-est`, `-ly`,
+`-ness`, `-ment`, `-able`, `-ful`, `-less`, `-ship`, `-hood`, where
+
+- the stem's spelling is the word minus the ending, allowing a dropped "e" (*making* / *make*), an
+  undoubled consonant (*running* / *run*), "i" back to "y" (*happiness* / *happy*), and the
+  "-es"/"-ies" plurals (*boxes*, *cities*);
+- some pronunciation of the word is some pronunciation of the stem followed by exactly the sounds
+  that ending adds (`-ed`: D, T, or IH D; `-s`: S, Z, or IH Z; `-ing`: IH NG; and so on), so *used*
+  is *use* + "-ed", never *us* + "-ed";
+- the stem is said at least 1/50th as often as the word, so *need* is not *ne* + "-ed".
+
+Every linked word gets its stem's own outline, whatever it is (a brief, a rules reading, a star
+form), plus the ending's standalone stroke from [the suffix table](suffixes.md): `KAUL/+-D` for
+*called*, `HRAOBG/+-S` for *looks* (`+-S` when the word really ends in an "s" sound, `+-Z`
+otherwise), `TPAOEUT/+-G` for *fighting*, `HAEP/+-PBS` for *happiness*. These skip the fragment
+check the other directions run: both halves are already real outlines, so there is no partial chord
+to catch. They chain like every other backup (*needlessly* = *needless* + `+-L` = *need* + `+-LS` +
+`+-L`). With this, 94–100% of every ending's members in the top 10,000 can be typed as stem plus
+ending. The rare misses are texts a primary outline already holds (*needed*'s `TPHAED/+-D` is
+*kneaded*'s primary).
+
+`cargo run --release -- family build` prints one family: every member, its stem and ending, its
+own outline, its stem-plus-ending entry, and whether its own outline starts from the stem's keys.
+`cargo run --release -- family` with no word prints the whole dictionary's numbers by ending and
+the commonest members whose own outline doesn't start from the stem's (*doing* `TK*G` against
+*do* `-D`, *looking* `HRAOG` against *look* `HRAOBG`). Those are one-stroke primaries chosen for
+speed; the stem-plus-ending entry is always there as the predictable way in.
 
 A collision *within the same pass* — two different words (or the same word, by two different
 directions) composing the exact same text before either is committed — is not decided by whichever
