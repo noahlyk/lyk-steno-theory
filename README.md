@@ -87,6 +87,7 @@ cargo run --release -- plugin              # generate keymux's WASM fallback plu
 cargo run --release -- deploy              # build + plugin, copied straight into keymux's live config
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
 cargo run --release -- explain moon        # which rules wrote a word, next to Plover and Lapwing
+cargo run --release -- family build       # build, builds, building...: each one's outline and its stem + ending entry
 cargo run --release -- mismatches --syllables 2 --after 500    # where the rules differ
 cargo run --release -- learn               # which keys Plover and Lapwing use for each sound group
 cargo run --release -- build --against magnum.rtf   # add a third dictionary to the cost tables
