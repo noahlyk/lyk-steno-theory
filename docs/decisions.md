@@ -1739,3 +1739,15 @@ alone it would type " 've", space included. Found when reserving `*U` for finger
 (`'cause`, `'bout`, `'em`, `'til`) stay. Freed strokes went to `um` (`*UPL` -> `UPL`), `guess`
 (`TPWES` -> `ES`), `you'll` (`H*UL` -> `UL`), `tour` (`TAOUR` -> `TUR`), `id` (`*EUD` -> `EUD`).
 Frequency-weighted keys per word `-0.0017`.
+
+**Plover's glued fingerspelling alphabet ported into `rules/reserved/punctuation.json`: 26
+lowercase (`A*`, `PW*`, ... `STKPW*`, writing `{>}{&a}`) and 26 capitals (`A*P`, ... writing
+`{&A}`).** Until now there was no way to fingerspell in running text at all: spelling mode's `~`
+has no physical key yet, and the Emily's `-LGTS` alphabet only sends modifier key presses. keymux
+already parses both `{>}` and `{&...}` (`steno/meta.rs`), so this works with no keymux change. None
+of the 52 strokes was already reserved. Cost, measured: frequency-weighted keys per word
+`+0.0005`; the words that moved are `captain` (`K*P` -> `KAPT`), `eh` (`*E` -> `A*EU`), `ahh`
+(`A*` -> `A/+*`), `uhh`, `zip` (`*EUP` -> `S*EUP`), and rarer ones. Number-bar, `-RBGS`,
+trailing-hyphen and initial-with-period variants were left out - the number bar isn't in lyk's
+stroke model, and the rest double the stroke count for little use. This is also what
+`no_match_cost` prices an unplaced word as.

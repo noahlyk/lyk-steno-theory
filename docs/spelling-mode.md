@@ -88,7 +88,9 @@ through) in a separate, ongoing change, and wiring a second extra key into a rea
 change's job to finish, not this one's. Until then, spelling mode is fully implemented and
 testable through `cargo run -- resolve` and the generated plugin, but not yet something you can
 actually strike at a keyboard — the mechanism is proven ahead of the hardware catching up to it,
-not the other way around.
+not the other way around. In the meantime, the glued fingerspelling letters (`A*`, `PW*`, ...;
+see **[fingerspelling & misc keys](fingerspelling.md#fingerspelling-in-running-text)**) spell
+a word out letter by letter on ordinary keys.
 
 This is the last chapter of the theory itself. Next: **[where lyk stands](../README.md#where-lyk-stands)** —
 the benchmarks, a measured result of everything above rather than a rule of its own.

@@ -9,7 +9,9 @@ This chapter is the actual content: what's in `rules/reserved/punctuation.json` 
 
 ## Punctuation (`rules/reserved/punctuation.json`)
 
-144 strokes, forked from Plover's own punctuation dictionary. Most marks have far more than one
+196 strokes: 144 forked from Plover's own punctuation dictionary, plus the 52 glued
+fingerspelling letters (`A*` a, `A*P` A, ...) documented in
+**[fingerspelling & misc keys](fingerspelling.md#fingerspelling-in-running-text)**. Most marks have far more than one
 stroke because Plover's convention gives each mark several chords for several different contexts —
 struck plain, struck doubled, struck with a leading or trailing glue so it doesn't force an
 unwanted space, struck after a quote or before a parenthesis, and so on. A handful of the busiest

@@ -42,6 +42,28 @@ the `LGTS` ender, seeds the letter table **[spelling mode](spelling-mode.md)** r
 no-pronunciation word back from — a different purpose (prose, not an OS keybinding), so it keeps
 only each letter's primary chord.
 
+## Fingerspelling in running text
+
+The `LGTS` alphabet above only sends OS key presses with a modifier held. To spell a word out in
+prose (a name, an acronym, anything the dictionary doesn't have), lyk uses Plover's own glued
+fingerspelling, which lives in `rules/reserved/punctuation.json` and works at the keyboard today:
+
+| Stroke | Writes | Example |
+|---|---|---|
+| a letter's chord plus `*` | that letter, lowercase | `A*` a, `PW*` b, `KR*` c, `TK*` d, `*E` e |
+| the same plus `-P` | that letter, capitalized | `A*P` A, `PW*P` B, `KR*P` C |
+
+The letter chords are the alphabet above: `A`, `PW`, `KR`, `TK`, `E`, `TP`, `TKPW`, `H`, `EU`
+(i), `SKWR` (j), `K`, `HR` (l), `PH` (m), `TPH` (n), `O`, `P`, `KW` (q), `R`, `S`, `T`, `U`, `SR`
+(v), `W`, `KP` (x), `KWR` (y), `STKPW` (z). Letters glue to each other and to nothing else, so
+`KR*P`/`A*`/`T*` writes " Cat" as one word. These 52 strokes are reserved ahead of every word, so
+whatever word wanted one moves to its next-cheapest outline (`captain` from `K*P` to `KAPT`, `eh`
+from `*E` to `A*EU`). Plover's other variants - number-bar chords, the `-RBGS` forms, a trailing
+hyphen or period - are not ported.
+
+A word with no outline of its own (see [briefs](briefs.md)'s no-match rule) is costed by the
+generator as exactly this: one stroke per letter.
+
 ## Numbers and function keys
 
 The left hand's bottom row (`R`, `W`, `K`, `S`) counts in binary when struck with the vowel `AO`
