@@ -175,19 +175,19 @@ Longer words differ mostly where Plover and Lapwing have a brief, and where Lyk 
 
 | | Strokes | Keys |
 |---|---|---|
-| Lyk | 1.015 | 3.373 |
-| Plover | 1.039 | 3.717 |
-| Lapwing | 1.041 | 4.114 |
+| Lyk | 1.015 | 3.302 |
+| Plover | 1.040 | 3.721 |
+| Lapwing | 1.042 | 4.118 |
 
 By how common the word is (`build` prints this), keys per word:
 
 | Words | Share of all words said | Lyk | Plover | Lapwing |
 |---|---|---|---|---|
-| top 100 | 58% | 2.15 | 2.48 | 2.91 |
-| 100 to 1,000 | 28% | 4.54 | 4.81 | 5.17 |
-| 1,000 to 5,000 | 10% | 5.54 | 6.14 | 6.42 |
-| 5,000 to 20,000 | 4% | 6.83 | 7.47 | 7.88 |
-| 20,000+ | 1% | 8.63 | 8.91 | 9.29 |
+| top 100 | 58% | 2.11 | 2.48 | 2.91 |
+| 100 to 1,000 | 28% | 4.39 | 4.81 | 5.17 |
+| 1,000 to 5,000 | 10% | 5.49 | 6.14 | 6.42 |
+| 5,000 to 20,000 | 4% | 6.82 | 7.47 | 7.87 |
+| 20,000+ | 1% | 8.65 | 8.93 | 9.30 |
 
 The top thousand words are briefs in all three, which is why the dictionaries are close: the
 rules can only move the rest. Lyk now beats Plover across every frequency tier, including the
@@ -198,12 +198,12 @@ attempt; see [briefs](docs/briefs.md) for how.
 
 That is with the join key on every continuation stroke counted, and with a Plover outline counted
 only when Lapwing has it too: Plover's `main.json` is full of misstrokes (`O` for *to*, `SP` for
-*and*) that would otherwise make it look a third of a key cheaper than it is. Close to 4,000 words
+*and*) that would otherwise make it look a third of a key cheaper than it is. About 4,600 words
 end up with a star form because some other, more valuable word's candidate won the plain outline
 instead (`site` and `sight`, `don` and `done`, but also any other collision the global optimizer
 settles this way now, not just a sound-alike pair); `build` lists the commonest. About 500 of the
 100,000 words can't be written by these rules yet, nearly all names and interjections (`hm`,
-`schmidt`, `vlad`). On top of all that, close to 20,000 words also get a second, backup entry built
+`schmidt`, `vlad`). On top of all that, about 24,000 backup entries are built
 from an already-placed shorter word's own outline plus whatever sounds are left over (`build`'s own
 outline plus a continuation stroke also reaches `building`, whether or not that agrees with
 `building`'s own cheapest outline) — see [syllables & folding](docs/syllables.md) for the rule.
