@@ -53,7 +53,7 @@ fn every_sufficiently_common_pronounceable_word_has_a_real_outline() {
         .filter(|&(w, &r)| {
             r < TOP_N
                 && setup.pron.contains_key(w.as_str())
-                && (w.len() >= 2 || w.as_str() == "a" || w.as_str() == "i")
+                && (w.len() >= 2 || w.as_str() == "a")
                 && w.bytes().all(|b| b.is_ascii_lowercase() || b == b'\'')
         })
         .map(|(w, _)| w.as_str())

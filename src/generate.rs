@@ -815,6 +815,28 @@ fn phrase_candidate_outline(
 /// `taken` are all accounted for. See `docs/phrases.md`'s threshold section for how the real
 /// eligible-set size was measured and why raw count (not a PMI/collocation ratio) is what ranks
 /// bigrams here.
+/// The pronoun's own entry is the capitalized "I" (see `generate`), while the bigram corpus and
+/// the frequency list only ever spell it lowercase.
+fn entry_word(word: &str) -> &str {
+    if word == "i" { "I" } else { word }
+}
+
+/// How a word is actually written out: the pronoun "I", alone or leading a contraction ("i'm") or
+/// as either half of a phrase entry ("i think"), is capitalized; everything else is as-is. Words
+/// are keyed lowercase everywhere inside the generator, so this is applied only on the way out.
+pub fn written(word: &str) -> String {
+    word.split(' ')
+        .map(|token| {
+            if token == "i" || token.starts_with("i'") {
+                format!("I{}", &token[1..])
+            } else {
+                token.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn enumerate_phrase_candidates(
     setup: &Setup,
     single: &HashMap<&str, Stroke>,
@@ -827,7 +849,7 @@ fn enumerate_phrase_candidates(
         .into_iter()
         .take(top_n)
         .filter_map(|((w1, w2), &count)| {
-            phrase_candidate_outline(single, any_len, w1, w2).map(|outline| ((w1.clone(), w2.clone()), outline, count))
+            phrase_candidate_outline(single, any_len, entry_word(w1), entry_word(w2)).map(|outline| ((w1.clone(), w2.clone()), outline, count))
         })
         .collect()
 }
@@ -893,7 +915,7 @@ fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)> {
         .filter(|(w, r)| {
             **r < common
                 && setup.pron.contains_key(w.as_str())
-                && (w.len() >= 2 || w.as_str() == "a" || w.as_str() == "i")
+                && (w.len() >= 2 || w.as_str() == "a")
                 && w.bytes().all(|b| b.is_ascii_lowercase() || b == b'\'')
         })
         .map(|(w, r)| (w, *r))
@@ -1008,10 +1030,10 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         });
     }
 
-    // The pronoun "I": the frequency list only ever has it lowercase, indistinguishable from
-    // the letter name "i" ("spell that: i, c, e"), and the letter already won that one word's
-    // only slot (see the single-letter carve-out below). A capitalized word needs an entry of
-    // its own regardless, so it gets one directly, on Plover's own real convention for it.
+    // The pronoun "I": the frequency list only ever has it lowercase, and nearly all of that
+    // lowercase "i"'s count really is the pronoun. It gets its own entry directly, on Plover's own
+    // convention; the bare letter "i" is not a dictionary word at all (fingerspelling writes it),
+    // so it can't squat on `AOEU` ahead of "eye". See `written` for how "i'm"/"i think" come out.
     let outline = parse_outline("EU").context("\"EU\" for the pronoun \"I\"")?;
     let text = render_outline(&outline);
     if let Some(holder) = taken.get(&text) {
@@ -1710,9 +1732,9 @@ pub fn single_stroke_stems(generated: &Generated) -> HashMap<Stroke, String> {
 
 /// The dictionary as Plover JSON.
 pub fn write_json(generated: &Generated, path: &Path) -> Result<()> {
-    let mut map: BTreeMap<String, &str> = BTreeMap::new();
+    let mut map: BTreeMap<String, String> = BTreeMap::new();
     for entry in &generated.entries {
-        map.insert(render_outline(&entry.outline), entry.word.as_str());
+        map.insert(render_outline(&entry.outline), written(&entry.word));
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
@@ -2412,6 +2434,17 @@ mod tests {
         assert_eq!(got, want, "solver found {got}, brute force found the true optimum {want}");
     }
 
+    #[test]
+    fn written_capitalizes_only_the_pronoun_i() {
+        assert_eq!(written("i"), "I");
+        assert_eq!(written("i'm"), "I'm");
+        assert_eq!(written("i would"), "I would");
+        assert_eq!(written("and i"), "and I");
+        assert_eq!(written("it"), "it");
+        assert_eq!(written("i've been"), "I've been");
+        assert_eq!(written("ice"), "ice");
+    }
+
     /// Many random graphs, deliberately over-subscribed (more words than the shared text pool can
     /// always serve), each checked against brute force where any word may instead take its own
     /// no-match escape at its given cost. Pins the early-exit Dijkstra and its capped potential
@@ -2568,32 +2601,16 @@ mod tests {
              \"antonio\"), so it must not have been committed"
         );
 
-        // "I am": the bigram corpus only ever records the lowercase spelling \"i\", which in this
-        // dictionary is not the pronoun at all - it's the single LETTER \"i\" (see `generate`'s own
-        // comment on the pronoun \"I\"'s carve-out: the frequency corpus can't tell \"I\" and the
-        // letter name apart, and the letter won that one shared slot). So this bigram's own real
-        // primary for its first word is the letter's outline, not the capitalized pronoun's -
-        // `setup.bigrams` has no way to express the capitalized pronoun at all. The pair is still
-        // genuinely disjoint by that same (surprising) primary, but the merged stroke, "AOEUPL", is
-        // already taken by the contraction "i'm" - another honest miss, and a real, pre-existing
-        // ambiguity in this project's data (not introduced by phrase-briefing) worth knowing about
-        // before raising `PHRASE_TOP_N` far enough for a different "i"-led bigram to ever win a
-        // free stroke under this same quirk.
+        // "I am": the bigram corpus spells the pronoun lowercase, so a phrase looks it up through
+        // `entry_word` - the pronoun's own entry, "I" on `EU`, not a bare letter. `EU` | `-PL`
+        // ("am") is disjoint, but the merged `EUPL` is already a word ("im"), so nothing is
+        // committed; what matters is that the lookup reaches the pronoun at all.
         assert!(setup.bigrams.contains_key(&("i".to_owned(), "am".to_owned())));
-        assert_eq!(primary.get("i").copied(), Some(parse_outline("AOEU").unwrap()[0]));
-        let i_am = phrase_candidate(&primary, "i", "am");
-        assert_eq!(
-            i_am,
-            Some(parse_outline("AOEUPL").unwrap()[0]),
-            "the letter \"i\"'s own primary and \"am\"'s are disjoint"
-        );
+        assert!(!primary.contains_key("i"), "the bare letter \"i\" is not a dictionary word");
+        assert_eq!(primary.get(entry_word("i")).copied(), Some(parse_outline("EU").unwrap()[0]));
         assert!(
-            !generated
-                .entries
-                .iter()
-                .any(|e| e.origin == Origin::Phrase && e.word == "i am"),
-            "\"i am\" is eligible but its merged stroke is genuinely already taken (by \"i'm\"), \
-             so it must not have been committed"
+            !generated.entries.iter().any(|e| e.origin == Origin::Phrase && e.word == "i am"),
+            "\"i am\"'s merged stroke EUPL is already taken, so it must not have been committed"
         );
     }
 

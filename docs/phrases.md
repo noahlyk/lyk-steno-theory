@@ -100,17 +100,13 @@ reach are the ones whose primary-to-primary disjointness already works out, not 
 every word pair that could in principle share a stroke through some bonus entry. Revisiting this is
 reasonable future work once this version's real hit rate is understood.
 
-**A related, real wrinkle worth knowing about, not a bug:** the bigram corpus's own vocabulary is
-lowercase. This project's lowercase word `"i"` is not the pronoun — it's the single *letter* "i"
-(see `generate()`'s own comment on why: the frequency corpus can't tell the capitalized pronoun "I"
-apart from the letter name at all, and the letter won that one shared slot; the pronoun gets its own
-separate, hardcoded entry on `EU`). So a bigram like `("i", "am")` is, mechanically, "the letter i"
-plus "am" — not "I am" the sentence. In the real dictionary today this particular pair never
-actually produces a phrase entry (its merged stroke, `AOEUPL`, is already taken by the contraction
-"i'm"), so no incorrect lowercase "i ..." text has ever shipped from this — but it's a real,
-pre-existing ambiguity in this project's data, not introduced by phrase-briefing, and worth
-re-checking if `PHRASE_TOP_N` is ever raised far enough for a different "i"-led bigram to win a free
-stroke under this same quirk.
+**The pronoun "I" in a bigram.** The bigram corpus spells every word lowercase, including the
+pronoun. The dictionary's own entry for it is the capitalized "I" on `EU` (the bare letter "i" is
+not a dictionary word - fingerspelling writes it), so a bigram's `"i"` is looked up as `"I"`
+before merging, and any phrase entry containing it is written out capitalized ("I would" on
+`WOEU`, not "i would"). The same capitalization applies to the contractions `I'm`, `I'd`, `I've`,
+and `I'll`. Most "I"-led bigrams still get no phrase entry: `EU` shares its vowel keys with almost
+every verb.
 
 ## Reaching into a multi-stroke host's first stroke
 

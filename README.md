@@ -19,8 +19,8 @@ once would be.
 <!-- lyk:overall-table:start -->
 | Theory | Keys/Stroke, weighted by how often each word is said |
 |---|---|
-| Lyk | 3.29 |
-| Plover | 3.52 |
+| Lyk | 3.24 |
+| Plover | 3.56 |
 | Lapwing | 3.94 |
 <!-- lyk:overall-table:end -->
 
@@ -115,7 +115,7 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 78% | 83% | 5.55 | 5.65 | 5.82 |
+| 1 | 89% | 78% | 83% | 5.54 | 5.65 | 5.82 |
 | 2 | 59% | 45% | 52% | 5.60 | 4.93 | 5.26 |
 | 3 | 38% | 26% | 32% | 5.25 | 4.80 | 5.14 |
 | 4+ | 23% | 17% | 18% | 5.40 | 4.97 | 5.22 |
@@ -128,7 +128,7 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.92 | 3.17 | 3.59 |
+| 1 | 2.83 | 3.19 | 3.59 |
 | 2 | 4.74 | 4.70 | 4.99 |
 | 3 | 4.60 | 4.93 | 5.25 |
 | 4+ | 4.96 | 5.24 | 5.50 |

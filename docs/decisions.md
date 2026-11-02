@@ -1711,3 +1711,20 @@ objective value is identical; 26 words moved between exactly-tied options (the o
 `basically`, `PW*BLG` -> `PW-FBLG`, tied with `bicycle` to the cost unit). A new test,
 `solve_contested_matches_brute_force_with_escapes_across_many_seeds`, checks 300 random
 over-subscribed graphs (escapes included) against brute force.
+
+**The bare letter "i" is no longer a dictionary word; "I" and its contractions are written
+capitalized; `eye` and `oh` pinned to their plain strokes.** The frequency list spells the pronoun
+lowercase, so the letter "i" inherited the pronoun's ~27M count and held `AOEU`, the stroke `eye`
+wants - while every "i'm"/"i'd"/"i've"/"i'll" entry and the phrase "i think" were deployed with a
+lowercase i. The live tape (`~/.local/state/keymux/steno-tape.txt`) shows `AOEU` struck for "eye"
+and producing " i" instead. Now: `ranked_words` keeps only "a" among single letters; phrase
+enumeration looks a bigram's "i" up as the "I" entry (`entry_word`); `write_json` capitalizes the
+pronoun on the way out (`written`). With "i" gone, `aye` (30k uses) took `AOEU` from `eye` (82k)
+anyway - one stroke for `aye` outweighs three keys for `eye` under the strokes-then-keys order -
+so `eye = "AOEU"` is pinned in `rules/briefs.toml`. `oh` (2.3M uses, rank 56) sat on the 7-key
+`O*ERBGS` for the same reason (`owe` held `OE`); the tape shows `oh` being typed letter by letter
+rather than with that brief, and `OE` struck and producing "owe". Pinned `oh = "OE"`; `owe` moves
+to `O*E`, `ohh` to `OE/+*`. Frequency-weighted keys per word `-0.017`, strokes per word `+0.00005`.
+The "i think" phrase entry (`AOEUPBG`) is gone - it was the letter's stroke merged with "think";
+`EU` | `-PBG` is `EUPBG`, the "ing" suffix's own word entry. One "I" phrase ships: "I would"
+(`WOEU`).
