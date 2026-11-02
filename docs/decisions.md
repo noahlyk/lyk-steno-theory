@@ -1815,3 +1815,29 @@ cheapest path is now the family entry (`instructions` `STRUBGS/+-Z` instead of t
 syllables 5.25 -> 5.17 keys/stroke). New `cargo run -- family [word]` prints one family or the whole
 dictionary's numbers, including how often a member's own one-stroke primary starts from its stem's
 keys (`-s` 77%, `-ed` 66%, `-ing` 56%) - the primaries themselves are untouched by this change.
+
+**Family-shaped one-stroke outlines (`Origin::Family`), with a two-key preference.** The family
+backups made every member reachable as stem plus ending, but each member's fastest outline was
+still chosen alone: *build* `PWHR`, *builds* `PWEULDZ`, *builders* `PWEURLDZ`. Settling now runs in
+passes. After the first, each family member is offered its root's settled outline with every
+ending's right-hand key added to the last stroke, and everything is settled again from the same
+starting state until the offers stop changing (measured: 18,140 offers, then 239 changes, then
+13). Measured with no preference, a 1-key, and a 2-key discount on those offers, against the
+previous commit:
+
+| Discount | Weighted keys/word | -ed / -s / -ing members starting from the stem | building |
+|---|---|---|---|
+| 0 | -0.026 | 74% / 81% / 63% | `PW-LG` |
+| 1 key | -0.023 | 79% / 84% / - | `PW-LG` |
+| **2 keys (chosen)** | **-0.018** | **83% / 88% / 71%** | **`PWHR-G`** |
+
+Two keys is the smallest discount that makes the whole *build* family share `PWHR` (`PWHR`,
+`PWHR-Z`, `PWHR-G`, `PWHR-GZ`, `PWHR-R`, `PWHR-RZ`), and it still nets fewer keys than before,
+because most family shapes were cheaper anyway (*days* `AEUZ` instead of `TKAEUZ`). Words gaining a
+stroke: one in the top 10,000 (`etc`, `ETS` -> `ET/+SERT`). Some members trade a key for
+consistency on purpose (*talked* was `TOBGT`). The stranded-word guard skips family-shaped words,
+which chose a pricier outline deliberately; no other word is stranded. Cost: `build` takes about
+18 s instead of 8.6 s, since peeling and the solver run up to four times. Against the dictionary
+deployed before this branch, the branch as a whole is now -0.072 weighted keys per word and -0.003
+strokes per word. `liked` keeps its literal pin `-FLD`; "-ing" after a K sound (*talking*,
+*looking*, *working*) has no key left to add and needs its own convention.

@@ -19,7 +19,7 @@ once would be.
 <!-- lyk:overall-table:start -->
 | Theory | Keys/Stroke, weighted by how often each word is said |
 |---|---|
-| Lyk | 3.23 |
+| Lyk | 3.21 |
 | Plover | 3.56 |
 | Lapwing | 3.94 |
 <!-- lyk:overall-table:end -->
@@ -117,10 +117,10 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 78% | 83% | 5.53 | 5.65 | 5.82 |
-| 2 | 59% | 45% | 52% | 5.56 | 4.93 | 5.26 |
-| 3 | 38% | 26% | 32% | 5.17 | 4.80 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.33 | 4.97 | 5.22 |
+| 1 | 89% | 78% | 83% | 5.49 | 5.65 | 5.82 |
+| 2 | 59% | 45% | 52% | 5.57 | 4.93 | 5.26 |
+| 3 | 38% | 26% | 32% | 5.30 | 4.80 | 5.14 |
+| 4+ | 23% | 17% | 18% | 5.43 | 4.97 | 5.22 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -130,10 +130,10 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.82 | 3.19 | 3.59 |
-| 2 | 4.73 | 4.70 | 4.99 |
-| 3 | 4.57 | 4.93 | 5.25 |
-| 4+ | 4.91 | 5.24 | 5.50 |
+| 1 | 2.81 | 3.19 | 3.59 |
+| 2 | 4.69 | 4.70 | 4.99 |
+| 3 | 4.62 | 4.93 | 5.25 |
+| 4+ | 4.96 | 5.24 | 5.50 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a
@@ -176,7 +176,7 @@ Longer words differ mostly where Plover and Lapwing have a brief, and where Lyk 
 
 | | Strokes | Keys |
 |---|---|---|
-| Lyk | 1.015 | 3.302 |
+| Lyk | 1.014 | 3.283 |
 | Plover | 1.040 | 3.721 |
 | Lapwing | 1.042 | 4.118 |
 
@@ -185,10 +185,10 @@ By how common the word is (`build` prints this), keys per word:
 | Words | Share of all words said | Lyk | Plover | Lapwing |
 |---|---|---|---|---|
 | top 100 | 58% | 2.11 | 2.48 | 2.91 |
-| 100 to 1,000 | 28% | 4.39 | 4.81 | 5.17 |
-| 1,000 to 5,000 | 10% | 5.49 | 6.14 | 6.42 |
-| 5,000 to 20,000 | 4% | 6.82 | 7.47 | 7.87 |
-| 20,000+ | 1% | 8.65 | 8.93 | 9.30 |
+| 100 to 1,000 | 28% | 4.36 | 4.81 | 5.17 |
+| 1,000 to 5,000 | 10% | 5.45 | 6.14 | 6.42 |
+| 5,000 to 20,000 | 4% | 6.72 | 7.47 | 7.87 |
+| 20,000+ | 1% | 8.49 | 8.93 | 9.30 |
 
 The top thousand words are briefs in all three, which is why the dictionaries are close: the
 rules can only move the rest. Lyk now beats Plover across every frequency tier, including the

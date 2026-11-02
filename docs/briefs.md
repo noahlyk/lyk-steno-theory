@@ -64,7 +64,10 @@ applied uniformly everywhere a candidate's intrinsic cost matters: 25,000 per st
 key, and an ergonomics score that always stays under 1,000. A stroke costs more than every key a
 single stroke can hold (24), so for any one word fewer strokes always wins outright; among
 equal-stroke candidates, fewer keys wins; among candidates tied on both, the physically more
-comfortable one wins (see [`src/ergonomics.rs`](../src/ergonomics.rs)). Where the stroke weight's
+comfortable one wins (see [`src/ergonomics.rs`](../src/ergonomics.rs)). One deliberate exception: a
+family-shaped candidate (a word's root's outline plus its ending's key, see
+[syllables & folding](syllables.md)) counts two keys cheaper than it is, so families share one
+shape unless that costs more than two extra keys. Where the stroke weight's
 size actually matters is *between* words, once frequency is folded in: a stroke used to weigh
 1,000 keys, which let any rare word saving itself one stroke beat any number of extra keys on a
 far commoner word (`you` was once pushed from `U` to the 7-key `KWRAOU` that way). At 25 keys a
@@ -97,7 +100,7 @@ one and two extra star strokes) as real, always-present candidates, so losing a 
 means falling all the way back to a word's long multi-stroke phonetic spelling-out when a cheap
 ladder step was sitting right there. Generation also keeps a running count of words whose final
 outline costs more than their own plain-rules reading even though that reading is sitting completely
-free — a regression guard, not an auto-fix, printed by `build` as "words stranded on a worse outline
+free (a word on its family's shape is exempt: it chose that on purpose) — a regression guard, not an auto-fix, printed by `build` as "words stranded on a worse outline
 than their own, unclaimed plain reading," and backed by `src/quality.rs`'s own test holding that
 count to zero. A true global optimum structurally cannot leave a strictly cheaper, completely free
 outline on the table for a word that could have had it for nothing — swapping to it would always

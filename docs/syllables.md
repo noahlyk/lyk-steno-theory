@@ -121,6 +121,29 @@ to catch. They chain like every other backup (*needlessly* = *needless* + `+-L` 
 ending. The rare misses are texts a primary outline already holds (*needed*'s `TPHAED/+-D` is
 *kneaded*'s primary).
 
+**Families share one shape in their one-stroke outlines too.** Backups make every member
+reachable as stem plus ending, but a member's own fastest outline used to be chosen alone, so
+*build* was Plover's `PWHR` while *builds* was the unrelated `PWEULDZ`. Now settling primaries runs
+in passes: after the first, every family member is offered one more candidate, `Origin::Family`,
+its *root's* settled outline with each ending's key added to the last stroke (*build* `PWHR` →
+*builds* `PWHR-Z`, *building* `PWHR-G`, *buildings* `PWHR-GZ`, *builder* `PWHR-R`, *builders*
+`PWHR-RZ`; *day* `AEU` → *days* `AEUZ`, *daily* `AEUL`; *start* `SART` → *started* `SARTD`). Only
+one-stroke, right-hand-only endings that share no key with that stroke qualify (`-S`, `-Z`, `-D`,
+`-G`, `-R`, `-L`, `-FT`, `-PBS`, ...), so the offer always reads as the root plus the ending. Every
+word is then settled again from scratch with those offers in its pool, repeating until the offers
+stop changing (three re-solves in practice).
+
+A family offer counts two keys cheaper than its raw cost (`FAMILY_DISCOUNT`). Without that, cost
+alone kept a shorter unrelated brief (*building* stayed Plover's 4-key `PW-LG` over the 5-key
+`PWHR-G`); with it, a member takes its family's shape unless that costs more than two extra keys.
+The discount still never buys a stroke: a stroke weighs 25 keys. In the top 10,000, members whose
+own outline starts from their stem's keys went from 66% to 83% for "-ed", 77% to 88% for "-s",
+and 56% to 71% for "-ing".
+
+The biggest remaining gap is "-ing" after a K sound (*talking* `TAUG`, *looking* `HRAOG`,
+*working* `WOG`): the stem's own `-BG` already holds the `G`, so there is no key to add. That needs
+a convention of its own, not yet chosen.
+
 `cargo run --release -- family build` prints one family: every member, its stem and ending, its
 own outline, its stem-plus-ending entry, and whether its own outline starts from the stem's keys.
 `cargo run --release -- family` with no word prints the whole dictionary's numbers by ending and
