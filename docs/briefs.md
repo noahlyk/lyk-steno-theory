@@ -104,11 +104,15 @@ a reason to delete the test that watches for it.
 to go around, a true multi-way homophone or near-homophone cluster tighter than its own star ladder
 can resolve — the solver sacrifices whichever word has the least to lose, not whichever one a raw
 search happens to leave out.** Every word's own candidate pool includes one more option purely for
-this: a private "no match" fallback, costed far above any of that word's own real candidates but
-still scaled by that word's own frequency weight, so the comparison between two words' own stakes in
-a shared, scarce cluster of outlines stays apples to apples. This case is rare, genuinely
-unavoidable when it happens, and is exactly the kind of unresolved result `build`'s own "words the
-rules could not place" count already reports — not a new failure mode, the same one an unbreakable
-spelling tie already produced before this global solver existed, just reached by a different path.
+this: a private "no match" fallback, priced at what having no outline really costs — the word gets
+fingerspelled, one stroke per letter — and never less than one stroke worse than that word's own
+worst real candidate, all scaled by the word's frequency weight like every other option. That
+price is on the same scale as every real candidate on purpose: a rare word losing its last slot
+is weighed honestly against a common word's extra stroke, not treated as something to avoid at
+any cost. (It used to be 1,000x the word's worst candidate, which made every rare name in a
+cluster a near-hard constraint: `early`, said ~85,000 times, lost `ERL` and paid a whole extra
+stroke so that `errol`, `earle`, and `earl` could all keep a slot. Now `early` is `ERL`, and the
+rarest member of that cluster is spelled instead.) Words left unplaced this way are counted by
+`build`'s "words the rules could not place"; every one of them is rarer than rank 20,000.
 
 Next: **[phonetic rules](phonetic-rules.md)** — how a word with no brief gets its stroke instead.

@@ -1681,3 +1681,33 @@ aggregate numbers moved for real: overall Keys/Stroke (Lyk) `3.32 -> 3.29`, and 
 frequency-weighted usage table's one- and two-syllable rows `2.95 -> 2.92` and `4.76 -> 4.74` -
 this batch of 22 words is common enough to move the dictionary-wide average even though it's a
 tiny fraction of the vocabulary by word count.
+
+**The solver's "no match" escape is priced as fingerspelling, not 1,000x a word's worst
+candidate - so a rare name can no longer outrank a common word.** Found by tracing why `early`
+(said ~85,000 times, rank 694) had no one-stroke outline while `ERL` went to `errol` (975 times).
+`early` had `ERL` in its own candidate pool at exactly `errol`'s cost, and the solver was finding
+the true minimum - the objective was the problem. `ERL`'s cluster (`early`, `errol`, `earle`,
+`earl`, ...) had more members than the four-rung star ladder has texts, so someone had to be left
+unplaced, and leaving a word unplaced cost `1,000 x` its own worst edge: for `earle`, about
+`1.1e12`, against `8.5e10` for `early` taking a whole extra stroke. Every rare name in a crowded
+cluster was effectively a hard constraint. Now `no_match_cost` charges what being unplaced really
+costs - one stroke per letter, the word fingerspelled - floored at one stroke worse than the
+word's own worst real candidate, times the word's frequency weight like every other edge.
+
+Measured against the build right before it: frequency-weighted strokes per word `-0.0005`, keys per
+word `-0.0037`. Words whose best outline improved include `guys` (`TKPAOEUS` -> `AOEUS`), `early`
+(`ER/+HREU` -> `ERL`), `exactly` (`SA*LGT` -> `ELG`), `mayor` (`PHAE/+-R` -> `PHAEUR`), `bath`
+(`PWA*T/+*` -> `PWA*T`), `horror`, `lily`, `cabin`, `logic`, `carbon`. In the five Gutenberg texts,
+tokens where lyk needs more strokes than Plover fell from 341 to 208. Words the rules could not
+place rose from 445 to 490; the commonest of the 45 newly unplaced words is `lok` (rank 21,840) -
+every one is a rare name or variant spelling. `ice` gave `AOEUS` to `guys` (442k vs 58k uses) and
+moved to `AO*EUS`.
+
+**Same commit: the solver stops each Dijkstra at the sink.** Potentials are capped at
+`dist[sink]` for every node (the standard early-exit form of successive shortest paths), and each
+edge stores its own reverse index instead of a `HashMap<(usize, usize), (usize, usize)>`. The
+giant ~3,700-word component went from ~8.8 s to ~1.3 s; `build` from 19.5 s to ~13 s. The
+objective value is identical; 26 words moved between exactly-tied options (the only common one is
+`basically`, `PW*BLG` -> `PW-FBLG`, tied with `bicycle` to the cost unit). A new test,
+`solve_contested_matches_brute_force_with_escapes_across_many_seeds`, checks 300 random
+over-subscribed graphs (escapes included) against brute force.

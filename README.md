@@ -200,7 +200,7 @@ only when Lapwing has it too: Plover's `main.json` is full of misstrokes (`O` fo
 *and*) that would otherwise make it look a third of a key cheaper than it is. Close to 4,000 words
 end up with a star form because some other, more valuable word's candidate won the plain outline
 instead (`site` and `sight`, `don` and `done`, but also any other collision the global optimizer
-settles this way now, not just a sound-alike pair); `build` lists the commonest. About 300 of the
+settles this way now, not just a sound-alike pair); `build` lists the commonest. About 500 of the
 100,000 words can't be written by these rules yet, nearly all names and interjections (`hm`,
 `schmidt`, `vlad`). On top of all that, close to 20,000 words also get a second, backup entry built
 from an already-placed shorter word's own outline plus whatever sounds are left over (`build`'s own

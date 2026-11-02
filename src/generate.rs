@@ -167,6 +167,22 @@ pub struct Candidate {
     pub cost: u32,
 }
 
+const STROKE_WEIGHT: u32 = 1_000_000;
+const KEY_WEIGHT: u32 = 1_000;
+
+/// What it costs a word, in `edge_cost` units, to end up with no primary outline at all: it is
+/// then typed by fingerspelling, one stroke per letter, so that is what this charges - never less
+/// than one stroke worse than the word's own worst real candidate, so the solver only ever leaves
+/// a word unplaced when every real option is already gone. Comparable to every other edge cost on
+/// purpose: a rare word losing its last slot is weighed against a common word's extra stroke
+/// honestly, rather than treated as a near-hard constraint (see `docs/collisions.md`).
+fn no_match_cost(word: &str, weight: u64, candidates: &[Candidate]) -> u64 {
+    let worst = candidates.iter().map(|c| u64::from(c.cost)).max().unwrap_or(0);
+    let letters = u64::try_from(word.chars().count()).unwrap_or(u64::MAX);
+    let spelled = letters.saturating_mul(u64::from(STROKE_WEIGHT));
+    weight.saturating_mul(spelled.max(worst + u64::from(STROKE_WEIGHT)))
+}
+
 /// Intrinsic cost of an outline alone, independent of word or frequency: fewer strokes dominates,
 /// fewer keys breaks ties within that, ergonomics only breaks ties within *that* - the same
 /// priority `shortest`/`ladder` already encoded informally before this existed, made explicit and
@@ -183,8 +199,6 @@ pub struct Candidate {
 /// itself, not a proxy for it.
 #[must_use]
 pub fn candidate_cost(outline: &[Stroke]) -> u32 {
-    const STROKE_WEIGHT: u32 = 1_000_000;
-    const KEY_WEIGHT: u32 = 1_000;
     let strokes = u32::try_from(outline.len()).unwrap_or(u32::MAX);
     STROKE_WEIGHT * strokes + KEY_WEIGHT * keys(outline) + ergonomics::weighted_outline(outline)
 }
@@ -446,7 +460,7 @@ fn voicing_alternates(word: &str, out: &[Candidate]) -> Vec<Vec<Stroke>> {
 /// zero-candidate word to `unresolved` before this ever runs), a perfect assignment must exist, so
 /// a flow that saturates anything less than every word is a bug in this function, not a legitimate
 /// shortfall to paper over silently.
-fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMap<&'a str, usize> {
+fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)], no_match: &[u64]) -> HashMap<&'a str, usize> {
     if contested.is_empty() {
         return HashMap::new();
     }
@@ -475,57 +489,38 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMa
     let sink = 1 + word_count + text_count;
     let node_count = sink + 1;
 
-    // Residual capacity and cost for every directed edge actually used (adjacency list of
-    // (to, cap_remaining, cost, reverse_edge_index) per node - a standard residual graph).
+    // A standard residual graph: each edge stores the index of its own reverse edge in `to`'s
+    // adjacency list.
     #[derive(Clone)]
     struct Edge {
         to: usize,
+        rev: usize,
         cap: u32,
         cost: i64,
     }
     let mut graph: Vec<Vec<Edge>> = vec![Vec::new(); node_count];
-    let add_edge = |graph: &mut Vec<Vec<Edge>>, from: usize, to: usize, cap: u32, cost: i64| {
+    let link = |graph: &mut Vec<Vec<Edge>>, from: usize, to: usize, cap: u32, cost: i64| {
         let fwd = graph[from].len();
         let rev = graph[to].len();
-        graph[from].push(Edge { to, cap, cost });
-        graph[to].push(Edge { to: from, cap: 0, cost: -cost });
-        (from, fwd, to, rev)
-    };
-    // Track each edge's reverse location explicitly, since Rust can't hold two mutable borrows of
-    // `graph` for the forward/reverse pair at once the way a C-style index pair would.
-    let mut rev_of: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
-    let link = |graph: &mut Vec<Vec<Edge>>, rev_of: &mut HashMap<(usize, usize), (usize, usize)>, from: usize, to: usize, cap: u32, cost: i64| {
-        let (f, fi, t, ti) = add_edge(graph, from, to, cap, cost);
-        rev_of.insert((f, fi), (t, ti));
-        rev_of.insert((t, ti), (f, fi));
+        graph[from].push(Edge { to, rev, cap, cost });
+        graph[to].push(Edge { to: from, rev: fwd, cap: 0, cost: -cost });
     };
 
     for w in 0..word_count {
-        link(&mut graph, &mut rev_of, source, word_node(w), 1, 0);
+        link(&mut graph, source, word_node(w), 1, 0);
         for &(t, cost) in &word_edges[w] {
-            link(&mut graph, &mut rev_of, word_node(w), text_node(t), 1, i64::try_from(cost).unwrap_or(i64::MAX));
+            link(&mut graph, word_node(w), text_node(t), 1, i64::try_from(cost).unwrap_or(i64::MAX));
         }
         // A direct, private escape valve straight to the sink, bypassing every text: a genuine
-        // Hall-violation can still happen *inside* one connected component (more mutually-
-        // exclusive words sharing a text, transitively, than it has distinct texts for - a true
-        // multi-way homophone/near-homophone cluster tighter than its own star ladder can resolve,
-        // the same pre-existing "unbreakable spelling tie" edge case this project has always had).
-        // Without this, a word forced out by that only gets left unmatched by whatever the raw
-        // max-flow search happens to run out of augmenting paths on first - an arbitrary, not
-        // cost-aware choice (confirmed: it once dropped the far commoner word in a cluster while
-        // keeping rarer cluster-mates). Costing this edge at 1,000x the word's own *worst* real
-        // option keeps it always worse than any real candidate for this word specifically, and -
-        // because it still scales with this word's own edge costs, which already have its
-        // frequency weight folded in - correctly makes the solver sacrifice whichever word in a
-        // genuinely over-subscribed cluster has the least to lose, not whichever one a graph-
-        // traversal accident happened to leave out. Never actually reachable unless this word's
-        // own real candidates are every one of them already lost to someone else.
-        let worst_real = word_edges[w].iter().map(|&(_, cost)| cost).max().unwrap_or(1);
-        let no_match_cost = i64::try_from(worst_real.saturating_mul(1_000)).unwrap_or(i64::MAX);
-        link(&mut graph, &mut rev_of, word_node(w), sink, 1, no_match_cost);
+        // Hall-violation can still happen inside one connected component (more mutually-exclusive
+        // words than distinct texts - a multi-way homophone cluster deeper than its own star
+        // ladder). Its cost is `no_match_cost`'s, so the solver leaves unplaced whichever word
+        // loses least by it, measured on the same scale as every real candidate.
+        let no_match_cost = i64::try_from(no_match[w]).unwrap_or(i64::MAX);
+        link(&mut graph, word_node(w), sink, 1, no_match_cost);
     }
     for t in 0..text_count {
-        link(&mut graph, &mut rev_of, text_node(t), sink, 1, 0);
+        link(&mut graph, text_node(t), sink, 1, 0);
     }
 
     let mut potential = vec![0i64; node_count];
@@ -544,6 +539,11 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMa
             if d > dist[u] {
                 continue;
             }
+            // Only the path to the sink is needed: every node still unsettled has a distance of
+            // at least `dist[sink]`, which the potential update below accounts for.
+            if u == sink {
+                break;
+            }
             for (ei, edge) in graph[u].iter().enumerate() {
                 if edge.cap == 0 {
                     continue;
@@ -560,10 +560,12 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMa
         if dist[sink] == i64::MAX {
             break;
         }
+        // Capping every node at `dist[sink]` (settled nodes are already below it; unsettled and
+        // unreached ones are not) keeps every residual edge's reduced cost non-negative for the
+        // next round - the standard early-exit form of successive shortest paths.
+        let dist_sink = dist[sink];
         for (v, slot) in potential.iter_mut().enumerate() {
-            if dist[v] < i64::MAX {
-                *slot += dist[v];
-            }
+            *slot += dist[v].min(dist_sink);
         }
         // Walk the augmenting path once more, pushing one unit of flow along it (every capacity
         // here is 1, so there is never a smaller bottleneck to find first) - this only ever moves
@@ -577,11 +579,9 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]) -> HashMa
             v = u;
         }
         for (u, ei) in path {
-            let to = graph[u][ei].to;
+            let (to, rev) = (graph[u][ei].to, graph[u][ei].rev);
             graph[u][ei].cap -= 1;
-            let &(ru, ri) = rev_of.get(&(u, ei)).expect("every forward edge has a tracked reverse");
-            debug_assert_eq!(graph[ru][ri].to, u);
-            graph[to][ri].cap += 1;
+            graph[to][rev].cap += 1;
         }
         flow += 1;
     }
@@ -1254,11 +1254,13 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     drop(text_to_words);
 
     for component in components {
+        let mut no_match: Vec<u64> = Vec::new();
         let contested: Vec<(&str, Vec<(Candidate, u64)>)> = component
             .into_iter()
             .map(|word| {
                 let candidates = remaining.remove(word).expect("every component word is still in remaining");
                 let weight = setup.count.get(word).copied().unwrap_or(0);
+                no_match.push(no_match_cost(word, weight, &candidates));
                 let edges = candidates
                     .into_iter()
                     .map(|c| {
@@ -1269,7 +1271,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 (word, edges)
             })
             .collect();
-        let assignment = solve_contested(&contested);
+        let assignment = solve_contested(&contested, &no_match);
         for (word, candidates) in contested {
             // Missing only for the known, accepted Hall-violation edge case `solve_contested`'s
             // own doc describes (more mutually-exclusive words in one connected component than it
@@ -2227,7 +2229,7 @@ mod tests {
             ("b", vec![(candidate("T"), 50), (candidate("K"), 80)]),
             ("c", vec![(candidate("K"), 1), (candidate("P"), 50)]),
         ];
-        let chosen = solve_contested(&contested);
+        let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
         let text_of = |word: &str, index: usize| -> String {
             let (_, candidates) = contested.iter().find(|(w, _)| *w == word).unwrap();
             render_outline(&candidates[index].0.outline)
@@ -2251,7 +2253,7 @@ mod tests {
             ("d", vec![(candidate("T"), 10), (candidate("K"), 500)]),
             ("e", vec![(candidate("T"), 100), (candidate("K"), 200)]),
         ];
-        let chosen = solve_contested(&contested);
+        let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
         let text_of = |word: &str, index: usize| -> String {
             let (_, candidates) = contested.iter().find(|(w, _)| *w == word).unwrap();
             render_outline(&candidates[index].0.outline)
@@ -2344,7 +2346,7 @@ mod tests {
         brute(&options, 0, &mut Vec::new(), 0, &mut best);
         let want = best.expect("a perfect matching exists for this graph");
 
-        let chosen = solve_contested(&contested);
+        let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
         let got: u128 = data
             .iter()
             .enumerate()
@@ -2405,9 +2407,74 @@ mod tests {
         brute(&options, 0, &mut Vec::new(), 0, &mut best);
         let want = best.expect("a perfect matching exists for this graph");
 
-        let chosen = solve_contested(&contested);
+        let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
         let got: u64 = words.iter().enumerate().map(|(i, w)| options[i][chosen[w]].1).sum();
         assert_eq!(got, want, "solver found {got}, brute force found the true optimum {want}");
+    }
+
+    /// Many random graphs, deliberately over-subscribed (more words than the shared text pool can
+    /// always serve), each checked against brute force where any word may instead take its own
+    /// no-match escape at its given cost. Pins the early-exit Dijkstra and its capped potential
+    /// update to the exact optimum, Hall violations included.
+    #[test]
+    fn solve_contested_matches_brute_force_with_escapes_across_many_seeds() {
+        fn brute(options: &[Vec<(usize, u64)>], escape: &[u64], i: usize, used: &mut Vec<usize>, cost: u64, best: &mut u64) {
+            if cost >= *best {
+                return;
+            }
+            if i == options.len() {
+                *best = cost;
+                return;
+            }
+            brute(options, escape, i + 1, used, cost + escape[i], best);
+            for &(t, c) in &options[i] {
+                if !used.contains(&t) {
+                    used.push(t);
+                    brute(options, escape, i + 1, used, cost + c, best);
+                    used.pop();
+                }
+            }
+        }
+        let texts = ["S", "T", "K", "P", "W", "H"];
+        let names = ["w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7"];
+        for seed0 in 1..=300u64 {
+            let mut seed = seed0.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+            let mut rand = move || {
+                seed ^= seed << 13;
+                seed ^= seed >> 7;
+                seed ^= seed << 17;
+                seed
+            };
+            let word_count = 3 + (rand() % 6) as usize;
+            let mut options: Vec<Vec<(usize, u64)>> = Vec::new();
+            let mut escape: Vec<u64> = Vec::new();
+            for _ in 0..word_count {
+                let n = 1 + (rand() % 3) as usize;
+                let mut chosen: Vec<usize> = Vec::new();
+                while chosen.len() < n {
+                    let t = (rand() % texts.len() as u64) as usize;
+                    if !chosen.contains(&t) {
+                        chosen.push(t);
+                    }
+                }
+                let opts: Vec<(usize, u64)> = chosen.into_iter().map(|t| (t, 1 + rand() % 1000)).collect();
+                let worst = opts.iter().map(|&(_, c)| c).max().unwrap_or(0);
+                escape.push(worst + 1 + rand() % 2000);
+                options.push(opts);
+            }
+            let contested: Vec<(&str, Vec<(Candidate, u64)>)> = names[..word_count]
+                .iter()
+                .zip(&options)
+                .map(|(&w, opts)| (w, opts.iter().map(|&(t, cost)| (candidate(texts[t]), cost)).collect()))
+                .collect();
+            let mut want = u64::MAX;
+            brute(&options, &escape, 0, &mut Vec::new(), 0, &mut want);
+            let chosen = solve_contested(&contested, &escape);
+            let got: u64 = (0..word_count)
+                .map(|i| chosen.get(names[i]).map_or(escape[i], |&c| options[i][c].1))
+                .sum();
+            assert_eq!(got, want, "seed {seed0}: solver found {got}, brute force {want}");
+        }
     }
 
     #[test]
