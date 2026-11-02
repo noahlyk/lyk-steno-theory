@@ -1585,3 +1585,55 @@ sitting in its own candidate list**: the pinned `PRAPGS` (score 381, 6 keys) is 
 pinky's `T`/`S` roll already deployed elsewhere (`lets` -> `HRETS`) instead of a second transition.
 Confirmed `PRAPTS` was unclaimed in the real dictionary (`resolve PRAPTS` -> "not in the dictionary")
 before repinning. `rules/briefs.toml`'s `perhaps` entry now reads `PRAPTS`, comment updated.
+
+**New candidate source: `-S`-for-`-Z` coda alternates (`enumerate_candidates`'s source 6,
+`Origin::Voicing`), replacing a one-word `girls` pin with a systemic fix.** Investigating why
+`girls` strokes as `TKPWERLZ` (voiced `/z/`, phonetically accurate) instead of the more intuitive
+`-S` found a real structural gap, not a bad outline: the brevity-shortening pass only ever
+re-derives a candidate from a word's own sound sequence (`Origin::Rules`-style), never from an
+opaque `Origin::Brief` string, so a gold brief's own `-S`-ending text (Plover's `TKPWEURLS` for
+`girls`) never gets a shortened counterpart able to compete at the same stroke length as the
+phonetic `-Z` form's own shortened 8-key reading. `girls` never had a bad definition - the `-S`
+reading simply never got a turn at that length. `rules/suffixes.toml` already treats `+-S` and
+`+-Z` as the same suffix (`"s"`) for standalone-continuation interpretation, but only in the
+reverse/interpretation direction; this had no forward-generation counterpart. Fixed by adding a
+candidate source, not by re-deriving sound: `voicing_alternates` (`src/generate.rs`) scans every
+candidate `enumerate_candidates` already built for a word whose own spelling ends in a literal `s`
+(words spelled with `z`/`zz` - `buzz`, `quiz`, `jazz` - never qualify, since they can't also end in
+`s`), and for each one whose last stroke's coda is a voiced `-Z`, pushes that same candidate again
+with the `-Z` respelled `-S`. This is the same spelling-over-sound safety call already on record for
+the `-ism`/`-ify` match (above): trust the word's own letters, don't re-derive. The new candidates
+get a dedicated `Origin::Voicing`, not `Origin::Alternate` - `Alternate` is deliberately excluded
+from ever winning a word's primary slot (`best_entry_per_word`'s own doc: "never competes with the
+primary"), which would have silently made this whole fix a no-op. `Voicing` competes on equal
+footing with every other source, exactly as intended: cost decides, not a blanket preference for
+either letter.
+
+**Measured, not guessed, on the real ~100,000-word build (`cargo run --release -- build`, origin
+tally in its own output).** 3,932 words' primary flipped from a `-Z`-ending candidate to the
+cheaper `-S`-ending `Voicing` alternate - a real, dictionary-wide effect, not a one-word patch.
+`girls` itself is *not* among them: its own 8-key `-Z` form still measures cheaper by ergonomics
+than the `-S` respelling, so it correctly keeps `TKPWERLZ` - this fix lets cost decide per word,
+it does not uniformly prefer `-S`. `abhors` is a word that does flip (`PWHORZ` -> `PWHORS`, 134
+cost units cheaper). Side effects, all measured: words the rules could not place dropped slightly
+(447 -> 445 - two words gained a usable candidate they didn't have before); words stranded on a
+worse outline than their own stayed at 0; the contested set after fixed-point peeling grew from
+16,114/122,651 (13.1%) to 17,060/123,692 (13.8%), still well inside
+`the_contested_set_after_peeling_stays_a_minority_of_the_dictionary`'s 35% ceiling; total dictionary
+entries grew by 1,041 (122,651 -> 123,692), almost entirely the 3,932 new primaries themselves
+plus small, expected downstream ripples in `Backup`/`Short(Fold)`/`Short(Lead)` bonus entries built
+from a changed stem; phrase entries dropped by 60 of 3,216 (~1.9%), a handful of bigrams whose two
+single-stroke stems' key-bitmasks stopped - or started - overlapping once one side's primary
+respelled its own coda. None of these tripped any existing quality test or acceptance-gate check.
+One test's own expectation changed for the better:
+`six_of_the_fragment_check_overrides_reproduce_exactly_in_isolation`'s `flowers` case moved from
+`TPHROURZ` to `TPHROURS` - the natural pool's cheapest for that word really did change, correctly,
+not a broken assumption. README's score table moved again: 1-syllable Keys/Stroke (Lyk) `5.56 ->
+5.55` - coincidentally the same number it was before the ergonomics-revision follow-up above moved
+it to `5.56`, by an unrelated mechanism; not a revert of that change.
+
+**Deliberately out of scope: the standalone continuation-stroke suffix (`rules/suffixes.toml`'s own
+`+-S`/`+-Z`, a suffix struck as its own stroke rather than folded onto a word's last stroke) likely
+has the same underlying gap in its own forward-generation direction, never offering both letters as
+competing candidates.** Not investigated here - flagged as a possible separate follow-up, not
+assumed to be a real issue until someone actually measures it.

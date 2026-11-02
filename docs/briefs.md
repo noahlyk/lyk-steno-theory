@@ -12,11 +12,13 @@ any source, only has to be the cheapest one available, not a guessable one.
 **Every word's primary outline is settled by one global optimization, not a sequence of passes.**
 `generate()` enumerates every legal candidate for every word at once — both gold dictionaries'
 listed outlines, lyk's own plain rules reading, a spelling-told-apart variant for a homophone group,
-every brevity-ladder shortening, and the full star ladder on top of all of that — and then solves
-for the assignment that minimizes the whole dictionary's total cost, weighted by how often each word
-is actually said. A brief, lyk's own rules-derived reading, and a brevity-shortened form all compete
-in the *same* pool for the *same* word; whichever is cheapest for the word, weighed against every
-other word's own stake in the texts it might also want, is what wins. This is new: before, a common
+every brevity-ladder shortening, the full star ladder on top of all of that, and (for a word spelled
+with a trailing `s`) a voiced `-Z` coda respelled `-S` on whichever of the above already carries one
+— and then solves for the assignment that minimizes the whole dictionary's total cost, weighted by
+how often each word is actually said. A brief, lyk's own rules-derived reading, and a
+brevity-shortened form all compete in the *same* pool for the *same* word; whichever is cheapest for
+the word, weighed against every other word's own stake in the texts it might also want, is what
+wins. This is new: before, a common
 word's own brief was pinned the moment it was found, with nothing else — not lyk's own plain
 reading, not a later brevity treatment — ever getting a chance to compete against it, which is the
 confirmed reason the dictionary used to track Plover more closely than it needed to for words like

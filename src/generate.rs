@@ -77,6 +77,10 @@ pub enum Origin {
     Spelling,
     /// Another pronunciation of a word
     Alternate,
+    /// The same candidate with its last stroke's `-Z` respelled `-S`, offered wherever the word's
+    /// own spelling ends in a literal `s` - competes on equal footing with the `-Z` form it was
+    /// copied from, unlike [`Origin::Alternate`] (see [`enumerate_candidates`])
+    Voicing,
     /// The ladder step that settled a clash: 1 is the star on the first stroke
     Ladder(u8),
     /// Composed from one or two already-placed words' own outlines: a stem plus a bare
@@ -260,6 +264,16 @@ fn gold_candidates(
 ///    it has one), each with all four `ladder(outline, join)` steps (`Origin::Ladder(n)`) - a
 ///    generalization of the old behavior, which only ever laddered a word that fell through to the
 ///    main loop, never one that had already claimed a spelling variant.
+/// 6. **S-for-Z coda alternates** (`Origin::Voicing`): every candidate built by steps 1-5 whose
+///    last stroke's coda is a voiced `-Z`, offered again with that stroke's `-Z` respelled `-S`,
+///    gated on the word's own spelling ending in a literal `s` (a word spelled with `z`/`zz`
+///    never qualifies, since it doesn't end in `s`). Brief, Rules, Short, and Ladder candidates all
+///    derive their coda from the word's real pronunciation, which is phonetically correct but
+///    leaves a cheaper `-S` reading unable to compete just because nothing ever proposed it at
+///    that stroke length (`girls`'s phonetic `-Z` coda never raced against Plover's own `-S`
+///    brief, because the brevity-ladder only shortens sound-derived candidates, never a raw brief
+///    string - see `docs/decisions.md`). This step closes that gap the same way for every source
+///    at once, by respelling whatever already won the coda rather than re-deriving it.
 ///
 /// Every word is guaranteed at least one candidate (source 2) unless its own rules genuinely
 /// cannot write it in a single stroke at all (a real, pre-existing failure mode -
@@ -372,7 +386,44 @@ pub fn enumerate_candidates(
         }
     }
 
+    // 6. S-for-Z coda alternates: see `voicing_alternates`'s own doc.
+    for outline in voicing_alternates(word, &out) {
+        push(&mut out, outline, Origin::Voicing);
+    }
+
     out
+}
+
+/// Every candidate in `out` whose last stroke's coda is a voiced `-Z`, respelled with that `-Z`
+/// swapped for `-S` - offered only when `word`'s own spelling ends in a literal `s` (never `z` or
+/// `zz`, which simply don't end in `s`). A word's own spelling outranks a re-derived sound for
+/// safety, the same reasoning as the `-ism`/`-ify` match in `rules/suffixes.toml` (see
+/// `docs/decisions.md`): `girls` strokes its coda as a voiced `-Z` (`TKPWEURLZ`) because that's how
+/// it really sounds, which is phonetically correct but leaves the word's own cheaper `-S` spelling
+/// unable to compete just because nothing had ever proposed it at that stroke length. This offers
+/// it again, every time, so the two can compete on cost like any other candidate-origin ambiguity
+/// instead of `-Z` winning by default.
+fn voicing_alternates(word: &str, out: &[Candidate]) -> Vec<Vec<Stroke>> {
+    const CODA_S: u32 = 1 << 20;
+    const CODA_Z: u32 = 1 << 22;
+    if !word.ends_with('s') {
+        return Vec::new();
+    }
+    let mut seen: HashSet<Vec<Stroke>> = out.iter().map(|c| c.outline.clone()).collect();
+    let mut additions: Vec<Vec<Stroke>> = Vec::new();
+    for candidate in out {
+        let Some(&last) = candidate.outline.last() else { continue };
+        if last.0 & CODA_Z == 0 || last.0 & CODA_S != 0 {
+            continue;
+        }
+        let mut respelled = candidate.outline.clone();
+        let i = respelled.len() - 1;
+        respelled[i] = Stroke((last.0 & !CODA_Z) | CODA_S);
+        if seen.insert(respelled.clone()) {
+            additions.push(respelled);
+        }
+    }
+    additions
 }
 
 /// A min-cost bipartite assignment over the contested subgraph only: words with edges to a shared
@@ -1919,6 +1970,39 @@ mod tests {
         candidates.iter().min_by_key(|c| c.cost).expect("at least one candidate")
     }
 
+    /// A word spelled with a literal trailing `s` whose phonetic coda strokes as a voiced `-Z`
+    /// gets a same-length `-S` alternate too (`Origin::Voicing`), so the cheaper of the two can
+    /// win on cost instead of `-Z` winning by default just because nothing else was ever offered
+    /// at that stroke length - see `enumerate_candidates`'s own doc, source 6.
+    #[test]
+    fn a_word_spelled_with_s_gets_a_same_length_s_for_z_alternate() {
+        let briefs = Briefs::built_in().unwrap();
+        let candidates = candidates_for("abhors", &briefs);
+        assert!(
+            candidates.iter().any(|c| c.origin == Origin::Voicing && render_outline(&c.outline) == "PWHORS"),
+            "abhors should offer PWHORS as a Voicing alternate next to its phonetic PWHORZ"
+        );
+        // Real, measured consequence of this: PWHORS costs less than PWHORZ, so it is the
+        // natural pool's cheapest here - not every `-Z`-coda word flips (ergonomics can still
+        // prefer `-Z`), but this one does, exactly as the per-word cost comparison intends.
+        let cheapest = cheapest_candidate(&candidates);
+        assert_eq!(render_outline(&cheapest.outline), "PWHORS");
+    }
+
+    /// A word spelled with a literal `z` (never `s`) never qualifies for the alternate above -
+    /// `word.ends_with('s')` alone already excludes it, since a word can't end in both letters.
+    #[test]
+    fn a_word_spelled_with_z_never_gets_a_spurious_s_alternate() {
+        let briefs = Briefs::built_in().unwrap();
+        for word in ["buzz", "quiz", "jazz"] {
+            let candidates = candidates_for(word, &briefs);
+            assert!(
+                !candidates.iter().any(|c| c.origin == Origin::Voicing),
+                "{word} is spelled with z, not s, and must never get a Voicing alternate"
+            );
+        }
+    }
+
     #[test]
     fn a_word_named_in_briefs_toml_as_a_literal_outline_gets_exactly_that_one_candidate() {
         // `up` is pinned today (`rules/briefs.toml`, `up = "-P"`) to a one-key brief its own plain
@@ -2094,14 +2178,17 @@ mod tests {
         // is a real, legal candidate again - see `gold_candidates`'s own doc for the blanket-filter
         // revert), these six stranded-word fixes are already the natural pool's own cheapest
         // candidate, confirmed here in isolation before the real solver (with every other word also
-        // contesting the dictionary) ever runs.
+        // contesting the dictionary) ever runs. `flowers` wants `TPHROURS`, not the old override's
+        // `TPHROURZ`: the S-for-Z voicing step (`enumerate_candidates`'s own doc, source 6) now
+        // offers that respelling too, and it costs less - a real improvement on the override this
+        // test only ever checked was *reproduced*, never that it was optimal.
         let exact: &[(&str, &str)] = &[
             ("wow", "WOU"),
             ("honest", "OPBS"),
             ("bottle", "PWOLT"),
             ("public", "PUBLG"),
             ("hiding", "HAOEUGD"),
-            ("flowers", "TPHROURZ"),
+            ("flowers", "TPHROURS"),
         ];
         let words: Vec<&str> = exact.iter().map(|(w, _)| *w).collect();
         let briefs = briefs_without(&words);

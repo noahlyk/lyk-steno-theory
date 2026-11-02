@@ -17,9 +17,14 @@ even when a later, rarer word's own circumstances made a different global arrang
 overall — see [`docs/briefs.md`](briefs.md) and [`docs/decisions.md`](decisions.md) for the
 confirmed bugs that shape produced. Now every word's full set of legal candidates — a gold brief,
 lyk's own plain rules reading, the spelling-told-apart variant for its sound-alike group, every
-brevity-shortened form, and the full star ladder on top of all of that — go into one shared pool,
-and a single solve picks the assignment that minimizes the whole dictionary's total cost at once,
-weighted by how often each word is actually said.
+brevity-shortened form, the full star ladder on top of all of that, and (for a word spelled with a
+literal trailing `s`) that same candidate again with a voiced `-Z` coda respelled `-S` — go into one
+shared pool, and a single solve picks the assignment that minimizes the whole dictionary's total
+cost at once, weighted by how often each word is actually said. That last source is why `girls`
+strokes as `TKPWERLZ` (its own `-Z` reading measures cheaper) while a word like `abhors` lands on
+`PWHORS` instead of a `-Z` reading (there, `-S` measures cheaper) — the letter is decided by cost
+per word, not a blanket rule either way; see [`docs/decisions.md`](decisions.md) for the measured
+numbers.
 
 **Spelling's own job is unchanged in substance, just reframed**: it still answers "who may even
 propose this word's own plain, unstressed-vowel reading," not "who should win it." `sail` (`ai`) and
