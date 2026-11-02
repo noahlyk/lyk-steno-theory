@@ -1728,3 +1728,14 @@ to `O*E`, `ohh` to `OE/+*`. Frequency-weighted keys per word `-0.017`, strokes p
 The "i think" phrase entry (`AOEUPBG`) is gone - it was the letter's stroke merged with "think";
 `EU` | `-PBG` is `EUPBG`, the "ing" suffix's own word entry. One "I" phrase ships: "I would"
 (`WOEU`).
+
+**Bare contraction tails (`'s`, `'d`, `'ll`, `'re`, `'m`, `'ve`, `'t`, `'n`, `'a`) are no longer
+dictionary words.** The frequency list's tokenizer splits "I've" into "i" + "'ve", so each tail
+carries the whole contraction family's count (`'s` rank 6, `'re` 32, `'ll` 44, `'ve` 63) and was
+claiming short strokes - `ES`, `TUR`, `UL`, `UPL`, `EUD`, `*U` - that it can never use: struck
+alone it would type " 've", space included. Found when reserving `*U` for fingerspelling pushed
+`'ve` onto `U` and `you` (rank 1) onto `KWRAOU`. `ranked_words` now skips
+`generate::CONTRACTION_TAILS`; clipped colloquial words that are real words on their own
+(`'cause`, `'bout`, `'em`, `'til`) stay. Freed strokes went to `um` (`*UPL` -> `UPL`), `guess`
+(`TPWES` -> `ES`), `you'll` (`H*UL` -> `UL`), `tour` (`TAOUR` -> `TUR`), `id` (`*EUD` -> `EUD`).
+Frequency-weighted keys per word `-0.0017`.

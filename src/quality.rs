@@ -54,6 +54,7 @@ fn every_sufficiently_common_pronounceable_word_has_a_real_outline() {
             r < TOP_N
                 && setup.pron.contains_key(w.as_str())
                 && (w.len() >= 2 || w.as_str() == "a")
+                && !generate::CONTRACTION_TAILS.contains(&w.as_str())
                 && w.bytes().all(|b| b.is_ascii_lowercase() || b == b'\'')
         })
         .map(|(w, _)| w.as_str())

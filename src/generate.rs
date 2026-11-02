@@ -903,10 +903,15 @@ pub fn keys(outline: &[Stroke]) -> u32 {
     outline.iter().map(|s| s.0.count_ones()).sum()
 }
 
+/// The tail of a contraction the frequency list's tokenizer split off on its own ("I've" counted
+/// as "i" plus "'ve"). Never a word by itself - struck alone it would type " 've" with a space -
+/// but with the full contraction's count it out-arbitrates real words for short strokes (it once
+/// pushed "you" off `U`). Colloquial clipped words ("'cause", "'em", "'til") are real words and stay.
+pub(crate) const CONTRACTION_TAILS: &[&str] = &["'s", "'d", "'ll", "'re", "'m", "'ve", "'t", "'n", "'a"];
+
 /// Every word `generate` is willing to consider at all, most common first: a real pronunciation on
-/// record, inside the requested frequency window, plain lowercase (apostrophes aside), with a
-/// single-letter word only kept for the two that are real English words rather than frequency-list
-/// noise. Factored out so a test can build the exact same `simple`/`wanted` sets `generate` does
+/// record, inside the requested frequency window, plain lowercase (apostrophes aside), with "a" the
+/// only single-letter word and no bare contraction tail (`CONTRACTION_TAILS`). Factored out so a test can build the exact same `simple`/`wanted` sets `generate` does
 /// (see [`group_outline_sets`]) without re-deriving this filter by hand.
 fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)> {
     let mut words: Vec<(&String, usize)> = setup
@@ -916,6 +921,7 @@ fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)> {
             **r < common
                 && setup.pron.contains_key(w.as_str())
                 && (w.len() >= 2 || w.as_str() == "a")
+                && !CONTRACTION_TAILS.contains(&w.as_str())
                 && w.bytes().all(|b| b.is_ascii_lowercase() || b == b'\'')
         })
         .map(|(w, r)| (w, *r))
