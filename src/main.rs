@@ -172,6 +172,22 @@ enum Command {
         #[arg(long)]
         briefs: Option<PathBuf>,
     },
+    /// Score a stroke outline or word's physical comfort, term by term: which finger reaches
+    /// where, which pairs cost a transition, which finger is a gap, and the pinky tax - not just
+    /// the one number `score`/`build` otherwise sum into `candidate_cost`. See `src/ergonomics.rs`.
+    Ergonomics {
+        /// A stroke outline (`KAT`, `TPAEU/+HR`) or a word (`cat`); a word is looked up against
+        /// the generated dictionary's own chosen outline
+        query: String,
+        /// Words to cover when building the dictionary, most common first (only matters for a
+        /// word query). Matches `build`'s own default so the outline explained is the real,
+        /// deployed one.
+        #[arg(long, default_value_t = 100_000)]
+        common: usize,
+        /// Briefs to use instead of the built-in ones
+        #[arg(long)]
+        briefs: Option<PathBuf>,
+    },
     /// Build the dictionary and the plugin, then copy both straight into the live keymux config:
     /// the one command for everything `build` and `plugin` otherwise leave as a manual copy/paste
     Deploy {
@@ -288,6 +304,9 @@ fn main() -> Result<()> {
             common,
             briefs,
         } => run_lookup(&setup, query, *common, briefs.as_deref()),
+        Command::Ergonomics { query, common, briefs } => {
+            run_ergonomics(&setup, query, *common, briefs.as_deref())
+        }
         Command::Deploy { to, common, briefs } => {
             let setup = setup(Some(*common))?;
             let briefs = match briefs {
@@ -431,6 +450,37 @@ fn run_lookup(
             Ok(())
         }
     }
+}
+
+/// `ergonomics`: a stroke outline is scored directly, with no dictionary needed - the fast path
+/// for just trying a chord shape. A word is looked up against the generated dictionary's own
+/// chosen outline first, the same lookup `lookup`/`resolve` use, so what's explained is the real,
+/// deployed stroke for that word, not a guess at one.
+fn run_ergonomics(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    query: &str,
+    common: usize,
+    briefs_path: Option<&Path>,
+) -> Result<()> {
+    if let Some(strokes) = stroke::parse_outline(query) {
+        println!("{query} (a stroke outline):");
+        println!("{}", ergonomics::explain_outline(&strokes));
+        return Ok(());
+    }
+    let setup = setup(Some(common))?;
+    let briefs = match briefs_path {
+        Some(path) => generate::Briefs::load(path)?,
+        None => generate::Briefs::built_in()?,
+    };
+    let generated = generate::generate(&setup, &briefs, common)?;
+    let dictionary = generate::cheapest(&generated.entries);
+    let Some(outline) = dictionary.get(query) else {
+        println!("{query:?} is not a stroke outline and not a word in the generated dictionary");
+        return Ok(());
+    };
+    println!("{query}  ->  {}:", stroke::render_outline(outline));
+    println!("{}", ergonomics::explain_outline(outline));
+    Ok(())
 }
 
 /// What a stroke outline resolves to: a real dictionary entry, the rules' best phonetic reading

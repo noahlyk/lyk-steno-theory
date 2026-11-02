@@ -210,18 +210,20 @@ describe = "plover"       # 5 keys, SKREU
 # own Plover candidate list for a different-shaped answer - same mechanism as every brief above,
 # a per-word call, not a change to the shared cost function.
 
-# "against": deployed STPWEPBS (score 9) alternates onset row every finger; Plover's own second
-# candidate TKPWEPBS (score 6) swaps the leading "ST" for "TK" - same 8 keys, same stroke, no cost
-# at all, just a different onset shape Plover already lists.
+# "against": deployed STPWEPBS (score 606) alternates onset row every finger; Plover's own second
+# candidate TKPWEPBS (score 448) swaps the leading "ST" for "TK" - same 8 keys, same stroke, no cost
+# at all, just a different onset shape Plover already lists. (Scores are src/ergonomics.rs's
+# post-keyboard-geometry-revision scale, `cargo run -- ergonomics <outline>` - not the smaller
+# numbers an earlier revision of this comment cited.)
 against = "TKPWEPBS"
 
-# "protect": deployed PREBGT (score 7, a sandwiched-finger gap on the left hand). Plover's own
-# "PHREBGT" (score 5) adds an "H" (7 keys instead of 6) that lets the left index cover both its own
+# "protect": deployed PREBGT (score 365, a sandwiched-finger gap on the left hand). Plover's own
+# "PHREBGT" (score 302) adds an "H" (7 keys instead of 6) that lets the left index cover both its own
 # rows instead of leaving the ring finger gapped between two mismatched neighbors.
 protect = "PHREBGT"
 
-# "perhaps": deployed PRAPS (score 9, the same STR/SPR-family onset cost as the structural cases
-# below, compounded by its own coda). Plover's own "PRAPGS" (score 7) adds a "G" (6 keys instead of
+# "perhaps": deployed PRAPS (score 433, the same STR/SPR-family onset cost as the structural cases
+# below, compounded by its own coda). Plover's own "PRAPGS" (score 381) adds a "G" (6 keys instead of
 # 5) and resolves a transition in the coda - a real reduction for one extra key.
 perhaps = "PRAPGS"
 
@@ -229,6 +231,20 @@ perhaps = "PRAPGS"
 # "TKPWOFRPB" (6 keys) keeps it, reading phonetically closer to the actual word - a maintainer
 # preference, not an ergonomics or cost finding like the entries above.
 govern = "TKPWOFRPB"
+
+# "which": pinned to "KH" again, not for a new cost reason but to undo a real regression the
+# ergonomics keyboard-geometry revision's own retuning caused. `which`'s own candidate pool still
+# ranks "KH" (2 keys) below only "K" ("can") and "EU" ("I") - both correctly won on raw frequency,
+# unrelated to this - but the real, global solve now hands "KH" itself to "charge" instead (a
+# genuine Plover-style collision between the two: "charge" lists "KH" as a candidate too), dropping
+# `which` to the 3-key "WEU", a real one-key-worse regression caught by
+# `the_acceptance_gate_reproduces_or_beats_every_removed_override`. `charge`'s own candidate_cost
+# for "KH" didn't change (ergonomics(KH) is one fixed number, charged identically whoever bids for
+# it) - this is the global assignment shifting because *other* words' costs moved elsewhere in the
+# same solve, not a `which`-specific or `charge`-specific finding. Confirmed by direct before/after
+# comparison (`cargo run -- lookup which`/`lookup charge`, pre- vs post-revision binaries): "which"
+# held "KH" and "charge" used its own full "KHARPBLG" before this revision.
+which = "KH"
 
 # The entry below fixes a real heteronym: a word with more than one CMUdict pronunciation that
 # changes *meaning*, where `cheapest()` had settled on the rarer sense's outline - confirmed by

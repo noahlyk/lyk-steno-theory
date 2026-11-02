@@ -1966,10 +1966,10 @@ mod tests {
 
     #[test]
     fn the_acceptance_gate_reproduces_or_beats_every_removed_override() {
-        // Plan verification step 4: the 18 `rules/briefs.toml` overrides whose own comments cited
+        // Plan verification step 4: the 17 `rules/briefs.toml` overrides whose own comments cited
         // the greedy-ordering/fragment-check bug this whole redesign exists to fix have now been
         // removed from the real file - this runs the real, full dictionary (`dictionary_fixture`,
-        // the built-in briefs as they actually ship) and checks every one of those 18 words landed
+        // the built-in briefs as they actually ship) and checks every one of those 17 words landed
         // on the override's own outline or something strictly cheaper.
         //
         // `on`/`from`/`no`/`then`/`day`/`which` were briefly a different shape of check here: an
@@ -1977,8 +1977,12 @@ mod tests {
         // flagged (a half-held chord, like `which`'s own `KH` missing half of `WH`'s real chord),
         // which forced these six back up to their full phonetic reading - a real, user-confirmed
         // regression against the day-4 philosophy reversal ("nothing about a candidate needs to
-        // sound like the word"), reverted once found. All 18 words now compare the same way: the
-        // real dictionary's cost must be at or below the removed override's own cost.
+        // sound like the word"), reverted once found. The remaining 17 words still compare that
+        // way: the real dictionary's cost must be at or below the removed override's own cost.
+        // `which` itself moved back out of this list - not because that bug came back, but because
+        // the ergonomics keyboard-geometry revision's own retuning later shifted a real, unrelated
+        // global-solve collision (`which` vs. `charge`, both wanting the text "KH") the other way;
+        // see `rules/briefs.toml`'s own `which = "KH"` entry and comment, which pins it back.
         let setup = crate::dictionary_fixture::setup();
         let lyk = crate::dictionary_fixture::cheapest();
         for (word, overridden) in OVERRIDDEN_WORDS {
@@ -2032,7 +2036,6 @@ mod tests {
         ("no", "PHO"),
         ("then", "THEB"),
         ("day", "TAEU"),
-        ("which", "KH"),
         ("wow", "WOU"),
         ("honest", "OPBS"),
         ("bottle", "PWOLT"),

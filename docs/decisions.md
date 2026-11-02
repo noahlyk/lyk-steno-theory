@@ -1384,3 +1384,147 @@ tier`, alongside the existing spelling-mode test's own new assertion that `lyk_d
 there too. **If `lyk_deployed` is ever dropped from the printed label again**, this exact confusion
 comes back - a caller cannot infer "is this real" from `lyk.is_some()` alone, since every fallback
 tier also returns `Some`.
+
+**The ergonomics model was rebuilt a second time, from real keyboard geometry and two literature
+tables instead of one (`src/ergonomics.rs`).** The kinematics-revision model (the entry above,
+`0275f20`) fixed the finger-weighting research but kept its predecessor's physical assumption: every
+key is one of two discrete categories, "top" or "bottom," and two fingers "transition" only when
+their categories disagree. Three concrete problems with that, surfaced by direct user review of the
+model, not found by any test (the dictionary-ceiling test has no way to catch a wrong *shape*, only
+a wrong *scale*):
+
+1. **Two keys in the same category can be different distances.** The right pinky's stretch pair
+   (`D`/`Z`) was already taxed extra for being a further reach - but in the row-transition math
+   itself, `D` (top + a lateral key further out) and a plain top-row key on a *different* finger
+   (e.g. the ring's `L`) both read as plain "top," so a chord asking the ring to reach `L` while the
+   pinky reaches `D` scored **zero** transition cost, identical to doing nothing unusual at all. The
+   model was, in effect, treating the pinky's stretch key as reachable from the same physical place
+   as everyone else's plain top key.
+2. **`*` was scored as free, unconditionally**, by being stripped out of every stroke's bits before
+   any scoring ran at all (`let bits = stroke.0 & !(... | Stroke::STAR)`). Confirmed directly with
+   the user: `*` is always struck by the right index via `H` or `Y` - a real key, on a real finger,
+   that can double-load against that finger's own `F`/`R2` pair - and the model priced it at exactly
+   nothing regardless.
+3. **One coupling table was asked to describe two different things.** Häger-Ross & Schieber (the
+   same paper the kinematics revision already cited) measured two separate indices per finger: how
+   independently it can move *to its own target* (Individuation Index) and how still it can stay
+   *while its neighbors move* (Stationarity Index). The previous revision used `1 - II` for both the
+   transition cost (two fingers each demanding a target - the right use of `II`) and the gap cost (a
+   finger that must stay out of the way - the thing `SI` actually measures), because only `II` had
+   been pulled from the paper.
+
+**Fixed by replacing the binary row model with a continuous one, grounded in the keyboard `keymux`
+actually presses, not a dedicated stenotype board.** Confirmed against
+`~/.config/keymux/config.ron`'s `steno` layer and its default `qwerty.ron`: every key reduces to a
+`(vertical, lateral)` reach vector, each axis 0 (the finger's own row) or 1 (one key away) - home
+row `(0, 0)`, top row `(1, 0)`, a lateral-only stretch `(0, 1)`, top-plus-lateral `(1, 1)`. The left
+pinky's column is confirmed by the user's own one layout override (`"+": Key(KC_Q)`, directly above
+`S-`'s `A`) to be exactly what the model already assumed: `S-` has no top position of its own. The
+right pinky's stretch pair (`D`/`Z`, one key further right of `T-`/`S-` on the same two rows) and
+the right index's `*` (confirmed by the user to always be `H`/`Y` - never the left hand's `T`/`G`
+alternates - landing one key left of the index's own `F`/`R2`) both get the same `(1, 1)`-shaped
+treatment: a real further reach on the same finger, folded in as a wildcard that fills whichever of
+`F`/`R2`'s rows isn't already in use (so `*` plus `F` together cost no more than the same-finger
+double presses `TK`/`PW` already cost nothing extra for), defaulting to its cheaper option (`H`)
+when `*` is struck alone, since a free choice always takes the cheaper key.
+
+Two coupling tables replace the one, each from the real Häger-Ross & Schieber numbers (self-paced,
+averaged across the paper's own left/right columns, `1 − index`, ×1000 for clean integers) instead
+of one borrowed for both jobs:
+
+| Digit | `TRANS` (`1 − II`) | `GAP` (`1 − SI`) |
+|---|---|---|
+| Index | 22 | 30 |
+| Middle | 64 | 67 |
+| Ring | 98 | 94 |
+| Little | 56 | 57 |
+
+Using the deficit (`1 - index`) rather than the raw index directly also fixes an overcorrection the
+previous revision made for a defensible-sounding but wrong reason: it capped its finger-weight
+spread under 2x "per the research's own caution against overfitting an ~8%-spread proxy metric,"
+treating the *raw* individuation index (0.90-0.98, an genuinely ~8% range) as the thing with limited
+spread. The deficit from 1.0 is the physically meaningful quantity, and its spread is much wider -
+ring's `TRANS` weight is ~4.5x index's here, not ~1.8x.
+
+The cost itself, per hand, in physical order (pinky to index or its mirror), `active` meaning "at
+least one of this finger's keys is held":
+
+- **Transition cost**: for every pair of *consecutively active* fingers (a gap between them is
+  costed separately, not skipped silently), `(Δvertical² + Δlateral²) * (TRANS[i] + TRANS[j])`
+  between their reach vectors - the direct fix for problem 1 above: two fingers at the *same* reach
+  vector (a plain top-row key next to another plain top-row key) correctly cost nothing, because
+  moving together to the same relative place is a coordinated motion, not a conflicting one; two
+  fingers whose vectors actually differ (a plain top-row key next to a lateral stretch) now
+  correctly cost something, because they really are reaching to different places, even though the
+  old binary model's "top"/"bottom" labels couldn't tell them apart. Squaring each axis's difference
+  makes the cost convex, so a chord asking two already-poorly-coupled fingers to each reach further
+  costs much more than twice as much as asking them to reach a little.
+- **Engagement cost**: once two or more fingers on a hand are active at once (exempting any
+  single-finger stroke, including a same-finger double, which still costs nothing), each active
+  finger also costs `(vertical + lateral) * TRANS[finger]` on its own - coordinating several
+  simultaneously-moving fingers has a real cost even when they agree on where to go, which the
+  transition term alone (zero for agreeing fingers, by design) can't capture by itself.
+- **Gap cost**: unchanged in shape from the previous revision, now sourced from `GAP` (`1 - SI`)
+  instead of `TRANS` - the direct fix for problem 3.
+- **Pinky tax**: kept small and flat, re-confirmed as a leverage/strength tax rather than an
+  independence one (the data already said the pinky isn't the least independent digit); no longer
+  doubled for `D`/`Z` specifically, since their extra distance is now priced into the reach vector
+  itself and doubling on top of that would double-count it.
+
+Verified directly against the ordering the user built up by hand across the review, via the new
+`cargo run -- ergonomics` tool (see below): `-LT` (159) < `-LD` (369) < `-RLD` (556) < `*LD` (698) -
+monotonic for the exact reason given (progressively more simultaneous, axis-mismatched reach on
+coupled fingers), not a coincidence of which row label a key happened to get. `SKPH` (253) < `STWH`
+(527) still holds, now for the same underlying reason (`STWH` has three nonzero-distance adjacent
+pairs to `SKPH`'s one) rather than a hand-counted "number of mismatches." The worst *possible* single
+stroke (every key on the board, including `*`, pressed at once - never a real outline) scores 928,
+still comfortably under `KEY_WEIGHT` (1,000): ergonomics still cannot flip a real stroke-count or
+key-count difference for any outline, however extreme, matching `candidate_cost`'s documented
+lexicographic guarantee.
+
+Dictionary-wide, under the new scale (`lyk`'s real `build` output, `--common 100,000`): top-1,000
+average 136.96 (up roughly 14x from the previous revision's own top-1,000 average of 9.99, as
+expected - the whole scale changed, not just the relative ordering), 1,000-10,000 average 237.15,
+10,000+ average 277.27. `BAD_SCORE` moved to 550 (~4x the new top-1,000 average, the same ratio the
+previous revision's own cutoff - 40, ~4x its 9.99 - used, not a number carried over unscaled); at
+that cutoff the real "bad" share is 1.02% / 6.37% / 11.51% by band, and the three ceilings
+(`avg_ceiling` 150.0 / 250.0 / 290.0, `bad_pct_ceiling` 5.0 / 12.0 / 18.0) sit a little above each of
+those real, measured numbers - not loosened or guessed.
+
+**New: `cargo run -- ergonomics <outline-or-word>`, a real inspection tool, not just a number.**
+Previously the only way to see *why* a stroke scored what it did was to read the source and do the
+arithmetic by hand. `ergonomics` scores a raw outline directly with no dictionary build needed (the
+fast path for just trying a chord shape), or looks a word up against the real generated dictionary's
+own chosen outline first (the same lookup `lookup`/`resolve` already use, so what's explained is the
+real, deployed stroke) - and prints every term `weighted` adds: which finger reaches where (as a
+reach vector), which adjacent pair costs a transition and how much, which finger is a gap, the
+pinky tax, and the running total, ending in the exact number `score`/`build` would have used
+silently.
+
+**One real regression this retuning caused, found by the full test suite and fixed by restoring a
+single-word override, not by touching the model again.** Retuning any tie-break function can shift
+which bidder wins a contested short text in the solver's global, frequency-weighted assignment - an
+expected, already-documented risk (see the kinematics-revision entry above). This time it actually
+fired: `which`'s own candidate pool still ranks its 2-key `KH` below only `K` (`can`) and `EU` (`I`)
+- both correctly won on raw frequency, unrelated to this change - but the real solve started
+handing `KH` itself to `charge` instead (a genuine Plover-style collision: `charge` lists `KH` as a
+candidate too), dropping `which` to the 3-key `WEU` and failing
+`the_acceptance_gate_reproduces_or_beats_every_removed_override`. Confirmed directly
+(`cargo run -- lookup which`/`lookup charge`, pre- vs. post-revision binaries): `which` held `KH`
+and `charge` used its own full `KHARPBLG` before this revision. Importantly, `charge`'s own
+`candidate_cost` for `KH` did not change - ergonomics(`KH`) is one fixed number, charged identically
+whoever bids for it - so this is the *global* assignment shifting because other words' costs moved
+elsewhere in the same solve, not a `which`- or `charge`-specific finding. Fixed the same way the
+pre-existing four ergonomics-motivated overrides in `rules/briefs.toml` already are: `which = "KH"`
+re-added (see its own comment there), `which` moved out of `generate.rs`'s
+`OVERRIDDEN_WORDS` acceptance-gate list (17 words remain, not 18 - it is a live override again, not
+a removed one). That one fix also cleared the only other failure this revision caused
+(`quote_corpus::lyk_beats_plover_and_lapwing_across_a_hundred_unpicked_passages`'s Lapwing-keys
+margin, 3.0% vs. a 2.8% ceiling - `which` is common enough to appear in the 103-passage corpus) -
+confirming both failures traced to the exact same root cause rather than being two separate
+problems. README.md's score table also moved by this (one word's key count changed): re-synced via
+`cargo run --release -- score --check-readme`.
+
+**If this gets reverted to a binary top/bottom row model "for simplicity," problems 1-3 above all
+come back**, including the specific bug that started this revision: two fingers that differ in
+reach can share a row label and silently score zero.
