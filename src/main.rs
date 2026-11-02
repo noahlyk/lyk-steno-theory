@@ -58,6 +58,10 @@ enum Command {
         /// non-zero and shows the up-to-date table when it doesn't
         #[arg(long)]
         check_readme: bool,
+        /// Like `--check-readme`, but rewrite any stale table in place (only between its own
+        /// markers) instead of failing
+        #[arg(long)]
+        write_readme: bool,
     },
     /// The most common words the rules get wrong
     Mismatches {
@@ -214,14 +218,15 @@ fn main() -> Result<()> {
             common,
             briefs,
             check_readme,
+            write_readme,
         } => {
             let setup = setup(Some(*common))?;
             let briefs = match briefs {
                 Some(path) => generate::Briefs::load(path)?,
                 None => generate::Briefs::built_in()?,
             };
-            if *check_readme {
-                analysis::check_readme(&setup, &briefs, *common, Path::new("README.md"))
+            if *check_readme || *write_readme {
+                analysis::check_readme(&setup, &briefs, *common, Path::new("README.md"), *write_readme)
             } else {
                 analysis::score(&setup, &briefs, *common)
             }

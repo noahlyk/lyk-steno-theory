@@ -1765,3 +1765,12 @@ word `-0.027 / -0.026 / -0.025 / -0.024`, strokes per word `+0.0004 / +0.0003 / 
 `young` (`KWHUPBG` -> `HUPBG`), `another`, `next`, `care`. `build`'s keys per word on the shared
 vocabulary went `3.349 -> 3.303` at an unchanged `1.015` strokes. Unplaced words 489 -> 504, all
 rare names. The `eye`/`oh` pins stay - the tape shows those are the strokes reached for.
+
+**Build performance, no output change.** `build` 19.5 s -> ~8.6 s across this batch, with
+`out/lyk.json` byte-identical before and after each of these two steps (sha256 checked): the bonus
+`Origin::Short` pass reuses the candidates the pool already enumerated instead of re-running
+`enumerate_candidates` for all ~65k words, and the pool's own enumeration runs across every core
+(`enumerate_in_parallel` - the function is pure, so order and content are unchanged). `score
+--check-readme` generated the whole dictionary once per README table (five times, ~28 s); it now
+tallies once (~5 s), and `score --write-readme` rewrites stale tables in place between their own
+markers. (The solver's own speedup is logged with the no-match change above.)

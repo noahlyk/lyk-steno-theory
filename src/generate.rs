@@ -991,6 +991,26 @@ fn ladder(outline: &[Stroke], join: bool) -> Vec<(u8, Vec<Stroke>)> {
     steps
 }
 
+/// One `Origin::Short` candidate kept for the bonus short-form pass: its outline and origin.
+type ShortForm = (Vec<Stroke>, Origin);
+
+/// `enumerate` applied to every word, in order, split across the machine's cores: candidate
+/// enumeration is a pure function of the word, so the result is identical to a sequential map.
+fn enumerate_in_parallel<F>(words: &[&String], enumerate: F) -> Vec<Vec<Candidate>>
+where
+    F: Fn(&str) -> Vec<Candidate> + Sync,
+{
+    let threads = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let chunk = words.len().div_ceil(threads).max(1);
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = words
+            .chunks(chunk)
+            .map(|part| scope.spawn(|| part.iter().map(|w| enumerate(w.as_str())).collect::<Vec<_>>()))
+            .collect();
+        handles.into_iter().flat_map(|h| h.join().expect("a candidate-enumeration thread panicked")).collect()
+    })
+}
+
 /// Every outline a real keymux config already gives to a command, a punctuation mark, or
 /// fingerspelling - never available to a word, whatever the rules would have generated for it.
 /// Pulled out of [`generate`] so a test can confirm the invariant it exists to guarantee (no
@@ -1101,11 +1121,20 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // star ladder - see `enumerate_candidates`). Already-spoken-for texts are dropped and same-text
     // candidates collapsed to the cheaper one here - the mandatory scoping step before peeling.
     let mut remaining: HashMap<&str, Vec<Candidate>> = HashMap::new();
-    for (word, _) in &words {
-        if is_literal_override(word.as_str()) {
-            continue;
-        }
-        let candidates = enumerate_candidates(setup, briefs, word.as_str(), &simple, &wanted);
+    // Every word's `Origin::Short` candidates, kept aside in word order for the bonus short-form
+    // pass below rather than enumerating every word's candidates a second time.
+    let mut short_forms: Vec<(&String, Vec<ShortForm>)> = Vec::new();
+    let pool_words: Vec<&String> = words.iter().map(|(w, _)| *w).filter(|w| !is_literal_override(w.as_str())).collect();
+    let pools = enumerate_in_parallel(&pool_words, |word| enumerate_candidates(setup, briefs, word, &simple, &wanted));
+    for (word, candidates) in pool_words.into_iter().zip(pools) {
+        short_forms.push((
+            word,
+            candidates
+                .iter()
+                .filter(|c| matches!(c.origin, Origin::Short(_)))
+                .map(|c| (c.outline.clone(), c.origin))
+                .collect(),
+        ));
         let mut by_text: HashMap<String, Candidate> = HashMap::new();
         for candidate in candidates {
             let text = render_outline(&candidate.outline);
@@ -1329,25 +1358,14 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // squat on text a later, rarer word needed as its own primary, since every primary is already
     // final by the time this runs. A literal `[word]` override keeps its one exclusive entry, the
     // same as before.
-    for (word, _) in &words {
-        if is_literal_override(word.as_str()) {
-            continue;
-        }
-        for candidate in enumerate_candidates(setup, briefs, word.as_str(), &simple, &wanted) {
-            if !matches!(candidate.origin, Origin::Short(_)) {
-                continue;
-            }
-            let text = render_outline(&candidate.outline);
+    for (word, shorts) in short_forms {
+        for (outline, origin) in shorts {
+            let text = render_outline(&outline);
             if taken.contains_key(&text) {
                 continue;
             }
-            taken.insert(text, (*word).clone());
-            entries.push(Entry {
-                word: (*word).clone(),
-                outline: candidate.outline,
-                origin: candidate.origin,
-                lost_to: None,
-            });
+            taken.insert(text, word.clone());
+            entries.push(Entry { word: word.clone(), outline, origin, lost_to: None });
         }
     }
 

@@ -81,6 +81,7 @@ cargo run --release -- fetch               # download the data into data/ (safe 
 cargo run --release -- report              # what was loaded
 cargo run --release -- score               # how often the rules match Plover or Lapwing
 cargo run --release -- score --check-readme   # do this README's tables still match?
+cargo run --release -- score --write-readme   # ...and rewrite any stale one in place
 cargo run --release -- build               # briefs + rules -> out/lyk.json, with the cost
 cargo run --release -- plugin              # generate keymux's WASM fallback plugin from the rules
 cargo run --release -- deploy              # build + plugin, copied straight into keymux's live config
