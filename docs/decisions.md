@@ -1841,3 +1841,15 @@ which chose a pricier outline deliberately; no other word is stranded. Cost: `bu
 deployed before this branch, the branch as a whole is now -0.072 weighted keys per word and -0.003
 strokes per word. `liked` keeps its literal pin `-FLD`; "-ing" after a K sound (*talking*,
 *looking*, *working*) has no key left to add and needs its own convention.
+
+**False families removed: the most frequent valid stem wins, and `rules/families.toml` lists
+coincidences.** Checking which outlines the family pass changed showed collateral was small (808
+words outside any family moved, 46 of them in the top 10,000, net weighted cost zero) but some links
+were wrong: *better* = *bet* + "-er", *moment* = *mo* + "-ment" (which cost *moment* a key), *feed*
+= *fee* + "-d", *robber* = the name *robb* + "-er", *lived* = *liv* + "-d". Spelling plus sound can't
+tell these apart, so: among stems that pass, the most frequent is chosen (fixing *robber*, *lived*,
+*died*), and about 150 coincidences found by reading every derivational link in the top 15,000 and
+every short-stem link are listed as `not_family`. Effect against the previous commit: weighted keys
+per word `-0.0004`; *moment* back to `PHOELT`, *living* `HREUFG` and *lived* `HREUFD` now match *live*
+`HREUF`, *died* `TKAOEUD` matches *die* `TKAOEU`. Words that lose a cheap but coincidental family
+shape: *forest* (`-FRT`, "for" + "est") is now `TPO*RS`, *truly* `TRAOUL`, *upper* `AURP`.

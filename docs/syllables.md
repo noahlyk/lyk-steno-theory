@@ -110,6 +110,12 @@ only fires when the ending is a syllable of its own, so `called` (`call` + a bar
   that ending adds (`-ed`: D, T, or IH D; `-s`: S, Z, or IH Z; `-ing`: IH NG; and so on), so *used*
   is *use* + "-ed", never *us* + "-ed";
 - the stem is said at least 1/50th as often as the word, so *need* is not *ne* + "-ed".
+- when several stems pass, the most frequent one is kept, so *robber* is *rob* + "-er", not the
+  name *robb*, and *lived* is *live* + "-d", not *liv*;
+- the word is not listed in `rules/families.toml`'s `not_family`, which holds the words that pass
+  every check above by coincidence: an ending that is really part of the word (*better*, *letter*,
+  *moment*, *forest*, *feed*), or a name (*walter*, *peter*). Add a word there if `family` shows it
+  linked to something it isn't built from.
 
 Every linked word gets its stem's own outline, whatever it is (a brief, a rules reading, a star
 form), plus the ending's standalone stroke from [the suffix table](suffixes.md): `KAUL/+-D` for

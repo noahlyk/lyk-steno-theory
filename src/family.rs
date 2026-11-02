@@ -12,6 +12,19 @@ use crate::stroke::{Stroke, parse_outline};
 use std::collections::{BTreeMap, HashMap};
 
 const SUFFIXES: &str = include_str!("../rules/suffixes.toml");
+const FAMILIES: &str = include_str!("../rules/families.toml");
+
+#[derive(serde::Deserialize)]
+struct Families {
+    not_family: Vec<String>,
+}
+
+/// Words that pass the spelling and sound checks by coincidence (`better` is not `bet` + "-er"),
+/// from `rules/families.toml`.
+fn not_family() -> std::collections::HashSet<String> {
+    let families: Families = toml::from_str(FAMILIES).expect("rules/families.toml parses");
+    families.not_family.into_iter().collect()
+}
 
 /// The endings a family link may use, as written in `rules/suffixes.toml`. Inflections plus the
 /// common derivational endings whose spelling attaches to a whole word; endings that replace part
@@ -129,30 +142,34 @@ pub fn links<'a>(
     let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
     let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
     let strokes = suffix_strokes();
+    let not_family = not_family();
     let mut out = HashMap::new();
     for &word in &vocabulary {
         'endings: for &ending in FAMILY_ENDINGS {
             let Some(options) = strokes.get(ending) else { continue };
-            for stem in stem_spellings(word, ending) {
-                if !known.contains(stem.as_str()) {
-                    continue;
-                }
-                let said = |w: &str| count.get(w).copied().unwrap_or(0);
-                if said(&stem).saturating_mul(STEM_RARITY_LIMIT) < said(word) {
-                    continue;
-                }
-                let Some(last_sound) = sound_split(pron, &stem, word, ending) else { continue };
-                // "s" has two strokes: `+-S` for a word that really ends in "s", `+-Z` otherwise.
-                let chosen = if ending == "s" {
-                    let want = if last_sound == "S" { "S" } else { "Z" };
-                    options.iter().find(|o| crate::stroke::render_outline(o).ends_with(want))
-                } else {
-                    options.first()
-                };
-                let Some(chosen) = chosen else { continue };
-                out.insert(word.to_owned(), Link { stem, suffix: ending, strokes: chosen.clone() });
-                break 'endings;
+            if not_family.contains(word) {
+                break;
             }
+            let said = |w: &str| count.get(w).copied().unwrap_or(0);
+            // Every spelling that passes, the most frequent kept: `robber` is `rob` + "-er", not
+            // the name `robb`; `lived` is `live` + "-d", not `liv`.
+            let best = stem_spellings(word, ending)
+                .into_iter()
+                .filter(|stem| known.contains(stem.as_str()))
+                .filter(|stem| said(stem).saturating_mul(STEM_RARITY_LIMIT) >= said(word))
+                .filter_map(|stem| sound_split(pron, &stem, word, ending).map(|last| (stem, last)))
+                .max_by(|(a, _), (b, _)| said(a).cmp(&said(b)).then_with(|| b.cmp(a)));
+            let Some((stem, last_sound)) = best else { continue };
+            // "s" has two strokes: `+-S` for a word that really ends in "s", `+-Z` otherwise.
+            let chosen = if ending == "s" {
+                let want = if last_sound == "S" { "S" } else { "Z" };
+                options.iter().find(|o| crate::stroke::render_outline(o).ends_with(want))
+            } else {
+                options.first()
+            };
+            let Some(chosen) = chosen else { continue };
+            out.insert(word.to_owned(), Link { stem, suffix: ending, strokes: chosen.clone() });
+            break 'endings;
         }
     }
     out
@@ -213,6 +230,11 @@ mod tests {
             ("cats", "K AE1 T S"),
             ("dark", "D AA1 R K"),
             ("ne", "N IY1"),
+            ("rob", "R AA1 B"),
+            ("robb", "R AA1 B"),
+            ("robber", "R AA1 B ER0"),
+            ("bet", "B EH1 T"),
+            ("better", "B EH1 T ER0"),
             ("need", "N IY1 D"),
             ("darkness", "D AA1 R K N AH0 S"),
         ]);
@@ -220,6 +242,7 @@ mod tests {
         let mut count: HashMap<String, u64> = p.keys().map(|w| (w.clone(), 100)).collect();
         count.insert("ne".to_owned(), 1);
         count.insert("need".to_owned(), 1_000);
+        count.insert("robb".to_owned(), 10);
         let links = links(&p, &count, words);
         let stem = |w: &str| links.get(w).map(|l| (l.stem.as_str(), l.suffix));
         assert_eq!(stem("called"), Some(("call", "ed")));
@@ -231,6 +254,8 @@ mod tests {
         assert_eq!(stem("darkness"), Some(("dark", "ness")));
         assert_eq!(stem("call"), None);
         assert_eq!(stem("need"), None, "ne is far too rare to be need's stem");
+        assert_eq!(stem("robber"), Some(("rob", "er")), "the commoner rob, not the name robb");
+        assert_eq!(stem("better"), None, "listed in rules/families.toml");
         let s = |w: &str| crate::stroke::render_outline(&links[w].strokes);
         assert_eq!(s("cats"), "+-S", "really ends in an s sound");
         assert_eq!(s("boxes"), "+-Z", "ends in a z sound");

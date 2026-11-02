@@ -131,7 +131,7 @@ of very common words dominate it and a long tail of rare ones barely move it:
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
 | 1 | 2.81 | 3.19 | 3.59 |
-| 2 | 4.69 | 4.70 | 4.99 |
+| 2 | 4.68 | 4.70 | 4.99 |
 | 3 | 4.62 | 4.93 | 5.25 |
 | 4+ | 4.96 | 5.24 | 5.50 |
 <!-- lyk:usage-table:end -->

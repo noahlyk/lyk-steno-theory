@@ -1,0 +1,30 @@
+# Word families (`src/family.rs`): a word is linked to its stem when it is the stem's spelling plus
+# a regular ending and sounds like the stem plus exactly that ending's sounds. A few words pass both
+# checks by coincidence - their ending is part of the word, not added to another word - and get no
+# family link at all. List them here. See docs/syllables.md.
+#
+# `cargo run --release -- family <word>` shows what a word is linked to.
+
+not_family = [
+  # "-er"/"-est" that is just part of the word, not "more"/"one who"
+  "better", "letter", "matter", "summer", "offer", "forest", "corner", "center", "former",
+  "quarter", "hammer", "butter", "pepper", "upper", "inner", "supper", "bitter", "liver", "manner",
+  "temper", "poker", "counter", "tender", "rubber", "copper", "ladder", "sweater", "soccer",
+  "trigger", "porter", "dagger", "barrier", "carrier", "utter", "wander", "meter", "harvest",
+  "batter", "charter", "litter", "lever", "scatter", "differ", "tinker", "platter", "render",
+  "clover", "ledger", "shatter", "buffer", "badger", "splinter", "gutter", "bummer", "everest",
+  "latter", "broker", "hamburger", "proper", "mister", "lesser", "flatter", "boner", "usher",
+  # names that look like a word plus "-er"/"-est"/"-s"
+  "peter", "walter", "spencer", "carter", "miller", "cooper", "harper", "homer", "chester",
+  "lester", "palmer", "tucker", "turner", "archer", "barber", "keller", "fischer", "becker",
+  "thatcher", "fowler", "slater", "grover", "klinger", "berger", "conner", "webber", "granger",
+  "fraser", "decker", "parker", "oliver", "easter", "ernest", "forrest", "kimberly", "carly",
+  "daly", "los", "las", "das", "pas", "dos", "ares", "ames", "hans", "lars", "hayes", "gibbs",
+  "hobbs", "simms", "irving", "ewing", "mars",
+  # "-ment"/"-ness"/"-ly"/"-ful"/"-less"/"-able" that is just part of the word
+  "moment", "segment", "garment", "torment", "testament", "witness", "harness", "unless", "holy",
+  "gently", "truly", "awful", "liable", "viable", "capable", "probable", "grizzly", "holiness",
+  # "-ed"/"-s"/"-ing" that is just part of the word
+  "feed", "weed", "seed", "deed", "heed", "reed", "news", "lens", "abs", "cunning", "pudding",
+  "earring", "tying",
+]
