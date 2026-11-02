@@ -1548,3 +1548,40 @@ printed as "keys (shared vocabulary only, fair comparison)", plus a separate, cl
 future command built on `rows_for`/`cost` ever sums a theory's keys without gating on every other
 column's `Some`-ness in the same comparison, this exact bug is back** - `cost(text) == None` means
 "no real cost exists for this theory on this word," not "zero."
+
+**Follow-up to the ergonomics revision: the ~51 common-word outline changes it caused in the global
+solve are correct, not regressions - verified, not just asserted.** The revision above shifted which
+word wins certain contested short outlines (the same mechanism that broke `which`). Measuring the
+top 10,000 words by frequency found 37 that got measurably more expensive and 29 that got cheaper,
+net +17 keys - on its face a worse-looking list. But `generate.rs`'s matching
+(`edge_cost = count[word] * candidate_cost(outline)`, solved exactly by min-cost flow per connected
+component) is a **proven global optimum** for the project's own headline metric, keys-per-word
+weighted by frequency - not a proxy for it. Tracing individual "losses" in that 37-word list showed
+several are links in longer reshuffling chains, not isolated two-word swaps: `canada` takes `K-D`
+from `custody`, which in turn takes `K-SD` from `countryside`; `sister` takes `S-FR` from `server`,
+which takes `SR-FR` from `survivor`. In both chains the *most frequent* word of the group correctly
+ends up on the cheapest slot - a plain pairwise rank check on the middle link alone would have
+flagged it backwards. **Decision: pin nothing from this list.** Doing so would deliberately move
+the dictionary away from the solver's already-optimal assignment. The only aggregate number this
+whole revision actually moved in README.md was 1-syllable Keys/Stroke (Lyk), `5.55 -> 5.56` - a
+0.18% wash in exchange for fixing three real conceptual scoring bugs. A few of the 37 turned out to
+be unrelated data-quality quirks surfaced along the way, not ergonomics regressions at all: `lets`
+vs. `let's` double-count because the frequency corpus strips apostrophes and conflates them;
+`chess`/"ches" and `sleeps`/"vheeps" are phonetic-fallback or labeling artifacts, not real
+collisions. None of these were touched here - flagged for whoever next works on the frequency
+corpus or phonetic fallback, not an ergonomics-model concern.
+
+**Same follow-up, re-verifying (not just re-scoring) the four pre-existing ergonomics overrides.**
+`against`, `protect`, `perhaps`, `govern` had their comments' cited scores refreshed to the new
+scale when the model was rebuilt, but nobody had re-checked whether a *different* candidate now
+beats the pinned one. Re-ran `dump_natural_candidates_for_the_override_words`
+(`src/generate.rs`, `#[ignore]`d) with these four words added to its list (kept there permanently -
+it's the one place that documents and re-checks every ergonomics-motivated override's full candidate
+pool). `against`'s pin already matches its own cheapest candidate (no-op by design - it only
+resolves a within-dictionary collision risk, not an ergonomics trade). `protect` and `govern`
+confirmed still optimal at their chosen key-count tier. **`perhaps` had a real, free improvement
+sitting in its own candidate list**: the pinned `PRAPGS` (score 381, 6 keys) is beaten by `PRAPTS`
+(score 375, 6 keys) - same extra key spent over the natural `PRAPS`, but ending in the right
+pinky's `T`/`S` roll already deployed elsewhere (`lets` -> `HRETS`) instead of a second transition.
+Confirmed `PRAPTS` was unclaimed in the real dictionary (`resolve PRAPTS` -> "not in the dictionary")
+before repinning. `rules/briefs.toml`'s `perhaps` entry now reads `PRAPTS`, comment updated.

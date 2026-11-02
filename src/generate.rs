@@ -2007,11 +2007,13 @@ mod tests {
     fn dump_natural_candidates_for_the_override_words() {
         let briefs = briefs_without(&[
             "make", "but", "on", "from", "no", "then", "day", "which", "wow", "honest", "bottle",
-            "public", "hiding", "gasps", "flowers", "grunting", "honey", "bloody",
+            "public", "hiding", "gasps", "flowers", "grunting", "honey", "bloody", "against",
+            "protect", "perhaps", "govern",
         ]);
         for word in [
             "make", "but", "on", "from", "no", "then", "day", "which", "wow", "honest", "bottle",
-            "public", "hiding", "gasps", "flowers", "grunting", "honey", "bloody",
+            "public", "hiding", "gasps", "flowers", "grunting", "honey", "bloody", "against",
+            "protect", "perhaps", "govern",
         ] {
             let candidates = candidates_for(word, &briefs);
             let mut rows: Vec<(String, Origin, u32)> = candidates

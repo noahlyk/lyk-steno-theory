@@ -92,9 +92,26 @@
 //! - **Pinky tax**: a small flat `PINKY_TAX` per press of a pinky key (`S-` on the left; `T-`, `S-`,
 //!   `D`, `Z` on the right), excluding the join key (see below). This is **not** about
 //!   independence - the data above already says the pinky isn't the least independent digit - it's
-//!   a separate, smaller leverage/grip-strength tax, and the right pinky's extra reach is already
-//!   priced in by its vector, so this tax no longer needs to double for `D`/`Z` the way an earlier
-//!   revision did.
+//!   meant to stand in for a separate, smaller leverage/grip-strength effect, and the right pinky's
+//!   extra reach is already priced in by its vector, so this tax no longer needs to double for
+//!   `D`/`Z` the way an earlier revision did.
+//!
+//!   **Unlike every other number in this module, `PINKY_TAX`'s value (`5`) is a judgment call, not
+//!   a measurement - documented here instead of dressed up as one.** A literature search for a
+//!   keyboard-typing-specific leverage or grip-strength ratio by digit found nothing comparable in
+//!   kind to Häger-Ross & Schieber above: the available pinch- and grip-force studies disagree with
+//!   each other on finger order (one five-finger pinch study put index and middle each near a third
+//!   of the load and ring/little near a sixth each; one grip study found the middle finger
+//!   contributing most at high force and the index finger most at low force; none measured an
+//!   isolated keystroke). Citing any single one of those as "the" source would misrepresent
+//!   disagreement as consensus - the same mistake this whole module exists to fix elsewhere. `5` was
+//!   chosen only to be small relative to every other term: smaller than the smallest nonzero
+//!   engagement cost (`56`, the right pinky's own) and far smaller than any `GAP` or realized
+//!   transition cost (`30`-`164`), so it can only break a tie between candidates that are otherwise
+//!   equal and differ in how many pinky presses they need - it can never outweigh or override a
+//!   real, measured biomechanical difference the other terms already capture. If a real
+//!   keyboard-specific force measurement by digit surfaces later, replace this constant and this
+//!   paragraph together; until then, treat it as a deliberately small residual, not a finding.
 //!
 //! The join key is excluded from every term above: it appears in essentially every multi-stroke
 //! continuation regardless of which words are involved, so costing it would penalize "more than one
@@ -157,7 +174,8 @@ const LEFT_GAP: [u32; 4] = [GAP[3], GAP[2], GAP[1], GAP[0]];
 const RIGHT_TRANS: [u32; 4] = TRANS; // index, middle, ring, little
 const RIGHT_GAP: [u32; 4] = GAP;
 
-/// A small, flat leverage/grip-strength tax, not independence-based - see the module doc.
+/// A small, flat leverage/grip-strength tax, not independence-based - a deliberate judgment call,
+/// not a measurement; see the module doc for why.
 const PINKY_TAX: u32 = 5;
 
 /// One finger's reach this stroke, and whether more than one of its own keys fired at once (a

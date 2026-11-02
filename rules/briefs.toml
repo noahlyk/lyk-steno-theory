@@ -223,9 +223,12 @@ against = "TKPWEPBS"
 protect = "PHREBGT"
 
 # "perhaps": deployed PRAPS (score 433, the same STR/SPR-family onset cost as the structural cases
-# below, compounded by its own coda). Plover's own "PRAPGS" (score 381) adds a "G" (6 keys instead of
-# 5) and resolves a transition in the coda - a real reduction for one extra key.
-perhaps = "PRAPGS"
+# below, compounded by its own coda). "PRAPTS" (score 375, 6 keys instead of 5) beats it for the
+# same extra key that a "PRAPGS" (score 381, 6 keys) override used to spend here - same coda shape,
+# but ending in the right pinky's T/S roll already deployed elsewhere ("lets" -> HRETS) instead of a
+# second transition. Found by re-checking this word's full candidate pool after the ergonomics
+# keyboard-geometry revision (`cargo run -- ergonomics <outline>`), not by re-deriving from scratch.
+perhaps = "PRAPTS"
 
 # "govern": deployed TKPWOFPB (5 keys) drops the "er" sound's own R entirely. Plover's own fuller
 # "TKPWOFRPB" (6 keys) keeps it, reading phonetically closer to the actual word - a maintainer
