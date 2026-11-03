@@ -82,3 +82,53 @@ this in parallel with other word-level churn means redoing the collision pass mo
 
 Nothing but this file. No code, no data, no new dictionary entries until the scope above is
 reviewed and the stroke-slot design in step 1 is sanity-checked against real key availability.
+
+---
+
+# Revision, 2026-11-03: phrases compete for strokes (measured before building)
+
+The plan above (a starter/auxiliary/verb grammar with its own key slots) is still the right *second*
+step. Measuring first showed a bigger and simpler first step hiding in today's phrase pass.
+
+## What the measurement said
+
+Today a phrase is committed only when the merged stroke (two words' primaries OR'd together) is
+**unclaimed**. In a dictionary this dense that is rare: `it is` = `T`+`S` = `ST` is lost to `sit`'s
+backup, `in the` = `TPH-T` to `antonio`, `in a` = `TPHA` to `nah`. The most common pairs in English
+lose to the least common words.
+
+Simulation (`tools/phrase_sim.py`, run against `out/lyk/`; two independent corpora, the five
+Gutenberg texts in `data/corpus/` and `data/frequency/bigrams_en.txt`):
+
+| | pairs written as one stroke, Gutenberg | same, web bigrams |
+|---|---:|---:|
+| today's phrases (3,308) | 10.3% | 16.1% |
+| + phrases allowed to displace a word (750 more) | +8.2% | +8.6% |
+
+A displacement is taken when `pair rate x 25 keys-equivalent (one stroke)` beats
+`word rate x (cost of the word's next-best outline - cost of the stolen one)`. Rules that keep it
+safe:
+
+- A word in the top 1,500 by subtitle frequency never loses its **primary** to a phrase (`on`,
+  `want`, `after` stay). Only non-primary entries (a backup, a `Short` form, an extra) can be taken
+  from such a word: `sit` keeps `SEUT`, `society` keeps its own outline.
+- The loser always keeps another outline. A word whose only outline would be taken is not displaced.
+- Pairs are decided in order of rate, so the best phrase gets a contested stroke.
+- Threshold: a pair needs at least 20 per million pairs (blended geometric mean of the two written
+  corpora) to be tried.
+
+750 phrases is a lot to learn, but each one is *a stroke you already know + a stroke you already
+know*: `in the` is the `in` stroke plus the `the` stroke. That is what makes it learnable.
+
+## Build order
+
+1. **Phrase competition** (this section). The phrase pass moves in front of the backup loop's last
+   round so the displaced words get fresh backups; entries it removes are re-composed, not lost.
+   Docs: `docs/phrases.md` (what qualifies, the protection rule, the cost rule), `docs/decisions.md`.
+2. **Starter grammar**, only for what step 1 cannot reach: pairs whose primaries overlap (`I`=`EU`
+   against every vowel) or are held by a protected word. The remaining starter-led mass after step 1
+   is `it is`, `he was`, `they are`, `you will`, `it would`, `we can`: mostly `protected/lost`, not
+   overlap. So step 2 starts with the starters' own chunk in the left bank, evaluated on the same
+   simulation, and is only built if it clears the same bar.
+3. Both measured with `cargo test --release quote_corpus -- --nocapture` (phrase-aware walk) before
+   and after, with `sha256sum` of the dictionary so the change is attributable.
