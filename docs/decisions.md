@@ -1970,7 +1970,7 @@ key's weight) is too small to stop an awkward one winning.
 which cannot be played (found by typing it). 4,760 outlines broke the rule. It is a hard filter at
 every point a stroke is produced (candidates, backups, family shapes, phrase merges, alternates),
 and a candidate that needs it is split instead of dropped: `-SD` -> `-S` + `+-D`, so `cadence` is
-`KAEUPBS/+-D`. A hand-written outline that breaks it stops the build. After: 0 untypable outlines,
+`KAEUPBS/+-D`, but only when no one-stroke repair is free: a candidate with a pinky key swapped for its voiced or unvoiced partner (`-TZ` -> `-TS`, `-SD` -> `-ZD`) is offered first and wins on cost, so `cadence` is `KAEUPBTS`. Of ~1,090 untypable primaries, 653 stay one stroke, 245 became two. A hand-written outline that breaks it stops the build. After: 0 untypable outlines,
 stranded 0, 106 tests; four rare words lost their outline (`cleansed`, `pulsed`, `blitzed`,
 `repulsed`: the repair fails the voiced-`-D` consonant check). Left-hand and other fingers were not
 limited: only this pinky block was reported. A per-person hand profile for softer limits was

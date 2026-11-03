@@ -344,8 +344,18 @@ pub fn enumerate_candidates(
     let push = |out: &mut Vec<Candidate>, mut outline: Vec<Stroke>, origin: Origin| {
         setup.rules.joined(&mut outline);
         if !typable(&outline) {
-            // Not typable as written: offer it with the offending pinky keys moved onto a
-            // continuation stroke instead of dropping the word's candidate altogether
+            // Not typable as written. Offer, in this order of preference, the same outline with
+            // one pinky key swapped for its partner (still one stroke), and the offending pinky
+            // keys moved onto a continuation stroke; never just drop the word's candidate.
+            if let [bad] = outline.iter().filter(|s| !s.typable()).collect::<Vec<_>>()[..] {
+                let at = outline.iter().position(|s| s == bad).expect("it is in the outline");
+                for swapped in bad.typable_swaps() {
+                    let mut repaired = outline.clone();
+                    repaired[at] = swapped;
+                    let cost = candidate_cost(&repaired);
+                    out.push(Candidate { outline: repaired, origin, cost });
+                }
+            }
             let Some(split) = split_untypable(&outline) else { return };
             outline = split;
             setup.rules.joined(&mut outline);

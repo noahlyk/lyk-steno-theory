@@ -66,6 +66,41 @@ impl Stroke {
         !(pinky == T | Z || pinky == S | D || (pinky.count_ones() == 3))
     }
 
+    /// The typable strokes one or two pinky keys away from this untypable one, each key swapped
+    /// for its voiced or unvoiced partner (`-T`/`-D`, `-S`/`-Z`): `-TZ` is `-TS` or `-DZ`, `-SD`
+    /// is `-ZD` or `-ST`. Empty when the stroke is already typable. These keep it one stroke.
+    pub fn typable_swaps(self) -> Vec<Self> {
+        const T: u32 = 1 << 19;
+        const S: u32 = 1 << 20;
+        const D: u32 = 1 << 21;
+        const Z: u32 = 1 << 22;
+        if self.typable() {
+            return Vec::new();
+        }
+        let mut found = Vec::new();
+        for mask in 1u32..16 {
+            let mut bits = self.0;
+            let mut ok = true;
+            for (n, (from, to)) in [(T, D), (D, T), (S, Z), (Z, S)].into_iter().enumerate() {
+                if mask & (1 << n) == 0 {
+                    continue;
+                }
+                if bits & from == 0 || bits & to != 0 {
+                    ok = false;
+                    break;
+                }
+                bits = bits & !from | to;
+            }
+            let stroke = Self(bits);
+            if ok && stroke.typable() && !found.contains(&stroke) {
+                found.push(stroke);
+            }
+        }
+        // Fewest changes first, so the nearest repair is offered first
+        found.sort_by_key(|s| (s.0 ^ self.0).count_ones());
+        found
+    }
+
     /// An untypable stroke written as two that can be typed: the first keeps the pinky keys in
     /// order (`-T`, `-S`, `-D`, `-Z`) for as long as they are typable together, the second is a
     /// continuation (join key) with the rest. `-SD` becomes `-S` then `+-D`; `-TDZ` becomes `-TD`
@@ -245,5 +280,24 @@ mod split_tests {
         assert_eq!(split("-TDZ"), ("-TD".to_owned(), "+-Z".to_owned()));
         assert_eq!(split("-SDZ"), ("-S".to_owned(), "+-DZ".to_owned()));
         assert!(Stroke::parse("-TS").unwrap().split_untypable().is_none());
+    }
+}
+
+#[cfg(test)]
+mod swap_tests {
+    use super::Stroke;
+
+    fn swaps(text: &str) -> Vec<String> {
+        Stroke::parse(text).unwrap().typable_swaps().iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn a_pinky_key_swaps_for_its_voiced_partner_to_stay_one_stroke() {
+        assert!(swaps("KAEUPBTZ").contains(&"KAEUPBTS".to_owned()));
+        assert!(swaps("KAEUPBTZ").contains(&"KAEUPBDZ".to_owned()));
+        assert!(swaps("PULSD").contains(&"PULDZ".to_owned()));
+        assert!(swaps("PULSD").contains(&"PULTS".to_owned()));
+        assert!(swaps("KAT").is_empty());
+        assert!(swaps("KAEUPBTZ").iter().all(|s| Stroke::parse(s).unwrap().typable()));
     }
 }
