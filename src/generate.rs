@@ -1962,21 +1962,8 @@ pub fn single_stroke_stems(generated: &Generated) -> HashMap<Stroke, String> {
         .collect()
 }
 
-/// The dictionary as Plover JSON.
-pub fn write_json(generated: &Generated, path: &Path) -> Result<()> {
-    let mut map: BTreeMap<String, String> = BTreeMap::new();
-    for entry in &generated.entries {
-        map.insert(render_outline(&entry.outline), written(&entry.word));
-    }
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    std::fs::write(path, serde_json::to_string_pretty(&map)?)
-        .with_context(|| path.display().to_string())?;
-    Ok(())
-}
-
-/// Build the dictionary, write it, and say what it costs to type next to Plover and Lapwing.
+/// Build the dictionary, write it as one file per role into the folder `out` (see
+/// [`crate::output`]), and say what it costs to type next to Plover and Lapwing.
 pub fn build(
     setup: &Setup,
     briefs: &Briefs,
@@ -1985,17 +1972,26 @@ pub fn build(
     against: Option<&(String, HashMap<String, String>)>,
 ) -> Result<()> {
     let generated = generate(setup, briefs, common)?;
-    write_json(&generated, out)?;
+    let files = crate::output::write_dictionary(&generated, out)?;
 
     let mut by_origin: BTreeMap<String, usize> = BTreeMap::new();
     for entry in &generated.entries {
         *by_origin.entry(format!("{:?}", entry.origin)).or_default() += 1;
     }
     println!(
-        "wrote {} entries to {}",
+        "wrote {} entries to {} ({} files)",
         generated.entries.len(),
-        out.display()
+        out.display(),
+        files.len()
     );
+    for file in &files {
+        println!(
+            "  {:<24} {:>7} entries{}",
+            file.role.file_name(),
+            file.entries,
+            if file.changed { "" } else { "  (unchanged)" }
+        );
+    }
     for (origin, n) in &by_origin {
         println!("  {origin:<12} {n:>7}");
     }

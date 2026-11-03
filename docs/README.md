@@ -56,6 +56,8 @@ generated entries.
     outright, and how that same logic becomes keymux's WASM fallback plugin.
 15. **[Spelling mode](spelling-mode.md)** — a deliberate, letter-exact way to type a word with no
     pronunciation to generate from at all, reusing the join key's own multi-stroke mechanism.
+16. **[The dictionary files](files.md)** — what `build` writes (several small files, one per way an
+    entry came about, rather than one big one) and how keymux reloads only the ones that changed.
 
 The benchmarks come last, as a measured result of everything above rather than a rule of their
 own — and they already live on [the main README](../README.md#where-lyk-stands), not here: the one

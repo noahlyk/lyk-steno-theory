@@ -11,6 +11,7 @@ mod data;
 mod dictionary_fixture;
 mod fetch;
 mod generate;
+mod output;
 mod gold;
 mod ipa;
 mod quote;
@@ -117,8 +118,9 @@ enum Command {
     },
     /// Build the dictionary: briefs first, then the rules, and say what it costs to type
     Build {
-        /// Where to write the Plover JSON dictionary
-        #[arg(long, default_value = "out/lyk.json")]
+        /// The folder to write the Plover JSON dictionary files to, one per role (`02-lyk-words.json`,
+        /// `02-lyk-backups.json`, ...); a file that would come out the same is left untouched
+        #[arg(long, default_value = "out/lyk")]
         out: PathBuf,
         /// Words to cover, most common first. 100,000 is already in Plover/Lapwing's own
         /// ballpark and builds in a few seconds; raising it further has diminishing returns,
@@ -373,23 +375,34 @@ fn deploy(
     let to = expand_home(to)?;
     std::fs::create_dir_all(&to).with_context(|| to.display().to_string())?;
 
-    let words_out = PathBuf::from("out/lyk.json");
+    let words_out = PathBuf::from("out/lyk");
     generate::build(setup, briefs, common, &words_out, None)?;
     let plugin_out = PathBuf::from("out/lyk-orthographic-fallback.rs");
     write_plugin(setup, briefs, common, rules_path, &plugin_out)?;
 
-    let words_to = to.join("02-lyk-words.json");
-    let plugin_to = to.join("05-lyk-orthographic-fallback.rs");
-    std::fs::copy(&words_out, &words_to).with_context(|| words_to.display().to_string())?;
-    std::fs::copy(&plugin_out, &plugin_to).with_context(|| plugin_to.display().to_string())?;
-    for (from, dest) in [(&words_out, &words_to), (&plugin_out, &plugin_to)] {
-        let (a, b) = (std::fs::read(from)?, std::fs::read(dest)?);
-        anyhow::ensure!(a == b, "{} and {} differ after copying", from.display(), dest.display());
+    // Only a file whose content differs is written, so keymux (which reloads per file) rereads
+    // exactly what this build changed. Files an earlier layout left behind are removed.
+    let mut copied = Vec::new();
+    for role in output::Role::ALL {
+        copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
     }
+    copied.push((plugin_out, to.join("05-lyk-orthographic-fallback.rs")));
+    let mut changed = 0;
+    for (from, dest) in &copied {
+        let content = std::fs::read(from).with_context(|| from.display().to_string())?;
+        changed += usize::from(output::write_if_different(dest, &content)?);
+        anyhow::ensure!(
+            std::fs::read(dest)? == content,
+            "{} and {} differ after copying",
+            from.display(),
+            dest.display()
+        );
+    }
+    output::remove_stale(&to)?;
 
     for (name, content) in STATIC_FILES {
         let dest = to.join(name);
-        std::fs::write(&dest, content).with_context(|| dest.display().to_string())?;
+        output::write_if_different(&dest, content.as_bytes())?;
         let written = std::fs::read_to_string(&dest).with_context(|| dest.display().to_string())?;
         anyhow::ensure!(written == *content, "{} differs after writing", dest.display());
     }
@@ -405,9 +418,10 @@ fn deploy(
     }
 
     println!(
-        "deployed to {} ({} generated, {} static)",
+        "deployed to {} ({} generated, {} changed; {} static)",
         to.display(),
-        2,
+        copied.len(),
+        changed,
         STATIC_FILES.len()
     );
     Ok(())

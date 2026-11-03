@@ -82,6 +82,13 @@ does not get "wasted" on a stroke that produced no text.
 
 ### 2. Multi-file dictionary output + per-file caching and hot reload in keymux
 
+**STATUS: DONE (2026-11-03), keymux part not installed.** lyk: `src/output.rs` (`Role`,
+`write_dictionary`), seven `02-lyk-*.json` files, `deploy` copies changed files only and removes stale
+ones, `docs/files.md`. keymux branch `steno-per-file-cache` (commits `619a219`, `30e2f56`, on top of
+`steno-command-strokes`): `src/steno/parts.rs` per-file parse + stat shortcut + racy-mtime guard +
+per-file cache under `cache/parts/`, `Dictionary` = layered `Arc<Table>`s, `live.rs` reloads only what
+changed. 467 keymux tests pass. Remaining: nothing, unless he reports a problem. Original notes:
+
 **His decision:** have `build`/`deploy` output **several smaller, organized JSON files** instead of one
 4 MB `02-lyk-words.json`. Then change keymux so caching and hot reload are **per file**: only
 re-read and re-parse files whose contents changed (hash or mtime+size), keep parsed dictionaries

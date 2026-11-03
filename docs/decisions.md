@@ -1929,3 +1929,18 @@ using the primary. Measured: 12,263 extras added (2,746 words in the top 10,000,
 1,000: *like* `PHRAOEUBG`, *people* `PAOEPL`, *make* `PHAEBG`, *to* `TPO`); 0 existing entries
 removed or changed. Test: `extra_entries_fill_gaps_and_never_become_a_words_reported_outline`.
 Rewrote the rule in `docs/README.md`, `README.md`, `docs/collisions.md`, and `docs/briefs.md`.
+
+**The dictionary is written as seven files, and keymux reloads per file (`src/output.rs`).** One
+4 MB `02-lyk-words.json` meant two things: a reader could not tell a primary from a `+` backup
+without a tool, and keymux, which rebuilt its whole dictionary whenever any file changed, reparsed
+all of it for every edit. `build` now writes one file per `Role` (words, short, backups, extras,
+alternates, phrases, suffixes, chosen from each entry's `Origin`), sorted so the bytes are stable,
+and skips rewriting a file whose bytes already match, so keymux sees an unchanged file as
+unchanged. `deploy` copies only differing files and removes `02-lyk-*.json` files this layout no
+longer writes. Checked: the union of the seven files equals the previous single file's 151,444
+entries exactly, no outline in two files, a second build leaves every file untouched. keymux side
+(branch `steno-per-file-cache`): each file is parsed on its own and kept; `stat` says what changed,
+the dictionary is the per-file tables layered (no merge copy), each file has its own on-disk cache.
+Measured on this dictionary: whole-theory cold parse ~110 ms, restart from per-file caches ~12 ms, a
+reload after one small file changed ~19 ms with ~0 ms merge (the old path hashed all 7+ files and
+reparsed everything: roughly 100+ ms plus an 80 ms clone-merge). Docs: new `docs/files.md`.
