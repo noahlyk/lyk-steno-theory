@@ -64,9 +64,10 @@ seen, not looked up.
   whichever source — a known brief, the phonetic rules, a brevity-ladder compression — actually
   costs the least to type, not from a fixed rule about which words are "allowed" to be arbitrary.
   Nothing about it needs to be derivable from the word's sound or spelling.
-- **One outline per word, always**: a word has exactly one way to stroke it — no competing long
-  form to also learn, and whatever that long form would have claimed is free for a different word
-  instead.
+- **One primary outline per word, extras only in free strokes**: a word has exactly one outline
+  the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic
+  full form) are added last, only in strokes no other word needed, so they never cost another
+  word anything.
 - **An explicit join key**: continuation strokes are never mistaken for words, which is what lets
   suffixes be as short as a single key.
 - **Measured, not asserted**: `build` and `score` print cost and match-rate against Plover and

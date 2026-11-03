@@ -3,10 +3,11 @@
 [← back to the table of contents](README.md) · [← back to the main README](../README.md)
 
 This is the machinery behind [the one rule stated up front](README.md): a word gets exactly one
-single-stroke outline, never a choice between several. Everything here only ever settles *which*
-word keeps a given stroke when two or more collide — it never multiplies outlines for a single word;
-see **[syllables & folding](syllables.md)** for the separate, unlimited multi-stroke backups
-instead.
+primary single-stroke outline, never a choice between several to learn. Everything here only ever
+settles *which* word keeps a given stroke when two or more collide; the extra one-stroke forms a
+word gets afterwards (see [the README](README.md)) only ever take strokes this settling left
+unclaimed. See **[syllables & folding](syllables.md)** for the separate, unlimited multi-stroke
+backups.
 
 **Every word's own collisions are settled together, by one global optimization, not a sequence of
 passes run in a fixed order.** Briefs, spelling, and the star ladder used to be three separate steps

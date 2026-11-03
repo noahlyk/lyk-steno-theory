@@ -6,14 +6,18 @@ This isn't a lookup table — it's a sequential read. Each chapter builds on the
 each one ends with a link to the next. Start at the top and read straight through if you want to
 learn the whole theory; come back here to jump to a specific chapter once you know your way around.
 
-**One rule underlies everything below: a word gets exactly one single-stroke outline, never
-more.** "Only one way to type it" means that, and only that — there is never a choice between
-`NOT`, `OT`, and `PHOT` for *not*, the way there sometimes is in a dictionary built by hand.
-Briefs, the star ladder, and spelling disambiguation (chapters 3, 5, and 8) exist specifically to
-hold that invariant even when two words would otherwise fight over the same stroke. **Multi-stroke
-outlines built on the join key are a different thing entirely, and unlimited**: a word can have as
-many `+`-joined backup outlines as the generator can honestly derive, on top of its one
-single-stroke way in. What matters for a multi-stroke outline isn't brevity — it's predictability:
+**One rule underlies everything below: a word has exactly one *primary* single-stroke outline.**
+That is the one the theory teaches, the one `lookup` and `explain` report, and the only one a
+stroke is ever *fought over* for: there is never a choice between `NOT`, `OT`, and `PHOT` for
+*not* in what you are meant to learn. Briefs, the star ladder, and spelling disambiguation
+(chapters 3, 5, and 8) exist to hold that invariant even when two words would otherwise fight over
+the same stroke. **Everything else is added only where it costs nobody anything.** After every
+primary, backup, and phrase is placed, a word's other one-stroke candidates (its Plover and
+Lapwing briefs, its plain phonetic reading, a spelling or `-S` variant, a family shape) take any
+stroke still unclaimed, up to three per word and within three keys of its primary: a second way
+in that never displaces anything and is never the outline reported. **Multi-stroke outlines built
+on the join key are unlimited**: a word can have as many `+`-joined backup outlines as the
+generator can honestly derive, on top of its primary. What matters for a multi-stroke outline isn't brevity — it's predictability:
 whether it breaks down into pieces a learner already knows (an already-placed whole word, or one
 of the hardcoded suffix/prefix patterns in chapters 7 and 10) rather than its own one-off,
 memorized shorthand. See **[syllables & folding](syllables.md)** for where that shows up as actual

@@ -26,6 +26,16 @@ confirmed reason the dictionary used to track Plover more closely than it needed
 shorter spelling-variant reading, `TAEBGS` — the same reduction `take`'s own brief, `TAEBG`, already
 happened to use — was never offered as an alternative).
 
+**Extra one-stroke entries (`Origin::Extra`).** Once everything else is placed, each word's other
+one-stroke candidates that lost its primary slot (its gold briefs from Plover and Lapwing, the
+plain rules reading, a spelling variant, an `-S` respelling, a family shape) take any stroke that is
+still unclaimed: at most three per word, cheapest first, each within three keys of the word's own
+outline. Star and `/+*` ladder markers are collision fallbacks and are left out. They run strictly
+last, so they cannot take a stroke any primary, backup, or phrase wanted, and `cheapest` ranks them
+below every other entry, so `lookup`, `explain`, `quote`, and the family report always show the
+primary (*like* `HRAOEU`, with `PHRAOEUBG` as an extra). About 12,000 of them in the current build,
+nearly 3,000 of them for words in the top 10,000.
+
 **A `[word]` literal override is the one exception, and still forces exactly one candidate.** A
 source of `"plover"` or `"lapwing"` in `[word]` only narrows which gold dictionary a word's own
 brief candidates are merged from — the word still competes on cost like anything else. A literal

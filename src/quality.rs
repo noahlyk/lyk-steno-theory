@@ -279,6 +279,35 @@ fn common_family_members_are_reachable_as_stem_plus_ending() {
     }
 }
 
+/// Extra single-stroke entries (`Origin::Extra`) only fill strokes nobody else needed, and are
+/// never the outline reported for a word that has any other entry: `lookup`, `explain`, `quote`,
+/// phrases, and the family report must keep showing the primary. See `docs/briefs.md`.
+#[test]
+fn extra_entries_fill_gaps_and_never_become_a_words_reported_outline() {
+    let generated = dictionary_fixture::generated();
+    assert!(
+        generated.extras_added > 5_000,
+        "only {} extras: the extra-entries pass likely stopped working",
+        generated.extras_added
+    );
+    let has_other: std::collections::HashSet<&str> = generated
+        .entries
+        .iter()
+        .filter(|e| !matches!(e.origin, generate::Origin::Extra | generate::Origin::Suffix))
+        .map(|e| e.word.as_str())
+        .collect();
+    let lyk = dictionary_fixture::cheapest();
+    let mut violations = Vec::new();
+    for entry in generated.entries.iter().filter(|e| e.origin == generate::Origin::Extra) {
+        assert_eq!(entry.outline.len(), 1, "{:?}: an extra must be one stroke", entry.word);
+        if has_other.contains(entry.word.as_str()) && lyk.get(entry.word.as_str()) == Some(&entry.outline.as_slice()) {
+            violations.push(entry.word.as_str());
+        }
+    }
+    violations.sort_unstable();
+    assert!(violations.is_empty(), "extras reported as the word's outline: {violations:?}");
+}
+
 /// `write_json` keys the deployed file by outline text, so two raw entries sharing a text would
 /// silently lose one of them on the way out. `no_two_words_share_the_same_deployed_outline` only
 /// sees each word's cheapest entry and can't catch this; this checks every entry `generate` made.

@@ -101,6 +101,12 @@ pub enum Origin {
     /// anything. Never a stem a continuation stroke can follow — see `single_stroke_stems`'s own
     /// exclusion filter and `docs/phrases.md`, which this whole mechanism is documented in.
     Phrase,
+    /// Another single-stroke way to write a word, added last of all: a candidate (a gold brief,
+    /// the plain rules reading, a spelling variant, an `-S` respelling, a family shape) that lost
+    /// its word's primary slot but whose stroke nobody else ended up needing. It never takes a
+    /// stroke from anything and never becomes the outline `cheapest` reports - see
+    /// `docs/briefs.md`.
+    Extra,
 }
 
 pub struct Entry {
@@ -131,6 +137,8 @@ pub struct Generated {
     /// A phrase candidate that lost its merged stroke, either to something `taken` already held
     /// or to another eligible bigram this same pass arbitrated away (see `arbitrate_phrase_round`).
     pub phrases_skipped: usize,
+    /// How many [`Origin::Extra`] entries were added after everything else.
+    pub extras_added: usize,
     /// Every word that is another word plus a regular ending, by word - see `crate::family`.
     pub links: HashMap<String, crate::family::Link>,
     /// Every word that is a prefix plus another word, by word - see `crate::family`.
@@ -182,6 +190,11 @@ const STROKE_WEIGHT: u32 = 25_000;
 /// keys, so a member takes its root's shape (`building` `PWHR-G`, not Plover's `PW-LG`) unless
 /// that costs more than two extra keys. See `docs/syllables.md`.
 const FAMILY_DISCOUNT: u32 = 2_000;
+/// At most this many `Origin::Extra` entries per word, cheapest first.
+const MAX_EXTRAS_PER_WORD: usize = 3;
+/// An extra costs at most this many keys more than the word's own outline, so a learner meets
+/// competitive alternatives (a phonetic full form, a Plover brief), not Plover's long oddities.
+const EXTRA_KEY_MARGIN: u32 = 3;
 /// Settling passes at most. Family roots are locked after the first (moving only to something
 /// cheaper), so the offers settle within a pass or two after that.
 const MAX_FAMILY_PASSES: usize = 4;
@@ -1779,6 +1792,46 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
     }
 
+    // Extra single-stroke entries, last of all, in frequency order: every one-stroke candidate a
+    // word was considered for (its gold briefs from Plover and Lapwing, the plain rules reading, a
+    // spelling variant, an `-S` respelling, a family shape) that lost the primary slot but whose
+    // stroke is still unclaimed after every primary, backup, and phrase is placed, is added as a
+    // second way in. Running strictly after everything else means it can never take a stroke
+    // anything needed; ladder markers (stars, `/+*`) are collision fallbacks, not alternates, and
+    // are left out. A literal `[word]` override keeps its one exclusive entry.
+    let mut extras_added = 0usize;
+    let primary_cost: HashMap<String, u32> =
+        cheapest(&entries).into_iter().map(|(w, o)| (w.to_owned(), candidate_cost(o))).collect();
+    for (word, candidates) in pool_words.iter().zip(&pools) {
+        let family = offers.get(word.as_str()).into_iter().flatten().cloned();
+        let own = candidates
+            .iter()
+            .filter(|c| matches!(c.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing))
+            .map(|c| c.outline.clone());
+        let limit = primary_cost.get(word.as_str()).map_or(u32::MAX, |c| c.saturating_add(EXTRA_KEY_MARGIN * KEY_WEIGHT));
+        let mut options: Vec<(u32, String, Vec<Stroke>)> = own
+            .chain(family)
+            .filter(|o| o.len() == 1)
+            .map(|o| (candidate_cost(&o), render_outline(&o), o))
+            .filter(|(cost, _, _)| *cost <= limit)
+            .collect();
+        options.sort();
+        options.dedup_by(|a, b| a.1 == b.1);
+        let mut added = 0;
+        for (_, text, outline) in options {
+            if added == MAX_EXTRAS_PER_WORD {
+                break;
+            }
+            if taken.contains_key(&text) {
+                continue;
+            }
+            taken.insert(text, (*word).clone());
+            entries.push(Entry { word: (*word).clone(), outline, origin: Origin::Extra, lost_to: None });
+            extras_added += 1;
+            added += 1;
+        }
+    }
+
     // A word is stranded when its own plain-rules outline would cost less than whatever it
     // actually settled for, and that cheaper outline's text is sitting completely unclaimed - the
     // only way that happens today is an automatic brief that Plover or Lapwing mark with a star
@@ -1821,13 +1874,15 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         contested: contested_count,
         phrases_added,
         phrases_skipped,
+        extras_added,
         links,
         prefix_links,
     })
 }
 
-/// Each word's single best entry among a list, respecting `Origin`: an `Origin::Alternate` entry
-/// can never outrank any other entry for the same word on raw stroke/key cost alone - its own doc
+/// Each word's single best entry among a list, respecting `Origin`: an `Origin::Alternate` or
+/// `Origin::Extra` entry can never outrank any other entry for the same word on raw stroke/key
+/// cost alone - its own doc
 /// comment already claims it "never competes with the primary"; this is what actually makes that
 /// true downstream, in both places that used to compare entries by `(len, keys)` alone.
 fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
@@ -1839,7 +1894,7 @@ fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<
     let priority = |e: &'a Entry| {
         let discount = if e.origin == Origin::Family { FAMILY_DISCOUNT } else { 0 };
         (
-            e.origin == Origin::Alternate,
+            matches!(e.origin, Origin::Alternate | Origin::Extra),
             e.outline.len(),
             (KEY_WEIGHT * keys(&e.outline) + ergonomics::weighted_outline(&e.outline)).saturating_sub(discount),
             e.outline.as_slice(),
@@ -1957,6 +2012,7 @@ pub fn build(
         generated.contested
     );
     println!("  phrase entries added: {}", generated.phrases_added);
+    println!("  extra single-stroke entries added last, in strokes nobody else needed: {}", generated.extras_added);
     println!(
         "  phrase entries skipped as collisions: {}",
         generated.phrases_skipped

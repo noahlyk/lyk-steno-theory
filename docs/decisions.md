@@ -1913,3 +1913,19 @@ apostrophe into "nts". Now `-PBT` plus the `S` key, joined, is a standalone suff
 `rules/suffixes.toml`): `TPH*GS/+-PBTS` types `temptation's`, and the same stroke covers "John's",
 "it's". A plural possessive is the plural plus `-PBT` alone (`dogs'`). The only dictionary change is
 the new suffix entry.
+
+**Extra one-stroke entries fill the gaps (`Origin::Extra`), and the "exactly one single-stroke
+outline" rule is now "exactly one *primary*".** The old rule was already untrue (about 13,000 bonus
+short forms, alternates, and star variants existed) and the user's call is that a word having
+several one-stroke ways in is fine as long as none of them costs another word anything. After
+primaries, bonus short forms, alternate pronunciations, backups, and phrases are all placed, each
+word's remaining one-stroke candidates (gold briefs from Plover and Lapwing, the plain rules reading,
+a spelling variant, an `-S` respelling, a family shape) take whatever strokes are still unclaimed:
+at most 3 per word, cheapest first, each within 3 keys of the word's own outline (an unbounded
+version added Plover's long oddities, seven of them for *your* and *gonna*), never a star or
+`/+*` ladder marker. `best_entry_per_word` ranks `Origin::Extra` below every other entry (as it
+does `Alternate`), so `cheapest`, `lookup`, `explain`, `quote`, the family report, and phrases keep
+using the primary. Measured: 12,263 extras added (2,746 words in the top 10,000, 356 in the top
+1,000: *like* `PHRAOEUBG`, *people* `PAOEPL`, *make* `PHAEBG`, *to* `TPO`); 0 existing entries
+removed or changed. Test: `extra_entries_fill_gaps_and_never_become_a_words_reported_outline`.
+Rewrote the rule in `docs/README.md`, `README.md`, `docs/collisions.md`, and `docs/briefs.md`.
