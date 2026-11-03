@@ -43,6 +43,19 @@ option menus; decide.
 
 ### 1. keymux: lookup strokes must not pollute the tape or the undo stack (his live bug, do first)
 
+**STATUS: DONE (2026-11-02), not yet installed.** Root cause found: not `*` itself but a longer
+entry. When a later stroke combines with the lookup stroke into a multi-stroke entry (`PHRUP/x`,
+common in lyk's `+` backups), it *replaces* the lookup's translation; undoing it puts the replaced
+translation back and the formatter re-sent its `Command`. Fix (keymux branch `steno-command-strokes`,
+worktree `/home/fib/code/noahlyk/keymux/.claude/worktrees/command-strokes`, commit `187444d`, based on
+`fix-key-chatter-debounce`): `Translation.command_ran` set the first time the formatter sends a
+command, command dropped afterwards (`formatter.rs`); a stroke whose output is only commands is kept
+off the tape and the overlay tape (`engine.rs::is_command_only`, `OverlayHub::clear_keys`); two
+existing tests updated that asserted the old tape behavior; README documents it. Undo after a command
+still skips it and takes back the word before (Plover's `has_undo` rule). 457 keymux tests pass.
+**To use it he must rebuild/install keymux from that branch** (I did not touch his install or config).
+Remaining for this item: nothing, unless he reports it persists; then check for a different trigger.
+
 **Symptom:** striking a lookup stroke adds an entry to the paper tape; pressing `*` to undo it
 re-runs the lookup tool (re-opens the overlay). Annoying while typing.
 
