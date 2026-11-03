@@ -199,6 +199,86 @@ pub fn links<'a>(
     out
 }
 
+/// The prefixes a word can be a family member through, longest first, each with how it is
+/// written in front of the stem: a fixed stroke (`re-` is `RE`, `pre-` is `PRE`, as the rules
+/// already write those syllables), or the prefix word's own settled outline (`un`, `dis`, ...).
+pub const PREFIXES: &[(&str, PrefixStroke)] = &[
+    ("under", PrefixStroke::Word("under")),
+    ("over", PrefixStroke::Word("over")),
+    ("pre", PrefixStroke::Fixed("PRE")),
+    ("dis", PrefixStroke::Word("dis")),
+    ("mis", PrefixStroke::Word("mis")),
+    ("re", PrefixStroke::Fixed("RE")),
+    ("un", PrefixStroke::Word("un")),
+];
+
+/// How a prefix is written in front of its stem: see [`PREFIXES`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrefixStroke {
+    Fixed(&'static str),
+    Word(&'static str),
+}
+
+/// One word's tie to the word it prefixes (`rebuild` -> `re` + `build`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrefixLink {
+    pub prefix: &'static str,
+    pub stroke: PrefixStroke,
+    pub stem: String,
+}
+
+/// Every word in `vocabulary` that is one of [`PREFIXES`] plus another vocabulary word, where the
+/// word's pronunciation ends in the stem's (stress ignored), the stem is at least three letters,
+/// and the stem is said at least 1/50th as often as the word: `rebuild` is `re` + `build`, while
+/// `reason` (no `ason`) and `under` itself are not prefixed. Words in `not_family` are skipped.
+pub fn prefix_links<'a>(
+    pron: &Pronunciations,
+    count: &HashMap<String, u64>,
+    vocabulary: impl IntoIterator<Item = &'a str>,
+) -> HashMap<String, PrefixLink> {
+    let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
+    let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
+    let not_family = not_family();
+    let said = |w: &str| count.get(w).copied().unwrap_or(0);
+    let mut out = HashMap::new();
+    for &word in &vocabulary {
+        if not_family.contains(word) {
+            continue;
+        }
+        for &(prefix, stroke) in PREFIXES {
+            let Some(stem) = word.strip_prefix(prefix) else { continue };
+            if stem.len() < 3 || !known.contains(stem) || said(stem).saturating_mul(STEM_RARITY_LIMIT) < said(word) {
+                continue;
+            }
+            let (Some(words), Some(stems)) = (pron.get(word), pron.get(stem)) else { continue };
+            let ends_with_stem = words.iter().any(|w| {
+                let w = bare(w);
+                stems.iter().any(|s| {
+                    let s = bare(s);
+                    w.len() > s.len() && w.ends_with(&s)
+                })
+            });
+            if ends_with_stem {
+                out.insert(word.to_owned(), PrefixLink { prefix, stroke, stem: stem.to_owned() });
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// A prefixed word's family shape: the prefix's stroke(s), then the stem's own outline, every
+/// stem stroke continuing the word (`re` + `build` `PWHR` -> `RE/+PWHR`). `None` when a word
+/// prefix has no outline of its own in `outlines`.
+pub fn prefixed(link: &PrefixLink, stem: &[Stroke], outlines: &HashMap<&str, &[Stroke]>) -> Option<Vec<Stroke>> {
+    let mut out = match link.stroke {
+        PrefixStroke::Fixed(text) => parse_outline(text)?,
+        PrefixStroke::Word(word) => outlines.get(word)?.to_vec(),
+    };
+    out.extend(stem.iter().map(|s| Stroke(s.0 | Stroke::JOIN)));
+    Some(out)
+}
+
 /// The word a family is named after: follow links from `word` back to a word with no stem.
 pub fn root<'a>(links: &'a HashMap<String, Link>, word: &'a str) -> &'a str {
     let mut current = word;
@@ -367,5 +447,7 @@ mod tests {
         assert_eq!(text(shapes(&o("PWHR"), g)), ["PWHR-G"]);
         assert_eq!(text(shapes(&o("TPHAED"), d)), ["TPHA*ED"]);
         assert_eq!(text(shapes(&o("TAUBG"), g)), ["TA*UBG", "TAUG"]);
+        let link = PrefixLink { prefix: "re", stroke: PrefixStroke::Fixed("RE"), stem: "build".to_owned() };
+        assert_eq!(text(vec![prefixed(&link, &o("PWHR"), &HashMap::new()).unwrap()]), ["RE/+PWHR"]);
     }
 }

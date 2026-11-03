@@ -154,6 +154,16 @@ stem plus `D`, however it's spelled: *built* `PWHR-D` (*build* `PWHR`), *said* `
 wins (*knew* `-PZ`, *thought* `-LGT`, *got* `-GTD`); each irregular form also gets its stem plus
 `+-D`/`+-Z` as a backup.
 
+**Prefixed words follow their stem.** A word that is `re-`, `pre-`, `un-`, `dis-`, `mis-`, `over-`,
+or `under-` plus another word (by spelling, its pronunciation ending in the stem's, the stem at
+least three letters and not far rarer; `rules/families.toml`'s `not_family` lists coincidences
+like *remorse* and *present*) is offered the prefix's stroke followed by its stem's settled
+outline: `re-` and `pre-` write `RE` and `PRE`, the rest write the prefix word's own outline (`un`
+`UPB`, `dis` `TKEUS`, `over` `AUFR`). *rebuild* `RE/+PWHR`, *rebuilt* `RE/+PWHR-D`, *rebuilding*
+`RE/+PWHR-G`, *remake* `RE/+AEUBG`. A one-stroke brief still wins where there is one (*unlock*
+`TPHROBG`), since the prefix shape is always two strokes. `family build` lists prefixed members
+under their stem's family.
+
 Only one-stroke, right-hand-only endings take part (`-S`, `-Z`, `-D`, `-G`, `-R`, `-L`, `-FT`,
 `-PBS`, ...). Then every word is settled again from scratch with those offers in its pool.
 Locking the roots matters: without it, a root could trade its outline away in the second pass

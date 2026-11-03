@@ -323,20 +323,7 @@ fn main() -> Result<()> {
             common,
             briefs,
         } => run_lookup(&setup, query, *common, briefs.as_deref()),
-        Command::Family { word, common, briefs } => {
-            let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
-            let generated = generate::generate(&setup, &briefs, *common)?;
-            if let Some(word) = word {
-                print_family(&setup, &generated, word);
-            } else {
-                print!("{}", family_report(&setup, &generated, 25));
-            }
-            Ok(())
-        }
+        Command::Family { word, common, briefs } => run_family(&setup, word.as_deref(), *common, briefs.as_deref()),
         Command::Ergonomics { query, common, briefs } => {
             run_ergonomics(&setup, query, *common, briefs.as_deref())
         }
@@ -562,6 +549,27 @@ fn write_plugin(
     Ok(())
 }
 
+/// `family`: one word's family, or the whole dictionary's family report.
+fn run_family(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    word: Option<&str>,
+    common: usize,
+    briefs_path: Option<&Path>,
+) -> Result<()> {
+    let setup = setup(Some(common))?;
+    let briefs = match briefs_path {
+        Some(path) => generate::Briefs::load(path)?,
+        None => generate::Briefs::built_in()?,
+    };
+    let generated = generate::generate(&setup, &briefs, common)?;
+    if let Some(word) = word {
+        print_family(&setup, &generated, word);
+    } else {
+        print!("{}", family_report(&setup, &generated, 25));
+    }
+    Ok(())
+}
+
 /// Every member of `word`'s family, root first, then by frequency: see `Command::Family`.
 fn print_family(setup: &analysis::Setup, generated: &generate::Generated, word: &str) {
     let links = &generated.links;
@@ -600,6 +608,26 @@ fn print_family(setup: &analysis::Setup, generated: &generate::Generated, word: 
         println!(
             "  {member:<18} {own:<22} = {} + -{:<5} {backup_note}  [{starts}]",
             link.stem, link.suffix
+        );
+    }
+    let mut prefixed: Vec<(&String, &family::PrefixLink)> = generated
+        .prefix_links
+        .iter()
+        .filter(|(_, link)| family::root(links, &link.stem) == root)
+        .collect();
+    prefixed.sort_by_key(|(w, _)| (setup.rank.get(*w).copied().unwrap_or(usize::MAX), w.as_str()));
+    for (member, link) in prefixed {
+        let own = cheapest.get(member.as_str()).map_or_else(|| "-".to_owned(), |o| stroke::render_outline(o));
+        let shape = cheapest
+            .get(link.stem.as_str())
+            .and_then(|stem| family::prefixed(link, stem, &cheapest))
+            .map(|o| stroke::render_outline(&o));
+        let note = if shape.as_deref() == Some(own.as_str()) { "follows the family" } else { "own shape" };
+        println!(
+            "  {member:<18} {own:<22} = {}- + {:<11} prefix shape {}  [{note}]",
+            link.prefix,
+            link.stem,
+            shape.unwrap_or_else(|| "-".to_owned())
         );
     }
 }

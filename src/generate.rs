@@ -133,6 +133,8 @@ pub struct Generated {
     pub phrases_skipped: usize,
     /// Every word that is another word plus a regular ending, by word - see `crate::family`.
     pub links: HashMap<String, crate::family::Link>,
+    /// Every word that is a prefix plus another word, by word - see `crate::family`.
+    pub prefix_links: HashMap<String, crate::family::PrefixLink>,
 }
 
 /// Among words that all share one exact pronunciation, the one whose own spelling also agrees
@@ -1009,7 +1011,11 @@ fn ladder(outline: &[Stroke], join: bool) -> Vec<(u8, Vec<Stroke>)> {
 /// For every linked family member, every [`crate::family::shapes`] of its root's settled outline
 /// with its endings' keys (`build` `PWHR`: `builds` `PWHR-Z`, `building` `PWHR-G`; `talk`
 /// `TAUBG`: `talking` `TA*UBG` or `TAUG`). `entries` must hold every settled primary.
-fn family_offers(links: &HashMap<String, crate::family::Link>, entries: &[Entry]) -> HashMap<String, Vec<Vec<Stroke>>> {
+fn family_offers(
+    links: &HashMap<String, crate::family::Link>,
+    prefix_links: &HashMap<String, crate::family::PrefixLink>,
+    entries: &[Entry],
+) -> HashMap<String, Vec<Vec<Stroke>>> {
     let primary: HashMap<&str, &[Stroke]> = entries
         .iter()
         .filter(|e| e.origin != Origin::Suffix)
@@ -1022,6 +1028,14 @@ fn family_offers(links: &HashMap<String, crate::family::Link>, entries: &[Entry]
         let shapes = crate::family::shapes(root_outline, keys);
         if !shapes.is_empty() {
             out.insert(word.clone(), shapes);
+        }
+    }
+    // A prefixed word: the prefix's stroke, then its stem's settled outline (`rebuild`
+    // `RE/+PWHR`). Its own suffixed forms then follow it as their root (`rebuilding` `RE/+PWHR-G`).
+    for (word, link) in prefix_links {
+        let Some(stem) = primary.get(link.stem.as_str()) else { continue };
+        if let Some(outline) = crate::family::prefixed(link, stem, &primary) {
+            out.entry(word.clone()).or_insert_with(Vec::new).push(outline);
         }
     }
     out
@@ -1175,6 +1189,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         })
         .collect();
     let links = crate::family::links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
+    let prefix_links = crate::family::prefix_links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
 
     // Settling runs to a fixed point over family offers: the first pass settles every primary as
     // usual; each later pass offers every family member its root's settled outline plus its
@@ -1207,7 +1222,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                     settled.get(root).map(|o| (root.to_owned(), (render_outline(o), candidate_cost(o))))
                 })
                 .collect();
-            let next = family_offers(&links, &entries);
+            let next = family_offers(&links, &prefix_links, &entries);
             if next == offers && next_roots == roots {
                 break;
             }
@@ -1807,6 +1822,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         phrases_added,
         phrases_skipped,
         links,
+        prefix_links,
     })
 }
 

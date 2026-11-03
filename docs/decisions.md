@@ -1882,3 +1882,15 @@ Several of these are a key or two longer than the brief they replace; that's the
 ("past = stem + D") instead of a separate memorized brief per verb. Weighted keys per word +0.002,
 strokes unchanged, no top-10k word gained a stroke. *wound* and *found* were left out: their other
 senses (an injury; to establish) carry their own families (*wounded*, *founded*).
+
+**Prefixed words follow their stem: `rebuild` `RE/+PWHR`.** `crate::family::prefix_links` ties a
+word to `re-`/`pre-`/`un-`/`dis-`/`mis-`/`over-`/`under-` + another word when the spelling splits
+that way, the word's pronunciation ends in the stem's, the stem has at least three letters, and the
+stem is said at least 1/50th as often. Each is offered the prefix's stroke (`RE`/`PRE` fixed, the
+others the prefix word's own outline) followed by the stem's settled outline, through the same
+`Origin::Family` offer and two-key preference; a locked family root may move onto it because it is
+cheaper after the preference. Before, `rebuild` was `RE/+PWEULD`, whose second stroke alone is
+*billed*. Now *rebuild* `RE/+PWHR`, *rebuilt* `RE/+PWHR-D`, *rebuilding* `RE/+PWHR-G`, *remake*
+`RE/+AEUBG`, *retreat* `RAE/+TRAET` -> `RE/+TRAET`. Weighted keys per word -0.0002, no top-10k word
+gained a stroke. Spelling coincidences (*remorse*, *research*, *present*, *uncle*, ...) are in
+`not_family`.

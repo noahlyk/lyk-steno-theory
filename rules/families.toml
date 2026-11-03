@@ -27,6 +27,11 @@ not_family = [
   # "-ed"/"-s"/"-ing" that is just part of the word
   "feed", "weed", "seed", "deed", "heed", "reed", "news", "lens", "abs", "cunning", "pudding",
   "earring", "tying",
+  # a prefix that is just part of the word, not added to another word
+  "remorse", "retreat", "recite", "reflex", "reflexes", "remark", "research", "reside", "resign",
+  "resort", "respite", "resent", "reserve", "repose", "repeal", "relay", "rebate", "recede",
+  "uncle", "under", "overt", "mistress", "dismal", "premise", "presume", "present", "preserve",
+  "pretend", "prevent", "prefer",
 ]
 
 # Irregular forms join their stem's family by rule rather than by spelling: a past tense or past
