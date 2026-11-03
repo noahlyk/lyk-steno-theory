@@ -35,6 +35,8 @@
 "+-LS" = "less"     # L, S: "care-less"
 "+-PBT" = "ent"     # N, T: "pay-ment" is -PLT above; this is the "differ-ent" ending
 "+-LT" = "let"      # L, T: "book-let", "pig-let"
+"+-PBTS" = "'s"    # the possessive and "is"/"has" contraction: `-PBT` (the apostrophe stroke) plus S,
+                   # struck right after any word: "temptation's", "John's", "it's"
 "+-Z" = "s"          # the voiced "-s" ("dogs"), same written suffix as "+-S", a second stroke
                       # for whichever sound the word actually ends in
 "+*T" = "th"        # TH coda, `rules/plover.toml`'s `*T`: "wid-th", "warm-th", "four-th"

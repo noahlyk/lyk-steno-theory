@@ -42,6 +42,7 @@ continuations, each one still just a syllable through the same rule.
 | `+-LS` | -less | *care-less* (L, S) |
 | `+-PBT` | -ent | *differ-ent* (N, T — distinct from `-ment`'s `+-PLT`) |
 | `+-LT` | -let | *book-let*, *pig-let* (L, T) |
+| `+-PBTS` | -'s | *temptation's*, *John's*, *it's*: `-PBT` (the apostrophe) plus `S`, joined to any word. A plural possessive (*dogs'*) is the plural, then `-PBT` alone. |
 | `+*T` | -th | *wid-th*, *warm-th*, *four-th* (the `*T` coda) |
 | `+-FPL` | -some | *awe-some*, *lone-some* (the same S-M → `-FPL` cluster Plover's own F-insertion convention uses, e.g. `lesson` HR-FPB) |
 | `+-BG` | -ic | *bas-ic*, *com-ic*, *mus-ic*, *tox-ic* (no onset of its own — the stem always keeps the consonant before it) |

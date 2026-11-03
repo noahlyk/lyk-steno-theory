@@ -1904,3 +1904,12 @@ build without it, it moved 615 words' outlines, and the losses were the wrong ki
 is too small and too noisy (casual spellings, misstroke outputs) to reweight a 100,000-word
 dictionary. It stays what it has been good for: targeted evidence for a specific word (`eye`,
 `oh`, `working`). No code shipped.
+
+**Possessives and "'s" contractions get one stroke: `+-PBTS`.** `temptation's` could only be typed
+by hand (word, the `-PBT` apostrophe stroke, then `+-S`), and a live attempt showed how easily that
+misfires: without the join key held, the plain `S`/`-S`/`-Z` that follows `-PBT` is not a
+continuation, the engine finds no entry for the pair, and its last-resort reading turned the
+apostrophe into "nts". Now `-PBT` plus the `S` key, joined, is a standalone suffix (`"'s"` in
+`rules/suffixes.toml`): `TPH*GS/+-PBTS` types `temptation's`, and the same stroke covers "John's",
+"it's". A plural possessive is the plural plus `-PBT` alone (`dogs'`). The only dictionary change is
+the new suffix entry.
