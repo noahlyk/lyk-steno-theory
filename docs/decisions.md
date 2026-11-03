@@ -1894,3 +1894,13 @@ cheaper after the preference. Before, `rebuild` was `RE/+PWEULD`, whose second s
 `RE/+AEUBG`, *retreat* `RAE/+TRAET` -> `RE/+TRAET`. Weighted keys per word -0.0002, no top-10k word
 gained a stroke. Spelling coincidences (*remorse*, *research*, *present*, *uncle*, ...) are in
 `not_family`.
+
+**Tried and dropped: blending the keymux tape into word frequencies.** A `personal` command counted
+every word in `~/.local/state/keymux/steno-tape.txt` (61,537 words, 7,090 distinct, words typed at
+least twice) and blended them in at a 10% share of the total weight. Measured against the same
+build without it, it moved 615 words' outlines, and the losses were the wrong kind: *day* lost
+`AEU` to *ay* (15 tape uses, boosted about fourfold), breaking the *day*/*days*/*daily* family;
+*image* lost `EUPL` to *im*, a casual qwerty spelling of "I'm"; *love* gave `OF` to *off*. The tape
+is too small and too noisy (casual spellings, misstroke outputs) to reweight a 100,000-word
+dictionary. It stays what it has been good for: targeted evidence for a specific word (`eye`,
+`oh`, `working`). No code shipped.
