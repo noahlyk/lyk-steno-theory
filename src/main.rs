@@ -380,31 +380,20 @@ fn deploy(
     let plugin_out = PathBuf::from("out/lyk-orthographic-fallback.rs");
     write_plugin(setup, briefs, common, rules_path, &plugin_out)?;
 
-    // Only a file whose content differs is written, so keymux (which reloads per file) rereads
-    // exactly what this build changed. Files an earlier layout left behind are removed.
+    // Plain overwrite of every generated file; files an earlier layout left behind are removed.
     let mut copied = Vec::new();
     for role in output::Role::ALL {
         copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
     }
     copied.push((plugin_out, to.join("05-lyk-orthographic-fallback.rs")));
-    let mut changed = 0;
     for (from, dest) in &copied {
-        let content = std::fs::read(from).with_context(|| from.display().to_string())?;
-        changed += usize::from(output::write_if_different(dest, &content)?);
-        anyhow::ensure!(
-            std::fs::read(dest)? == content,
-            "{} and {} differ after copying",
-            from.display(),
-            dest.display()
-        );
+        std::fs::copy(from, dest).with_context(|| dest.display().to_string())?;
     }
     output::remove_stale(&to)?;
 
     for (name, content) in STATIC_FILES {
         let dest = to.join(name);
-        output::write_if_different(&dest, content.as_bytes())?;
-        let written = std::fs::read_to_string(&dest).with_context(|| dest.display().to_string())?;
-        anyhow::ensure!(written == *content, "{} differs after writing", dest.display());
+        std::fs::write(&dest, content).with_context(|| dest.display().to_string())?;
     }
 
     // An earlier `deploy` shipped these two here by mistake (see `STATIC_FILES`'s own comment on
@@ -418,10 +407,9 @@ fn deploy(
     }
 
     println!(
-        "deployed to {} ({} generated, {} changed; {} static)",
+        "deployed to {} ({} generated, {} static)",
         to.display(),
         copied.len(),
-        changed,
         STATIC_FILES.len()
     );
     Ok(())

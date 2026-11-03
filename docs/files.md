@@ -34,8 +34,7 @@ decided in one place, `Role::of` in `src/output.rs`, from the entry's `Origin`.
   fallback; the same word's primary is in `words`. Opening one 4 MB file to find out was never a
   good way to learn anything.
 - **For keymux:** it caches and reloads per file. A change that moves only some entries rewrites
-  only some files, and a file whose content did not change is not rewritten at all (`build` and
-  `deploy` compare bytes first), so keymux sees nothing to do for it. See the keymux README,
+  only some files, and a file whose content did not change is not rewritten at all (`build` compares bytes first), so keymux sees nothing to do for it. See the keymux README,
   "Per file".
 
 ## Building and deploying
@@ -45,7 +44,7 @@ cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each fil
 cargo run --release -- deploy    # build + plugin, copied into ~/.config/keymux/steno/lyk
 ```
 
-`deploy` copies only the files that differ, then removes any `02-lyk-*.json` in the destination that
+`deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that
 this layout no longer writes (the old single `02-lyk-words.json` is just overwritten by the smaller
-`words` file). Files are sorted by outline and pretty-printed the same way every time, so the same
+`words` file). `build` alone leaves a file untouched when its bytes would not change. Files are sorted by outline and pretty-printed the same way every time, so the same
 dictionary always gives the same bytes.

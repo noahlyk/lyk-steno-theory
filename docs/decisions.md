@@ -1936,7 +1936,7 @@ without a tool, and keymux, which rebuilt its whole dictionary whenever any file
 all of it for every edit. `build` now writes one file per `Role` (words, short, backups, extras,
 alternates, phrases, suffixes, chosen from each entry's `Origin`), sorted so the bytes are stable,
 and skips rewriting a file whose bytes already match, so keymux sees an unchanged file as
-unchanged. `deploy` copies only differing files and removes `02-lyk-*.json` files this layout no
+unchanged. `deploy` overwrites every file (simple on purpose) and removes `02-lyk-*.json` files this layout no
 longer writes. Checked: the union of the seven files equals the previous single file's 151,444
 entries exactly, no outline in two files, a second build leaves every file untouched. keymux side
 (branch `steno-per-file-cache`): each file is parsed on its own and kept; `stat` says what changed,
