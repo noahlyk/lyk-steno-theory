@@ -343,6 +343,13 @@ pub fn enumerate_candidates(
 
     let push = |out: &mut Vec<Candidate>, mut outline: Vec<Stroke>, origin: Origin| {
         setup.rules.joined(&mut outline);
+        if !typable(&outline) {
+            // Not typable as written: offer it with the offending pinky keys moved onto a
+            // continuation stroke instead of dropping the word's candidate altogether
+            let Some(split) = split_untypable(&outline) else { return };
+            outline = split;
+            setup.rules.joined(&mut outline);
+        }
         let cost = candidate_cost(&outline);
         out.push(Candidate { outline, origin, cost });
     };
@@ -362,8 +369,12 @@ pub fn enumerate_candidates(
                 }
             }
             literal => {
-                if let Some(outline) = parse_outline(literal) {
-                    push(&mut out, outline, Origin::Brief);
+                // A literal is the user's own choice: never filtered here, checked (and reported)
+                // where literals are placed.
+                if let Some(mut outline) = parse_outline(literal) {
+                    setup.rules.joined(&mut outline);
+                    let cost = candidate_cost(&outline);
+                    out.push(Candidate { outline, origin: Origin::Brief, cost });
                 }
                 return out;
             }
@@ -656,7 +667,7 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)], no_match:
 /// composition out, which never counts toward `backup_skipped` (it was never a real candidate to
 /// begin with, the same as before this pass was split in two).
 fn compose_backup(setup: &Setup, word: &str, sounds: &[String], composed: Vec<Stroke>) -> Option<(Vec<Stroke>, String)> {
-    if !setup.rules.matches_real_consonants(&composed, word, sounds) {
+    if !typable(&composed) || !setup.rules.matches_real_consonants(&composed, word, sounds) {
         return None;
     }
     let text = render_outline(&composed);
@@ -810,7 +821,7 @@ fn merge_into_host_first_stroke(filler: Stroke, host: &[Stroke]) -> Option<Vec<S
     }
     let mut outline = vec![Stroke(filler.0 | first.0)];
     outline.extend_from_slice(&host[1..]);
-    Some(outline)
+    typable(&outline).then_some(outline)
 }
 
 /// The generalized form of [`phrase_candidate`]: eligible whenever *at least one* of `w1`/`w2` has
@@ -1040,7 +1051,8 @@ fn family_offers(
     for word in links.keys() {
         let Some((root, keys)) = crate::family::chain(links, word) else { continue };
         let Some(root_outline) = primary.get(root) else { continue };
-        let shapes = crate::family::shapes(root_outline, keys);
+        let mut shapes = crate::family::shapes(root_outline, keys);
+        shapes.retain(|shape| typable(shape));
         if !shapes.is_empty() {
             out.insert(word.clone(), shapes);
         }
@@ -1049,11 +1061,28 @@ fn family_offers(
     // `RE/+PWHR`). Its own suffixed forms then follow it as their root (`rebuilding` `RE/+PWHR-G`).
     for (word, link) in prefix_links {
         let Some(stem) = primary.get(link.stem.as_str()) else { continue };
-        if let Some(outline) = crate::family::prefixed(link, stem, &primary) {
+        if let Some(outline) = crate::family::prefixed(link, stem, &primary).filter(|o| typable(o)) {
             out.entry(word.clone()).or_insert_with(Vec::new).push(outline);
         }
     }
     out
+}
+
+/// Whether every stroke of `outline` can be pressed (see [`Stroke::typable`]).
+pub(crate) fn typable(outline: &[Stroke]) -> bool {
+    outline.iter().all(|stroke| stroke.typable())
+}
+
+/// `outline` with every untypable stroke written as two (see [`Stroke::split_untypable`]).
+pub(crate) fn split_untypable(outline: &[Stroke]) -> Option<Vec<Stroke>> {
+    let mut out = Vec::with_capacity(outline.len() + 1);
+    for stroke in outline {
+        match stroke.split_untypable() {
+            Some((first, rest)) => out.extend([first, rest]),
+            None => out.push(*stroke),
+        }
+    }
+    typable(&out).then_some(out)
 }
 
 /// One `Origin::Short` candidate kept for the bonus short-form pass: its outline and origin.
@@ -1166,6 +1195,12 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             .next()
             .with_context(|| format!("{word:?}'s brief in rules/briefs.toml does not parse as an outline"))?;
         let text = render_outline(&candidate.outline);
+        if !typable(&candidate.outline) {
+            anyhow::bail!(
+                "{word:?}'s brief (in rules/briefs.toml) is {text:?}, which cannot be typed: the \
+                 right pinky cannot press a diagonal pair (-TZ, -SD) or three of -T -S -D -Z"
+            );
+        }
         if let Some(holder) = taken.get(&text) {
             anyhow::bail!(
                 "{word:?}'s brief (in rules/briefs.toml) wants the outline {text:?}, which \
@@ -1516,7 +1551,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             let mut outline = outline;
             setup.rules.joined(&mut outline);
             let text = render_outline(&outline);
-            if !taken.contains_key(&text) {
+            if typable(&outline) && !taken.contains_key(&text) {
                 taken.insert(text, (*word).clone());
                 entries.push(Entry {
                     word: (*word).clone(),
@@ -1833,6 +1868,9 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             let Some(sounds) = setup.pron.get(*word).and_then(|p| p.first()) else { continue };
             let Some(mut natural_outline) = setup.rules.outline(word, sounds) else { continue };
             setup.rules.joined(&mut natural_outline);
+            if !typable(&natural_outline) {
+                continue;
+            }
             let text = render_outline(&natural_outline);
             let cur_cost = (outline.len(), keys(outline));
             let nat_cost = (natural_outline.len(), keys(&natural_outline));

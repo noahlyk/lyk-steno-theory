@@ -1965,3 +1965,14 @@ keys on three very common words. Open: `find` `-FPBD`, `thing` `-FRLG`, `think` 
 forty other vowelless right-hand chords are chosen by key count, and the ergonomics term (under one
 key's weight) is too small to stop an awkward one winning.
 
+**Only strokes a hand can press (`Stroke::typable`, `docs/typable.md`).** The right pinky's `-T -D /
+-S -Z` block cannot take a diagonal pair or exactly three keys; `cadence` came out as `KAEUPBSD`,
+which cannot be played (found by typing it). 4,760 outlines broke the rule. It is a hard filter at
+every point a stroke is produced (candidates, backups, family shapes, phrase merges, alternates),
+and a candidate that needs it is split instead of dropped: `-SD` -> `-S` + `+-D`, so `cadence` is
+`KAEUPBS/+-D`. A hand-written outline that breaks it stops the build. After: 0 untypable outlines,
+stranded 0, 106 tests; four rare words lost their outline (`cleansed`, `pulsed`, `blitzed`,
+`repulsed`: the repair fails the voiced-`-D` consonant check). Left-hand and other fingers were not
+limited: only this pinky block was reported. A per-person hand profile for softer limits was
+proposed and not built.
+

@@ -10,7 +10,7 @@
 use crate::analysis::Setup;
 use crate::generate::{
     arbitrate_phrase_round, candidate_cost, entry_word, enumerate_phrase_candidates, keys, primary_outlines,
-    primary_single_strokes, Candidate, Entry, Origin, STROKE_WEIGHT,
+    primary_single_strokes, typable, Candidate, Entry, Origin, STROKE_WEIGHT,
 };
 use crate::stroke::{render_outline, Stroke};
 use std::collections::{HashMap, HashSet};
@@ -104,7 +104,7 @@ impl Pass<'_> {
             .get(word)
             .into_iter()
             .flat_map(|pool| pool.iter().filter(|c| is_primary(c.origin)).map(|c| (c.outline.clone(), c.origin)))
-            .chain((self.natural)(word).map(|outline| (outline, Origin::Rules)))
+            .chain((self.natural)(word).filter(|outline| typable(outline)).map(|outline| (outline, Origin::Rules)))
             .filter(|(outline, _)| {
                 let text = render_outline(outline);
                 text != but && !self.taken.contains_key(&text)

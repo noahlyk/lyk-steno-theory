@@ -53,6 +53,43 @@ impl Stroke {
         (bits & !(Self::JOIN | Self::SPELL) != 0).then_some(Self(bits))
     }
 
+    /// The right pinky's four keys are a 2x2 block (`-T`/`-S` in one column, `-D`/`-Z` in the
+    /// next). A pinky can press one of them, two in a row or a column (`-TS`, `-DZ`, `-TD`,
+    /// `-SZ`), or all four flat; it cannot press a diagonal pair (`-TZ`, `-SD`) or exactly three
+    /// (`-TDZ`). A stroke that needs that is not a stroke that can be typed.
+    pub const fn typable(self) -> bool {
+        const T: u32 = 1 << 19;
+        const S: u32 = 1 << 20;
+        const D: u32 = 1 << 21;
+        const Z: u32 = 1 << 22;
+        let pinky = self.0 & (T | S | D | Z);
+        !(pinky == T | Z || pinky == S | D || (pinky.count_ones() == 3))
+    }
+
+    /// An untypable stroke written as two that can be typed: the first keeps the pinky keys in
+    /// order (`-T`, `-S`, `-D`, `-Z`) for as long as they are typable together, the second is a
+    /// continuation (join key) with the rest. `-SD` becomes `-S` then `+-D`; `-TDZ` becomes `-TD`
+    /// then `+-Z`. `None` when the stroke is already typable.
+    pub fn split_untypable(self) -> Option<(Self, Self)> {
+        if self.typable() {
+            return None;
+        }
+        let mut first = self.0 & !(0b1111 << 19);
+        let mut rest = 0;
+        for bit in 19..=22 {
+            let key = self.0 & (1 << bit);
+            if key == 0 {
+                continue;
+            }
+            if rest == 0 && Self(first | key).typable() {
+                first |= key;
+            } else {
+                rest |= key;
+            }
+        }
+        Some((Self(first), Self(rest | Self::JOIN)))
+    }
+
     /// The lowest key down, as an index in steno order.
     pub const fn lowest(self) -> Option<u32> {
         if self.0 == 0 {
@@ -158,5 +195,55 @@ mod tests {
         // A bare marker with no keys down is as meaningless as a bare join key alone
         assert_eq!(Stroke::parse("~"), None);
         assert_eq!(Stroke::parse("+"), None);
+    }
+}
+
+#[cfg(test)]
+mod typable_tests {
+    use super::Stroke;
+
+    fn typable(text: &str) -> bool {
+        Stroke::parse(text).unwrap().typable()
+    }
+
+    #[test]
+    fn the_right_pinky_presses_one_two_in_a_line_or_all_four() {
+        for ok in ["-T", "-S", "-D", "-Z", "-TS", "-DZ", "-TD", "-SZ", "-TSDZ", "KAT", "KAEUPBS", "-PBGS", "-FRPBLGTSDZ"] {
+            assert!(typable(ok), "{ok}");
+        }
+    }
+
+    #[test]
+    fn a_diagonal_pair_or_three_pinky_keys_cannot_be_typed() {
+        for bad in ["-TZ", "-SD", "-TDZ", "-TSD", "-TSZ", "-SDZ", "KAEUPBSD", "*EPTZ", "-PBGSD"] {
+            assert!(!typable(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_join_key_and_other_hands_do_not_matter() {
+        assert!(typable("+-TS"));
+        assert!(!typable("+-TZ"));
+        assert!(typable("STKPWHRAO*EUFRPBLG"));
+    }
+}
+
+#[cfg(test)]
+mod split_tests {
+    use super::Stroke;
+
+    fn split(text: &str) -> (String, String) {
+        let (a, b) = Stroke::parse(text).unwrap().split_untypable().unwrap();
+        assert!(a.typable() && b.typable());
+        (a.to_string(), b.to_string())
+    }
+
+    #[test]
+    fn an_untypable_pinky_chord_is_split_in_order_onto_a_continuation() {
+        assert_eq!(split("KAEUPBSD"), ("KAEUPBS".to_owned(), "+-D".to_owned()));
+        assert_eq!(split("-TZ"), ("-T".to_owned(), "+-Z".to_owned()));
+        assert_eq!(split("-TDZ"), ("-TD".to_owned(), "+-Z".to_owned()));
+        assert_eq!(split("-SDZ"), ("-S".to_owned(), "+-DZ".to_owned()));
+        assert!(Stroke::parse("-TS").unwrap().split_untypable().is_none());
     }
 }

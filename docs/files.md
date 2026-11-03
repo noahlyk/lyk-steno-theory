@@ -16,7 +16,7 @@ reload (below).
 | `02-lyk-backups.json` | the `+`-joined fallbacks, composed from other words' own outlines ([syllables](syllables.md)) | 39,000 |
 | `02-lyk-extras.json` | extra one-stroke ways to write a word, filling strokes nothing else needed ([briefs](briefs.md)) | 12,000 |
 | `02-lyk-alternates.json` | another pronunciation's outline for a word | 3,000 |
-| `02-lyk-phrases.json` | two common words in one stroke ([phrases](phrases.md)) | 7,300 |
+| `02-lyk-phrases.json` | two common words in one stroke ([phrases](phrases.md)) | 6,900 |
 | `02-lyk-suffixes.json` | the standalone suffix strokes ([suffixes](suffixes.md)) | 40 |
 
 Around them, in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`,

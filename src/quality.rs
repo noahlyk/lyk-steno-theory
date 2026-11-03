@@ -381,3 +381,17 @@ fn the_commonest_words_have_one_stroke_and_no_ladder_marker() {
     problems.sort();
     assert!(problems.is_empty(), "common words on a slow or unpredictable outline: {problems:#?}");
 }
+
+/// The right pinky cannot press a diagonal pair or three of its four keys (`docs/typable.md`), so
+/// no generated outline may contain one.
+#[test]
+fn no_generated_stroke_needs_an_impossible_pinky_chord() {
+    let bad: Vec<String> = dictionary_fixture::generated()
+        .entries
+        .iter()
+        .filter(|e| e.outline.iter().any(|stroke| !stroke.typable()))
+        .map(|e| format!("{} {}", e.word, render_outline(&e.outline)))
+        .take(10)
+        .collect();
+    assert!(bad.is_empty(), "untypable outlines: {bad:?}");
+}

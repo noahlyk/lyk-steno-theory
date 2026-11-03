@@ -58,6 +58,8 @@ generated entries.
     pronunciation to generate from at all, reusing the join key's own multi-stroke mechanism.
 16. **[The dictionary files](files.md)** — what `build` writes (several small files, one per way an
     entry came about, rather than one big one) and how keymux reloads only the ones that changed.
+17. **[Strokes you can type](typable.md)** — the right pinky cannot press a diagonal pair (`-TZ`,
+    `-SD`) or three of its four keys, so no outline contains one; what a word does instead.
 
 The benchmarks come last, as a measured result of everything above rather than a rule of their
 own — and they already live on [the main README](../README.md#where-lyk-stands), not here: the one
