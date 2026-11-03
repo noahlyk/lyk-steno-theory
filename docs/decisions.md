@@ -1944,3 +1944,24 @@ the dictionary is the per-file tables layered (no merge copy), each file has its
 Measured on this dictionary: whole-theory cold parse ~110 ms, restart from per-file caches ~12 ms, a
 reload after one small file changed ~19 ms with ~0 ms merge (the old path hashed all 7+ files and
 reparsed everything: roughly 100+ ms plus an 80 ms clone-merge). Docs: new `docs/files.md`.
+
+**Phrases compete for strokes (`src/phrases.rs`).** A phrase used to be committed only into a stroke
+nobody held, so the commonest pairs lost to the rarest words (`it is` to `sit`'s backup, `in the` to
+`antonio`). A phrase now takes a held stroke when the pair's frequency times one stroke beats the
+word's frequency times what it loses by moving; the 1,500 commonest words keep their primary, stems
+keep theirs, hand-written `[word]` outlines and suffixes are never taken, and a word that loses a
+stroke is given its best free candidate (or its plain-rules reading) so it never ends with nothing.
+`PHRASE_TOP_N` 10,000 -> 20,000. Sized first with `tools/phrase_sim.py` on two corpora (+8% of word
+pairs), then measured with the quote benchmark against the same code with displacement off: 1,133 ->
+1,070 strokes (103 passages), 5,866 -> 5,673 (416 passages); phrases 3,308 -> 7,292, 854 of them
+displacing a rarer word. The stranded-word guard stays at 0. A larger list (40,000) saves another
+1.6% but makes 13,500 phrases; not taken. Docs: `docs/phrases.md`.
+
+**The `th` family is pinned to `TH-` (`rules/briefs.toml`).** `their` `-BLS`, `those` `-FBL`, `these`
+`-RPG` (each 3 keys, chosen for key count alone) are replaced by `THAER`, `THOZ`, `THEZ`, with
+`theirs` `THAERS`; `they` `THE` and `they're` `THER` were already there. Reason: the family should be
+readable from the first key, and the bare right-hand chords are awkward to hit. Cost: one or two
+keys on three very common words. Open: `find` `-FPBD`, `thing` `-FRLG`, `think` `-PBG` and about
+forty other vowelless right-hand chords are chosen by key count, and the ergonomics term (under one
+key's weight) is too small to stop an awkward one winning.
+

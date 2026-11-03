@@ -137,6 +137,8 @@ pub struct Generated {
     /// A phrase candidate that lost its merged stroke, either to something `taken` already held
     /// or to another eligible bigram this same pass arbitrated away (see `arbitrate_phrase_round`).
     pub phrases_skipped: usize,
+    /// Of the phrase entries added, how many took their stroke from a rarer word.
+    pub phrases_displaced: usize,
     /// How many [`Origin::Extra`] entries were added after everything else.
     pub extras_added: usize,
     /// Every word that is another word plus a regular ending, by word - see `crate::family`.
@@ -185,7 +187,7 @@ pub struct Candidate {
     pub cost: u32,
 }
 
-const STROKE_WEIGHT: u32 = 25_000;
+pub(crate) const STROKE_WEIGHT: u32 = 25_000;
 /// How much cheaper a family-shaped candidate (`Origin::Family`) counts than its raw cost: two
 /// keys, so a member takes its root's shape (`building` `PWHR-G`, not Plover's `PW-LG`) unless
 /// that costs more than two extra keys. See `docs/syllables.md`.
@@ -747,7 +749,7 @@ fn arbitrate_backup_round(candidates: &[(String, Vec<Stroke>, String)], weight_o
 /// another; a primary assignment is `generate`'s own invariant instead - one single-stroke outline
 /// per word, stable and already heavily tested - and that is what phrase-briefing is built on. See
 /// `docs/phrases.md`'s "why primary-only" section for the full reasoning.
-fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
+pub(crate) fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
     entries
         .iter()
         .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_) | Origin::Family))
@@ -766,7 +768,7 @@ fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
 /// its length - that pass already merges a leading consonant onto `word_outline[stem][0]` and
 /// leaves every later stroke (join bits included) untouched, real, shipped, tested code this
 /// mirrors rather than a new risk. See `docs/phrases.md`.
-fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
+pub(crate) fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
     entries
         .iter()
         .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_) | Origin::Family))
@@ -846,7 +848,7 @@ fn phrase_candidate_outline(
 /// bigrams here.
 /// The pronoun's own entry is the capitalized "I" (see `generate`), while the bigram corpus and
 /// the frequency list only ever spell it lowercase.
-fn entry_word(word: &str) -> &str {
+pub(crate) fn entry_word(word: &str) -> &str {
     if word == "i" { "I" } else { word }
 }
 
@@ -866,7 +868,7 @@ pub fn written(word: &str) -> String {
         .join(" ")
 }
 
-fn enumerate_phrase_candidates(
+pub(crate) fn enumerate_phrase_candidates(
     setup: &Setup,
     single: &HashMap<&str, Stroke>,
     any_len: &HashMap<&str, &[Stroke]>,
@@ -895,7 +897,7 @@ fn enumerate_phrase_candidates(
 /// differ (`setup.bigrams[(w1, w2)]`'s own bits happening to union the same way as some other
 /// pair's) - the winner is whichever bigram was actually said more often, with a lexical tie-break
 /// on the phrase text for determinism.
-fn arbitrate_phrase_round(candidates: &[((String, String), Vec<Stroke>, u64)]) -> Vec<bool> {
+pub(crate) fn arbitrate_phrase_round(candidates: &[((String, String), Vec<Stroke>, u64)]) -> Vec<bool> {
     let mut by_text: HashMap<String, Vec<usize>> = HashMap::new();
     for (i, (_, outline, _)) in candidates.iter().enumerate() {
         by_text.entry(render_outline(outline)).or_default().push(i);
@@ -1750,47 +1752,23 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
     }
 
-    // Phrase entries: a new, independent, single-pass post-pass (no chaining, no 3+-word phrases
-    // in this increment - see `docs/phrases.md`'s scope boundary) that merges two already-settled
-    // primaries into one brand-new, previously-unclaimed outline when at least one side is
-    // single-stroke and the two strokes being joined (the single-stroke side's whole primary, the
-    // other side's own first stroke) are disjoint - a real 2-strokes-to-1 compression for a common
-    // bigram, not a cosmetic one, that now also reaches a multi-stroke "host" word's first stroke
-    // the same way `compose_backup`'s own direction (b) already does (see `phrase_candidate_outline`
-    // and `docs/phrases.md`). Runs once, here, after the backup pass's own fixed-point loop finishes
-    // (so it sees every backup entry already committed to `taken`) and before `stranded` is computed
-    // (so that diagnostic still runs against the dictionary's true final state). `PHRASE_TOP_N`
-    // bounds the raw bigram list scanned, ranked by count - see `docs/phrases.md`'s threshold
-    // section for how this number was measured and chosen, not guessed.
-    const PHRASE_TOP_N: usize = 10_000;
-    let mut phrases_added = 0usize;
-    let mut phrases_skipped = 0usize;
-    {
-        let single = primary_single_strokes(&entries);
-        let any_len = primary_outlines(&entries);
-        let phrase_candidates = enumerate_phrase_candidates(setup, &single, &any_len, PHRASE_TOP_N);
-        let is_winner = arbitrate_phrase_round(&phrase_candidates);
-        for (i, ((w1, w2), outline, _count)) in phrase_candidates.into_iter().enumerate() {
-            if !is_winner[i] {
-                phrases_skipped += 1;
-                continue;
-            }
-            let text = render_outline(&outline);
-            if taken.contains_key(&text) {
-                phrases_skipped += 1;
-                continue;
-            }
-            let word = format!("{w1} {w2}");
-            taken.insert(text, word.clone());
-            entries.push(Entry {
-                word,
-                outline,
-                origin: Origin::Phrase,
-                lost_to: None,
-            });
-            phrases_added += 1;
-        }
-    }
+    // Phrase entries: two settled primaries merged into one stroke, either into a free stroke or
+    // into one a rarer word gives up - see `crate::phrases` and `docs/phrases.md`. Runs once, after
+    // the backup loop (so it sees every backup in `taken`) and before extras (so a word that
+    // lost its stroke can still be given another) and `stranded`.
+    let phrases = {
+        let pool_index: HashMap<&str, &[Candidate]> =
+            pool_words.iter().zip(&pools).map(|(w, c)| (w.as_str(), c.as_slice())).collect();
+        let stems: HashSet<&str> = links.values().map(|l| l.stem.as_str()).collect();
+        let natural = |word: &str| {
+            let sounds = setup.pron.get(word)?.first()?;
+            let mut outline = setup.rules.outline(word, sounds)?;
+            setup.rules.joined(&mut outline);
+            Some(outline)
+        };
+        crate::phrases::place(setup, &mut entries, &mut taken, &pool_index, &stems, &natural, &is_literal_override)
+    };
+    let (phrases_added, phrases_skipped, phrases_displaced) = (phrases.added, phrases.skipped, phrases.displaced);
 
     // Extra single-stroke entries, last of all, in frequency order: every one-stroke candidate a
     // word was considered for (its gold briefs from Plover and Lapwing, the plain rules reading, a
@@ -1874,6 +1852,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         contested: contested_count,
         phrases_added,
         phrases_skipped,
+        phrases_displaced,
         extras_added,
         links,
         prefix_links,
@@ -2007,7 +1986,10 @@ pub fn build(
         "  words still contested after fixed-point peeling (the real solver's own input): {}",
         generated.contested
     );
-    println!("  phrase entries added: {}", generated.phrases_added);
+    println!(
+        "  phrase entries added: {} ({} took the stroke from a rarer word)",
+        generated.phrases_added, generated.phrases_displaced
+    );
     println!("  extra single-stroke entries added last, in strokes nobody else needed: {}", generated.extras_added);
     println!(
         "  phrase entries skipped as collisions: {}",
@@ -2811,24 +2793,22 @@ mod tests {
         );
         assert_eq!(lyk.get("of the").map(|o| render_outline(o)), Some("-FT".to_owned()));
 
-        // "in the": "in"'s own real primary and "the"'s are genuinely disjoint too (this project's
-        // own real data, not assumed) - but the merged stroke, "TPH-T", was NOT free: some other
-        // word already real-dictionary-settled on it before the phrase pass ever runs (confirmed:
-        // `antonio`, a proper noun whose own plain-rules outline happens to land there). So this
-        // bigram is genuinely eligible but does not actually produce a phrase entry in the real,
-        // deployed dictionary - an honest miss, not a bug.
+        // "in the": "in"'s own real primary and "the"'s are disjoint, and the merged stroke,
+        // "TPH-T", was not free: `antonio` (a proper noun whose plain-rules outline happens to
+        // land there) held it. The pair is far more common than the word, so the phrase takes the
+        // stroke and `antonio` is written another way (see `crate::phrases`).
         let in_the = phrase_candidate(&primary, "in", "the");
         assert_eq!(
             in_the,
             Some(parse_outline("TPH-T").unwrap()[0]),
             "\"in\" and \"the\"'s own real primaries are disjoint"
         );
-        assert_ne!(
+        assert_eq!(
             lyk.get("in the").map(|o| render_outline(o)),
             in_the.map(|s| render_outline(&[s])),
-            "\"in the\" is eligible but its merged stroke is genuinely already taken (by \
-             \"antonio\"), so it must not have been committed"
+            "\"in the\" is far more common than \"antonio\", so it takes the stroke"
         );
+        assert_ne!(lyk.get("antonio").map(|o| render_outline(o)), Some("TPH-T".to_owned()));
 
         // "I am": the bigram corpus spells the pronoun lowercase, so a phrase looks it up through
         // `entry_word` - the pronoun's own entry, "I" on `EU`, not a bare letter. `EU` | `-PL`

@@ -63,11 +63,12 @@ A bigram `(w1, w2)` earns a merged phrase entry only when every one of these hol
 2. **The single-stroke word's whole primary and the other word's own *first* stroke are
    disjoint** — no key in common, the star included. When both happen to be single-stroke, this is
    just "the two primaries are disjoint," exactly as before.
-3. **The merged outline's own rendered text is unclaimed by anything already in the
-   dictionary** — a reserved stroke, a suffix, "I", any primary, or any bonus/alternate/backup
-   entry. For the original both-single-stroke case this is one stroke's worth of text; when the
-   other word is multi-stroke, it's that word's full outline length, first stroke merged, every
-   later stroke carried through unchanged.
+3. **The merged outline's own rendered text is unclaimed, or the pair is worth more than the word
+   that holds it** — see "Phrases compete for strokes" below. A reserved stroke, a suffix, a
+   hand-written `[word]` outline in `rules/briefs.toml` and another phrase are never taken. For the
+   original both-single-stroke case this is one stroke's worth of text; when the other word is
+   multi-stroke, it's that word's full outline length, first stroke merged, every later stroke
+   carried through unchanged.
 4. **The bigram is among the top `PHRASE_TOP_N` by raw count** (see "The threshold" below) — a fixed
    bound on how many bigrams are even attempted, not a bound on how many actually make it through
    steps 1–3.
@@ -220,7 +221,8 @@ obvious going in:
   108 real entries, and its own raw-count cutoff (~40.6M) is still a tiny fraction of the full
   245,803-bigram vocabulary.
 
-**`PHRASE_TOP_N` is set to 10,000.** At that cutoff, raw counts are still in the low millions —
+**`PHRASE_TOP_N` was set to 10,000 when this was first measured (now 20,000, see "Phrases compete
+for strokes").** At that cutoff, raw counts are still in the low millions —
 comfortably above the long tail, where a bigram's own commonality starts looking more like
 coincidence than habit — while the real yield is substantial enough to be a real, felt improvement
 rather than a token gesture. Raising it further is reasonable future work once this version's
@@ -239,9 +241,57 @@ above) adds **190** more, for **3,224** total. Re-run
 fresh build for the current precise numbers rather than trusting any number printed here to stay
 exact forever.
 
+## Phrases compete for strokes
+
+Until 2026-11-03 a phrase was committed only into a stroke nobody held. In a dictionary this dense
+that is rare, and the most common pairs lost to the least common words: `it is` = `T` + `S` = `ST`
+was lost to `sit`'s backup, `in the` = `TPH-T` to `antonio`, `in a` = `TPHA` to `nah`. Now a pair
+whose merged stroke is held **competes for it** (`src/phrases.rs`).
+
+The pair takes the stroke when
+
+```
+pair count / all pairs x 25 000   >   word count / all words x (cost of its next-best outline - cost of the stolen one)
+```
+
+The left side is one stroke saved (a phrase has the same keys as the two words, one stroke fewer; a
+stroke weighs 25 keys, see [brevity](brevity.md)). The right side is what the word loses by moving.
+Counts are `bigrams_en.txt` for pairs and the subtitle counts for words.
+
+What a phrase can and cannot take:
+
+- **Never taken:** a reserved stroke, a suffix, a hand-written `[word]` outline in `briefs.toml`,
+  another phrase, a ladder-settled or family-shaped entry (a family member is defined by its stem),
+  and the **primary of a stem** (the word other words are built from: `object` keeps `OBT`, so
+  `on the` does not get it).
+- **The 1,500 most frequent words keep their primary** (`PROTECTED_WORDS`): `on`, `want`, `after`
+  stay where they are. A phrase can still take a *backup*, a *short form* or an *alternate* from
+  them, since the word keeps its own outline: `sit` loses `ST` and keeps `SEUT`, so `it is` is
+  `ST`.
+- **A word that loses its only way of being written gets another.** Its next-best outline is
+  another one it has, or its best own candidate (including its plain-rules reading, any length)
+  that nobody holds. `antonio` moves to `TPHOEPBT`. A pair is skipped if the word would end up with
+  nothing. A word that loses its primary is no longer a part of any later phrase.
+- A word that is part of a committed phrase is not taken from afterwards.
+
+`PHRASE_TOP_N` is now 20,000 bigrams (it was 10,000), since the cost rule, not the list length,
+keeps the weak ones out. Measured with the quote benchmark (greedy walk, `cargo test --release
+quote_corpus -- --nocapture`): the same code with displacement switched off gave 1,133 strokes on
+the 103 hand-picked passages and 5,866 on the 416 extracted ones; with it, **1,070 and 5,673** (5.6%
+and 3.3% fewer strokes than before; 13.7% and 10.6% fewer than word-by-word). Words written
+word-by-word got 3 strokes worse in total (displaced words). Raising `PHRASE_TOP_N` to 40,000 would
+save 1.6% more strokes but make 13,500 phrases and 1,300 displaced words; not worth learning.
+
+Phrases committed: 7,292 (was 3,308), of which 854 took their stroke from a rarer word. Every
+phrase is still two strokes you already know OR'd together, so the learnable rule is unchanged:
+`in the` is the stroke for `in` plus the stroke for `the`.
+
+The first sizing was done on two independent corpora with `tools/phrase_sim.py`
+(`python3 tools/phrase_sim.py [protect_rank] [show]`, run against `out/lyk/`).
+
 ## Where this runs
 
-A single, independent pass in `generate()`, run once — no fixed-point loop, no chaining — right
+A single, independent pass (`crate::phrases::place`, called from `generate()`), run once — no fixed-point loop, no chaining — right
 after the [backup-composition pass](syllables.md)'s own fixed-point loop finishes, and before the
 `stranded` diagnostic is computed. Running after backups means every phrase candidate is checked
 against the dictionary's fully-settled state, backups included; running before `stranded` means that

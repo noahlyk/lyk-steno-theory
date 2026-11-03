@@ -290,7 +290,6 @@ believe = "-BL"       # was PHREF, 5 keys -> 2
 find = "-FPBD"        # was TPAOEUD, 7 keys -> 4
 means = "-PLS"        # was PHAOES, 6 keys -> 3
 bring = "PWR"         # was PWREU, 5 keys -> 3
-their = "-BLS"        # was THAER, 5 keys -> 3
 thing = "-FRLG"       # was THEUPG, 6 keys -> 4
 thought = "-LGT"      # was THAUT, 5 keys -> 3
 "wasn't" = "-FSZ"     # was WAEPT, 5 keys -> 3
@@ -299,9 +298,17 @@ thought = "-LGT"      # was THAUT, 5 keys -> 3
 got = "-GTD"          # was TPWOT, 5 keys -> 3
 "couldn't" = "*BGD"   # was KUPBD, 5 keys -> 4
 think = "-PBG"        # was THEU, 4 keys -> 3
-these = "-RPG"        # was THEZ, 4 keys -> 3
-those = "-FBL"        # was THOZ, 4 keys -> 3
 "doesn't" = "*RBGZ"   # was TKUPBT, 6 keys -> 5
+
+# The `th` family. Every word that begins with the sound of "th" in `they`, `their`, `these`,
+# `those` is written with `TH-`, with the vowel telling them apart, so one of them tells you the
+# rest. A short bare right-hand chord (`-RPG`, `-FBL`, `-BLS`) saves a key or two but says nothing
+# about the word, so these are pinned and nothing generated can move them.
+they = "THE"
+their = "THAER"
+theirs = "THAERS"
+these = "THEZ"
+those = "THOZ"
 
 # These two also bump another word off the stroke they're pinned to; checked that the bumped
 # word has other legal candidates of its own and doesn't go unresolved - see `docs/decisions.md`

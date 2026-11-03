@@ -12,6 +12,7 @@ mod dictionary_fixture;
 mod fetch;
 mod generate;
 mod output;
+mod phrases;
 mod gold;
 mod ipa;
 mod quote;

@@ -134,4 +134,13 @@ stroke so that `errol`, `earle`, and `earl` could all keep a slot. Now `early` i
 rarest member of that cluster is spelled instead.) Words left unplaced this way are counted by
 `build`'s "words the rules could not place"; every one of them is rarer than rank 20,000.
 
+## The `th` family is pinned
+
+`they`, `their`, `theirs`, `they're`, `these` and `those` are written `THE`, `THAER`, `THAERS`,
+`THER`, `THEZ` and `THOZ`. All start with `TH-` and the vowel tells them apart, so knowing one tells
+you the rest (`this` is `TH`, `them` is `THEP`, `there` is `THR`). They are pinned in
+`rules/briefs.toml`, because left alone the solver picked the shortest chord for each (`-BLS` for
+`their`, `-FBL` for `those`, `-RPG` for `these`): a key or two saved, and nothing in the chord says
+which word it is or that the words are related.
+
 Next: **[phonetic rules](phonetic-rules.md)** — how a word with no brief gets its stroke instead.
