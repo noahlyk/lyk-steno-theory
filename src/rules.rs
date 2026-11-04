@@ -896,8 +896,8 @@ impl Rules {
     }
 
     /// A reduced syllable that did not fit on the stroke before it: a continuation stroke of just
-    /// its consonants (`-G` for `-ing`, `-D` for `-ed`, `-PB` for `-en`). A reduced `ER` keeps its
-    /// vowel keys (`ER`), and a syllable with no consonants keeps its vowel too.
+    /// its consonants (`-G` for `-ing`, `-D` for `-ed`, `-PB` for `-en`). A reduced `ER` is written
+    /// as its `R` (`-R`), and a syllable with no consonants keeps its vowel.
     fn continuation(&self, syllable: &Syllable) -> Option<Stroke> {
         let is_er = plain(&syllable.vowel) == "ER";
         let consonants = syllable.onset.len() + syllable.coda.len();
@@ -905,18 +905,21 @@ impl Rules {
             return self.syllable_stroke(syllable);
         }
         // A suffix is written on the right hand with no vowel (`-ness` -PBS, `-ment` -PLT, `-er`
-        // -R); when its consonants don't fit there in order, the first go on the left (`-nial`
-        // TPH-L)
-        let mut all = syllable.onset.clone();
+        // -R); when its consonants don't fit there in order, the onset goes on the left and the
+        // rest stays on the right (`-nial` TPH-L, `-ner` TPH-R). The `R` of a reduced `ER` is part
+        // of that rest: `examiner`'s "-ner" is `TPH-R`, never a bare `TPH` that reads as "n".
+        let mut rest: Vec<String> = Vec::new();
         if is_er {
-            all.push("R".into());
+            rest.push("R".into());
         }
-        all.extend(syllable.coda.iter().cloned());
+        rest.extend(syllable.coda.iter().cloned());
+        let mut all = syllable.onset.clone();
+        all.extend(rest.iter().cloned());
         if let Some(coda) = Self::consonants(&all, &self.coda, &self.coda_cluster, false) {
             return Some(coda);
         }
         let onset = Self::consonants(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
-        let coda = Self::consonants(&syllable.coda, &self.coda, &self.coda_cluster, false)?;
+        let coda = Self::consonants(&rest, &self.coda, &self.coda_cluster, false)?;
         Some(Stroke(onset.0 | coda.0))
     }
 
@@ -1368,11 +1371,27 @@ impl Rules {
         ) else {
             return true;
         };
-        let last_index = syllables.len() - 1;
+        let (first_window, last_window) = Self::stroke_windows(&syllables, outline.len());
+        let last_index = last_window.len() - 1;
         let onset_mask = first_stroke.0 & Stroke::LEFT;
         let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
-        self.fragment_bits(&syllables, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster) == 0
-            && self.fragment_bits(&syllables, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster) == 0
+        self.fragment_bits(first_window, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster) == 0
+            && self.fragment_bits(last_window, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster) == 0
+    }
+
+    /// The syllables an outline's first stroke and last stroke can each hold at most: every one
+    /// of them when the outline is a single stroke (a one-stroke brief condenses every syllable
+    /// onto it), otherwise `syllables - strokes + 1` from the matching end, since every other
+    /// stroke holds at least one syllable of its own. [`Self::explained_elsewhere`] only looks
+    /// inside this window: a sound that can only be on *another* stroke never explains a key on
+    /// this one. Without it, `dictate`'s second stroke's own "t" (`TAEUT`) explained away the `T`
+    /// of the first stroke's `TK` ("d"), leaving a lone `K` to be "repaired" into `TEUBG/TAEUT`
+    /// (tick-tate); `seldom`'s first-stroke "l" did the same to the `L` of `-PL` ("m") on its
+    /// second, repairing `S-L/TKOPL` into `S-L/TKOL`.
+    fn stroke_windows(syllables: &[Syllable], strokes: usize) -> (&[Syllable], &[Syllable]) {
+        let window = syllables.len().saturating_sub(strokes.max(1)) + 1;
+        let window = window.min(syllables.len());
+        (&syllables[..window], &syllables[syllables.len() - window..])
     }
 
     /// The bits of `masked_bits` that are a fragment of one of `tokens`' own multi-key sounds —
@@ -1429,11 +1448,12 @@ impl Rules {
             outline.first()?,
             outline.last()?,
         );
-        let last_index = syllables.len() - 1;
+        let (first_window, last_window) = Self::stroke_windows(&syllables, outline.len());
+        let last_index = last_window.len() - 1;
         let onset_mask = first_stroke.0 & Stroke::LEFT;
         let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
-        let onset_fragment = self.fragment_bits(&syllables, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster);
-        let coda_fragment = self.fragment_bits(&syllables, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster);
+        let onset_fragment = self.fragment_bits(first_window, 0, false, &first.onset, first_stroke.0, onset_mask, &self.onset, &self.onset_cluster);
+        let coda_fragment = self.fragment_bits(last_window, last_index, true, &last.coda, last_stroke.0, coda_mask, &self.coda, &self.coda_cluster);
         if onset_fragment == 0 && coda_fragment == 0 {
             return None;
         }
@@ -2279,6 +2299,45 @@ mod tests {
         let tr_t = parse_outline("TR-T").unwrap();
         assert!(rules.matches_real_consonants(&tr_t, "district", &district));
         assert_eq!(rules.drop_fragments(&tr_t, "district", &district), None);
+    }
+
+    #[test]
+    fn a_sound_on_another_stroke_never_explains_a_key_on_this_one() {
+        let rules = Rules::built_in().unwrap();
+        // "dictate" as Plover writes it, one syllable per stroke: the second stroke's own "t"
+        // (`T` of `TAEUT`) used to explain away the `T` of the first stroke's `TK` ("d"), leaving
+        // a lone `K` to be "repaired" out - `TEUBG/TAEUT`, which reads "tick-tate".
+        let dictate = sounds("D IH0 K T EY1 T");
+        let outline = parse_outline("TKEUBG/TAEUT").unwrap();
+        assert!(rules.matches_real_consonants(&outline, "dictate", &dictate));
+        assert_eq!(rules.drop_fragments(&outline, "dictate", &dictate), None);
+        // The mirror case on the coda side: "seldom"'s first-stroke "l" used to explain away the
+        // `L` of its second stroke's `-PL` ("m"), repairing `S-L/TKOPL` into `S-L/TKOL` ("dol").
+        let seldom = sounds("S EH1 L D AH0 M");
+        let outline = parse_outline("S-L/TKOPL").unwrap();
+        assert!(rules.matches_real_consonants(&outline, "seldom", &seldom));
+        assert_eq!(rules.drop_fragments(&outline, "seldom", &seldom), None);
+        // A one-stroke outline still lets every syllable explain every other: `district`'s case
+        // above is unchanged.
+        let syllables = rules.syllables(&rules.label("dictate", &dictate)).unwrap();
+        let (first, last) = Rules::stroke_windows(&syllables, 2);
+        assert_eq!((first.len(), last.len()), (1, 1));
+        let (first, last) = Rules::stroke_windows(&syllables, 1);
+        assert_eq!((first.len(), last.len()), (2, 2));
+    }
+
+    #[test]
+    fn a_reduced_er_continuation_keeps_its_r_when_its_onset_goes_on_the_left() {
+        let rules = Rules::built_in().unwrap();
+        // "-ner" after a stem that can't take the "n": the onset goes on the left and the `R` of
+        // the reduced "er" stays on the right - `TPH-R`, never a bare `TPH` that reads as "n".
+        let examiner = sounds("IH0 G Z AE1 M AH0 N ER0");
+        let outline = rules.outline("examiner", &examiner).unwrap();
+        let last = render_outline(&outline[outline.len() - 1..]);
+        assert!(last.ends_with("R"), "examiner's continuation is {last}, which has lost its -er");
+        let amber = sounds("AE1 M B ER0");
+        let outline = rules.outline("amber", &amber).unwrap();
+        assert_eq!(render_outline(&outline), "APL/PW-R");
     }
 
     #[test]

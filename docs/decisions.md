@@ -1984,3 +1984,18 @@ under its primary, short form, backup and extras), found by a linear scan on eve
 only primaries, only the 10,000 commonest words, searched by binary search: 10,000 rows, 181 KB. The
 rest of the file is the rules tables, a few KB. Nothing a user can see changes except that a run
 starting with a rare one-stroke word reads from its sounds. Still to regenerate with `deploy`.
+
+**A reduced "-er" keeps its `R` when its onset goes on the left (`Rules::continuation`,
+`src/rules.rs`).** When a reduced syllable's onset would not fit on the stroke before it and its
+consonants did not fit on the right hand of a continuation stroke in order, the onset went on the
+left and the rest was rebuilt from the syllable's *coda* alone, which for "-er" is empty: *amber*
+was `APL/+PW` ("amb"), *gardner* `TKPWARD/+TPH`, *catheter* `KA*T/+T`. 88 primaries read a
+consonant short. Now `APL/+PW-R`, `TKPWARD/+TPH-R`. Docs: `docs/syllables.md`.
+
+**A sound can only explain a key on a stroke it can be on (`Rules::stroke_windows`,
+`src/rules.rs`).** The fragment check let any syllable's sound explain any key of the first or last
+stroke, right for a one-stroke brief (every syllable is on it) and wrong for a multi-stroke one:
+*dictate*'s second stroke's "t" explained the `T` of the first stroke's `TK`, so the `K` was a
+"fragment" and the repair `TEUBG/+TAEUT` (tick-tate), one key cheaper, won the word and its whole
+family; *seldom*'s first-stroke "l" did the same to `-PL`, giving `S-L/+TKOL`. The window is now
+`syllables − strokes + 1` syllables from each end. Docs: `docs/briefs.md`.

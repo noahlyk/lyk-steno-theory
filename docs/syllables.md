@@ -8,7 +8,10 @@ except that a lone `-er` or `-ly` may land out of order as in Plover (*better* P
 *lately* HRAEULT, *color* KORL). When they don't fit, the stem keeps the consonant it owns
 and the rest is a continuation stroke of consonants only on the right hand — this is the
 **[join key](join-key.md)** at work: *ended* EPBD/+-D, *breaking* PWRAEUBG/+-G, *goodness*
-TKPWAOD/+-PBS, *harder* HARD/+-R, *confidence* KOPB/+-FD/+-PBS. So the suffixes words fold onto
+TKPWAOD/+-PBS, *harder* HARD/+-R, *confidence* KOPB/+-FD/+-PBS. When the reduced syllable's own
+onset consonant can't go on the right hand either, it goes on the left of that same continuation
+stroke and the rest stays on the right: *amber* APL/+PW-R, *gardner* TKPWARD/+TPH-R, *-nial*
++TPH-L. A reduced "-er" is always its `R`, in either shape. So the suffixes words fold onto
 are a fixed set that never needs memorising apart from the rules, and `rules/suffixes.toml` gives
 every one of them a stroke on its own too, Plover-suffix-dictionary style, so it can be added to
 a stem that never happened to need it while the dictionary was built — see

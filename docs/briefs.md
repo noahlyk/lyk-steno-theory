@@ -59,7 +59,13 @@ at all; instead, up to two repairs are generated from it and offered as separate
 own, since a brief is always free to skip a sound it isn't attempting at all: completing the
 fragment into the whole, correct cluster, or dropping it outright. Dropping is usually fewer keys,
 so it tends to win when both are legal and free — but either repair only exists because the word's
-own gold dictionary pointed at that sound to begin with; nothing is invented from nothing. See
+own gold dictionary pointed at that sound to begin with; nothing is invented from nothing. The
+check reads a sound as explaining a key only when that sound can be on the stroke being checked:
+every syllable of a one-stroke brief, but for a multi-stroke outline only the first
+`syllables − strokes + 1` syllables for the first stroke and the last that many for the last (each
+other stroke holds at least one syllable of its own). Before this, *dictate*'s second stroke's own
+"t" explained away the `T` of the first stroke's `TK` ("d"), and the lone `K` was "repaired" into
+`TEUBG/+TAEUT`, tick-tate. See
 [`docs/decisions.md`](decisions.md) for what this blanket rigor actually changed once applied to
 the real dictionary: six words (`on`, `from`, `no`, `then`, `day`, `which`) used to carry a literal
 `[word]` override that was itself a hand-picked exploit of the old, narrower version of this check —
