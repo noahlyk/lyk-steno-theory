@@ -220,9 +220,9 @@ fn print_lost(setup: &Setup, generated: &Generated) {
 fn print_worse(setup: &Setup, generated: &Generated, mut worse: Vec<Worse>) {
     worse.sort_by(|a, b| b.0.total_cmp(&a.0));
     println!("\nthe words that cost the most extra keys over plover");
+    let best = cheapest(&generated.entries);
     for (_, word, ours_keys, plover_keys) in worse.iter().take(40) {
-        let outline =
-            generated.entries.iter().filter(|e| e.word == *word).map(|e| render_outline(&e.outline)).collect::<Vec<_>>().join(" ");
+        let outline = best.get(word).map_or_else(String::new, |o| render_outline(o));
         let plover = setup.gold.plover.get(*word).and_then(|o| o.first()).map_or("", String::as_str);
         println!("  {word:<12} {ours_keys} vs {plover_keys} keys   ours {outline:<24} plover {plover}");
     }
