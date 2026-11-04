@@ -1976,3 +1976,11 @@ stranded 0, 106 tests; four rare words lost their outline (`cleansed`, `pulsed`,
 limited: only this pinky block was reported. A per-person hand profile for softer limits was
 proposed and not built.
 
+
+
+**The deployed fallback plugin is 8x smaller (`05-lyk-orthographic-fallback.rs`).** 1.45 MB of its
+1.45 MB was the stem table: every one-stroke entry in the dictionary (56,000 rows, the same word
+under its primary, short form, backup and extras), found by a linear scan on every miss. It now holds
+only primaries, only the 10,000 commonest words, searched by binary search: 10,000 rows, 181 KB. The
+rest of the file is the rules tables, a few KB. Nothing a user can see changes except that a run
+starting with a rare one-stroke word reads from its sounds. Still to regenerate with `deploy`.

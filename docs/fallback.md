@@ -115,9 +115,13 @@ word, even though direct dictionary lookups of an already-built multi-stroke ent
 `WORBG/+-G`) would still work. This is why `cargo run -- plugin` must be regenerated and
 redeployed any time `Stroke::JOIN`'s bit position changes, not just when a rule table does.
 
-It also embeds every single-stroke word currently in the dictionary (the stem table the previous
-section describes) — unlike every other table here, this one isn't a fixed theory constant, it's a
-snapshot of which word is on which single stroke right now. `cargo run -- plugin` builds the
+It also embeds a stem table (the one the previous section describes): the **primary** one-stroke
+outline of each of the **10,000 commonest words** (`PLUGIN_STEM_WORDS` in `src/main.rs`). It used to
+hold every one-stroke entry, short forms, backups and extras included, so the same word was in it
+three or four times (56,000 rows, a 1.45 MB file, scanned linearly on every miss); it is now about
+10,000 rows (180 KB), sorted and searched by binary search. A rarer word at the start of a run is not
+lost, it just reads back from its sounds instead of its spelling. Unlike every other table here this
+one isn't a fixed theory constant, it's a snapshot of which word is on which single stroke right now. `cargo run -- plugin` builds the
 dictionary itself to generate this snapshot, so regenerate and redeploy whenever the *dictionary*
 changes too, not only when a rule table does.
 

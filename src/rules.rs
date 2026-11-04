@@ -1867,7 +1867,8 @@ fn resolve(outline: &str) -> Option<String> {{
     // `Rules::resolve`.
     let mut skip = 0;
     if parts.len() > 1 {{
-        if let Some(&(_, stem)) = STEMS.iter().find(|&&(b, _)| b == first_bits) {{
+        if let Ok(at) = STEMS.binary_search_by_key(&first_bits, |&(b, _)| b) {{
+            let stem = STEMS[at].1;
             // The stem's own trailing silent `e` (if any) needs to see the very next piece's
             // first letter before it can be written at all (`have` + `ing` -> `having`, not
             // `haveing`): mirrors `Rules::resolve`.

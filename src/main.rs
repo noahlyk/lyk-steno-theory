@@ -527,6 +527,9 @@ fn print_resolve(
     Ok(())
 }
 
+/// How many of the commonest words get their own stem row in the deployed plugin.
+const PLUGIN_STEM_WORDS: usize = 10_000;
+
 /// Generate the orthographic-fallback plugin's source and write it to `out`. Builds the
 /// dictionary (same `setup`/`briefs`/`common` as `build`/`deploy`) to embed its single-stroke
 /// stem table in the plugin — see [`rules::Rules::generate_plugin`].
@@ -542,7 +545,14 @@ fn write_plugin(
         None => rules::Rules::built_in()?,
     };
     let generated = generate::generate(setup, briefs, common)?;
-    let stems = generate::single_stroke_stems(&generated);
+    // Only the commonest words are embedded: a rarer word as the start of a run reads back from
+    // its sounds, which is what a stem table is only a nicer spelling of. See `docs/fallback.md`.
+    let mut stems = generate::single_stroke_stems(&generated);
+    let mut ranked: Vec<(&String, &u64)> = setup.count.iter().collect();
+    ranked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+    let common_words: std::collections::HashSet<&str> =
+        ranked.into_iter().take(PLUGIN_STEM_WORDS).map(|(word, _)| word.as_str()).collect();
+    stems.retain(|_, word| common_words.contains(word.as_str()));
     let source = rules.generate_plugin(&stems);
     if let Some(parent) = out.parent() {
         std::fs::create_dir_all(parent)?;
