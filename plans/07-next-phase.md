@@ -110,6 +110,9 @@ outline" lookup can prefer the primary file.
 
 ### 3. More frequency analysis (written-English frequencies)
 
+**Done 2026-11-04.** Names count a tenth (`src/frequency.rs`); the written blend was measured and
+rejected, and the homophone cases it was meant for went to item 4 (`docs/decisions.md`).
+
 Subtitle counts distort which word gets a stroke (`doc` > `dock`, `matt` holds `PHAT`, `aye` took
 `eye`). The tape blend was tried and dropped (too small, noisy; see decisions.md). Do:
 1. Build a written-English frequency signal from sources already in the repo (5 Gutenberg texts in
@@ -125,6 +128,10 @@ Subtitle counts distort which word gets a stroke (`doc` > `dock`, `matt` holds `
    `docs/` (new section) and `docs/decisions.md`.
 
 ### 4. Better design for multi-stroke / `+` outlines
+
+**Star part done 2026-11-04**: a one-syllable stroke's star goes to its sound-alike before a short
+form (`STAR_SURCHARGE`); the `+*` marker stays as the last resort for ~1,230 words, almost all
+names (`docs/collisions.md`).
 
 Today `+`-joined entries come from several ad-hoc backup directions plus family offers; lots of
 cases are arbitrary (`X/+*`, `X/+*/+*` ladder markers, compounds that split mid-syllable). Redesign
@@ -142,6 +149,9 @@ around predictability: **a `+` entry should always decompose into pieces a learn
 - Document the result in `docs/join-key.md` and `docs/syllables.md`; keep every backup reachable.
 
 ### 5. Phrasing grammar (the real route to Magnum speed)
+
+**Designed and measured 2026-11-04: [`08-phrasing-grammar.md`](08-phrasing-grammar.md)**, with a
+prototype to type (`tools/phrasing_prototype.py`). Built once it survives typing.
 
 Rule-based, learnable phrases: starter (I/you/he/we/they) + auxiliary (can/will/don't/did/would) +
 common verb in one stroke, built from disjoint key regions instead of per-bigram luck. First write the
@@ -163,6 +173,9 @@ reviews by typing it*, not a menu.
 - Keep `docs/` in step; update `docs/README.md` map if files move; refresh `plans/README.md`.
 
 ### 7. Smaller items
+
+**Done 2026-11-04**: hyphen and caps strokes documented, `lost_to` replaced by a computed report,
+analysis scripts in `tools/`.
 
 - Hyphen strokes (`H-PB` etc.) are undocumented in `docs/punctuation.md`; add them.
 - Lapwing parity: repeated-arrow chords and engine-only commands were skipped; revisit if wanted.

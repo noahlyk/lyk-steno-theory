@@ -15,7 +15,8 @@ is a new scoping doc, not yet reviewed or built.**
 | [04-claude-md-docs-importance.md](04-claude-md-docs-importance.md) | Write `.claude/CLAUDE.md` — a standing reminder that docs outrank code in this repo | new file, `.claude/CLAUDE.md` | done |
 | [05-kpa-family-consistency.md](05-kpa-family-consistency.md) | Decide and (if approved) implement a consistent capitalize/lowercase stroke scheme | `rules/reserved/commands.json`, deployed config | **awaiting a decision** between the three candidate schemes written up for the user |
 | [06-phrase-briefs.md](06-phrase-briefs.md) | Scope (not build) a small, lyk-native phrase-brief system — one stroke for a pronoun+verb fragment | new subsystem, TBD files | **scoping doc only**, awaiting review before any build work |
-| [07-next-phase.md](07-next-phase.md) | The plan after the family/solver work: keymux tape+undo fix, multi-file output and per-file hot reload, frequency, `+` redesign, phrasing, housekeeping | `src/`, `rules/`, `../keymux/` | **in progress** (written 2026-11-02 to survive a context compact) |
+| [07-next-phase.md](07-next-phase.md) | The plan after the family/solver work: keymux tape+undo fix, multi-file output and per-file hot reload, frequency, `+` redesign, phrasing, housekeeping | `src/`, `rules/`, `../keymux/` | **in progress**: 1, 2, 3, 4, 6, 7 done; 5 designed (see 08) |
+| [08-phrasing-grammar.md](08-phrasing-grammar.md) | Starter + auxiliary + verb in one stroke: the design, measured, with a prototype to type | `tools/phrasing_prototype.py`; later `rules/grammar.toml`, `src/phrases/` | **prototype for typing**, built into the generator once it survives typing |
 
 ## Order, if running them one at a time
 

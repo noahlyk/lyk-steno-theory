@@ -10,6 +10,7 @@ Python 3, no dependencies. Every one reads the built dictionary in `out/lyk/` (r
 | `diff_builds.py BEFORE [AFTER] [N]` | What a change did: per-file entry and word counts, the words only one build has, and every word whose fastest outline changed, commonest first, with counts for the top 1,000 / 5,000 / 20,000. |
 | `coverage.py [word ...]` | How many words of two syllables or more can be joined in, by frequency band: one-stroke share, joined share, stem-plus-ending share, joined ways in per word ([joins](../docs/joins.md)). |
 | `markers.py [N]` | Words still on a bare `/+*` marker, by band, real words against names, and who holds the plain and starred stroke each real word wanted ([collisions](../docs/collisions.md)). |
+| `phrasing_prototype.py [OUT_DIR]` | The phrasing grammar ([plans/08](../plans/08-phrasing-grammar.md)) as a trial folder to deploy and type: displaced entries, strokes saved on the corpora, a practice list. |
 | `phrase_sim.py [protect_rank] [show]` | Simulates letting phrases take strokes from words ([plans/06](../plans/06-phrase-briefs.md)). |
 
 Measuring a change:
