@@ -239,10 +239,7 @@ fn main() -> Result<()> {
             write_readme,
         } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             if *check_readme || *write_readme {
                 analysis::check_readme(&setup, &briefs, *common, Path::new("README.md"), *write_readme)
             } else {
@@ -264,10 +261,7 @@ fn main() -> Result<()> {
         }
         Command::Explain { word, common, briefs } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             let generated = generate::generate(&setup, &briefs, *common)?;
             let dictionary = generate::cheapest(&generated.entries);
             analysis::explain(&setup, &dictionary, word);
@@ -275,10 +269,7 @@ fn main() -> Result<()> {
         }
         Command::Plugin { out, common, briefs } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             write_plugin(&setup, &briefs, *common, cli.rules.as_deref(), out)
         }
         Command::Build {
@@ -288,19 +279,14 @@ fn main() -> Result<()> {
             against,
         } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
-            let against = match against {
-                Some(path) => {
-                    let name = path
-                        .file_stem()
-                        .map_or_else(|| "other".to_owned(), |s| s.to_string_lossy().into_owned());
-                    Some((name, data::load_words(path)?))
-                }
-                None => None,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
+            let against = against
+                .as_deref()
+                .map(|path| -> Result<_> {
+                    let name = path.file_stem().map_or_else(|| "other".to_owned(), |s| s.to_string_lossy().into_owned());
+                    Ok((name, data::load_words(path)?))
+                })
+                .transpose()?;
             generate::build(&setup, &briefs, *common, out, against.as_ref())
         }
         Command::Quote {
@@ -309,10 +295,7 @@ fn main() -> Result<()> {
             words,
         } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             quote::run(&setup, &briefs, *common, *words)
         }
         Command::Resolve {
@@ -321,10 +304,7 @@ fn main() -> Result<()> {
             briefs,
         } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             let strokes = stroke::parse_outline(outline)
                 .with_context(|| format!("{outline:?} is not a stroke outline"))?;
             print_resolve(&setup, &briefs, &strokes, *common)
@@ -340,10 +320,7 @@ fn main() -> Result<()> {
         }
         Command::Deploy { to, common, briefs } => {
             let setup = setup(Some(*common))?;
-            let briefs = match briefs {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
+            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             deploy(&setup, &briefs, *common, cli.rules.as_deref(), to)
         }
     }

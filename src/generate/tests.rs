@@ -298,6 +298,44 @@ fn candidate(text: &str) -> Candidate {
 /// costs 1,000 + 80 + 50 = 1,130; `a`=K,`b`=T,`c`=P costs 2,000 + 50 + 50 = 2,100 (any
 /// assignment giving `c` its own cheapest, `K`, leaves `a` and `b` both needing `T`, which
 /// isn't a perfect matching). The cheaper one is the only correct answer.
+/// The cheapest assignment of distinct texts to words, by trying every one: each word takes one
+/// of its `(text, cost)` options, or, when `escape` is given, its own escape cost instead. `None`
+/// when no assignment uses each text once.
+fn brute_force(options: &[Vec<(usize, u128)>], escape: Option<&[u128]>) -> Option<u128> {
+    fn go(options: &[Vec<(usize, u128)>], escape: Option<&[u128]>, i: usize, used: &mut Vec<usize>, cost: u128, best: &mut Option<u128>) {
+        if best.is_some_and(|b| cost >= b) {
+            return;
+        }
+        if i == options.len() {
+            *best = Some(cost);
+            return;
+        }
+        if let Some(escape) = escape {
+            go(options, Some(escape), i + 1, used, cost + escape[i], best);
+        }
+        for &(t, c) in &options[i] {
+            if !used.contains(&t) {
+                used.push(t);
+                go(options, escape, i + 1, used, cost + c, best);
+                used.pop();
+            }
+        }
+    }
+    let mut best = None;
+    go(options, escape, 0, &mut Vec::new(), 0, &mut best);
+    best
+}
+
+/// A deterministic pseudo-random sequence from `seed` (xorshift64).
+fn xorshift(mut seed: u64) -> impl FnMut() -> u64 {
+    move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed
+    }
+}
+
 #[test]
 fn solve_contested_matches_a_small_hand_worked_optimum() {
     let contested: Vec<(&str, Vec<(Candidate, u64)>)> = vec![
@@ -401,33 +439,17 @@ fn solve_contested_matches_brute_force_on_a_real_failing_case() {
         .map(|&(word, edges)| (word, edges.iter().map(|&(text, cost)| (candidate(text), cost)).collect()))
         .collect();
 
-    let options: Vec<Vec<(String, u64)>> = data
+    let mut texts: Vec<&str> = data.iter().flat_map(|(_, edges)| edges.iter().map(|&(t, _)| t)).collect();
+    texts.sort_unstable();
+    texts.dedup();
+    let options: Vec<Vec<(usize, u128)>> = data
         .iter()
-        .map(|(_, edges)| edges.iter().map(|&(t, c)| (t.to_owned(), c)).collect())
+        .map(|(_, edges)| edges.iter().map(|&(t, c)| (texts.binary_search(&t).unwrap(), u128::from(c))).collect())
         .collect();
-    fn brute(options: &[Vec<(String, u64)>], i: usize, used: &mut Vec<String>, cost: u128, best: &mut Option<u128>) {
-        if i == options.len() {
-            *best = Some(best.map_or(cost, |b| b.min(cost)));
-            return;
-        }
-        for (t, c) in &options[i] {
-            if !used.contains(t) {
-                used.push(t.clone());
-                brute(options, i + 1, used, cost + u128::from(*c), best);
-                used.pop();
-            }
-        }
-    }
-    let mut best = None;
-    brute(&options, 0, &mut Vec::new(), 0, &mut best);
-    let want = best.expect("a perfect matching exists for this graph");
+    let want = brute_force(&options, None).expect("a perfect matching exists for this graph");
 
     let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
-    let got: u128 = data
-        .iter()
-        .enumerate()
-        .map(|(i, _)| u128::from(options[i][chosen[data[i].0]].1))
-        .sum();
+    let got: u128 = data.iter().enumerate().map(|(i, (word, _))| options[i][chosen[word]].1).sum();
     assert_eq!(got, want, "solver found {got}, brute force found the true optimum {want}");
 }
 
@@ -436,18 +458,12 @@ fn solve_contested_handles_a_larger_random_bipartite_graph() {
     // A brute-force cross-check at a size too large to verify by hand: 8 words, each with 2-4
     // candidate texts drawn from a shared pool of 10, deterministic pseudo-random costs. Brute
     // force enumerates every perfect matching directly; the solver must find the same optimum.
-    let mut seed: u64 = 12345;
-    let mut rand = move || {
-        seed ^= seed << 13;
-        seed ^= seed >> 7;
-        seed ^= seed << 17;
-        seed
-    };
+    let mut rand = xorshift(12345);
     let texts = ["S", "T", "K", "P", "W", "H", "R", "A", "O", "E"];
     let words: Vec<&str> = vec!["w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7"];
     let mut options: Vec<Vec<(usize, u64)>> = Vec::new();
     for _ in &words {
-        let n = 2 + (rand() % 3) as usize;
+        let n = 2 + usize::try_from(rand() % 3).unwrap();
         let mut chosen: Vec<usize> = Vec::new();
         while chosen.len() < n {
             let t = usize::try_from(rand() % u64::try_from(texts.len()).unwrap()).unwrap();
@@ -464,27 +480,13 @@ fn solve_contested_handles_a_larger_random_bipartite_graph() {
         .map(|(&w, opts)| (w, opts.iter().map(|&(t, cost)| (candidate(texts[t]), cost)).collect()))
         .collect();
 
-    // Brute force: try every assignment of a distinct text index to each word, keeping the
-    // cheapest one that is a perfect matching.
-    fn brute(options: &[Vec<(usize, u64)>], i: usize, used: &mut Vec<usize>, cost: u64, best: &mut Option<u64>) {
-        if i == options.len() {
-            *best = Some(best.map_or(cost, |b| b.min(cost)));
-            return;
-        }
-        for &(t, c) in &options[i] {
-            if !used.contains(&t) {
-                used.push(t);
-                brute(options, i + 1, used, cost + c, best);
-                used.pop();
-            }
-        }
-    }
-    let mut best = None;
-    brute(&options, 0, &mut Vec::new(), 0, &mut best);
-    let want = best.expect("a perfect matching exists for this graph");
+    let wide = |options: &[Vec<(usize, u64)>]| -> Vec<Vec<(usize, u128)>> {
+        options.iter().map(|o| o.iter().map(|&(t, c)| (t, u128::from(c))).collect()).collect()
+    };
+    let want = brute_force(&wide(&options), None).expect("a perfect matching exists for this graph");
 
     let chosen = solve_contested(&contested, &vec![u64::MAX / 4; contested.len()]);
-    let got: u64 = words.iter().enumerate().map(|(i, w)| options[i][chosen[w]].1).sum();
+    let got: u128 = words.iter().enumerate().map(|(i, w)| u128::from(options[i][chosen[w]].1)).sum();
     assert_eq!(got, want, "solver found {got}, brute force found the true optimum {want}");
 }
 
@@ -505,33 +507,10 @@ fn written_capitalizes_only_the_pronoun_i() {
 /// update to the exact optimum, Hall violations included.
 #[test]
 fn solve_contested_matches_brute_force_with_escapes_across_many_seeds() {
-    fn brute(options: &[Vec<(usize, u64)>], escape: &[u64], i: usize, used: &mut Vec<usize>, cost: u64, best: &mut u64) {
-        if cost >= *best {
-            return;
-        }
-        if i == options.len() {
-            *best = cost;
-            return;
-        }
-        brute(options, escape, i + 1, used, cost + escape[i], best);
-        for &(t, c) in &options[i] {
-            if !used.contains(&t) {
-                used.push(t);
-                brute(options, escape, i + 1, used, cost + c, best);
-                used.pop();
-            }
-        }
-    }
     let texts = ["S", "T", "K", "P", "W", "H"];
     let names = ["w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7"];
     for seed0 in 1..=300u64 {
-        let mut seed = seed0.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
-        let mut rand = move || {
-            seed ^= seed << 13;
-            seed ^= seed >> 7;
-            seed ^= seed << 17;
-            seed
-        };
+        let mut rand = xorshift(seed0.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
         let word_count = 3 + usize::try_from(rand() % 6).unwrap();
         let mut options: Vec<Vec<(usize, u64)>> = Vec::new();
         let mut escape: Vec<u64> = Vec::new();
@@ -554,12 +533,12 @@ fn solve_contested_matches_brute_force_with_escapes_across_many_seeds() {
             .zip(&options)
             .map(|(&w, opts)| (w, opts.iter().map(|&(t, cost)| (candidate(texts[t]), cost)).collect()))
             .collect();
-        let mut want = u64::MAX;
-        brute(&options, &escape, 0, &mut Vec::new(), 0, &mut want);
+        let wide: Vec<Vec<(usize, u128)>> =
+            options.iter().map(|o| o.iter().map(|&(t, c)| (t, u128::from(c))).collect()).collect();
+        let escapes: Vec<u128> = escape.iter().copied().map(u128::from).collect();
+        let want = brute_force(&wide, Some(&escapes)).expect("every word can always escape");
         let chosen = solve_contested(&contested, &escape);
-        let got: u64 = (0..word_count)
-            .map(|i| chosen.get(names[i]).map_or(escape[i], |&c| options[i][c].1))
-            .sum();
+        let got: u128 = (0..word_count).map(|i| u128::from(chosen.get(names[i]).map_or(escape[i], |&c| options[i][c].1))).sum();
         assert_eq!(got, want, "seed {seed0}: solver found {got}, brute force {want}");
     }
 }

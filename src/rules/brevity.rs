@@ -58,94 +58,11 @@ impl Rules {
         if syllables.len() + usize::from(prefix.is_some()) < 2 {
             return Vec::new();
         }
-        // The consonants of a syllable, in order, with the `R` a reduced `ER` hides and without
-        // the glide `Y` of `opinion`, `brilliant`
-        let consonants_of = |syllable: &Syllable, with_onset: bool| -> Vec<String> {
-            let mut sounds: Vec<String> = Vec::new();
-            if with_onset {
-                sounds.extend(syllable.onset.iter().cloned());
-            }
-            if plain(&syllable.vowel) == "ER" {
-                sounds.push("R".into());
-            }
-            sounds.extend(syllable.coda.iter().cloned());
-            sounds.retain(|s| plain(s) != "Y");
-            sounds
-        };
-        // An unstressed first syllable is not a syllable here: its consonants are the left hand
-        // (`in-` TPH, `be-` PW) and the next syllable's onset joins them when it comes after in
-        // order (`believe` PWHR); with no consonants it is dropped (`opinion` P-PB)
-        let in_order = |a: Stroke, b: Stroke| match (a.highest(), b.lowest()) {
-            (Some(high), Some(low)) => high <= low,
-            _ => true,
-        };
-        let left =
-            |sounds: &[String]| Self::consonants(sounds, &self.onset, &self.onset_cluster, false);
-        let mut start = 0;
-        let mut onset = Stroke(0);
-        // Whether the first kept syllable's own onset goes on the right hand with the rest
-        let mut onset_right = false;
-        if syllables.len() >= 2 && syllables[0].vowel.ends_with('0') {
-            let lead = &syllables[0];
-            let coda: Vec<String> = lead
-                .coda
-                .iter()
-                .filter(|s| plain(s) != "Y")
-                .cloned()
-                .collect();
-            let mut keys = left(&lead.onset).unwrap_or_default();
-            if let Some(c) = left(&coda)
-                && in_order(keys, c)
-            {
-                keys.0 |= c.0;
-            }
-            start = 1;
-            match left(&syllables[1].onset) {
-                Some(next) if in_order(keys, next) => onset = Stroke(keys.0 | next.0),
-                _ if keys.is_empty() => start = 0,
-                _ => {
-                    onset = keys;
-                    onset_right = true;
-                }
-            }
-        }
-        if start == 0 {
-            let Some(own) = left(&syllables[0].onset) else {
-                return Vec::new();
-            };
-            onset = own;
-        }
+        let Some((onset, start, onset_right)) = self.skeleton_left(&syllables) else { return Vec::new() };
         let onset = Stroke(onset.0 | prefix.map_or(0, |p| p.0));
         let syllables = &syllables[start..];
-        let last = syllables.len() - 1;
-        let stress = syllables
-            .iter()
-            .position(|s| s.vowel.ends_with('1'))
-            .unwrap_or(0);
-        // From the most to the fewest consonants kept: all of them, then those of the stressed
-        // and last syllables, then those of the last syllable only
-        let mut choices: Vec<(Step, Vec<String>)> = Vec::new();
-        let first_coda = consonants_of(&syllables[0], onset_right);
-        let mut all = first_coda.clone();
-        for syllable in &syllables[1..] {
-            all.extend(consonants_of(syllable, true));
-        }
-        choices.push((Step::Skeleton, all));
-        let mut some = if stress == 0 {
-            first_coda
-        } else {
-            Vec::new()
-        };
-        if stress > 0 {
-            some.extend(consonants_of(&syllables[stress], true));
-        }
-        if last > stress {
-            some.extend(consonants_of(&syllables[last], true));
-        }
-        choices.push((Step::Shell, some));
-        if last > 0 {
-            choices.push((Step::Ends, consonants_of(&syllables[last], true)));
-        }
+        let stress = syllables.iter().position(|s| s.vowel.ends_with('1')).unwrap_or(0);
+        let choices = skeleton_choices(syllables, stress, onset_right);
 
         // The vowel of the syllable with the main stress
         let key = syllables[stress].vowel.as_str();
@@ -219,4 +136,69 @@ impl Rules {
             _ => None,
         }
     }
+
+    /// A skeleton's left hand, the first syllable it keeps, and whether that syllable's own onset
+    /// goes on the right hand with the rest. An unstressed first syllable is not a syllable here:
+    /// its consonants are the left hand (`in-` TPH, `be-` PW) and the next syllable's onset joins
+    /// them when it comes after in order (`believe` PWHR); with no consonants it is dropped
+    /// (`opinion` P-PB). `None` when the first kept onset can't be written.
+    fn skeleton_left(&self, syllables: &[Syllable]) -> Option<(Stroke, usize, bool)> {
+        let in_order = |a: Stroke, b: Stroke| match (a.highest(), b.lowest()) {
+            (Some(high), Some(low)) => high <= low,
+            _ => true,
+        };
+        let left = |sounds: &[String]| Self::consonants(sounds, &self.onset, &self.onset_cluster, false);
+        if syllables.len() >= 2 && syllables[0].vowel.ends_with('0') {
+            let lead = &syllables[0];
+            let coda: Vec<String> = lead.coda.iter().filter(|s| plain(s) != "Y").cloned().collect();
+            let mut keys = left(&lead.onset).unwrap_or_default();
+            if let Some(c) = left(&coda)
+                && in_order(keys, c)
+            {
+                keys.0 |= c.0;
+            }
+            match left(&syllables[1].onset) {
+                Some(next) if in_order(keys, next) => return Some((Stroke(keys.0 | next.0), 1, false)),
+                _ if keys.is_empty() => {}
+                _ => return Some((keys, 1, true)),
+            }
+        }
+        Some((left(&syllables[0].onset)?, 0, false))
+    }
+}
+
+/// The consonants of a syllable, in order, with the `R` a reduced `ER` hides and without the glide
+/// `Y` of `opinion`, `brilliant`.
+fn consonants_of(syllable: &Syllable, with_onset: bool) -> Vec<String> {
+    let mut sounds: Vec<String> = Vec::new();
+    if with_onset {
+        sounds.extend(syllable.onset.iter().cloned());
+    }
+    if plain(&syllable.vowel) == "ER" {
+        sounds.push("R".into());
+    }
+    sounds.extend(syllable.coda.iter().cloned());
+    sounds.retain(|s| plain(s) != "Y");
+    sounds
+}
+
+/// Which consonants each one-stroke step keeps, from the most to the fewest: all of them
+/// (`skeleton`), those of the stressed and last syllables (`shell`), those of the last only
+/// (`ends`).
+fn skeleton_choices(syllables: &[Syllable], stress: usize, onset_right: bool) -> Vec<(Step, Vec<String>)> {
+    let last = syllables.len() - 1;
+    let first_coda = consonants_of(&syllables[0], onset_right);
+    let mut all = first_coda.clone();
+    for syllable in &syllables[1..] {
+        all.extend(consonants_of(syllable, true));
+    }
+    let mut some = if stress == 0 { first_coda } else { consonants_of(&syllables[stress], true) };
+    if last > stress {
+        some.extend(consonants_of(&syllables[last], true));
+    }
+    let mut choices = vec![(Step::Skeleton, all), (Step::Shell, some)];
+    if last > 0 {
+        choices.push((Step::Ends, consonants_of(&syllables[last], true)));
+    }
+    choices
 }

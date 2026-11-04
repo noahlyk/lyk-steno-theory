@@ -730,6 +730,10 @@ pub fn mismatches(
     }
 }
 
+/// One group of sounds `learn` reports: how many words it covers, the sounds, and each way the
+/// gold dictionaries write it with how many words do.
+type Learned = (usize, String, Vec<(String, usize)>);
+
 /// For one-syllable words that Plover and Lapwing write the same way in one stroke, which keys
 /// each group of sounds went on. This is where the rules come from.
 pub fn learn(setup: &Setup, min: usize, limit: usize) {
@@ -787,7 +791,7 @@ pub fn learn(setup: &Setup, min: usize, limit: usize) {
         ("vowel and the end of a syllable", rimes),
     ] {
         println!("== {title}: sounds -> keys (how many words)\n");
-        let mut rows: Vec<(usize, String, Vec<(String, usize)>)> = counts
+        let mut rows: Vec<Learned> = counts
             .into_iter()
             .map(|(sounds, keys)| {
                 let mut keys: Vec<_> = keys.into_iter().collect();

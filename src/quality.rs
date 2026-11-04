@@ -91,8 +91,8 @@ fn stranded_word_count_has_not_grown_past_its_known_baseline() {
 /// frequency-weighted arbitration - a fact this checks directly against the real, built dictionary
 /// rather than trusting it by assumption.
 ///
-/// The threshold is *not* the plan's own original estimate ("hundreds to low thousands", under 5%)
-/// - a real run measured roughly a quarter of the dictionary genuinely contested, not under 5%,
+/// The threshold is *not* the plan's own original estimate ("hundreds to low thousands", under 5%):
+/// a real run measured roughly a quarter of the dictionary genuinely contested, not under 5%,
 /// because the blanket `matches_real_consonants` filter's deeper fragment-drops mean far more words
 /// now legitimately converge on the same small handful of very short, nearly-bare outlines than a
 /// single-source brief pool ever produced. That is a real, now-measured property of this design,

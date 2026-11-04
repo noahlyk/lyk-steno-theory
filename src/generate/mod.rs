@@ -68,6 +68,11 @@ fn plover() -> String {
 }
 
 impl Briefs {
+    /// The briefs in `path`, or the built-in `rules/briefs.toml` when there is none.
+    pub fn from_path(path: Option<&Path>) -> Result<Self> {
+        path.map_or_else(Self::built_in, Self::load)
+    }
+
     pub fn built_in() -> Result<Self> {
         Ok(toml::from_str(BUILT_IN_BRIEFS)?)
     }

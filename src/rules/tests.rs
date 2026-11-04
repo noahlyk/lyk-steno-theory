@@ -482,183 +482,134 @@ fn a_long_word_can_be_one_skeleton_stroke() {
 #[ignore = "diagnostic: measures stray-fragment leftovers in the final, settled dictionary"]
 fn dump_stray_fragment_leftovers() {
     let setup = crate::dictionary_fixture::setup();
-    let cheapest = crate::dictionary_fixture::cheapest();
     let rules = &setup.rules;
-
-    struct Hit {
-        word: String,
-        outline: String,
-        sounds: String,
-        detail: String,
-        weight: f64,
-    }
-
-    let mut total_words = 0usize;
-    let mut total_weight = 0f64;
-    let (mut cat_a, mut cat_a_weight) = (0usize, 0f64);
-    let (mut cat_b, mut cat_b_weight) = (0usize, 0f64);
-    let mut hits: Vec<Hit> = Vec::new();
-    let mut chord_counts: HashMap<String, usize> = HashMap::new();
-    let mut chord_weight: HashMap<String, f64> = HashMap::new();
-
-    for (&word, outline) in &cheapest {
-        // Needs a real CMUdict pronunciation and a syllable split to know where the word's
-        // own first onset / last coda even are; skip anything the rules can't label at all
-        // (a few dozen words, e.g. acronyms with no CMUdict entry) rather than guess.
-        let Some(sounds) = setup.pron.get(word).and_then(|variants| variants.first()) else {
+    let mut tally = StrayTally::default();
+    for (&word, outline) in &crate::dictionary_fixture::cheapest() {
+        // Needs a pronunciation and a syllable split to know where the first onset and last coda
+        // are; a word the rules can't label (an acronym with no entry) is skipped, not guessed.
+        let Some(sounds) = setup.pron.get(word).and_then(|variants| variants.first()) else { continue };
+        let Some(syllables) = rules.syllables(&rules.label(word, sounds)) else { continue };
+        let (Some(first), Some(last), Some(&first_stroke), Some(&last_stroke)) =
+            (syllables.first(), syllables.last(), outline.first(), outline.last())
+        else {
             continue;
         };
-        let labelled = rules.label(word, sounds);
-        let Some(syllables) = rules.syllables(&labelled) else {
-            continue;
-        };
-        let (Some(first_syl), Some(last_syl), Some(&first_stroke), Some(&last_stroke)) = (
-            syllables.first(),
-            syllables.last(),
-            outline.first(),
-            outline.last(),
-        ) else {
-            continue;
-        };
-
+        let sides = [
+            Side {
+                name: "onset",
+                syllable: 0,
+                in_coda: false,
+                tokens: &first.onset,
+                stroke: first_stroke.0,
+                mask: first_stroke.0 & Stroke::LEFT,
+                table: &rules.onset,
+                cluster: &rules.onset_cluster,
+            },
+            Side {
+                name: "coda",
+                syllable: syllables.len() - 1,
+                in_coda: true,
+                tokens: &last.coda,
+                stroke: last_stroke.0,
+                mask: last_stroke.0 & (Stroke::RIGHT | Stroke::STAR),
+                table: &rules.coda,
+                cluster: &rules.coda_cluster,
+            },
+        ];
         let weight = setup.count.get(word).copied().unwrap_or(0).to_f64();
-        total_words += 1;
-        total_weight += weight;
-
-        let last_index = syllables.len() - 1;
-        let onset_mask = first_stroke.0 & Stroke::LEFT;
-        let coda_mask = last_stroke.0 & (Stroke::RIGHT | Stroke::STAR);
-        let onset_fragment = rules.fragment_bits(
-            &syllables,
-            0,
-            false,
-            &first_syl.onset,
-            first_stroke.0,
-            onset_mask,
-            &rules.onset,
-            &rules.onset_cluster,
-        );
-        let coda_fragment = rules.fragment_bits(
-            &syllables,
-            last_index,
-            true,
-            &last_syl.coda,
-            last_stroke.0,
-            coda_mask,
-            &rules.coda,
-            &rules.coda_cluster,
-        );
-
-        if onset_fragment == 0 && coda_fragment == 0 {
-            cat_a += 1;
-            cat_a_weight += weight;
-            continue;
-        }
-        cat_b += 1;
-        cat_b_weight += weight;
-
-        let mut details: Vec<String> = Vec::new();
-        // Per-token, like `Rules::fragment_bits` itself: each token's own explained bits
-        // exclude every *other* token (other syllables, and siblings in this same syllable),
-        // never itself.
-        #[allow(clippy::too_many_arguments)]
-        let describe = |rules: &Rules,
-                         syllables: &[Syllable],
-                         syllable_index: usize,
-                         in_coda: bool,
-                         tokens: &[String],
-                         full_bits: u32,
-                         masked_bits: u32,
-                         table: &HashMap<String, Stroke>,
-                         cluster: &HashMap<String, Stroke>,
-                         side: &str,
-                         details: &mut Vec<String>,
-                         chord_counts: &mut HashMap<String, usize>,
-                         chord_weight: &mut HashMap<String, f64>| {
-            for (i, token) in tokens.iter().enumerate() {
-                let Some(target) = Rules::token_bits(token, table, cluster) else { continue };
-                let explained = rules.explained_elsewhere(syllables, (syllable_index, in_coda, i), target.0, full_bits);
-                let bits = masked_bits & !explained;
-                if Rules::fragments(bits, target) {
-                    let stray = render_outline(&[Stroke(bits & target.0)]);
-                    let full = render_outline(&[target]);
-                    let label = format!("{side} /{token}/ ({full})");
-                    details.push(format!("{label} stray={stray}"));
-                    *chord_counts.entry(label.clone()).or_default() += 1;
-                    *chord_weight.entry(label).or_default() += weight;
-                }
-            }
-        };
-        describe(
-            rules,
-            &syllables,
-            0,
-            false,
-            &first_syl.onset,
-            first_stroke.0,
-            onset_mask,
-            &rules.onset,
-            &rules.onset_cluster,
-            "onset",
-            &mut details,
-            &mut chord_counts,
-            &mut chord_weight,
-        );
-        describe(
-            rules,
-            &syllables,
-            last_index,
-            true,
-            &last_syl.coda,
-            last_stroke.0,
-            coda_mask,
-            &rules.coda,
-            &rules.coda_cluster,
-            "coda",
-            &mut details,
-            &mut chord_counts,
-            &mut chord_weight,
-        );
-
-        hits.push(Hit {
-            word: word.to_owned(),
-            outline: render_outline(outline),
-            sounds: sounds.join(" "),
-            detail: details.join("; "),
-            weight,
+        let stray = sides.iter().any(|side| {
+            rules.fragment_bits(&syllables, side.syllable, side.in_coda, side.tokens, side.stroke, side.mask, side.table, side.cluster)
+                != 0
         });
+        let found: Vec<(String, String)> =
+            if stray { sides.iter().flat_map(|side| strays(rules, &syllables, side)).collect() } else { Vec::new() };
+        tally.add(word, &render_outline(outline), &sounds.join(" "), weight, stray, &found);
+    }
+    tally.print();
+}
+
+/// One end of a word's outline the stray-fragment diagnostic checks: the first syllable's onset
+/// on the first stroke, or the last syllable's coda on the last.
+struct Side<'a> {
+    name: &'static str,
+    syllable: usize,
+    in_coda: bool,
+    tokens: &'a [String],
+    stroke: u32,
+    mask: u32,
+    table: &'a HashMap<String, Stroke>,
+    cluster: &'a HashMap<String, Stroke>,
+}
+
+/// Each sound on `side` whose chord the stroke holds only part of, as (label, the stray keys).
+/// Per sound, like `Rules::fragment_bits`: what other sounds explain never includes its own keys.
+fn strays(rules: &Rules, syllables: &[Syllable], side: &Side) -> Vec<(String, String)> {
+    side.tokens
+        .iter()
+        .enumerate()
+        .filter_map(|(i, token)| {
+            let target = Rules::token_bits(token, side.table, side.cluster)?;
+            let explained = rules.explained_elsewhere(syllables, (side.syllable, side.in_coda, i), target.0, side.stroke);
+            let bits = side.mask & !explained;
+            Rules::fragments(bits, target).then(|| {
+                let label = format!("{} /{token}/ ({})", side.name, render_outline(&[target]));
+                (label, render_outline(&[Stroke(bits & target.0)]))
+            })
+        })
+        .collect()
+}
+
+/// What the stray-fragment diagnostic counts: every word, the clean drops (category A), the stray
+/// leftovers (category B) with their details, and which chords the strays come from.
+#[derive(Default)]
+struct StrayTally {
+    words: usize,
+    weight: f64,
+    clean: (usize, f64),
+    stray: (usize, f64),
+    hits: Vec<(String, String, String, String, f64)>,
+    chords: HashMap<String, (usize, f64)>,
+}
+
+impl StrayTally {
+    fn add(&mut self, word: &str, outline: &str, sounds: &str, weight: f64, stray: bool, found: &[(String, String)]) {
+        self.words += 1;
+        self.weight += weight;
+        let bucket = if stray { &mut self.stray } else { &mut self.clean };
+        bucket.0 += 1;
+        bucket.1 += weight;
+        if !stray {
+            return;
+        }
+        for (label, _) in found {
+            let chord = self.chords.entry(label.clone()).or_default();
+            chord.0 += 1;
+            chord.1 += weight;
+        }
+        let detail = found.iter().map(|(label, stray)| format!("{label} stray={stray}")).collect::<Vec<_>>().join("; ");
+        self.hits.push((word.to_owned(), outline.to_owned(), sounds.to_owned(), detail, weight));
     }
 
-    hits.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
-
-    println!(
-        "words checked: {total_words} (usage weight {total_weight:.0})\n\
-         Category A (clean drop):   {cat_a:>6} words ({:.3}% of words), \
-         {cat_a_weight:.0} usage ({:.3}% of weighted typing)\n\
-         Category B (stray leftover): {cat_b:>6} words ({:.3}% of words), \
-         {cat_b_weight:.0} usage ({:.3}% of weighted typing)",
-        100.0 * cat_a.to_f64() / total_words.to_f64(),
-        100.0 * cat_a_weight / total_weight,
-        100.0 * cat_b.to_f64() / total_words.to_f64(),
-        100.0 * cat_b_weight / total_weight,
-    );
-
-    println!("\n--- top 40 Category B words by usage weight ---");
-    for hit in hits.iter().take(40) {
+    fn print(mut self) {
+        let share = |n: usize, w: f64| (100.0 * n.to_f64() / self.words.to_f64(), 100.0 * w / self.weight);
+        let (clean_words, clean_weight) = share(self.clean.0, self.clean.1);
+        let (stray_words, stray_weight) = share(self.stray.0, self.stray.1);
         println!(
-            "{:<16} outline={:<14} sounds=[{}]  {}  weight={:.0}",
-            hit.word, hit.outline, hit.sounds, hit.detail, hit.weight
+            "words checked: {} (usage weight {:.0})\n\
+             Category A (clean drop):   {:>6} words ({clean_words:.3}% of words), {:.0} usage ({clean_weight:.3}% of weighted typing)\n\
+             Category B (stray leftover): {:>6} words ({stray_words:.3}% of words), {:.0} usage ({stray_weight:.3}% of weighted typing)",
+            self.words, self.weight, self.clean.0, self.clean.1, self.stray.0, self.stray.1,
         );
-    }
-
-    let mut chord_rows: Vec<(&String, &usize)> = chord_counts.iter().collect();
-    chord_rows.sort_by(|a, b| {
-        chord_weight[b.0]
-            .partial_cmp(&chord_weight[a.0])
-            .unwrap()
-    });
-    println!("\n--- stray chord/sound breakdown (by distinct-word count and usage weight) ---");
-    for (label, count) in chord_rows {
-        println!("{label:<28} words={count:<6} weight={:.0}", chord_weight[label]);
+        self.hits.sort_by(|a, b| b.4.total_cmp(&a.4));
+        println!("\n--- top 40 Category B words by usage weight ---");
+        for (word, outline, sounds, detail, weight) in self.hits.iter().take(40) {
+            println!("{word:<16} outline={outline:<14} sounds=[{sounds}]  {detail}  weight={weight:.0}");
+        }
+        let mut chords: Vec<(&String, &(usize, f64))> = self.chords.iter().collect();
+        chords.sort_by(|a, b| b.1.1.total_cmp(&a.1.1));
+        println!("\n--- stray chord/sound breakdown (by distinct-word count and usage weight) ---");
+        for (label, (count, weight)) in chords {
+            println!("{label:<28} words={count:<6} weight={weight:.0}");
+        }
     }
 }
