@@ -94,10 +94,10 @@ read-back ever runs on it. The stem half of the same run gets the matching guara
 other side: a run's first stroke, if it's itself an already-placed single-stroke word, reads as
 that word's own real text instead of raw phonemes (`SKP/+-R`, "and" plus "-er", reads "ander" —
 without this, "and"'s own brief `SKP` would be read as meaningless raw consonants and the suffix
-appended to garbage). See **[the fallback](fallback.md)** for both mechanisms. The two-syllable
-table below isn't part of this yet, for the same reason it isn't part of the backup-entry pass
-below: a continuation is always read one stroke at a time, and a suffix that takes two strokes has
-nothing here to match against stroke-by-stroke yet.
+appended to garbage). See **[the fallback](fallback.md)** for both mechanisms. The two-stroke
+suffixes are read the same way: when a joined stroke and the one after it are together one of
+them (`+EUZ/+-PL`), the pair reads as that suffix ("ism") before either stroke is sounded out on
+its own, so `KUB/+EUZ/+-PL` reads "cubism" whether or not the dictionary has it.
 
 ## Backup stem+suffix entries
 

@@ -7,15 +7,17 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// The rules that ship with the program.
-const BUILT_IN: &str = include_str!("../rules/plover.toml");
+mod plugin;
+
+const BUILT_IN: &str = include_str!("../../rules/plover.toml");
 /// Spelling-mode's letter table (see `docs/spelling-mode.md`): always this file, independent of
 /// whichever rules file `Rules::load` was given, the same way `rules/suffixes.toml` and
 /// `rules/briefs.toml` are always their own built-in file regardless of the theory in use —
 /// every letter gets one unambiguous chord no matter which phonetic theory is loaded.
-const BUILT_IN_SPELLING: &str = include_str!("../rules/spelling.toml");
+const BUILT_IN_SPELLING: &str = include_str!("../../rules/spelling.toml");
 /// `rules/suffixes.toml`'s own table, loaded the same unconditional way as `BUILT_IN_SPELLING`
 /// above: see [`Rules::suffixes`].
-const BUILT_IN_SUFFIXES: &str = include_str!("../rules/suffixes.toml");
+const BUILT_IN_SUFFIXES: &str = include_str!("../../rules/suffixes.toml");
 
 /// The right-hand `R`, the one key a vowel (`ER`, `AR`) and a cluster (`-FRB`) may share.
 const R_KEY: u32 = 1 << 14;
@@ -354,8 +356,9 @@ fn two_stroke_suffixes(raw: &str) -> Result<Vec<(String, Vec<Stroke>)>> {
         .filter(|(chord, _)| chord.contains('/'))
         .map(|(chord, text)| {
             let strokes: Option<Vec<Stroke>> = chord.split('/').map(Stroke::parse).collect();
-            let strokes =
-                strokes.with_context(|| format!("[suffixes] {chord:?} is not a valid two-stroke chord"))?;
+            let strokes = strokes
+                .filter(|s| s.len() == 2)
+                .with_context(|| format!("[suffixes] {chord:?} is not a valid two-stroke chord"))?;
             Ok((text, strokes))
         })
         .collect()
@@ -1564,46 +1567,48 @@ impl Rules {
             return self.resolve_spelling(outline);
         }
         let mut text = String::new();
-        // If this run's first stroke is itself an already-placed single-stroke word, use that
-        // word's own real text as the stem instead of re-deriving it from raw phonemes — a
-        // continuation after a known word (`SKP/+-R`, "and" plus "-er") must read as that word's
-        // own text ("ander"), never as its outline's own bare sounds mistaken for a true miss
-        // (`SKP` alone reads as "sp", garbling "and" entirely). Only for a genuine multi-stroke
-        // run: a single-stroke outline that matches a placed word would already have been a
-        // dictionary hit before `resolve` is ever reached, so `outline.len() > 1` here always
-        // means a real continuation, never the word's own first and only stroke.
-        let skip = if outline.len() > 1
-            && let Some(&first) = outline.first()
-            && let Some(stem) = stems.and_then(|stems| stems.get(&first))
+        // A run whose first stroke is an already-placed single-stroke word reads that word's own
+        // text as its stem, not the stroke's bare sounds: `SKP/+-R` ("and" plus "-er") is "ander",
+        // never "sper". A one-stroke outline that is a placed word was a dictionary hit already,
+        // so this is only ever a real continuation run.
+        let mut at = 0;
+        if outline.len() > 1
+            && let Some(stem) = stems.and_then(|stems| stems.get(&outline[0]))
         {
-            // The stem's own trailing silent `e` (if any) needs to see the very next piece's
-            // first letter before it can be written at all (`have` + `ing` -> `having`, not
-            // `haveing`) — so that piece is computed here, before the stem is pushed, rather than
-            // by the general loop below.
-            if let Some(&next) = outline.get(1) {
-                let (next_text, needs_space) = self.piece_text(next, true)?;
-                let starts_with_vowel = next_text.starts_with(['a', 'e', 'i', 'o', 'u']);
-                text.push_str(drop_silent_e(stem, starts_with_vowel));
-                if needs_space {
-                    text.push(' ');
-                }
-                text.push_str(&next_text);
-                2
-            } else {
-                text.push_str(stem);
-                1
+            // A silent final `e` drops before a piece that starts with a vowel letter: `have` +
+            // `ing` is `having`.
+            let (next, needs_space, used) = self.piece_at(outline, 1)?;
+            text.push_str(drop_silent_e(stem, next.starts_with(['a', 'e', 'i', 'o', 'u'])));
+            if needs_space {
+                text.push(' ');
             }
-        } else {
-            0
-        };
-        for (i, &stroke) in outline.iter().enumerate().skip(skip) {
-            let (piece, needs_space) = self.piece_text(stroke, i > 0)?;
+            text.push_str(&next);
+            at = 1 + used;
+        }
+        while at < outline.len() {
+            let (piece, needs_space, used) = self.piece_at(outline, at)?;
             if needs_space && !text.is_empty() {
                 text.push(' ');
             }
             text.push_str(&piece);
+            at += used;
         }
         Some(text)
+    }
+
+    /// The text of the piece that starts at `outline[at]`, whether a space belongs before it, and
+    /// how many strokes it used: a two-stroke suffix from `rules/suffixes.toml` when this stroke and
+    /// the next are one (`+EUZ/+-PL` is "ism"), otherwise this stroke alone ([`Self::piece_text`]).
+    fn piece_at(&self, outline: &[Stroke], at: usize) -> Option<(String, bool, usize)> {
+        if at > 0
+            && let [first, second, ..] = outline[at..]
+            && first.0 & second.0 & Stroke::JOIN != 0
+            && let Some((text, _)) = self.two_stroke_suffixes.iter().find(|(_, s)| s[..] == [first, second])
+        {
+            return Some((text.clone(), false, 2));
+        }
+        let (text, needs_space) = self.piece_text(outline[at], at > 0)?;
+        Some((text, needs_space, 1))
     }
 
     /// A single stroke's own text within a continuation run: a `rules/suffixes.toml` match if
@@ -1632,392 +1637,6 @@ impl Rules {
             text.push('*');
         }
         Some((text, !resolved.join))
-    }
-
-    /// The source of a keymux WASM plugin that reads a stroke back exactly the way
-    /// [`Self::resolve`] does, generated from this theory's own tables instead of hand-copied:
-    /// the two can never drift apart, because there is only one implementation of the rule.
-    /// The ABI boilerplate (`alloc`/`fallback`) is the one part every plugin needs regardless
-    /// of theory, so it is a fixed template, not generated from data.
-    #[must_use]
-    #[allow(clippy::too_many_lines)] // one template, emitting one generated file: splitting
-    // the format! string across helper functions would hurt readability, not help it
-    /// `stems` is every single-stroke word in the generated dictionary, by its own bare stroke
-    /// (see [`crate::generate::single_stroke_stems`]) — embedded so the deployed plugin's own
-    /// fallback can read a known word's real text instead of its raw phonemes when it's the first
-    /// stroke of an otherwise-unmatched continuation run (`SKP/+-R`, "and" plus "-er", reading as
-    /// "ander" instead of "sper"). Regenerate and redeploy whenever the dictionary itself changes,
-    /// not only when a rule table does — this table is a snapshot of which word is on which
-    /// single stroke right now, not a fixed theory table like `SUFFIXES`/`SPELLING`.
-    pub fn generate_plugin(&self, stems: &HashMap<Stroke, String>) -> String {
-        use std::fmt::Write;
-
-        fn tokens_literal(tokens: &[String]) -> String {
-            let inner: Vec<String> = tokens.iter().map(|t| format!("{t:?}")).collect();
-            format!("&[{}]", inner.join(", "))
-        }
-
-        let mut onset_rev = String::new();
-        for (stroke, tokens) in &self.onset_rev {
-            let _ = writeln!(onset_rev, "    ({}, {}),", stroke.0, tokens_literal(tokens));
-        }
-        let mut coda_rev = String::new();
-        for (stroke, tokens) in &self.coda_rev {
-            let _ = writeln!(coda_rev, "    ({}, {}),", stroke.0, tokens_literal(tokens));
-        }
-        let mut vowel_rev: Vec<(&Stroke, &String)> = self.vowel_rev.iter().collect();
-        vowel_rev.sort_by_key(|(s, _)| s.0);
-        let mut vowel_rev_src = String::new();
-        for (stroke, label) in vowel_rev {
-            let _ = writeln!(vowel_rev_src, "    ({}, {label:?}),", stroke.0);
-        }
-        let mut vowel_coda_rev = String::new();
-        for (combo, vowel, coda) in &self.vowel_coda_rev {
-            let _ = writeln!(
-                vowel_coda_rev,
-                "    ({}, {vowel:?}, {coda:?}),",
-                combo.0
-            );
-        }
-        let mut spelling: Vec<(&Stroke, &String)> = self.spelling.iter().collect();
-        spelling.sort_by_key(|(s, _)| s.0);
-        let mut spelling_src = String::new();
-        for (stroke, letter) in spelling {
-            let _ = writeln!(spelling_src, "    ({}, {letter:?}),", stroke.0);
-        }
-        let mut suffixes: Vec<(&Stroke, &String)> = self.suffixes.iter().collect();
-        suffixes.sort_by_key(|(s, _)| s.0);
-        let mut suffixes_src = String::new();
-        for (stroke, text) in suffixes {
-            let _ = writeln!(suffixes_src, "    ({}, {text:?}),", stroke.0);
-        }
-        let mut stems: Vec<(&Stroke, &String)> = stems.iter().collect();
-        stems.sort_by_key(|(s, _)| s.0);
-        let mut stems_src = String::new();
-        for (stroke, word) in stems {
-            let _ = writeln!(stems_src, "    ({}, {word:?}),", stroke.0);
-        }
-
-        format!(
-            r##"//! A phonetic best guess for a stroke that missed every dictionary, generated by
-//! `lyk-steno-theory` (`cargo run -- plugin`) from the same tables `src/rules.rs` uses to write
-//! and read back every other word: this file can never drift from the theory it reads, because
-//! there is no second, hand-maintained copy of the rule for it to drift from. Do not edit this
-//! file by hand; it is overwritten the next time it is generated.
-//!
-//! It reads a stroke's own keys back into a plain, readable spelling: not real English
-//! spelling, since the stroke alone can't say how a word is actually spelled, just close
-//! enough to be read. A stroke with no vowel key down is a bare consonant skeleton (the start
-//! of a word a join-key continuation finishes, or all there really is) and reads with no vowel
-//! sound invented for it.
-
-const LEFT: u32 = {left};
-const VOWELS: u32 = {vowels};
-const STAR: u32 = {star};
-const RIGHT: u32 = {right};
-const JOIN: u32 = {join};
-const SPELL: u32 = {spell};
-
-const KEYS: &[u8; 23] = b"#STKPWHRAO*EUFRPBLGTSDZ";
-const RIGHT_START: usize = 13;
-
-const ONSET_REV: &[(u32, &[&str])] = &[
-{onset_rev}];
-const CODA_REV: &[(u32, &[&str])] = &[
-{coda_rev}];
-const VOWEL_REV: &[(u32, &str)] = &[
-{vowel_rev}];
-const VOWEL_CODA_REV: &[(u32, &str, &str)] = &[
-{vowel_coda_rev}];
-const SPELLING: &[(u32, &str)] = &[
-{spelling}];
-const SUFFIXES: &[(u32, &str)] = &[
-{suffixes}];
-const STEMS: &[(u32, &str)] = &[
-{stems}];
-
-/// A sound without its stress digit or spelling variant: `UW.oo1` is `UW`.
-fn plain(sound: &str) -> &str {{
-    sound
-        .trim_end_matches(|c: char| c.is_ascii_digit())
-        .split('.')
-        .next()
-        .unwrap_or(sound)
-}}
-
-/// English's own rule for a stem ending in a silent `e`: drop it before a suffix that starts with
-/// a vowel letter. Mirrors `rules.rs`'s `drop_silent_e`.
-fn drop_silent_e(stem: &str, next_starts_with_vowel: bool) -> &str {{
-    let bytes = stem.as_bytes();
-    if next_starts_with_vowel
-        && bytes.len() > 1
-        && bytes[bytes.len() - 1] == b'e'
-        && !matches!(bytes[bytes.len() - 2], b'a' | b'e' | b'i' | b'o' | b'u')
-    {{
-        &stem[..stem.len() - 1]
-    }} else {{
-        stem
-    }}
-}}
-
-/// A plain, readable spelling for a sound: not real orthography, just enough that a resolved
-/// reading can be read at all. Mirrors `rules.rs`'s `default_spelling`.
-fn default_spelling(sound: &str) -> &str {{
-    match plain(sound) {{
-        "P" => "p",
-        "B" => "b",
-        "T" => "t",
-        "D" => "d",
-        "K" => "k",
-        "G" => "g",
-        "M" => "m",
-        "N" => "n",
-        "NG" => "ng",
-        "F" => "f",
-        "V" => "v",
-        "TH" => "th",
-        "DH" => "dh",
-        "S" => "s",
-        "Z" => "z",
-        "SH" => "sh",
-        "ZH" => "zh",
-        "CH" => "ch",
-        "JH" => "j",
-        "HH" => "h",
-        "L" => "l",
-        "R" => "r",
-        "W" => "w",
-        "Y" => "y",
-        "IY" => "ee",
-        "IH" => "ih",
-        "EY" => "ay",
-        "EH" => "eh",
-        "AE" => "a",
-        "AA" => "ah",
-        "AH" | "UH" => "uh",
-        "AO" => "aw",
-        "OW" => "oh",
-        "UW" => "oo",
-        "AY" => "eye",
-        "AW" => "ow",
-        "OY" => "oy",
-        "ER" => "er",
-        other => other,
-    }}
-}}
-
-/// A run of keys as a sequence of sounds: at the lowest key still down, the entry that starts
-/// there, covers the most keys, (tied on that) is the fewest sounds, and (tied on that) is a
-/// plain sound rather than a spelling variant of one, consumed, repeated until none are left.
-/// `None` if some key is left with nothing that starts there.
-fn decompose(bits: u32, catalog: &[(u32, &[&str])]) -> Option<Vec<String>> {{
-    let mut bits = bits;
-    let mut out = Vec::new();
-    while bits != 0 {{
-        let lowest = bits.trailing_zeros();
-        let best = catalog
-            .iter()
-            .filter(|(s, _)| *s != 0 && s.trailing_zeros() == lowest && bits & s == *s)
-            .max_by_key(|(s, tokens)| {{
-                let plain = !tokens.iter().any(|t| t.contains('.'));
-                (s.count_ones(), std::cmp::Reverse(tokens.len()), plain)
-            }})?;
-        out.extend(best.1.iter().map(ToString::to_string));
-        bits &= !best.0;
-    }}
-    Some(out)
-}}
-
-/// The vowel and coda for a stroke's vowel-area and right-hand keys.
-fn decode_right(vowel_bits: u32, right_all: u32) -> Option<(Option<String>, Vec<String>, bool)> {{
-    for (right, marker) in [(right_all, false), (right_all & !STAR, true)] {{
-        if marker && right == right_all {{
-            continue;
-        }}
-        for (combo, vowel, coda) in VOWEL_CODA_REV {{
-            let combo_right = combo & RIGHT;
-            if combo & VOWELS == vowel_bits && right & combo_right == combo_right {{
-                if let Some(mut tail) = decompose(right & !combo_right, CODA_REV) {{
-                    let mut coda_v = vec![(*coda).to_string()];
-                    coda_v.append(&mut tail);
-                    return Some((Some((*vowel).to_string()), coda_v, marker));
-                }}
-            }}
-        }}
-        if vowel_bits == 0 {{
-            if let Some(coda) = decompose(right, CODA_REV) {{
-                return Some((None, coda, marker));
-            }}
-        }} else {{
-            let label = VOWEL_REV.iter().find(|(b, _)| *b == vowel_bits).map(|(_, l)| *l);
-            if let Some(label) = label {{
-                if let Some(coda) = decompose(right, CODA_REV) {{
-                    return Some((Some(label.to_string()), coda, marker));
-                }}
-            }}
-        }}
-    }}
-    None
-}}
-
-/// A stroke's onset, vowel, coda, leftover-star marker and join flag, or `None` for a stroke
-/// with no reading at all (nothing in it any onset, vowel or coda table recognizes).
-fn resolve_stroke(bits_with_join: u32) -> Option<(Vec<String>, Option<String>, Vec<String>, bool, bool)> {{
-    let join = bits_with_join & JOIN != 0;
-    let bits = bits_with_join & !JOIN;
-    let onset = decompose(bits & LEFT, ONSET_REV)?;
-    let vowel_bits = bits & VOWELS;
-    let right_all = bits & (RIGHT | STAR);
-    let (vowel, coda, marker) = decode_right(vowel_bits, right_all)?;
-    if onset.is_empty() && vowel.is_none() && coda.is_empty() {{
-        return None;
-    }}
-    Some((onset, vowel, coda, marker, join))
-}}
-
-/// Parse one stroke's notation (`KAT`, `-T`, `+AO`, `~S`) into its bits.
-fn parse_stroke(text: &str) -> Option<u32> {{
-    let (mut bits, text) = match text.strip_prefix('+') {{
-        Some(rest) => (JOIN, rest),
-        None => match text.strip_prefix('~') {{
-            Some(rest) => (SPELL, rest),
-            None => (0, text),
-        }},
-    }};
-    let mut cursor = 0usize;
-    for c in text.bytes() {{
-        if c == b'-' {{
-            cursor = cursor.max(RIGHT_START);
-            continue;
-        }}
-        let at = KEYS[cursor..].iter().position(|&k| k == c)? + cursor;
-        bits |= 1 << at;
-        cursor = at + 1;
-    }}
-    (bits & !(JOIN | SPELL) != 0).then_some(bits)
-}}
-
-/// A spelling-mode run (`SPELL` on its first stroke) read back letter by letter instead of
-/// sounded out: see `docs/spelling-mode.md` and `Rules::resolve_spelling`, which this mirrors.
-fn resolve_spelling(outline: &str) -> Option<String> {{
-    let mut text = String::new();
-    for part in outline.split('/') {{
-        let bits = parse_stroke(part)? & !(JOIN | SPELL);
-        let &(_, letter) = SPELLING.iter().find(|&&(b, _)| b == bits)?;
-        text.push_str(letter);
-    }}
-    Some(text)
-}}
-
-/// A single stroke's own text within a continuation run: a `rules/suffixes.toml` match if
-/// `is_continuation` and the stroke is exactly one of those chords, the plain phonetic read-back
-/// otherwise. The second item says whether a space belongs before this piece when it is not the
-/// very first thing assembled: never, for a suffix match or any other joined stroke. Mirrors
-/// `rules.rs`'s `Rules::piece_text`.
-fn piece_text(bits: u32, is_continuation: bool) -> Option<(String, bool)> {{
-    if is_continuation && bits & JOIN != 0 {{
-        if let Some(&(_, suffix)) = SUFFIXES.iter().find(|&&(b, _)| b == bits) {{
-            return Some((suffix.to_string(), false));
-        }}
-    }}
-    let (onset, vowel, coda, marker, join) = resolve_stroke(bits)?;
-    let mut text = String::new();
-    for sound in onset.iter().chain(vowel.iter()).chain(coda.iter()) {{
-        text.push_str(default_spelling(sound));
-    }}
-    if marker {{
-        text.push('*');
-    }}
-    Some((text, !join))
-}}
-
-/// This plugin's actual job: a stroke outline, in Plover notation (one stroke, or several
-/// separated by `/`), read back the way the theory itself would read it.
-fn resolve(outline: &str) -> Option<String> {{
-    let parts: Vec<&str> = outline.split('/').collect();
-    let first_bits = parse_stroke(parts.first()?)?;
-    if first_bits & SPELL != 0 {{
-        return resolve_spelling(outline);
-    }}
-    let mut text = String::new();
-    // If this run's first stroke is itself an already-placed single-stroke word, use that
-    // word's own real text as the stem instead of re-deriving it from raw phonemes: mirrors
-    // `Rules::resolve`.
-    let mut skip = 0;
-    if parts.len() > 1 {{
-        if let Ok(at) = STEMS.binary_search_by_key(&first_bits, |&(b, _)| b) {{
-            let stem = STEMS[at].1;
-            // The stem's own trailing silent `e` (if any) needs to see the very next piece's
-            // first letter before it can be written at all (`have` + `ing` -> `having`, not
-            // `haveing`): mirrors `Rules::resolve`.
-            if let Some(part) = parts.get(1) {{
-                let next_bits = parse_stroke(part)?;
-                let (next_text, needs_space) = piece_text(next_bits, true)?;
-                let starts_with_vowel = next_text.starts_with(['a', 'e', 'i', 'o', 'u']);
-                text.push_str(drop_silent_e(stem, starts_with_vowel));
-                if needs_space {{
-                    text.push(' ');
-                }}
-                text.push_str(&next_text);
-                skip = 2;
-            }} else {{
-                text.push_str(stem);
-                skip = 1;
-            }}
-        }}
-    }}
-    for (i, part) in parts.iter().enumerate().skip(skip) {{
-        let bits = parse_stroke(part)?;
-        let (piece, needs_space) = piece_text(bits, i > 0)?;
-        if needs_space && !text.is_empty() {{
-            text.push(' ');
-        }}
-        text.push_str(&piece);
-    }}
-    Some(text)
-}}
-
-// --- The interface keymux's plugin loader calls. See docs/plugins/README.md. ---
-
-#[no_mangle]
-pub extern "C" fn alloc(len: i32) -> i32 {{
-    let mut buf: Vec<u8> = vec![0u8; len.max(0) as usize];
-    let ptr = buf.as_mut_ptr();
-    std::mem::forget(buf);
-    ptr as i32
-}}
-
-#[no_mangle]
-pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {{
-    let bytes = unsafe {{ std::slice::from_raw_parts(ptr as *const u8, len.max(0) as usize) }};
-    let Ok(outline) = std::str::from_utf8(bytes) else {{ return -1; }};
-    let Some(text) = resolve(outline) else {{ return -1; }};
-    let mut out = text.into_bytes();
-    let out_len = out.len();
-    let out_ptr = out.as_mut_ptr();
-    std::mem::forget(out);
-    (i64::from(out_ptr as i32) << 32) | i64::from(out_len as i32)
-}}
-
-#[no_mangle]
-pub extern "C" fn joins(bits: i64) -> i32 {{
-    i32::from(bits as u32 & JOIN != 0)
-}}
-"##,
-            left = Stroke::LEFT,
-            vowels = Stroke::VOWELS,
-            star = Stroke::STAR,
-            right = Stroke::RIGHT,
-            join = Stroke::JOIN,
-            spell = Stroke::SPELL,
-            onset_rev = onset_rev,
-            coda_rev = coda_rev,
-            vowel_rev = vowel_rev_src,
-            vowel_coda_rev = vowel_coda_rev,
-            spelling = spelling_src,
-            suffixes = suffixes_src,
-            stems = stems_src,
-        )
     }
 }
 

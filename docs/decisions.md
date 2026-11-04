@@ -2093,3 +2093,12 @@ before is also offered folded (*sensible* `SEPB/+SUBL`). A stem's plain reading 
 is two strokes or more: as a one-stroke stem it produced 600 more one-stroke backups that took
 strokes the extras and short forms had. Backups 176,611 to 205,390; joined ways in per word 3.8–4.2
 to 4.1–4.7; keys per word unchanged (3.278 to 3.277). Composition now runs on every core.
+
+**The plugin reads two-stroke suffixes, and is tested against the rules end to end
+(`src/rules/plugin.rs`).** The keymux plugin read a continuation one stroke at a time, so a
+two-stroke suffix like `-ism` (`+EUZ/+-PL`) came back as raw sounds unless the dictionary had the
+exact word. `Rules::resolve` and the plugin now both read a piece at a time (`piece_at`): a joined
+pair that is a two-stroke suffix reads as the suffix. The plugin's source moved out of a
+`format!` string inside `rules.rs` into `src/rules/plugin_template.rs.in` with `__NAME__`
+placeholders, and a test now compiles the generated plugin with `rustc` and checks it reads a set
+of outlines exactly as `Rules::resolve` does: before, nothing checked that the two agreed.

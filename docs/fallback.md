@@ -21,6 +21,8 @@ suffix's real spelling**, not a generic phonetic guess at its bare consonants. `
 this table first for any stroke after the first that carries the join key, before falling through
 to the ordinary onset/vowel/coda read-back: `+-D` after some stroke with no dictionary entry at all
 reads as "ed", not the bare consonant "d" a stroke with no vowel key down would otherwise get.
+A two-stroke suffix (`-ism` `+EUZ/+-PL`, `-ity` `+U/+TEU`) is checked first, as a pair: a joined
+stroke and the one after it that are together one of them read as that suffix.
 This is unconditional — a suffix never needed a *specific* composed outline to already be a
 literal dictionary entry to read correctly, the same way the reserved commands, punctuation, and
 fingerspelling tables are unconditional. (A suffix struck entirely on its own, no stroke before it,
