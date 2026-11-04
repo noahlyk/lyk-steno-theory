@@ -121,7 +121,7 @@ stroke, which the join key replaces) for:
 | 1 | 89% | 78% | 83% | 5.49 | 5.65 | 5.82 |
 | 2 | 59% | 45% | 52% | 5.82 | 4.93 | 5.26 |
 | 3 | 38% | 26% | 32% | 5.61 | 4.80 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.71 | 4.97 | 5.22 |
+| 4+ | 23% | 17% | 18% | 5.72 | 4.97 | 5.22 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
