@@ -119,9 +119,9 @@ stroke, which the join key replaces) for:
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
 | 1 | 89% | 78% | 83% | 5.49 | 5.65 | 5.82 |
-| 2 | 59% | 45% | 52% | 5.83 | 4.93 | 5.26 |
+| 2 | 59% | 45% | 52% | 5.82 | 4.93 | 5.26 |
 | 3 | 38% | 26% | 32% | 5.61 | 4.80 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.73 | 4.97 | 5.22 |
+| 4+ | 23% | 17% | 18% | 5.71 | 4.97 | 5.22 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -210,10 +210,13 @@ end up with a star form because some other, more valuable word's candidate won t
 instead (`site` and `sight`, `don` and `done`, but also any other collision the global optimizer
 settles this way now, not just a sound-alike pair); `build` lists the commonest. About 500 of the
 100,000 words can't be written by these rules yet, nearly all names and interjections (`hm`,
-`schmidt`, `vlad`). On top of all that, about 24,000 backup entries are built
-from an already-placed shorter word's own outline plus whatever sounds are left over (`build`'s own
-outline plus a continuation stroke also reaches `building`, whether or not that agrees with
-`building`'s own cheapest outline) — see [syllables & folding](docs/syllables.md) for the rule.
+`schmidt`, `vlad`). On top of all that, about 177,000 backup entries give every word
+`+`-joined ways in a learner can work out: a placed word's own outline plus an ending's stroke
+(`build` + `+-G` reaches `building`, `fool` + `+-RB` reaches `foolish`), a prefix's stroke before a
+placed word (`UPB/+KHRAOER` for `unclear`), two words back to back, and the word itself one
+syllable per stroke (`TAEU/+-BL` for `table`). 98–99% of the words of two syllables or more have at
+least one, at about four each, however short their primary is — see
+[syllables & folding](docs/syllables.md) for the rules.
 
 These numbers move whenever a brief or suffix is added — see [the docs](docs/README.md) for the
 rule, and run `cargo run --release -- score --check-readme` before committing a rules change

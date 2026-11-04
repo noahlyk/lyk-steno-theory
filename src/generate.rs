@@ -1280,6 +1280,19 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         .collect();
     let links = crate::family::links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
     let prefix_links = crate::family::prefix_links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
+    // The wider tables the backup joins use, never the primaries (see `BACKUP_ENDINGS`).
+    let backup_links = crate::family::links_with(
+        &setup.pron,
+        &setup.count,
+        words.iter().map(|(w, _)| w.as_str()),
+        crate::family::BACKUP_ENDINGS,
+    );
+    let backup_prefix_links = crate::family::prefix_links_with(
+        &setup.pron,
+        &setup.count,
+        words.iter().map(|(w, _)| w.as_str()),
+        crate::family::BACKUP_PREFIXES,
+    );
 
     // Settling runs to a fixed point over family offers: the first pass settles every primary as
     // usual; each later pass offers every family member its root's settled outline plus its
@@ -1679,7 +1692,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // to just raise it further.
     const MAX_BACKUP_ROUNDS: usize = 5;
     let mut backup_skipped = 0usize;
-    for _round in 0..MAX_BACKUP_ROUNDS {
+    for round in 0..MAX_BACKUP_ROUNDS {
         let word_outline: HashMap<String, Vec<Stroke>> =
             best_entry_per_word(entries.iter().filter(|e| e.origin != Origin::Suffix))
                 .into_iter()
@@ -1701,6 +1714,14 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             }
         }
 
+        // The settled outlines of the prefixes that are words (`un`, `dis`), for (f) below.
+        let prefix_word_outlines: HashMap<&str, &[Stroke]> = crate::family::BACKUP_PREFIXES
+            .iter()
+            .filter_map(|(_, stroke)| match stroke {
+                crate::family::PrefixStroke::Word(w) => word_outline.get(*w).map(|o| (*w, o.as_slice())),
+                crate::family::PrefixStroke::Fixed(_) => None,
+            })
+            .collect();
         let mut added_this_round = 0usize;
         // Every direction's every valid composition found this round, word and text alongside
         // the outline, collected before any of them is checked against `taken` - see the
@@ -1791,15 +1812,28 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             // stroke from `rules/suffixes.toml` (`call` + "-ed" -> `KAUL/+-D`). Unlike (a), the
             // ending need not be a syllable of its own, so "-s" and "-ed" are covered too, and the
             // stem is found by spelling confirmed by sound (`crate::family::links`).
-            if let Some(link) = links.get(&word)
-                && let Some(stem_outline) = word_outline.get(&link.stem)
-            {
+            // The family link and the wider backup link (`BACKUP_ENDINGS`: `fool` + "-ish") both.
+            for link in [links.get(&word), backup_links.get(&word)].into_iter().flatten() {
+                let Some(stem_outline) = word_outline.get(&link.stem) else { continue };
                 // No fragment check: both halves are already real outlines (the stem's own entry and
                 // the ending's standalone stroke), so there is no partial chord to catch, and a
                 // stem stroked by brief (`fight` `TPAOEUT` + "-ing") would otherwise be refused.
                 let mut composed = stem_outline.clone();
                 composed.extend_from_slice(&link.strokes);
                 setup.rules.joined(&mut composed);
+                let text = render_outline(&composed);
+                if typable(&composed) {
+                    round_candidates.push((word.clone(), composed, text));
+                }
+            }
+
+            // (f) a prefix struck before its stem (`BACKUP_PREFIXES`: `de` + `code` `TKE/+KOED`,
+            // `un` + `clear`), the stem's own outline joined after the prefix's stroke.
+            if let Some(link) = backup_prefix_links.get(&word)
+                && let Some(stem_outline) = word_outline.get(&link.stem)
+                && let Some(composed) =
+                    crate::family::prefixed(link, stem_outline, &prefix_word_outlines).filter(|o| typable(o))
+            {
                 let text = render_outline(&composed);
                 round_candidates.push((word.clone(), composed, text));
             }
@@ -1820,6 +1854,22 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             // `"elf"` isn't `"myself"`'s spelling at all). Tries every split, adding every one
             // that passes — `outside` is genuinely both `"out"` + `"side"` and `"outs"` + `"ide"`,
             // and both are kept as separate entries.
+            // (e) the word one syllable per stroke, from every pronunciation it has: with reduced
+            // syllables as bare continuations and with every vowel written, the prefix folded and
+            // struck alone, both syllable splits (`Rules::syllable_paths`). Needs no other word,
+            // so only round 0 runs it. However short a word's primary is, this is the way in a
+            // learner can always work out from the sound alone.
+            if round == 0 {
+                for pron in &setup.pron[&word] {
+                    for mut path in setup.rules.syllable_paths(&word, pron) {
+                        setup.rules.joined(&mut path);
+                        if let Some((composed, text)) = compose_backup(setup, &word, pron, path) {
+                            round_candidates.push((word.clone(), composed, text));
+                        }
+                    }
+                }
+            }
+
             let loose = stress_stripped(sounds);
             for split in 1..loose.len() {
                 let Some(firsts) = by_sounds_loose.get(&loose[..split]) else {
@@ -2924,6 +2974,45 @@ mod tests {
         // Either word missing a single-stroke primary at all (never in the map) is never eligible.
         assert_eq!(phrase_candidate(&primary, "of", "nonexistent"), None);
         assert_eq!(phrase_candidate(&primary, "nonexistent", "the"), None);
+    }
+
+    #[test]
+    fn multi_syllable_words_get_suffix_prefix_and_syllable_joins() {
+        let generated = crate::dictionary_fixture::generated();
+        let has = |word: &str, outline: &str| {
+            generated.entries.iter().any(|e| e.word == word && render_outline(&e.outline) == outline)
+        };
+        // The wider backup endings and prefixes: a stem you know, then a suffix or after a prefix
+        assert!(has("foolish", "TPAOL/+-RB"), "fool + -ish");
+        assert!(has("artist", "ART/+EUFT"), "art + -ist");
+        assert!(has("information", "TPH-F/+AEUGS"), "inform + -ation");
+        assert!(has("unclear", "UPB/+KHRAOER"), "un + clear");
+        assert!(has("decode", "TKE/+KOED"), "de + code");
+        // Syllable paths, beside however short the primary is
+        assert!(has("table", "TAEU/+-BL"));
+        assert!(has("information", "EUPB/+TPOR/+PHAEU/+-GS"));
+        // Every word of two syllables or more in the fixture has some joined way in
+        let joined: HashSet<&str> = generated
+            .entries
+            .iter()
+            .filter(|e| e.outline.len() >= 2 && !render_outline(&e.outline).contains("/+*"))
+            .map(|e| e.word.as_str())
+            .collect();
+        let setup = crate::dictionary_fixture::setup();
+        let missing: Vec<&str> = generated
+            .entries
+            .iter()
+            .map(|e| e.word.as_str())
+            .filter(|w| {
+                setup.pron.get(*w).and_then(|p| p.first()).is_some_and(|p| {
+                    p.iter().filter(|s| s.ends_with(|c: char| c.is_ascii_digit())).count() >= 2
+                })
+            })
+            .filter(|w| setup.count.get(*w).copied().unwrap_or(0) > 0 && !joined.contains(w))
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        assert!(missing.len() * 100 < joined.len() * 3, "{} multi-syllable words have no joined way in: {:?}", missing.len(), &missing[..missing.len().min(20)]);
     }
 
     #[test]

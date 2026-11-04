@@ -68,9 +68,10 @@ The same pass also runs the other way, for a leading sound in front of a shorter
 direction has to land on the *same* stroke as the matched word's own first one — the leading
 sound's own keys folded onto it, the same way a prefix with its own fixed keys already does (see
 [prefixes](prefixes.md)). When the leading sound's keys collide with one the matched word's first
-stroke already uses, this can't rescue the word at all (`unclear` needs `un-`'s own `TPH`, which
-shares an `H` with *clear*'s own "cl" onset cluster `KHR`) — skipped, not forced, a real structural
-limit of a theory where nothing can precede a stroke, only follow one.
+stroke already uses, this direction can't rescue the word (`unclear` needs `un-`'s own `TPH`, which
+shares an `H` with *clear*'s own "cl" onset cluster `KHR`) — skipped, not forced. Such a word is
+still reached the other way round: a prefix struck as a stroke of its own, with the stem joined
+after it (*unclear* `UPB/+KHRAOER`, see the prefix direction below).
 
 **A third direction: two whole words back to back.** Neither of the above fits a word like
 *myself* — *self* isn't a reduced syllable (`suffix_split` never fires), and there's no leading
@@ -140,6 +141,53 @@ to catch. They chain like every other backup (*needlessly* = *needless* + `+-L` 
 `+-L`). With this, 94–100% of every ending's members in the top 10,000 can be typed as stem plus
 ending. The rare misses are texts a primary outline already holds (*needed*'s `TPHAED/+-D` is
 *kneaded*'s primary).
+
+**The same links, with every common ending that attaches to a whole word.** The list above is the
+one that also shapes a family's one-stroke outline (below), so it stays short. The backup joins use
+a longer one, which never touches a primary: on top of those endings, `-ation` (*inform* + `+AEUGS`),
+`-ible` (*sense* + `+-BL`, the same sound and stroke as `-able`), `-ward`, `-ism`, `-ist` (*art* +
+`+EUFT`), `-ity`, `-ize`, `-ous`, `-ish` (*fool* + `+-RB`), `-ive`, `-age`, `-ic`, `-al`, `-en`,
+`-or` (*sail* + `+-R`, the same sound and stroke as `-er`) and `-y`, each with the sounds it adds,
+checked the same way (`BACKUP_ENDINGS` in `src/family.rs`). A word gets both its family link and
+this one when they differ.
+
+**Prefixes struck before their stem.** A prefix can't fold onto a stem's first stroke when they
+share a key, but it can always be a stroke of its own, with the stem's whole outline joined after
+it: *unclear* `UPB/+KHRAOER`, *decode* `TKE/+KOED`, *rebuild* `RE/+PWHR`. The word is the prefix's
+spelling plus a placed word, its pronunciation ends in the stem's, and the stem is at least three
+letters and said at least 1/50th as often (*reason* is not *re* + *ason*). The prefixes and their
+strokes, each the prefix's own syllable by the ordinary rules or, for one that is a word, that
+word's outline: *un-* (*un*), *dis-* (*dis*), *mis-* (*mis*), *re-* `RE`, *pre-* `PRE`, *de-* `TKE`,
+*co-* `KOE`, *en-* `EPB`, *im-* `EUPL`, *in-* `EUPB`, *non-* `TPHOPB`, *sub-* `SUB`, *trans-*
+`TRAPBS`, *anti-* `APB/+TEU`, *inter-* `EUPB/+TER`, *semi-* `SEPL/+EU`, *over-* (*over*), *under-*
+(*under*) (`BACKUP_PREFIXES`). A prefix that is a word of its own (*out*, *up*, *self*) needs no
+entry: two whole words back to back already covers it.
+
+**Every word, syllable by syllable.** All the directions above need some other word to build on.
+The last one needs nothing: every word of two syllables or more also gets itself written one
+syllable per stroke, joined, from each of its pronunciations (`Rules::syllable_paths`), so however
+short its primary is (*profitable* `PROFBLT`, *machete* `PHEFPT`) there is always a way in a learner
+can work out from the sound alone. The forms:
+
+- its own folded outline, when that is more than one stroke (*profitable* `PROFT/+-BL`);
+- every syllable a stroke, a reduced *last* syllable struck as its continuation with the vowel
+  dropped, exactly as a suffix is (*table* `TAEU/+-BL`, *information* `EUPB/+TPOR/+PHAEU/+-GS`);
+- every syllable a stroke with its vowel written (*table* `TAEU/+PWUL`, *machete*
+  `PHU/+SHE/+TAOE`);
+- each of those with both ways of hearing where the syllables split: the rule above gives a
+  stressed short vowel the consonant after it (*lem-on* `HREPL/+UPB`), and the other split is
+  offered too (*le-mon* `HRE/+PHUPB`);
+- for a word with a fixed prefix (*ex-* `KP`, *dis-* `STK`), each of those with the prefix folded
+  onto the first stroke and with it struck as a syllable of its own.
+
+In a syllable that keeps its vowel, an unstressed schwa is always `U` and an unstressed short i
+always `EU`, whatever letter spells it: the spelling rules that pick `O` for a schwa written "o" are
+for the one-stroke outlines, and a learner sounding a word out hears a schwa. A middle reduced
+syllable keeps its vowel rather than becoming a bare consonant stroke: `PRAF/+U/+TU/+-BL` reads as
+the word, `PRA/+-F/+-T/+-BL` does not. These candidates go through the same round as every other
+backup, the same fragment check and the same rule when two words want one text (the commoner word
+keeps it). With them, 98–99% of the words of two syllables or more in every frequency band have a
+joined way in, and 83–93% have at least two (about four on average); before, 63–83% had one.
 
 **Families share one shape in their one-stroke outlines too.** Backups make every member
 reachable as stem plus ending, but a member's own fastest outline used to be chosen alone, so

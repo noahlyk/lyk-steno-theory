@@ -11,7 +11,7 @@ next stroke when they come first in steno order (*believe* PWHRAOEF, *deliver* T
 where they would not fit in it, as Plover does (*student* STAOUPBTD, *goodness*
 TKPWAOPBSD). The one-stroke steps for long words: `skeleton` is one
 stroke of the first consonants, the stressed vowel, and every consonant after the first vowel
-(*profitable* PROFBLT, *chemist* KEFPLT, *machete* PH-FPT); `shell` keeps those of the stressed
+(*profitable* PROFBLT, *chemist* KEFPLT, *machete* PHEFPT); `shell` keeps those of the stressed
 and last syllables, `ends` those of the last; each with or without the stressed vowel. An empty
 list gives a Lapwing-like dictionary, a stroke per syllable; a huge rank on every step gives the
 shortest one the rules allow. Words that take no step are written by the plain
@@ -53,6 +53,10 @@ the predictable form and the memorised one collide, the predictable one holds it
 and 210 more alternates than the other order). A word pinned to a literal `[word]` override (see
 **[briefs](briefs.md)**) is the one exception — its single entry is a human decision, not reopened
 by a bonus short form any more than by anything else.
+
+A short form is never the only way in: every word of two syllables or more also has its syllables
+joined one stroke each (see **[syllables & folding](syllables.md)**), so a rare word can be terse
+and still be typed from its sound.
 
 `build` prints how many strokes and keys a word takes on average, weighted by how often it is
 said, next to Plover and Lapwing on the same words — see

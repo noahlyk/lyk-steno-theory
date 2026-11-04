@@ -75,6 +75,9 @@
 "+AOE" = "y"      # bare IY kept: only the `-ly` spelling of IY is in `[reduce]`, not plain IY
 "+-PBLG" = "age"  # IH + JH reduced: bare -PBLG, the same `[coda]` cluster "village"'s own "-age"
                    # already ends in, unclaimed on its own
+"+-RB" = "ish"    # IH + SH reduced: bare SH, the `[coda]` -RB, unclaimed: "fool-ish", "child-ish"
+"+AEUGS" = "ation" # EY + SH + N: EY is outside `[reduce]`, so it stays; "SH N" is "-tion"'s own
+                   # `[coda_cluster]` -GS. "inform-ation", "relax-ation", "consider-ation"
 "+UL" = "al"      # AH + L kept: reduced, bare L is "+-L"'s own stroke ("ly"). No onset of its own
                    # either (CMUdict always gives the preceding consonant to the stem, e.g.
                    # "nation-al" once "-tion" has already eaten the N: "national" TPHAGS/+-L in the

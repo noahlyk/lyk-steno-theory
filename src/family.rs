@@ -42,6 +42,27 @@ const FAMILY_ENDINGS: &[&str] = &[
     "ness", "ment", "able", "less", "ship", "hood", "ing", "est", "ful", "ed", "er", "ly", "s",
 ];
 
+/// The endings a *backup* join may use: every ending in [`FAMILY_ENDINGS`] plus the derivational
+/// ones that also attach to a whole word (`fool` + "-ish", `art` + "-ist", `inform` + "-ation",
+/// `act` + "-or"). These never shape a family's primary, so adding one cannot move a word's own
+/// outline; they only give a word one more `+` way in from a stem it already knows. Longest
+/// first, so `information` is `inform` + "-ation", never a non-word + "-on".
+pub const BACKUP_ENDINGS: &[&str] = &[
+    "ation", "ness", "ment", "able", "ible", "less", "ship", "hood", "ward", "ism", "ist", "ity",
+    "ize", "ous", "ish", "ive", "age", "ing", "est", "ful", "ic", "al", "en", "ed", "er", "or",
+    "ly", "y", "s",
+];
+
+/// An ending written with another ending's stroke because it is the same sound: "-or" is "-er"
+/// (`actor`), "-ible" is "-able" (`sensible`).
+fn stroke_text(ending: &str) -> &str {
+    match ending {
+        "or" => "er",
+        "ible" => "able",
+        other => other,
+    }
+}
+
 /// One word's tie to the word it is built from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Link {
@@ -52,14 +73,14 @@ pub struct Link {
     pub strokes: Vec<Stroke>,
 }
 
-fn suffix_strokes() -> HashMap<&'static str, Vec<Vec<Stroke>>> {
+fn suffix_strokes(endings: &[&'static str]) -> HashMap<&'static str, Vec<Vec<Stroke>>> {
     let table: BTreeMap<String, String> = toml::from_str(SUFFIXES).expect("rules/suffixes.toml parses");
     let mut by_text: HashMap<&'static str, Vec<Vec<Stroke>>> = HashMap::new();
     for (outline, text) in table {
-        if let Some(&ending) = FAMILY_ENDINGS.iter().find(|e| **e == text)
-            && let Some(strokes) = parse_outline(&outline)
-        {
-            by_text.entry(ending).or_default().push(strokes);
+        for &ending in endings.iter().filter(|e| stroke_text(e) == text) {
+            if let Some(strokes) = parse_outline(&outline) {
+                by_text.entry(ending).or_default().push(strokes);
+            }
         }
     }
     by_text
@@ -108,11 +129,26 @@ fn ending_sounds(ending: &str) -> &'static [&'static [&'static str]] {
         "ly" => &[&["L", "IY"]],
         "ness" => &[&["N", "AH", "S"], &["N", "IH", "S"]],
         "ment" => &[&["M", "AH", "N", "T"], &["M", "EH", "N", "T"], &["M", "IH", "N", "T"]],
-        "able" => &[&["AH", "B", "AH", "L"]],
+        "able" | "ible" => &[&["AH", "B", "AH", "L"], &["IH", "B", "AH", "L"]],
         "ful" => &[&["F", "AH", "L"], &["F", "UH", "L"]],
         "less" => &[&["L", "AH", "S"], &["L", "IH", "S"], &["L", "EH", "S"]],
         "ship" => &[&["SH", "IH", "P"]],
         "hood" => &[&["HH", "UH", "D"]],
+        "ation" => &[&["EY", "SH", "AH", "N"]],
+        "ward" => &[&["W", "ER", "D"], &["W", "AO", "R", "D"], &["W", "AH", "D"]],
+        "ism" => &[&["IH", "Z", "AH", "M"]],
+        "ist" => &[&["IH", "S", "T"], &["AH", "S", "T"]],
+        "ity" => &[&["AH", "T", "IY"], &["IH", "T", "IY"]],
+        "ize" => &[&["AY", "Z"]],
+        "ous" => &[&["AH", "S"]],
+        "ish" => &[&["IH", "SH"]],
+        "ive" => &[&["IH", "V"]],
+        "age" => &[&["IH", "JH"], &["AH", "JH"]],
+        "ic" => &[&["IH", "K"]],
+        "al" => &[&["AH", "L"]],
+        "en" => &[&["AH", "N"]],
+        "or" => &[&["ER"]],
+        "y" => &[&["IY"]],
         _ => &[],
     }
 }
@@ -148,13 +184,23 @@ pub fn links<'a>(
     count: &HashMap<String, u64>,
     vocabulary: impl IntoIterator<Item = &'a str>,
 ) -> HashMap<String, Link> {
+    links_with(pron, count, vocabulary, FAMILY_ENDINGS)
+}
+
+/// [`links`] over any list of endings, longest first: [`BACKUP_ENDINGS`] for the backup joins.
+pub fn links_with<'a>(
+    pron: &Pronunciations,
+    count: &HashMap<String, u64>,
+    vocabulary: impl IntoIterator<Item = &'a str>,
+    endings: &[&'static str],
+) -> HashMap<String, Link> {
     let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
     let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
-    let strokes = suffix_strokes();
+    let strokes = suffix_strokes(endings);
     let not_family = not_family();
     let mut out = HashMap::new();
     for &word in &vocabulary {
-        'endings: for &ending in FAMILY_ENDINGS {
+        'endings: for &ending in endings {
             let Some(options) = strokes.get(ending) else { continue };
             if not_family.contains(word) {
                 break;
@@ -212,6 +258,32 @@ pub const PREFIXES: &[(&str, PrefixStroke)] = &[
     ("un", PrefixStroke::Word("un")),
 ];
 
+/// The prefixes a *backup* join may use: [`PREFIXES`] plus the common ones that are not words,
+/// each written as its own syllable by the ordinary rules (`de-` `TKE`, `non-` `TPHOPB`, `inter-`
+/// `EUPB/+TER`). A prefix that is a word (`out`, `up`, `self`) needs no row here: two whole words
+/// back to back are already a backup join of their own. Like [`BACKUP_ENDINGS`], these never shape
+/// a primary.
+pub const BACKUP_PREFIXES: &[(&str, PrefixStroke)] = &[
+    ("under", PrefixStroke::Word("under")),
+    ("inter", PrefixStroke::Fixed("EUPB/+TER")),
+    ("trans", PrefixStroke::Fixed("TRAPBS")),
+    ("over", PrefixStroke::Word("over")),
+    ("anti", PrefixStroke::Fixed("APB/+TEU")),
+    ("semi", PrefixStroke::Fixed("SEPL/+EU")),
+    ("pre", PrefixStroke::Fixed("PRE")),
+    ("dis", PrefixStroke::Word("dis")),
+    ("mis", PrefixStroke::Word("mis")),
+    ("non", PrefixStroke::Fixed("TPHOPB")),
+    ("sub", PrefixStroke::Fixed("SUB")),
+    ("re", PrefixStroke::Fixed("RE")),
+    ("un", PrefixStroke::Word("un")),
+    ("de", PrefixStroke::Fixed("TKE")),
+    ("co", PrefixStroke::Fixed("KOE")),
+    ("en", PrefixStroke::Fixed("EPB")),
+    ("im", PrefixStroke::Fixed("EUPL")),
+    ("in", PrefixStroke::Fixed("EUPB")),
+];
+
 /// How a prefix is written in front of its stem: see [`PREFIXES`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrefixStroke {
@@ -236,6 +308,16 @@ pub fn prefix_links<'a>(
     count: &HashMap<String, u64>,
     vocabulary: impl IntoIterator<Item = &'a str>,
 ) -> HashMap<String, PrefixLink> {
+    prefix_links_with(pron, count, vocabulary, PREFIXES)
+}
+
+/// [`prefix_links`] over any prefix table: [`BACKUP_PREFIXES`] for the backup joins.
+pub fn prefix_links_with<'a>(
+    pron: &Pronunciations,
+    count: &HashMap<String, u64>,
+    vocabulary: impl IntoIterator<Item = &'a str>,
+    prefixes: &[(&'static str, PrefixStroke)],
+) -> HashMap<String, PrefixLink> {
     let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
     let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
     let not_family = not_family();
@@ -245,7 +327,7 @@ pub fn prefix_links<'a>(
         if not_family.contains(word) {
             continue;
         }
-        for &(prefix, stroke) in PREFIXES {
+        for &(prefix, stroke) in prefixes {
             let Some(stem) = word.strip_prefix(prefix) else { continue };
             if stem.len() < 3 || !known.contains(stem) || said(stem).saturating_mul(STEM_RARITY_LIMIT) < said(word) {
                 continue;

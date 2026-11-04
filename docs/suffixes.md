@@ -47,6 +47,7 @@ continuations, each one still just a syllable through the same rule.
 | `+-FPL` | -some | *awe-some*, *lone-some* (the same S-M → `-FPL` cluster Plover's own F-insertion convention uses, e.g. `lesson` HR-FPB) |
 | `+-BG` | -ic | *bas-ic*, *com-ic*, *mus-ic*, *tox-ic* (no onset of its own — the stem always keeps the consonant before it) |
 | `+T-F` | -tive | *ac-tive*, *posi-tive* (T onset plus the same reduced IH + V `-ive` below already uses) |
+| `+-RB` | -ish | *fool-ish*, *child-ish* (IH + SH reduced: bare SH, the `[coda]` `-RB`) |
 
 ## Suffixes that kept their vowel (dropping it would collide with a stroke above)
 
@@ -63,6 +64,7 @@ continuations, each one still just a syllable through the same rule.
 |---|---|---|
 | `+-F` | -ive | IH + V reduced to bare `-F`, unclaimed |
 | `+AOEUZ` | -ize | AY is outside `[reduce]`, nothing to drop |
+| `+AEUGS` | -ation | *inform-ation*, *relax-ation*: EY is outside `[reduce]`, so it stays; "SH N" is `-tion`'s own `-GS` |
 | `+SH-P` | -ship | SH + IH + P reduced to bare `SH-P`, unclaimed |
 | `+HAOD` | -hood | UH is outside `[reduce]`, nothing to drop |
 | `+WORD` | -ward | AO is outside `[reduce]`; happens to spell "WORD" — unintentional, but memorable |
@@ -122,6 +124,20 @@ already-correct two-stroke chord from this table is reused exactly as written ra
 re-derived: `cubism` → `KUB/+EUZ/+-PL`, `trilogy` → `TRAOEU/+OL/+SKWREU`, `chemical` →
 `KEPL/+-BG/+UL`, `quantify` → `KWAPBT/+U/+TPAOEU` — all confirmed, real composed entries from a
 production build. See `Rules::two_stroke_suffix`.
+
+## Which endings join a stem you already know
+
+Every ending in this table that attaches to a whole word is also a **backup join**: a word that is
+a placed word's spelling plus the ending (a dropped "e", a doubled consonant and "y" to "i"
+allowed), and sounds like it, gets the stem's own outline plus the ending's stroke as an extra
+entry — *fool* + `+-RB` for *foolish*, *art* + `+EUFT` for *artist*, *inform* + `+AEUGS` for
+*information*, *sail* + `+-R` for *sailor*, *sense* + `+-BL` for *sensible*. The endings: `-s`,
+`-ed`, `-ing`, `-er`/`-or`, `-est`, `-ly`, `-y`, `-en`, `-ness`, `-ment`, `-able`/`-ible`, `-ful`,
+`-less`, `-ship`, `-hood`, `-ward`, `-ation`, `-ism`, `-ist`, `-ity`, `-ize`, `-ous`, `-ish`, `-ive`,
+`-age`, `-ic`, `-al`. `-or` and `-ible` have no row of their own above because they are the same
+sounds as `-er` and `-able`, so they are the same strokes. The thirteen in the first part of that
+list also shape a family's one-stroke outline; the rest only ever add a way in. See
+**[syllables & folding](syllables.md)** for the checks.
 
 ## Not yet covered
 

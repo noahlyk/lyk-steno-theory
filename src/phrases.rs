@@ -165,10 +165,25 @@ impl Pass<'_> {
         if is_primary(victim.origin) {
             self.gone.insert(victim.word.clone());
         }
+        let lost_primary = is_primary(victim.origin);
+        let word = victim.word.clone();
         if let Some((outline, origin)) = takeover.rehome {
-            let word = victim.word.clone();
             self.taken.insert(render_outline(&outline), word.clone());
             self.rehomed.push(Entry { word, outline, origin, lost_to: None });
+        } else if lost_primary {
+            // The word falls back to an outline it already has. When that is one of its own
+            // syllable-path backups (the plain reading it would have been rehomed to, held already
+            // as a way in), that entry becomes its primary: the word keeps a primary outline.
+            let best = self
+                .entries
+                .iter()
+                .enumerate()
+                .filter(|(j, e)| *j != takeover.index && !self.removed.contains(j) && e.word == word && e.origin != Origin::Alternate)
+                .min_by_key(|(_, e)| (e.outline.len(), keys(&e.outline), render_outline(&e.outline)))
+                .map(|(j, e)| (j, e.origin));
+            if let Some((j, Origin::Backup)) = best {
+                self.entries[j].origin = Origin::Rules;
+            }
         }
         self.removed.insert(takeover.index);
     }

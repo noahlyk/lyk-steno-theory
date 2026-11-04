@@ -18,13 +18,11 @@ front of some other already-placed word's own *exact* pronunciation, whether or 
 sound is one of the fixed prefixes above (`never` is the extra sound "N" in front of *ever*'s own
 sounds — no `un-`/`dis-`/etc. involved at all). See **[syllables & folding](syllables.md)** for the
 rule. It can only ever land on the *same* stroke as the matched word's own first one, the same way
-a fixed prefix above folds onto the next stroke's left hand — lyk's join key only ever continues a
-stroke forward, so nothing can be struck *before* another word's own stroke the way a suffix
-continues *after* one. That's a real, structural gap for a word like `unclear`: `un-`'s own fixed
-`TPH` needs the same `H` that `clear`'s own "cl" onset cluster `KHR` already uses, so there's no
-stroke this mechanism (or the fixed-prefix one above) can rescue it with — `unclear` keeps whatever
-its own independent derivation gives it, inconsistency and all, until this theory has some way to
-strike a prefix *before* a stem's own stroke, which it doesn't yet.
+a fixed prefix above folds onto the next stroke's left hand. When the prefix's keys clash with that
+first stroke's own (`unclear`: `un-`'s `TPH` shares an `H` with *clear*'s `KHR`), the prefix is
+struck as a stroke of its own instead, with the stem's whole outline joined after it: *unclear*
+`UPB/+KHRAOER`, *decode* `TKE/+KOED`. Every common prefix has such a stroke, whether or not a fold
+would also work — see **[syllables & folding](syllables.md)** for the list and the checks.
 
 Next: **[syllables & folding](syllables.md)** — how the rest of a word, beyond its first stroke's
 onset/vowel/coda, gets written.

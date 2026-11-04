@@ -2060,3 +2060,25 @@ text unreachable (19 stranded words, fixed by an unstranding step that moves a w
 unclaimed cheaper candidate of its own); and the phrase pass did not count a short-form primary
 as a primary, so protection never applied to it, and rehomed a word only to a brief or reading
 rather than its next short form. Docs: `docs/brevity.md`.
+
+**Every multi-syllable word gets joined ways in: its syllables, its prefix, its suffix
+(`Rules::syllable_paths`, `BACKUP_ENDINGS`, `BACKUP_PREFIXES`, two new suffix strokes).** The
+one-stroke work above made rare words terse but not learnable: 17–37% of the words of two
+syllables or more had no `+` way in at all (*machete* had only `PHEFPT`; *socrates* only short
+forms), because a word's plain syllable reading was never added once a short form won its primary,
+and a stem-plus-ending join existed only for thirteen endings and for prefixes that fold. Three
+additions to the backup pass, none of which can change a primary:
+(e) every word one syllable per stroke, joined — its folded outline, a reduced last syllable as a
+suffix continuation, every vowel written, both syllable splits, the fixed prefix folded or struck
+alone; an unstressed schwa that keeps its vowel is `U`, a short i `EU`, whatever letter spells it,
+and a middle reduced syllable keeps its vowel (`PRA/+-F/+-T/+-BL` was the first attempt, and reads
+as nothing); (f) a prefix struck as its own stroke before the stem's whole outline, for eighteen
+prefixes (*unclear* `UPB/+KHRAOER` — a word the docs called structurally unreachable); and the
+family links over a longer ending list that adds `-ation`, `-ist`, `-ish`, `-ism`, `-ize`, `-ous`,
+`-ive`, `-ic`, `-al`, `-age`, `-ity`, `-ward`, `-en`, `-y`, `-or`, `-ible`. New suffix strokes:
+`+-RB` -ish and `+AEUGS` -ation. Words of two syllables or more with a joined way in: top 1,000
+63% to 99%, 5k–10k 72% to 98%, 20k–50k 82% to 99%; with two or more 22–37% to 83–93%; joined ways
+in per word 1.0–1.5 to 3.8–4.2. One-stroke share in every band unchanged, top 5,000 primaries
+unchanged; backups 40,856 to 176,611. A word whose primary a phrase took and whose plain reading
+is now one of its own syllable paths gets that path as its primary instead of a bare backup.
+Docs: `docs/syllables.md`, `docs/prefixes.md`, `docs/suffixes.md`, `docs/brevity.md`.

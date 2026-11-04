@@ -637,6 +637,12 @@ impl Rules {
     /// can start a syllable goes to the next one, except that a stressed short vowel keeps a single
     /// consonant after it.
     pub fn syllables(&self, sounds: &[String]) -> Option<Vec<Syllable>> {
+        self.syllables_split(sounds, true)
+    }
+
+    /// [`Self::syllables`], with the stressed short vowel keeping its consonant (`lem-on`) or not
+    /// (`le-mon`): both are how somebody might hear the word, so both are offered as join paths.
+    fn syllables_split(&self, sounds: &[String], keep_lax: bool) -> Option<Vec<Syllable>> {
         let is_vowel = |s: &str| s.ends_with(|c: char| c.is_ascii_digit());
         let vowels: Vec<usize> = (0..sounds.len())
             .filter(|&i| is_vowel(&sounds[i]))
@@ -673,7 +679,7 @@ impl Rules {
                         _ => 0,
                     }
                 } else {
-                    self.onset_length(&syllable.vowel, cluster)
+                    self.onset_length(&syllable.vowel, cluster, keep_lax)
                 };
                 let split = cluster.len() - take;
                 syllable.coda = cluster[..split].to_vec();
@@ -685,10 +691,10 @@ impl Rules {
     }
 
     /// How many of the consonants between two vowels start the second syllable.
-    fn onset_length(&self, vowel: &str, cluster: &[String]) -> usize {
+    fn onset_length(&self, vowel: &str, cluster: &[String], keep_lax: bool) -> usize {
         // A stressed short vowel keeps a consonant after it: `bet-ter`, `ev-ry`, not `e-vry`
         let stressed = vowel.ends_with(['1', '2']);
-        let keep = usize::from(stressed && self.lax.contains(plain(vowel)));
+        let keep = usize::from(keep_lax && stressed && self.lax.contains(plain(vowel)));
         (1..=cluster.len().saturating_sub(keep))
             .rev()
             .find(|&n| {
@@ -1047,6 +1053,58 @@ impl Rules {
             strokes.first_mut()?.0 |= prefix.0;
         }
         Some(strokes)
+    }
+
+    /// Every way to write a word one syllable per stroke, for the join paths every word of two
+    /// syllables or more gets beside its primary (see `docs/syllables.md`). First the word's own
+    /// folded outline ([`Self::outline`]); then, for both syllable splits (`lem-on`, `le-mon`) and
+    /// with the fixed prefix both folded onto the first stroke and struck as a syllable of its own,
+    /// two writings: `suffixed`, where a reduced *last* syllable is its continuation stroke with the
+    /// vowel dropped, exactly as a suffix is (*table* `TAEU/+-BL`), and `voiced`, where every
+    /// syllable keeps its vowel (*table* `TAEU/+PWUL`). An unstressed schwa in a syllable that
+    /// keeps its vowel is always `U`, and an unstressed short i always `EU`, whatever letter spells
+    /// it: the sound is what a learner hears. Only outlines of two strokes or more, without
+    /// repeats; the join key is not yet set.
+    pub fn syllable_paths(&self, word: &str, sounds: &[String]) -> Vec<Vec<Stroke>> {
+        let labelled: Vec<String> = self
+            .label(word, sounds)
+            .into_iter()
+            .map(|s| if matches!(unlabelled(&s).as_str(), "AH0" | "IH0") { unlabelled(&s) } else { s })
+            .collect();
+        let mut out: Vec<Vec<Stroke>> = self.outline(word, sounds).into_iter().filter(|o| o.len() >= 2).collect();
+        let mut starts: Vec<(Option<Stroke>, usize)> = vec![(None, 0)];
+        if let Some((keys, skip)) = self.prefix(word, &labelled) {
+            starts.push((Some(keys), skip));
+        }
+        for (prefix, skip) in starts {
+            for keep_lax in [true, false] {
+                let Some(syllables) = self.syllables_split(&labelled[skip..], keep_lax) else { continue };
+                let last = syllables.len() - 1;
+                let suffixed: Option<Vec<Stroke>> = syllables
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| {
+                        if i == last && i > 0 && self.is_reduced(s) {
+                            self.continuation(s)
+                        } else {
+                            self.syllable_stroke(s)
+                        }
+                    })
+                    .collect();
+                let voiced: Option<Vec<Stroke>> =
+                    syllables.iter().map(|s| self.syllable_stroke(s).or_else(|| self.continuation(s))).collect();
+                for mut strokes in [suffixed, voiced].into_iter().flatten() {
+                    if let Some(keys) = prefix {
+                        // Shared keys are shared, as in `outline_folded`: `STK` + `TAPBS`
+                        strokes.first_mut().expect("a syllable split is never empty").0 |= keys.0;
+                    }
+                    if strokes.len() >= 2 && !out.contains(&strokes) {
+                        out.push(strokes);
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// The strokes for a run of syllables, folding reduced ones onto the stroke before.
@@ -2338,6 +2396,27 @@ mod tests {
         let amber = sounds("AE1 M B ER0");
         let outline = rules.outline("amber", &amber).unwrap();
         assert_eq!(render_outline(&outline), "APL/PW-R");
+    }
+
+    #[test]
+    fn every_word_of_two_syllables_has_syllable_paths_a_learner_can_work_out() {
+        let rules = Rules::built_in().unwrap();
+        let text = |word: &str, pron: &str| -> Vec<String> {
+            rules.syllable_paths(word, &sounds(pron)).iter().map(|o| render_outline(o)).collect()
+        };
+        // A reduced last syllable struck as a suffix is, with every vowel written
+        let table = text("table", "T EY1 B AH0 L");
+        assert!(table.contains(&"TAEU/-BL".to_owned()), "{table:?}");
+        assert!(table.contains(&"TAEU/PWUL".to_owned()), "{table:?}");
+        // Both ways to hear where the syllables split: `lem-on` and `le-mon`
+        let lemon = text("lemon", "L EH1 M AH0 N");
+        assert!(lemon.iter().any(|o| o.starts_with("HREPL/")), "{lemon:?}");
+        assert!(lemon.iter().any(|o| o.starts_with("HRE/")), "{lemon:?}");
+        // An unstressed schwa that keeps its vowel is `U` whatever letter spells it
+        let profitable = text("profitable", "P R AA1 F AH0 T AH0 B AH0 L");
+        assert!(profitable.iter().all(|o| !o.contains("TO/")), "{profitable:?}");
+        // One syllable: nothing to join
+        assert!(text("cat", "K AE1 T").is_empty());
     }
 
     #[test]
