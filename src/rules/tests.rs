@@ -310,9 +310,13 @@ fn every_word_of_two_syllables_has_syllable_paths_a_learner_can_work_out() {
     let lemon = text("lemon", "L EH1 M AH0 N");
     assert!(lemon.iter().any(|o| o.starts_with("HREPL/")), "{lemon:?}");
     assert!(lemon.iter().any(|o| o.starts_with("HRE/")), "{lemon:?}");
-    // An unstressed schwa that keeps its vowel is `U` whatever letter spells it
+    // An unstressed schwa that keeps its vowel is `U` whatever letter spells it, and also the
+    // letter that does
     let profitable = text("profitable", "P R AA1 F AH0 T AH0 B AH0 L");
-    assert!(profitable.iter().all(|o| !o.contains("TO/")), "{profitable:?}");
+    assert!(profitable.contains(&"PRAF/U/TU/-BL".to_owned()), "{profitable:?}");
+    assert!(profitable.contains(&"PRAF/O/TO/-BL".to_owned()), "{profitable:?}");
+    let compromise = text("compromise", "K AA1 M P R AH0 M AY2 Z");
+    assert!(compromise.contains(&"KOPL/PRO/PHAOEUZ".to_owned()), "{compromise:?}");
     // One syllable: nothing to join
     assert!(text("cat", "K AE1 T").is_empty());
 }

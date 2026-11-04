@@ -644,12 +644,35 @@ impl Rules {
     /// can start a syllable goes to the next one, except that a stressed short vowel keeps a single
     /// consonant after it.
     pub fn syllables(&self, sounds: &[String]) -> Option<Vec<Syllable>> {
-        self.syllables_split(sounds, true)
+        self.syllables_split(sounds, true, None)
+    }
+
+    /// Every other place the consonants between two vowels can be broken, one boundary at a time:
+    /// the boundary's number (counting vowels from the first) and how many of its consonants start
+    /// the next syllable. Any run that can start a syllable is a valid break, and none at all
+    /// (`comp-ro`, `com-pro`, `compr-o`): the join key means no break has to be the only one.
+    fn boundary_breaks(&self, sounds: &[String]) -> Vec<(usize, usize)> {
+        let vowels: Vec<usize> = (0..sounds.len()).filter(|&i| sounds[i].ends_with(|c: char| c.is_ascii_digit())).collect();
+        let mut breaks = Vec::new();
+        for (n, pair) in vowels.windows(2).enumerate() {
+            let cluster = &sounds[pair[0] + 1..pair[1]];
+            if sounds[pair[1]].starts_with("IY.ly") {
+                continue;
+            }
+            for take in 0..=cluster.len() {
+                let run: Vec<&str> = cluster[cluster.len() - take..].iter().map(|s| plain(s)).collect();
+                if take == 0 || self.onsets.contains(&run.join(" ")) {
+                    breaks.push((n, take));
+                }
+            }
+        }
+        breaks
     }
 
     /// [`Self::syllables`], with the stressed short vowel keeping its consonant (`lem-on`) or not
     /// (`le-mon`): both are how somebody might hear the word, so both are offered as join paths.
-    fn syllables_split(&self, sounds: &[String], keep_lax: bool) -> Option<Vec<Syllable>> {
+    /// `shift` overrides one boundary (see [`Self::boundary_breaks`]).
+    fn syllables_split(&self, sounds: &[String], keep_lax: bool, shift: Option<(usize, usize)>) -> Option<Vec<Syllable>> {
         let is_vowel = |s: &str| s.ends_with(|c: char| c.is_ascii_digit());
         let vowels: Vec<usize> = (0..sounds.len())
             .filter(|&i| is_vowel(&sounds[i]))
@@ -687,6 +710,10 @@ impl Rules {
                     }
                 } else {
                     self.onset_length(&syllable.vowel, cluster, keep_lax)
+                };
+                let take = match shift {
+                    Some((boundary, takes)) if boundary == n => takes,
+                    _ => take,
                 };
                 let split = cluster.len() - take;
                 syllable.coda = cluster[..split].to_vec();
@@ -891,49 +918,59 @@ impl Rules {
     /// two writings: `suffixed`, where a reduced *last* syllable is its continuation stroke with the
     /// vowel dropped, exactly as a suffix is (*table* `TAEU/+-BL`), and `voiced`, where every
     /// syllable keeps its vowel (*table* `TAEU/+PWUL`). An unstressed schwa in a syllable that
-    /// keeps its vowel is always `U`, and an unstressed short i always `EU`, whatever letter spells
-    /// it: the sound is what a learner hears. Only outlines of two strokes or more, without
+    /// keeps its vowel is `U`, and an unstressed short i `EU`, whatever letter spells it: the sound is
+    /// what a learner hears; and again with the vowel the spelling gives it (*compromise* `KOPL/PRO/PHAOEUZ`,
+    /// the way Plover writes it). Only outlines of two strokes or more, without
     /// repeats; the join key is not yet set.
     pub fn syllable_paths(&self, word: &str, sounds: &[String]) -> Vec<Vec<Stroke>> {
-        let labelled: Vec<String> = self
-            .label(word, sounds)
-            .into_iter()
-            .map(|s| if matches!(unlabelled(&s).as_str(), "AH0" | "IH0") { unlabelled(&s) } else { s })
+        let spelled = self.label(word, sounds);
+        // The same sounds with an unstressed schwa or short i stripped of the letter spelling it
+        let heard: Vec<String> = spelled
+            .iter()
+            .map(|s| if matches!(unlabelled(s).as_str(), "AH0" | "IH0") { unlabelled(s) } else { s.clone() })
             .collect();
         let mut out: Vec<Vec<Stroke>> = self.outline(word, sounds).into_iter().filter(|o| o.len() >= 2).collect();
         let mut starts: Vec<(Option<Stroke>, usize)> = vec![(None, 0)];
-        if let Some((keys, skip)) = self.prefix(word, &labelled) {
+        if let Some((keys, skip)) = self.prefix(word, &heard) {
             starts.push((Some(keys), skip));
         }
-        for (prefix, skip) in starts {
-            for keep_lax in [true, false] {
-                let Some(syllables) = self.syllables_split(&labelled[skip..], keep_lax) else { continue };
-                let last = syllables.len() - 1;
-                let suffixed: Option<Vec<Stroke>> = syllables
-                    .iter()
-                    .enumerate()
-                    .map(|(i, s)| {
-                        if i == last && i > 0 && self.is_reduced(s) {
-                            self.continuation(s)
-                        } else {
-                            self.syllable_stroke(s)
+        for labelled in [&heard, &spelled] {
+            for &(prefix, skip) in &starts {
+                let rest = &labelled[skip..];
+                let splits = [(true, None), (false, None)]
+                    .into_iter()
+                    .chain(self.boundary_breaks(rest).into_iter().map(|b| (true, Some(b))));
+                for (keep_lax, shift) in splits {
+                    let Some(syllables) = self.syllables_split(rest, keep_lax, shift) else { continue };
+                    for mut strokes in self.syllable_writings(&syllables) {
+                        if let Some(keys) = prefix {
+                            // Shared keys are shared, as in `outline_folded`: `STK` + `TAPBS`
+                            strokes.first_mut().expect("a syllable split is never empty").0 |= keys.0;
                         }
-                    })
-                    .collect();
-                let voiced: Option<Vec<Stroke>> =
-                    syllables.iter().map(|s| self.syllable_stroke(s).or_else(|| self.continuation(s))).collect();
-                for mut strokes in [suffixed, voiced].into_iter().flatten() {
-                    if let Some(keys) = prefix {
-                        // Shared keys are shared, as in `outline_folded`: `STK` + `TAPBS`
-                        strokes.first_mut().expect("a syllable split is never empty").0 |= keys.0;
-                    }
-                    if strokes.len() >= 2 && !out.contains(&strokes) {
-                        out.push(strokes);
+                        // A syllable with nothing to strike (a dropped vowel and no consonant) is no stroke
+                        if strokes.len() >= 2 && strokes.iter().all(|s| s.0 != 0) && !out.contains(&strokes) {
+                            out.push(strokes);
+                        }
                     }
                 }
             }
         }
         out
+    }
+
+    /// The two ways to write a syllable split one stroke each: `suffixed`, where a reduced *last*
+    /// syllable is its continuation stroke with the vowel dropped, exactly as a suffix is, and
+    /// `voiced`, where every syllable keeps its vowel.
+    fn syllable_writings(&self, syllables: &[Syllable]) -> Vec<Vec<Stroke>> {
+        let last = syllables.len() - 1;
+        let suffixed: Option<Vec<Stroke>> = syllables
+            .iter()
+            .enumerate()
+            .map(|(i, s)| if i == last && i > 0 && self.is_reduced(s) { self.continuation(s) } else { self.syllable_stroke(s) })
+            .collect();
+        let voiced: Option<Vec<Stroke>> =
+            syllables.iter().map(|s| self.syllable_stroke(s).or_else(|| self.continuation(s))).collect();
+        [suffixed, voiced].into_iter().flatten().collect()
     }
 
     /// The strokes for a run of syllables, folding reduced ones onto the stroke before.

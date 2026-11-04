@@ -2164,3 +2164,19 @@ markers 1,325 to 1,234, and ten of the commonest 1,000 words moved (*care* `KAER
 Replacing the `+*` marker itself was weighed and left alone: the 1,234 words still on it are
 almost all names and interjections, with 129 real words, one of them in the commonest 5,000
 (*suite*). The `simple` set the brevity gate also checked was a subset of `wanted` and is gone.
+
+**Joins have every break, either vowel, and a joinless twin (`Rules::syllable_paths`,
+`src/joinless.rs`).** Typing *compromise*, the tape showed `KOPL`, `PRO`, `PHAOEUZ` struck plain:
+"column", "prah", "meyez". That is the natural way to spell it syllable by syllable, and the
+dictionary had only the `+` forms, with the unstressed vowel written `U` or dropped (`PR`). Three
+changes. (1) An unstressed vowel is also written with the letter the spelling gives it, beside
+`U`/`EU`. (2) Syllable paths try every legal break of the consonants between two vowels, one
+boundary at a time, instead of two (`boundary_breaks`): *compromise* has `PRO`, `PR` and `PROPL`
+breaks, *lemon* five joins. (3) Every join of two strokes or more is also written without its join
+keys in `02-lyk-joinless.json`, derived from the backups at write time; a spelling made only of
+strokes that are each a top-3,000 word is left out (8% of them). Measured: backups 201,931 to
+368,491, joinless 343,150 entries, no outline shared with any existing entry; joined ways in per
+word 4.1–4.7 to 6.0–8.0, 91–97% of words with two or more; one primary changed (*parfitt*, rank
+65,894); keys per word, which counts only each word's fastest outline, 3.277 to 3.276. Cost: the
+backups and joinless files are 13 MB and 11 MB of JSON. A backup with a bare `+` stroke in it
+(13, *authorization*) predates this; the joinless file skips it.

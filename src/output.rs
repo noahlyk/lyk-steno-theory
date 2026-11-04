@@ -10,6 +10,7 @@
 //! rewrites only some files, and a file whose content did not change is not even touched: a build
 //! that changes nothing leaves every file's modification time alone.
 
+use crate::analysis::Setup;
 use crate::generate::{written, Generated, Origin};
 use crate::stroke::render_outline;
 use anyhow::{Context, Result};
@@ -35,10 +36,13 @@ pub enum Role {
     Phrases,
     /// Standalone suffix strokes
     Suffixes,
+    /// The backups as plain strokes with no join key, the way Plover writes a long word (see
+    /// [`crate::joinless`]); derived from the backups, never a word's own outline
+    Joinless,
 }
 
 impl Role {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Words,
         Self::Short,
         Self::Alternates,
@@ -46,6 +50,7 @@ impl Role {
         Self::Extras,
         Self::Phrases,
         Self::Suffixes,
+        Self::Joinless,
     ];
 
     /// The file this role is written to.
@@ -58,6 +63,7 @@ impl Role {
             Self::Extras => "02-lyk-extras.json",
             Self::Phrases => "02-lyk-phrases.json",
             Self::Suffixes => "02-lyk-suffixes.json",
+            Self::Joinless => "02-lyk-joinless.json",
         }
     }
 
@@ -96,7 +102,7 @@ pub struct Written {
 /// The dictionary in `dir`, one file per role, each sorted by outline so that the same entries
 /// always give the same bytes. A file that would come out as it already is, is left alone; a
 /// generated file in `dir` that no role writes (an earlier layout's) is removed.
-pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written>> {
+pub fn write_dictionary(generated: &Generated, setup: &Setup, dir: &Path) -> Result<Vec<Written>> {
     let mut by_role: BTreeMap<Role, BTreeMap<String, String>> = BTreeMap::new();
     for entry in &generated.entries {
         by_role
@@ -104,6 +110,7 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
             .or_default()
             .insert(render_outline(&entry.outline), written(&entry.word));
     }
+    by_role.insert(Role::Joinless, crate::joinless::aliases(generated, setup));
     std::fs::create_dir_all(dir).with_context(|| dir.display().to_string())?;
     let mut done = Vec::new();
     for role in Role::ALL {

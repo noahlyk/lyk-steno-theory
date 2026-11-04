@@ -185,20 +185,35 @@ can work out from the sound alone. The forms:
   dropped, exactly as a suffix is (*table* `TAEU/+-BL`, *information* `EUPB/+TPOR/+PHAEU/+-GS`);
 - every syllable a stroke with its vowel written (*table* `TAEU/+PWUL`, *machete*
   `PHU/+SHE/+TAOE`);
-- each of those with both ways of hearing where the syllables split: the rule above gives a
-  stressed short vowel the consonant after it (*lem-on* `HREPL/+UPB`), and the other split is
-  offered too (*le-mon* `HRE/+PHUPB`);
+- each of those with every way of breaking the syllables, not one: the rule above gives a stressed
+  short vowel the consonant after it (*lem-on* `HREPL/+UPB`), and the other split is offered too
+  (*le-mon* `HRE/+PHUPB`). Between any two vowels, any run of consonants that can start a syllable
+  may go to the next one, or none of them: *compromise* is *com-pro-mise* `KOPL/+PRO/+PHAOEUZ`,
+  *comp-ro-mise* `KOPL/+PR/+PHAOEUZ` or *compro-mise* `KOPL/+PROPL/+AOEUZ`. One boundary is moved
+  at a time, so a long word has a handful of splits, not hundreds. There is no one right place to
+  break a word; the join key means none has to be the only one;
 - for a word with a fixed prefix (*ex-* `KP`, *dis-* `STK`), each of those with the prefix folded
   onto the first stroke and with it struck as a syllable of its own.
 
-In a syllable that keeps its vowel, an unstressed schwa is always `U` and an unstressed short i
-always `EU`, whatever letter spells it: the spelling rules that pick `O` for a schwa written "o" are
-for the one-stroke outlines, and a learner sounding a word out hears a schwa. A middle reduced
+In a syllable that keeps its vowel, an unstressed schwa can be written two ways: `U` and an
+unstressed short i `EU`, whatever letter spells it, as a learner sounding the word out hears it
+(`PRAF/+U/+TU/+-BL`); or with the vowel the spelling gives it, as a learner reading the word sees
+it (`PRAF/+O/+TO/+-BL`, *compromise* `KOPL/+PRO/+PHAOEUZ`). Both are offered. A middle reduced
 syllable keeps its vowel rather than becoming a bare consonant stroke: `PRAF/+U/+TU/+-BL` reads as
 the word, `PRA/+-F/+-T/+-BL` does not. These candidates go through the same round as every other
 backup, the same fragment check and the same rule when two words want one text (the commoner word
 keeps it). With them, 98–99% of the words of two syllables or more in every frequency band have a
-joined way in, and 84–94% have at least two (four to five on average); before, 63–83% had one.
+joined way in, and 91–97% have at least two (six to eight on average); before, 63–83% had one.
+
+**The same joins without the join key.** Every join with two strokes or more also exists as plain
+strokes, in `02-lyk-joinless.json` (`src/joinless.rs`): *compromise* `KOPL/PRO/PHAOEUZ` as well as
+`KOPL/+PRO/+PHAOEUZ`. Struck as three separate strokes those are three words (*column*, *prah*,
+*meyez*); the multi-stroke entry is what makes the engine read them as one. The file is derived
+from the backups when the dictionary is written, so the two can never disagree, and it never
+takes an outline anything else has. A spelling made only of strokes that are each a common word
+(top 3,000, alone on a stroke) is left out, so two ordinary words struck one after the other stay
+two words (*compress* `KUPL/PRES` would be *come* *press*). The join key stays the way to be sure:
+with it a stroke can never be read as a word by itself.
 
 **What a stem joins through.** Every direction above builds on a placed word's outline. Each
 stem offers two: its fastest outline, and its own plain rules reading when that is a different

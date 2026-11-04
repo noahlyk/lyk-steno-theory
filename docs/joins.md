@@ -89,8 +89,16 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
 - **One syllable, one stroke**, with its vowel: *table* `TAEU/+PWUL`, *machete* `PHU/+SHE/+TAOE`.
 - **A weak last syllable drops its vowel**, exactly like a suffix: *table* `TAEU/+-BL`,
   *lemon* `HRE/+PH-PB`, *profitable* `PRAF/+U/+TU/+-BL`.
-- **A weak vowel you do stroke is `U`** (a short i is `EU`), whatever letter spells it.
-- **Split where you hear the break**: *lem-on* `HREPL/+UPB` and *le-mon* `HRE/+PHUPB` both work.
+- **A weak vowel you do stroke is `U`** (a short i is `EU`) as you hear it, **or the letter the
+  word spells it with** as you read it: *profitable* `PRAF/+U/+TU/+-BL` and `PRAF/+O/+TO/+-BL`.
+- **Split anywhere you hear a break**: *lem-on* `HREPL/+UPB` and *le-mon* `HRE/+PHUPB` both work,
+  and so do *com-pro-mise* `KOPL/+PRO/+PHAOEUZ`, *comp-ro-mise* `KOPL/+PR/+PHAOEUZ` and
+  *compro-mise* `KOPL/+PROPL/+AOEUZ`. Any run of consonants that can start a syllable may go to
+  the next stroke, or none.
+- **The join key is optional on these.** Every join is also there without its `+`s:
+  `KOPL/PRO/PHAOEUZ` types *compromise*. Use the `+` when you want to be sure each stroke is
+  read as part of the word and not as a word of its own; leave it off when you are just spelling
+  the word out and the word is not made of ordinary words struck one after the other.
 - **A weak last syllable that fits on the stroke before it can fold onto it**: *sensible*
   `SEPB/+SU/+-BL` or `SEPB/+SUBL`.
 
