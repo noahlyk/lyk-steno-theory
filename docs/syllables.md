@@ -210,7 +210,7 @@ general idea (`src/rules/lattice.rs`). A word's sounds are positions; a stroke i
 with at most one vowel; a way to type the word is any path from the first sound to the last, two
 strokes or more, each stroke after the first with the join key. *complete* (`K AH M P L IY T`)
 has `KUPL/+PHRAOET`, `KO/+PHRAOET`, `K-PL/+PHRAOET`, then `KU/+PH/+HRAOET`, `K/+UPL/+PHRAOET`, down
-to one sound per stroke (over 200 of them). Three things make that many valid at once:
+to one sound per stroke (687 of them). Three things make that many valid at once:
 
 - **A stroke writes any run of sounds it can.** Consonants may share keys: *m-p-r* is `PHR`, the
   *p* already inside the `PH`. A vowel is heard (`U`) or spelled (`O`), or a reduced syllable is
@@ -220,10 +220,12 @@ to one sound per stroke (over 200 of them). Three things make that many valid at
   (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5
   through a syllable); a spelled or dropped vowel, the wrong hand, a star, or a sound out of steno
   order (up to two to a stroke, 3 each) costs a little. Keys that clash are the only hard no.
-- **The cheapest paths are listed, not all of them.** A best-first search with an exact lower bound
-  returns the cheapest `LATTICE_PATHS` (12) per pronunciation, which is all the two-stroke ones and
-  few longer ones; they join the other backups, the same fragment check applies, and a text two
-  words want goes to the commoner word. The cap is about file size (see `docs/decisions.md`).
+- **The cheapest paths of each length are listed.** There are hundreds of paths (*complete* has
+  687), so each stroke count has its own quota: 24 of two strokes, 24 of three, 12 of four, 6 of
+  five, 3 of six (`LATTICE_QUOTAS`). Each count is its own best-first search with an exact lower
+  bound, so a five-stroke path is found as cheaply as a two-stroke one. The paths join the other
+  backups, the same fragment check applies, and a text two words want goes to the commoner word.
+  *complete* ends up with 56 lattice joins, 11 of two strokes and 3 of six.
 
 `lyk paths WORD` lists a word's lattice paths with their cost and what became of each (in the
 dictionary, taken by another word, rejected, or past the cap), then everything the dictionary

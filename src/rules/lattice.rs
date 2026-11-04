@@ -42,36 +42,45 @@ const OUT_OF_ORDER: u32 = 3;
 /// left hand after its last.
 const WRONG_BANK: u32 = 3;
 /// A chord with the star in it, which belongs to the vowels and is better saved for telling words apart.
-const STAR: u32 = 2;
+const STAR: u32 = 6;
+/// A word's first syllable struck as a bare suffix-style continuation (`-BG` for *k-u*), which is no
+/// way to start a word.
+const DROPPED_FIRST: u32 = 8;
 /// The most sounds one stroke may cover.
 const MAX_SEGMENT: usize = 6;
+/// The most strokes a path may have.
+const MAX_STROKES: usize = 8;
 /// The most consonants one vowelless stroke may cover.
 const MAX_BARE: usize = 3;
-/// How many partial paths the search may expand before it stops, a bound on the odd word.
-const MAX_EXPANSIONS: usize = 200_000;
+/// How many partial paths the search for one stroke count may expand before it stops, a bound on
+/// the odd word.
+const MAX_EXPANSIONS: usize = 60_000;
 
 /// One way to write a run of sounds as a stroke, and what it costs.
 type Writing = (Stroke, u32);
 
 /// A partial path in the search: the least it can still cost in all, what it has cost, where it
-/// has got to, and its strokes.
-type Partial = (u32, u32, usize, Vec<Stroke>);
+/// has got to, how many strokes are left, and its strokes.
+type Partial = (u32, u32, usize, usize, Vec<Stroke>);
+
+/// How many paths of each stroke count to list: two strokes, three, four, and so on.
+pub type Quotas = [usize];
 
 fn is_vowel(sound: &str) -> bool {
     sound.ends_with(|c: char| c.is_ascii_digit())
 }
 
 impl Rules {
-    /// The best `limit` ways to write `word` as two strokes or more, cheapest first: the strokes
-    /// (no join key yet) and the path's cost.
-    pub fn lattice_paths(&self, word: &str, sounds: &[String], limit: usize) -> Vec<(u32, Vec<Stroke>)> {
+    /// The cheapest ways to write `word` as two strokes or more, at most `quotas[k - 2]` of those
+    /// with `k` strokes, all cheapest first: the strokes (no join key yet) and the path's cost.
+    pub fn lattice_paths(&self, word: &str, sounds: &[String], quotas: &Quotas) -> Vec<(u32, Vec<Stroke>)> {
         let spelled = self.label(word, sounds);
         let heard: Vec<String> = spelled
             .iter()
             .map(|s| if matches!(super::unlabelled(s).as_str(), "AH0" | "IH0") { super::unlabelled(s) } else { s.clone() })
             .collect();
         let lattice = Lattice::new(self, &heard, &spelled);
-        lattice.best_paths(limit)
+        lattice.best_paths(quotas)
     }
 
     /// Every chord that writes the sounds `from..to` of `sounds` as one stroke.
@@ -86,8 +95,7 @@ impl Rules {
             if self.is_reduced(&syllable)
                 && let Some(stroke) = self.continuation(&syllable)
             {
-                // A word's first syllable struck as a bare suffix-style continuation is no way to start
-                out.push((stroke, if from == 0 { DROPPED_VOWEL + WRONG_BANK } else { DROPPED_VOWEL }));
+                out.push((stroke, if from == 0 { DROPPED_FIRST } else { DROPPED_VOWEL }));
             }
         } else {
             let (right, left) = match bank {
@@ -129,8 +137,9 @@ struct Lattice {
     /// Every stroke from each position: where it ends, the chord, and the cost of taking it,
     /// including the cut it makes at its end.
     edges: Vec<Vec<(usize, Stroke, u32)>>,
-    /// The least a path from each position to the end can still cost.
-    to_go: Vec<u32>,
+    /// `to_go[r][p]`: the least a path from position `p` to the end can still cost in exactly `r`
+    /// more strokes (`u32::MAX` when there is none).
+    to_go: Vec<Vec<u32>>,
 }
 
 impl Lattice {
@@ -166,52 +175,61 @@ impl Lattice {
                 edges[from].extend(writings.into_iter().map(|(stroke, cost)| (to, stroke, STROKE + cost + cut)));
             }
         }
-        let mut to_go = vec![u32::MAX; n + 1];
-        to_go[n] = 0;
-        for from in (0..n).rev() {
-            to_go[from] = edges[from]
-                .iter()
-                .filter(|(to, ..)| to_go[*to] != u32::MAX)
-                .map(|&(to, _, cost)| cost + to_go[to])
-                .min()
-                .unwrap_or(u32::MAX);
+        let longest = n.min(MAX_STROKES);
+        let mut to_go = vec![vec![u32::MAX; n + 1]; longest + 1];
+        to_go[0][n] = 0;
+        for r in 1..=longest {
+            for from in 0..n {
+                to_go[r][from] = edges[from]
+                    .iter()
+                    .filter(|(to, ..)| to_go[r - 1][*to] != u32::MAX)
+                    .map(|&(to, _, cost)| cost + to_go[r - 1][to])
+                    .min()
+                    .unwrap_or(u32::MAX);
+            }
         }
         Self { sounds: n, edges, to_go }
     }
 
-    /// The `limit` cheapest paths of two strokes or more.
-    fn best_paths(&self, limit: usize) -> Vec<(u32, Vec<Stroke>)> {
+    /// For each stroke count `k` (from 2), the `quotas[k - 2]` cheapest paths of exactly `k`
+    /// strokes, all together cheapest first. Each count is its own best-first search with an exact
+    /// bound, so the longer, dearer paths are found as cheaply as the short ones.
+    fn best_paths(&self, quotas: &Quotas) -> Vec<(u32, Vec<Stroke>)> {
         let mut found: Vec<(u32, Vec<Stroke>)> = Vec::new();
-        if self.to_go.first().is_none_or(|&c| c == u32::MAX) {
-            return found;
-        }
-        // (cost so far + the least still to come, cost so far, position, strokes so far)
-        let mut open: BinaryHeap<Reverse<Partial>> = BinaryHeap::new();
-        open.push(Reverse((self.to_go[0], 0, 0, Vec::new())));
-        let mut expanded = 0;
-        while let Some(Reverse((_, so_far, at, path))) = open.pop() {
-            if at == self.sounds {
-                if path.len() >= 2 && !found.iter().any(|(_, p)| *p == path) {
-                    found.push((so_far, path));
-                    if found.len() == limit {
-                        break;
-                    }
-                }
+        for (k, &quota) in (2..).zip(quotas) {
+            if k >= self.to_go.len() || quota == 0 || self.to_go[k][0] == u32::MAX {
                 continue;
             }
-            expanded += 1;
-            if expanded > MAX_EXPANSIONS {
-                break;
-            }
-            for &(to, stroke, cost) in &self.edges[at] {
-                if self.to_go[to] == u32::MAX {
+            // (cost so far + the least still to come, cost so far, position, strokes left, strokes so far)
+            let mut open: BinaryHeap<Reverse<Partial>> = BinaryHeap::new();
+            open.push(Reverse((self.to_go[k][0], 0, 0, k, Vec::new())));
+            let (mut expanded, mut taken) = (0, 0);
+            while let Some(Reverse((_, so_far, at, left, path))) = open.pop() {
+                if left == 0 {
+                    if at == self.sounds && !found.iter().any(|(_, p)| *p == path) {
+                        found.push((so_far, path));
+                        taken += 1;
+                        if taken == quota {
+                            break;
+                        }
+                    }
                     continue;
                 }
-                let mut next = path.clone();
-                next.push(stroke);
-                open.push(Reverse((so_far + cost + self.to_go[to], so_far + cost, to, next)));
+                expanded += 1;
+                if expanded > MAX_EXPANSIONS {
+                    break;
+                }
+                for &(to, stroke, cost) in &self.edges[at] {
+                    if self.to_go[left - 1][to] == u32::MAX {
+                        continue;
+                    }
+                    let mut next = path.clone();
+                    next.push(stroke);
+                    open.push(Reverse((so_far + cost + self.to_go[left - 1][to], so_far + cost, to, left - 1, next)));
+                }
             }
         }
+        found.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.len().cmp(&b.1.len())));
         found
     }
 }

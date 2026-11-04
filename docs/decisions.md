@@ -2186,9 +2186,18 @@ syllable paths covered a handful of splits and could not write a cluster whose s
 order, none twice) refused it. A new builder lets a sound share keys already down and fall out of
 steno order, up to two sounds a stroke, priced instead of refused. On it, a best-first search over
 positions in the sounds lists the cheapest paths of two strokes or more, from syllable strokes down
-to one sound per stroke, priced by where they cut and how they write each stroke. The cheapest 12
-per pronunciation join the backups beside the older directions: *complete* has 12 backup joins from them.
-Cap sweep, backups file size and paths per word: 6 is 19 MB and 10, 12 is 30 MB and 16, 20 is 45
-MB and 24, 40 is 83 MB and 41 (13 MB before). Keys per word is 3.275 to 3.276 at every cap and
-only two primaries moved: the cap is about size alone. A flat cap crowds out the longer
-variants (at 12, *complete* has one three-stroke path), which is the open question.
+to one sound per stroke, priced by where they cut and how they write each stroke. Each stroke count is its
+own best-first search (an exact lower bound per count), with a quota per count: 24 paths of two
+strokes, 24 of three, 12 of four, 6 of five, 3 of six, per pronunciation, joining the backups
+beside the older directions. *complete* has 687 lattice paths and 56 in the dictionary (11 of two
+strokes, 24 of three, 12 of four, 6 of five, 3 of six); none of the 56 lost its text to another
+word. A flat cap of the cheapest N was tried first and rejected: at 12 it filled with two-stroke
+paths and kept one three-stroke path. Sizes of the backups file, with the keys per word (each word's
+fastest outline only) at 3.275 to 3.276 throughout: flat 6 is 19 MB, 12 is 30 MB, 20 is 45 MB, 40
+is 83 MB; the quotas above are 76 MB (2.2 million entries, 21 s build, against 13 MB before); the
+same quotas only for words with no one-stroke outline, and fewer for the rest, was 45 MB and was
+rejected too, since *complete* has a one-stroke outline and is the word that was asked for.
+keymux loads the 76 MB folder cold in 1.5 s with a 545 MB peak, and in 0.12 s from its cache (a
+scratch config, `keymux steno lookup`). 41 words' primary entries changed, none in the top 5,000:
+rare words that now have a backup can give their stroke to a phrase (*wa* `WA` to "with a", *sa* to
+"is a"), and several multi-stroke primaries moved to a cheaper join (*lt* `EL/+TAOE` to `E/+-LT`).
