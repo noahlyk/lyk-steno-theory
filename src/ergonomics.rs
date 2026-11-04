@@ -544,7 +544,7 @@ mod tests {
             Band { name: "1,000-10,000", max_rank: 9_999, avg_ceiling: 250.0, bad_pct_ceiling: 12.0 },
             // 290 until every word past rank 8,000 got its one-stroke skeleton (see
             // `docs/brevity.md`): a consonant skeleton is a denser chord than two syllable strokes,
-            // and the band's average rose from 269 to 308 as its one-stroke share rose from 47% to
+            // and the band's average rose from 269 to 301 as its one-stroke share rose from 47% to
             // 62%. That trade is deliberate; the ceiling moved with it.
             Band { name: "10,000+", max_rank: usize::MAX, avg_ceiling: 320.0, bad_pct_ceiling: 20.0 },
         ];

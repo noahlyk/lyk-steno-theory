@@ -2053,7 +2053,7 @@ one) at every rank; `shell`, `ends` and the vowel-less forms still stop at 8,000
 exactly (nobody takes theirs, they take nobody's) and one final pass settles everything with the
 skeletons in. Build 14 s, 17,000 contested. Top 1,000 unchanged; 1,000–5,000: 8 worse, 55
 better; 10,000–20,000 one stroke 58% to 73%; 20,000–50,000 41% to 58%; keys per word 5k–20k
-6.76 to 6.55, 20k+ 8.52 to 8.04. Ergonomic average past 10,000 rose 269 to 308, ceiling moved to
+6.76 to 6.55, 20k+ 8.52 to 8.04. Ergonomic average past 10,000 rose 269 to 301, ceiling moved to
 320. Three holes found and closed on the way: a pinned word could take another pinned word's
 text (*ended* took *ed*'s `*ED`, leaving *ed* unplaced); a root that moved left its reserved old
 text unreachable (19 stranded words, fixed by an unstranding step that moves a word to an

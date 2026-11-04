@@ -25,7 +25,7 @@ and which ones is not predictable, so they stay a privilege of the 8,000 commone
 5,000–10,000 were one stroke and 58% of those ranked 10,000–20,000. Now it is 87% and 73%
 (20,000–50,000: 41% to 58%), and a word past 20,000 costs 8.0 keys on average instead of 8.5.
 The price is in the hands: a skeleton is a denser chord than two syllable strokes, so the
-average ergonomic score past rank 10,000 rose from 269 to 308 (the regression test's ceiling
+average ergonomic score past rank 10,000 rose from 269 to 301 (the regression test's ceiling
 moved from 290 to 320 with it).
 
 The commonest words never pay for this. Settling runs its family passes exactly as before, with
