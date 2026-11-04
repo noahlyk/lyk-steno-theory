@@ -20,7 +20,7 @@ once would be.
 | Theory | Keys/Stroke, weighted by how often each word is said |
 |---|---|
 | Lyk | 3.22 |
-| Plover | 3.56 |
+| Plover | 3.57 |
 | Lapwing | 3.94 |
 <!-- lyk:overall-table:end -->
 
@@ -102,8 +102,8 @@ found: it counts what keys Plover and Lapwing use where they agree.
 | What | Source |
 |---|---|
 | Pronunciations | CMUdict (primary); MFA US dictionary, then WikiPron US broad, as a fallback translated from IPA (`src/ipa.rs`) for the words CMUdict has no entry for at all |
-| Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018) |
-| Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`) — fetched and counted, not yet used by the generator |
+| Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018), each name's count cut to a tenth so a name never outranks the word it sounds like ([collisions](docs/collisions.md#names)) |
+| Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](docs/phrases.md) |
 | Dictionaries to match | Plover `main.json` and `commands.json`, Lapwing dictionaries |
 
 ## Full benchmarks
@@ -118,10 +118,10 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 78% | 83% | 5.49 | 5.65 | 5.82 |
-| 2 | 59% | 45% | 52% | 5.82 | 4.93 | 5.26 |
-| 3 | 38% | 26% | 32% | 5.61 | 4.80 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.72 | 4.97 | 5.22 |
+| 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
+| 2 | 59% | 44% | 51% | 5.86 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.60 | 4.78 | 5.14 |
+| 4+ | 23% | 17% | 18% | 5.73 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -132,9 +132,9 @@ of very common words dominate it and a long tail of rare ones barely move it:
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
 | 1 | 2.82 | 3.19 | 3.59 |
-| 2 | 4.69 | 4.70 | 4.99 |
-| 3 | 4.71 | 4.93 | 5.25 |
-| 4+ | 5.10 | 5.24 | 5.50 |
+| 2 | 4.69 | 4.70 | 5.00 |
+| 3 | 4.69 | 4.92 | 5.25 |
+| 4+ | 5.09 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a
@@ -146,9 +146,9 @@ How common each syllable count actually is — first counting every distinct wor
 <!-- lyk:syllable-words-table:start -->
 | Syllables | Share of distinct words |
 |---|---|
-| 1 | 28% |
+| 1 | 27% |
 | 2 | 41% |
-| 3 | 21% |
+| 3 | 22% |
 | 4+ | 10% |
 <!-- lyk:syllable-words-table:end -->
 

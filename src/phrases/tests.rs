@@ -187,27 +187,28 @@ fn two_real_multi_stroke_host_bigrams_checked_by_hand_against_the_real_dictionar
         "\"the accuracy\" should have actually committed with this exact two-stroke outline"
     );
 
-    // Direction (C), the symmetric case: "accompanied" (host, a real two-stroke primary
-    // "A/+K-PD") + "by" (single-stroke primary "PWEU") - also a real bigram. "by"'s whole
-    // primary merges into "accompanied"'s own first stroke "A" (disjoint), and
-    // "accompanied"'s own second stroke "+K-PD" carries through unchanged.
-    assert!(setup.bigrams.contains_key(&("accompanied".to_owned(), "by".to_owned())));
-    assert_eq!(any_len.get("accompanied").copied(), Some(&parse_outline("A/+K-PD").unwrap()[..]));
+    // Direction (C), the symmetric case: "added" (host, a real two-stroke primary "AD/+-D") +
+    // "by" (single-stroke primary "PWEU") - also a real bigram. "by"'s whole primary merges into
+    // "added"'s own first stroke "AD" (disjoint), and "added"'s own second stroke "+-D" carries
+    // through unchanged. ("accompanied by" was the example until names stopped outranking the
+    // words they sound like and "accompanied" settled on one stroke.)
+    assert!(setup.bigrams.contains_key(&("added".to_owned(), "by".to_owned())));
+    assert_eq!(any_len.get("added").copied(), Some(&parse_outline("AD/+-D").unwrap()[..]));
     assert_eq!(single.get("by").copied(), Some(parse_outline("PWEU").unwrap()[0]));
-    let accompanied_by = phrase_candidate_outline(&single, &any_len, "accompanied", "by");
+    let added_by = phrase_candidate_outline(&single, &any_len, "added", "by");
     assert_eq!(
-        accompanied_by,
-        Some(parse_outline("PWAEU/+K-PD").unwrap()),
-        "\"by\"'s whole primary should merge into \"accompanied\"'s own first stroke only"
+        added_by,
+        Some(parse_outline("PWAEUD/+-D").unwrap()),
+        "\"by\"'s whole primary should merge into \"added\"'s own first stroke only"
     );
     assert_eq!(
         generated
             .entries
             .iter()
-            .find(|e| e.origin == Origin::Phrase && e.word == "accompanied by")
+            .find(|e| e.origin == Origin::Phrase && e.word == "added by")
             .map(|e| e.outline.clone()),
-        accompanied_by,
-        "\"accompanied by\" should have actually committed with this exact two-stroke outline"
+        added_by,
+        "\"added by\" should have actually committed with this exact two-stroke outline"
     );
 }
 

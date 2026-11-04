@@ -109,9 +109,9 @@ pub struct Setup {
     pub rules: Rules,
     pub pron: Pronunciations,
     pub gold: Gold,
-    /// 0 is the most common word
+    /// 0 is the most common word, by `count`
     pub rank: HashMap<String, usize>,
-    /// How often each word is said
+    /// How often each word is said, a name's count cut to a tenth (see [`crate::frequency`])
     pub count: HashMap<String, u64>,
     /// How often one word is immediately followed by another (Norvig's Google Books Ngrams,
     /// `data/frequency/bigrams_en.txt`), kept only where both words are in `rank` - this
@@ -167,22 +167,20 @@ impl Setup {
         for (word, variants) in fallback_pronunciations(&pron, &mfa?, &wikipron?) {
             pron.entry(word).or_insert(variants);
         }
-        let mut rank = HashMap::new();
-        let mut count = HashMap::new();
-        for (n, (word, times)) in frequency?.into_iter().enumerate() {
-            count.entry(word.clone()).or_insert(times);
-            rank.entry(word).or_insert(n);
-        }
+        let gold = gold?;
+        let mut spoken = frequency?;
         // See `CONTRACTIONS`: a word CMUdict has a real pronunciation for but the frequency
-        // corpus only counted under its apostrophe-stripped spelling.
+        // corpus only counted under its apostrophe-stripped spelling. It is listed right after it.
+        let listed: std::collections::HashSet<String> = spoken.iter().map(|(w, _)| w.clone()).collect();
         for &(stripped, real) in CONTRACTIONS {
-            if pron.contains_key(real) && !rank.contains_key(real)
-                && let Some(&n) = rank.get(stripped)
+            if pron.contains_key(real)
+                && !listed.contains(real)
+                && let Some(at) = spoken.iter().position(|(w, _)| w == stripped)
             {
-                count.insert(real.to_owned(), count[stripped]);
-                rank.insert(real.to_owned(), n);
+                spoken.insert(at + 1, (real.to_owned(), spoken[at].1));
             }
         }
+        let crate::frequency::Counts { count, rank } = crate::frequency::count(spoken, |w| gold.is_name(w));
         // Vocabulary-filtered here, not in `load_bigrams`: "vocabulary" means this generator's
         // own ranked words, which only exist once `rank` above is built.
         let bigrams = bigrams?
@@ -193,7 +191,7 @@ impl Setup {
         Ok(Self {
             rules,
             pron,
-            gold: gold?,
+            gold,
             rank,
             count,
             bigrams,

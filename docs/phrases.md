@@ -140,7 +140,7 @@ since this phrase entry is still where the two-word phrase *begins*.
 
 Both directions turn out to matter about equally: one real multi-stroke-primary word acting as the
 host with a single-stroke word in front of it (`"of" + "ample"`-shaped), and the symmetric case, a
-multi-stroke word followed by a single-stroke one (`"accompanied" + "by"`-shaped). Supporting only
+multi-stroke word followed by a single-stroke one (`"added" + "by"`-shaped: `PWAEUD/+-D`). Supporting only
 one direction would have left roughly half the real yield on the table — measured, not assumed (see
 "Measuring the real effect" below).
 

@@ -11,6 +11,7 @@ mod data;
 #[cfg(test)]
 mod dictionary_fixture;
 mod fetch;
+mod frequency;
 mod generate;
 mod num;
 mod output;

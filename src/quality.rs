@@ -363,9 +363,11 @@ fn cheapest_does_not_depend_on_entry_order() {
 #[test]
 fn the_commonest_words_have_one_stroke_and_no_ladder_marker() {
     const TOP_N: usize = 1_000;
-    // Neither has a one-stroke candidate at all: "american"'s M-R-K-N coda has no cluster, and
-    // "lt" (lieutenant) has no gold brief.
-    const MULTI_STROKE_OK: &[&str] = &["american", "lt"];
+    // Neither "american" nor "lt" has a one-stroke candidate at all: "american"'s M-R-K-N coda has
+    // no cluster, and "lt" (lieutenant) has no gold brief. "impossible" is a prefix family member,
+    // written as its prefix and its stem the way "rebuild" is RE/+PWHR (`docs/prefixes.md`), and
+    // as Plover writes it (EUPL/POB).
+    const MULTI_STROKE_OK: &[&str] = &["american", "lt", "impossible"];
     let setup = dictionary_fixture::setup();
     let lyk = dictionary_fixture::cheapest();
     let mut problems: Vec<String> = Vec::new();

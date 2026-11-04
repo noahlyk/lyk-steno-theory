@@ -2126,3 +2126,26 @@ brief plus `-y`. So a join through one of those endings uses the stem's plain ru
 passes the fragment check, the stem is at least three letters, a word in "-ly" never links through
 `-y`, and `not_family` now blocks the sound-based and two-word directions too (*wither* `W/+-R`).
 Backups 205,390 to 204,551; joined ways in per word unchanged to two decimals.
+
+**A name's count is cut to a tenth (`src/frequency.rs`, `Gold::is_name`).** The frequency list is
+film subtitles, and dialogue says names constantly: 435 of the 5,000 commonest subtitle words are
+names, and *matt* (said 7.6 times as often as *mat*) held `PHAT` while *mat* was `PHAT/+*`. lyk
+types a name as its sound-alike outline after `KPA`, so the word should hold the stroke. A name is
+a word Plover and Lapwing write only capitalized. A quarter was tried first and left *matt* ahead;
+a tenth puts *mat* on `PHAT`. Seven of the 1,000 commonest words changed outline, by the solver
+re-pricing around the names that moved: *plan* `PHR-PB` to `PHRAPB`, *class* `KHAS` to `KAS`,
+*lovely* `HRUFL` to `HROFL`, *death* `TKEG` to `T*ET` (*degree* now has `TKEG`), *bar* `PWAR` to
+`PWA*R` (*garbage*'s skeleton), and the names *york* and *mary*. 257 of the top 5,000 changed.
+Keys per word 3.277 to 3.274. The commonest-100,000 window now holds 2,091 fewer rare names
+(*agamemnon*, *aeschylus*) and 805 more ordinary words (*allegories*, *ameliorate*), so there
+are 2,700 fewer backups; a name past the window still reads back from its sounds.
+
+Blending in written English was measured first and rejected. The geometric mean of the subtitle
+share and each word's share of the Google web bigrams (`bigrams_en.txt`, summed over both halves
+of every pair) moved 36 of the commonest 1,000 words' outlines, almost all photo-finishes between
+two words common in both (*thank* `THA` to `THABG` and *than* to `THA`, *love* `OF` to `HR-F`
+with *off* taking `OF`), and it demoted the conversational words people do type: *okay* is said
+225 times as often as it is written on the web, *honey* 62, *nah* 116. What it was meant to fix
+was narrower: names (fixed above), subtitle sound captions (*sobbing* holding `SOBG` ahead of
+*sock*), and foreign words in subtitled films (*tak* holding `TABG` ahead of *tack*). The last two
+are homophone-marker cases and are handled with the ladder marker's replacement, not frequency.

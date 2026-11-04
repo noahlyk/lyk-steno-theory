@@ -24,18 +24,41 @@ pub fn all_outlines(dict: &BTreeMap<String, String>) -> HashMap<String, Vec<Stri
     words
 }
 
+/// Every word a dictionary writes with a capital first letter and the rest lowercase (`Matt`),
+/// lowercased.
+fn capitalized(dict: &BTreeMap<String, String>) -> impl Iterator<Item = String> + '_ {
+    dict.values().filter_map(|word| {
+        let mut letters = word.chars();
+        let first = letters.next()?;
+        (first.is_ascii_uppercase() && letters.clone().all(|c| c.is_ascii_lowercase()) && letters.next().is_some())
+            .then(|| word.to_ascii_lowercase())
+    })
+}
+
 pub struct Gold {
     pub plover: HashMap<String, Vec<String>>,
     pub lapwing: HashMap<String, Vec<String>>,
+    /// Words either dictionary writes capitalized and neither writes lowercase: names
+    names: HashSet<String>,
 }
 
 impl Gold {
     pub fn load(root: &Path) -> Result<Self> {
         let dicts = root.join("dictionaries");
-        Ok(Self {
-            plover: all_outlines(&load_dictionary(&dicts.join("plover-main.json"))?),
-            lapwing: all_outlines(&load_dictionary(&dicts.join("lapwing-base.json"))?),
-        })
+        let (plover, lapwing) =
+            (load_dictionary(&dicts.join("plover-main.json"))?, load_dictionary(&dicts.join("lapwing-base.json"))?);
+        let mut gold = Self { plover: all_outlines(&plover), lapwing: all_outlines(&lapwing), names: HashSet::new() };
+        gold.names = capitalized(&plover)
+            .chain(capitalized(&lapwing))
+            .filter(|word| !gold.plover.contains_key(word) && !gold.lapwing.contains_key(word))
+            .collect();
+        Ok(gold)
+    }
+
+    /// Whether the word is a name: neither dictionary writes it lowercase, and one of them writes
+    /// it capitalized (`Matt`, never `matt`).
+    pub fn is_name(&self, word: &str) -> bool {
+        self.names.contains(word)
     }
 
     /// The words either dictionary writes.

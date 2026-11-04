@@ -56,4 +56,18 @@ and its reading with one bare `+*` marker stroke, which is the last resort a one
 rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with
 `+*` after it.
 
+## Names
+
+**A name never outranks the word it sounds like.** lyk writes a name as the ordinary outline of
+how it sounds, after the capitalize stroke (`KPA`): *Matt* is `KPA` then *mat*'s stroke. So a name
+and its sound-alike word compete for one stroke, and the word should have it, since the name gets
+its capital from `KPA` either way. The frequency list is drawn from film subtitles, though, and
+dialogue says names constantly: 435 of the 5,000 commonest subtitle words are names, and *matt*
+was said 7.6 times as often as *mat*, so *matt* had `PHAT` and *mat* was left with `PHAT/+*`.
+Each name's count is now cut to a tenth before anything is ranked, which puts *mat* on `PHAT`
+while a common name still outranks a rare word. A name, here, is a word Plover and Lapwing only
+ever write capitalized (*Matt*, *Mike*, *Mary*, *America*, *Sunday*), never lowercase. Some
+names lose their one-stroke outline this way (*mary* is `PHAER/+EU`, since *marry* has `PHAER`
+and *merry* has `PH*ER`), and are typed by their syllables like any other two-syllable word.
+
 Next: **[how short](brevity.md)** — how a long word's outline gets shorter.
