@@ -26,7 +26,7 @@ use crate::analysis::Setup;
 use crate::family::{Link, PrefixLink, PrefixStroke};
 use super::{Book, Entry, Origin, priority, typable};
 use crate::stroke::{Stroke, render_outline};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Rounds at most. Each round only builds on the previous round's new entries, so growth stops
 /// well before this; hitting it would mean something matches too permissively.
@@ -109,6 +109,13 @@ struct Stems<'a> {
     /// Each placed word's outlines to join through: its fastest, then its plain rules reading
     /// when that is a different, longer form, star-ladder markers dropped from both.
     outlines: HashMap<&'a str, Vec<Vec<Stroke>>>,
+    /// Each placed word's plain rules reading, whatever its length: what a join through an ending
+    /// past the family set builds on, since that ending may match by coincidence and a brief stem
+    /// would then type nothing like the word (`andy` is not `SKP` + "-y").
+    plain: HashMap<&'a str, Vec<Stroke>>,
+    /// `rules/families.toml`'s `not_family`: words whose ending is part of the word, never joined
+    /// as a stem plus that ending (`wither` is not `with` + "-er").
+    not_family: HashSet<String>,
     /// Placed words by their first pronunciation, exactly.
     by_sounds: HashMap<&'a [String], Vec<&'a str>>,
     /// The same, stress ignored: a word keeps primary stress alone (`my` `M AY1`) but often has
@@ -126,6 +133,8 @@ impl<'a> Stems<'a> {
             links,
             best: HashMap::new(),
             outlines: HashMap::new(),
+            plain: HashMap::new(),
+            not_family: crate::family::not_family(),
             by_sounds: HashMap::new(),
             by_sounds_loose: HashMap::new(),
         };
@@ -153,8 +162,11 @@ impl<'a> Stems<'a> {
         let mut own = vec![without_markers(&entries[at].outline)];
         if let Some(mut plain) = sounds.and_then(|s| setup.rules.outline(word, s)) {
             setup.rules.joined(&mut plain);
-            if plain.len() >= 2 && !own.contains(&plain) && typable(&plain) {
-                own.push(plain);
+            if typable(&plain) {
+                if plain.len() >= 2 && !own.contains(&plain) {
+                    own.push(plain.clone());
+                }
+                self.plain.insert(word, plain);
             }
         }
         own.retain(|o| !o.is_empty());
@@ -197,7 +209,10 @@ impl<'a> Stems<'a> {
         for outline in self.compounds(word, sounds) {
             push(outline, Some(sounds));
         }
-        for outline in self.ended(word).into_iter().chain(self.prefixed(word)) {
+        for (outline, family) in self.ended(word) {
+            push(outline, (!family).then_some(sounds.as_slice()));
+        }
+        for outline in self.prefixed(word) {
             push(outline, None);
         }
         if first_round {
@@ -221,7 +236,8 @@ impl<'a> Stems<'a> {
     fn suffixed(&self, word: &str, sounds: &[String]) -> Vec<Vec<Stroke>> {
         let mut out = Vec::new();
         let rules = &self.setup.rules;
-        if let Some((split, bare)) = rules.suffix_split(word, sounds)
+        if !self.not_family.contains(word)
+            && let Some((split, bare)) = rules.suffix_split(word, sounds)
             && let Some(stem) = self.by_sounds.get(&sounds[..split]).and_then(|s| spelled_stem(word, s, |w, s| w.starts_with(s)))
         {
             out.extend(self.of(stem, word).iter().map(|o| [o.as_slice(), &[bare]].concat()));
@@ -257,8 +273,11 @@ impl<'a> Stems<'a> {
     /// Two placed words back to back, at every split where the word's spelling is exactly the two
     /// spellings joined (`myself` is `my` + `self`; `mice` + `elf` sounds the same but is not it).
     fn compounds(&self, word: &str, sounds: &[String]) -> Vec<Vec<Stroke>> {
-        let loose = stress_stripped(sounds);
         let mut out = Vec::new();
+        if self.not_family.contains(word) {
+            return out;
+        }
+        let loose = stress_stripped(sounds);
         for split in 1..loose.len() {
             let (Some(firsts), Some(seconds)) = (self.by_sounds_loose.get(&loose[..split]), self.by_sounds_loose.get(&loose[split..]))
             else {
@@ -280,11 +299,19 @@ impl<'a> Stems<'a> {
     }
 
     /// Every family link's stem plus its ending's stroke (`call` + "-ed", `fool` + "-ish").
-    fn ended(&self, word: &str) -> Vec<Vec<Stroke>> {
+    /// Each with whether its ending is a family one (see `Link::is_family`).
+    fn ended(&self, word: &str) -> Vec<(Vec<Stroke>, bool)> {
         let links = self.links.endings.get(word).map_or(&[][..], Vec::as_slice);
         links
             .iter()
-            .flat_map(|link| self.of(&link.stem, word).iter().map(|o| [o.as_slice(), &link.strokes].concat()))
+            .flat_map(|link| {
+                let stems: &[Vec<Stroke>] = if link.is_family() {
+                    self.of(&link.stem, word)
+                } else {
+                    self.plain.get(link.stem.as_str()).filter(|_| link.stem != word).map_or(&[], std::slice::from_ref)
+                };
+                stems.iter().map(|o| ([o.as_slice(), &link.strokes].concat(), link.is_family()))
+            })
             .collect()
     }
 

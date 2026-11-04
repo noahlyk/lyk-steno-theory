@@ -152,6 +152,16 @@ checked the same way (`BACKUP_ENDINGS` in `src/family.rs`). A word gets a join f
 ending it matches, not just the first: *artistic* is *artist* + `-ic`, and any other split that
 checks out is kept beside it.
 
+These endings match by coincidence far more often than the family ones (*final* sounds and spells
+like *fine* + `-al`, *mayor* like *may* + `-or`, *andy* like *and* + `-y`), so a join through one
+is held to three rules. It builds on the stem's own plain rules reading, never its brief, so it
+always types the word's sounds: *andy* is `APBD/+AOE`, never *and*'s brief `SKP` + `+AOE`, and
+*information* is *inform*'s `EUPB/+TPORPL` + `+AEUGS`. It passes the fragment check like any other
+composition. And the stem is three letters or more, while a word in "-ly" never splits as a stem
+in "l" plus `-y` (*really* is *real* + `-ly`). A word listed in `rules/families.toml`'s
+`not_family` gets no stem-plus-ending join at all, by any direction, and no two-word join either
+(*wither* is not *with* + `-er`).
+
 **Prefixes struck before their stem.** A prefix can't fold onto a stem's first stroke when they
 share a key, but it can always be a stroke of its own, with the stem's whole outline joined after
 it: *unclear* `UPB/+KHRAOER`, *decode* `TKE/+KOED`, *rebuild* `RE/+PWHR`. The word is the prefix's

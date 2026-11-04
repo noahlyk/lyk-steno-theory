@@ -2116,3 +2116,13 @@ another unsettled word holds (3.3 s, components then solved on every core). The 
 scanned all 400,000 entries for every takeover (2.7 s, now an index: 0.24 s). The backup pass
 rebuilt its stem index every round (2.9 s, now built once and updated: 1.3 s). `cargo clippy
 --all-targets` is clean under pedantic and nursery, which `Cargo.toml` now sets.
+
+**Joins through the new endings build on the stem's plain reading (`src/generate/backup.rs`,
+`src/family.rs`).** An audit of the 3,215 words linked through the sixteen endings added past the
+family set found most were coincidences of spelling and sound (*final* = *fine* + `-al`, *mayor* =
+*may* + `-or`, *really* = *real* + `-y`). A coincidence is harmless when the join still types the
+word's own sounds, and harmful when the stem's outline is a brief: *andy* was `SKP/+AOE`, *and*'s
+brief plus `-y`. So a join through one of those endings uses the stem's plain rules reading and
+passes the fragment check, the stem is at least three letters, a word in "-ly" never links through
+`-y`, and `not_family` now blocks the sound-based and two-word directions too (*wither* `W/+-R`).
+Backups 205,390 to 204,551; joined ways in per word unchanged to two decimals.

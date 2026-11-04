@@ -31,7 +31,7 @@ fn families() -> Families {
 
 /// Words that pass the spelling and sound checks by coincidence (`better` is not `bet` + "-er"),
 /// from `rules/families.toml`.
-fn not_family() -> HashSet<String> {
+pub fn not_family() -> HashSet<String> {
     families().not_family.into_iter().collect()
 }
 
@@ -71,6 +71,16 @@ pub struct Link {
     pub suffix: &'static str,
     /// The standalone continuation stroke(s) that write the ending, join key included.
     pub strokes: Vec<Stroke>,
+}
+
+impl Link {
+    /// Whether the ending is one of [`FAMILY_ENDINGS`]: an inflection or a derivational ending
+    /// that reliably adds to a whole word. The rest of [`BACKUP_ENDINGS`] match by coincidence
+    /// often enough (`final` is not `fine` + "-al") that a join through one must pass the
+    /// fragment check like any other composition.
+    pub fn is_family(&self) -> bool {
+        FAMILY_ENDINGS.contains(&self.suffix)
+    }
 }
 
 fn suffix_strokes(endings: &[&'static str]) -> HashMap<&'static str, Vec<Vec<Stroke>>> {
@@ -208,6 +218,12 @@ pub fn all_links<'a>(
     for &word in vocabulary.iter().filter(|w| !not_family.contains(**w)) {
         for &ending in endings {
             let Some(options) = strokes.get(ending) else { continue };
+            // A word in "-ly" is its stem plus "-ly" (`really`), never a stem in "l" plus "-y"; and
+            // an ending past the family set needs a stem of three letters or more, since a shorter
+            // one is nearly always a coincidence (`aren` is not `are` + "-en").
+            if (ending == "y" && word.ends_with("ly")) || (!FAMILY_ENDINGS.contains(&ending) && word.len() < ending.len() + 3) {
+                continue;
+            }
             // Every spelling that passes, the most frequent kept: `robber` is `rob` + "-er", not
             // the name `robb`; `lived` is `live` + "-d", not `liv`.
             let best = stem_spellings(word, ending)

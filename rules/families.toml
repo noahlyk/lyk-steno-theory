@@ -26,7 +26,7 @@ not_family = [
   "gently", "truly", "awful", "liable", "viable", "capable", "probable", "grizzly", "holiness",
   # "-ed"/"-s"/"-ing" that is just part of the word
   "feed", "weed", "seed", "deed", "heed", "reed", "news", "lens", "abs", "cunning", "pudding",
-  "earring", "tying",
+  "earring", "tying", "wither", "withers",
   # a prefix that is just part of the word, not added to another word
   "remorse", "retreat", "recite", "reflex", "reflexes", "remark", "research", "reside", "resign",
   "resort", "respite", "resent", "reserve", "repose", "repeal", "relay", "rebate", "recede",

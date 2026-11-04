@@ -566,7 +566,10 @@ fn multi_syllable_words_get_suffix_prefix_and_syllable_joins() {
     // The wider backup endings and prefixes: a stem you know, then a suffix or after a prefix
     assert!(has("foolish", "TPAOL/+-RB"), "fool + -ish");
     assert!(has("artist", "ART/+EUFT"), "art + -ist");
-    assert!(has("information", "TPH-F/+AEUGS"), "inform + -ation");
+    // An ending past the family set builds on the stem's plain reading, not its brief (`TPH-F`)
+    assert!(has("information", "EUPB/+TPORPL/+AEUGS"), "inform + -ation");
+    assert!(has("andy", "APBD/+AOE") && !has("andy", "SKP/+AOE"), "and + -y, never the brief");
+    assert!(!has("wither", "W/+-R"), "wither is not with + -er");
     assert!(has("unclear", "UPB/+KHRAOER"), "un + clear");
     assert!(has("decode", "TKE/+KOED"), "de + code");
     // Syllable paths, beside however short the primary is
@@ -595,4 +598,3 @@ fn multi_syllable_words_get_suffix_prefix_and_syllable_joins() {
         .collect();
     assert!(missing.len() * 100 < joined.len() * 3, "{} multi-syllable words have no joined way in: {:?}", missing.len(), &missing[..missing.len().min(20)]);
 }
-
