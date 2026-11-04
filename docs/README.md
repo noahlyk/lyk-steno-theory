@@ -40,6 +40,7 @@ generated entries.
 7. **[Syllables & folding](syllables.md)** — how an unstressed syllable joins the stroke before
    it, or becomes a continuation stroke of its own; and every `+` way into a word: stem plus
    ending, prefix plus stem, two words, and the word syllable by syllable.
+   **[Every way to join a word](joins.md)** is the one-page sheet of all of it, for practice.
 8. **[Phrase-briefing](phrases.md)** — two already-settled whole words merged into one brand-new
    stroke when their keys don't collide, a real 2-strokes-to-1 compression for a common word pair.
 9. **[When two words sound the same](collisions.md)** — briefs, spelling, and the star ladder, all

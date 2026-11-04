@@ -20,6 +20,8 @@ That one convention is what the rest of this theory leans on, chapter after chap
   which causes its own new collisions (*forget*/*forgot*-style pairs) that a dedicated key avoids
   just by existing.
 
+Every way to build a word with it, on one page: **[every way to join a word](joins.md)**.
+
 Keep this in mind reading everything that follows: whenever a later chapter says a stroke "joins
 the one before it," "continues," or is a "continuation stroke," this is the key doing that work.
 
