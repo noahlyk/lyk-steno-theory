@@ -1999,3 +1999,25 @@ stroke, right for a one-stroke brief (every syllable is on it) and wrong for a m
 "fragment" and the repair `TEUBG/+TAEUT` (tick-tate), one key cheaper, won the word and its whole
 family; *seldom*'s first-stroke "l" did the same to `-PL`, giving `S-L/+TKOL`. The window is now
 `syllables − strokes + 1` syllables from each end. Docs: `docs/briefs.md`.
+
+**Tried and not taken: charging a brief, family shape or short form for taking a word's own plain
+reading.** A common word's non-phonetic candidate (Plover's misstroke `TARBG` for *dark*, repaired
+to `ARBG`; *like* `HRAOEU` plus S for *likes*) takes a rarer word's one derivable stroke whenever
+its count times a key outweighs the rare word's count times a star (*arc* `AR/+KR`, *hunk*
+`HUPB/+-BG`, *lice* `HRAOEUS/+*`; 1,337 primaries sit on a stroke Plover and Lapwing both give
+to a different word). A surcharge of one stroke's weight times the owner's count on such an edge
+in the solver fixed *arc* (`ARBG`, *dark* to `TARBG`) but not *hunk* or *lice* (a family shape's
+discount still wins), and cost 0.02 keys per word on words ranked 100 to 5,000, which are the ones
+that are right today. Not kept. The displaced word's way in is the star ladder, then the
+stem-plus-suffix reading (next entry), then `/+*`.
+
+**The stem-plus-suffix reading is in the primary pool (`enumerate_candidates`, step 2b).** A word
+whose one-stroke fold was taken had no rules-derived two-stroke form to fall to: the pool held the
+fold, its star rungs, whatever Plover and Lapwing list, and the `+*` marker rungs. *pearly* was
+Plover's `PER/+HREU` with the learnable `PERL/+EU` only a backup; *lice*, *mart*, *dock*, *sock*
+and 1,680 other primaries ended in a bare `/+*`. Now the trailing reduced syllable's own
+continuation stroke after the reading of the rest (`Rules::suffix_split`, up to two syllables
+peeled) is a candidate too, at its honest cost, so it sits above `/+*` and a two-stroke gold brief.
+After: 1,415 primaries end in `/+*` (one-syllable words have no suffix to unfold), 437 words
+unplaced (was 483), *pearly* `PERL/+EU`, *rabble* `RAB/+-L`, *thermal* `THERPL/+-L`; the top 1,000
+and 100-1,000 bands are byte-identical. Docs: `docs/syllables.md`, `docs/collisions.md`.

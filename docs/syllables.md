@@ -21,6 +21,17 @@ final `a` is a syllable of its own (*china* KHAOEU/+TPHA). Suffix clusters both 
 are rules: `-ment` -PLT, `-tion` -GS, `-ting` -GT, `-ding` -GD, and Plover's F for an S before
 another consonant (*castle* KAFL, *lesson* HREFPB).
 
+**The stem-plus-suffix reading is a candidate for the primary too.** A word whose last syllable
+is reduced has two rules readings: the folded one (*pearly* PERL, *rabble* RABL) and the same
+word with that syllable struck as its own standalone continuation stroke after the reading of what
+is left (*pearly* PERL/+EU, *rabble* RAB/+-L; a second syllable can be peeled the same way,
+*needlessly* TPHAOED/+-LS/+-L). The unfolded form has at least as many strokes as the folded one,
+so it never wins for a word that can have the fold; it is the predictable way down when every
+one-stroke form is taken (`PERL` is *pearl*, `P*ERL` is *peril*), ahead of a Plover two-stroke
+brief or a bare `+*` marker stroke — see **[collisions](collisions.md)** for that order. It is
+built from the word's own sounds alone, so it is in the pool from the start, unlike the backup
+entries below, which need the stem to be a placed word.
+
 **Backup entries: a shorter word's own outline, plus whatever is left over.** This is where [the
 design principle stated up front](README.md) — one single-stroke outline per word, but unlimited
 multi-stroke ones judged on predictability rather than brevity — turns into actual generated

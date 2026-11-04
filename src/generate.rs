@@ -404,6 +404,28 @@ pub fn enumerate_candidates(
         push(&mut out, outline.clone(), Origin::Rules);
     }
 
+    // 2b. The stem-plus-suffix reading: the word's trailing reduced syllable struck as its own
+    // standalone continuation stroke after the rules reading of what is left (`pearly` `PERL/+EU`
+    // when `PERL` is taken; `needlessly` `TPHAOEDLS/+-L`, then `TPHAOED/+-LS/+-L`), one syllable
+    // peeled per step. Always at least as many strokes as the plain reading, so it never beats a
+    // one-stroke form for the word itself: it is the predictable way down when every one-stroke
+    // candidate is gone, ahead of a bare `/+*` marker or a gold dictionary's own two-stroke brief.
+    // See `docs/syllables.md`.
+    let mut stem_sounds: Vec<String> = sounds.clone();
+    let mut suffix_strokes: Vec<Stroke> = Vec::new();
+    for _ in 0..2 {
+        let Some((split, suffix)) = setup.rules.suffix_split(word, &stem_sounds) else { break };
+        if split == 0 {
+            break;
+        }
+        suffix_strokes.insert(0, suffix);
+        stem_sounds.truncate(split);
+        if let Some(mut outline) = setup.rules.outline(word, &stem_sounds) {
+            outline.extend(suffix_strokes.iter().copied());
+            push(&mut out, outline, Origin::Rules);
+        }
+    }
+
     // 3. Homophone resolution folded into legality: see this function's own doc for why this is
     // always offered alongside the plain reading rather than instead of it.
     let variant = setup.rules.variant(word, sounds);

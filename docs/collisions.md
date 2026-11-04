@@ -47,4 +47,13 @@ falls through to its own next-cheapest option automatically, as part of the same
 retry loop invoked afterward. A short form never takes an outline that a one-syllable word's own
 rules produce, the same eligibility gate a brevity candidate has always had.
 
+**What a word falls to, in order.** Cost decides, so the order is strokes first, then keys: its
+own one-stroke reading; a star on it; a gold brief of its own that is still one stroke; then,
+among two-stroke forms, the cheapest of its stem-plus-suffix reading (*pearly* PERL/+EU once
+`PERL` is *pearl* and `P*ERL` is *peril*, see [syllables](syllables.md)), a two-stroke gold brief,
+and its reading with one bare `+*` marker stroke, which is the last resort a one-syllable word has
+(*lice* HRAOEUS/+*, because `HRAOEUS` is *likes* and `HRAO*EUS` is *allies*). The marker is a
+rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with
+`+*` after it.
+
 Next: **[how short](brevity.md)** — how a long word's outline gets shorter.
