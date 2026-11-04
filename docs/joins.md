@@ -95,10 +95,8 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
   and so do *com-pro-mise* `KOPL/+PRO/+PHAOEUZ`, *comp-ro-mise* `KOPL/+PR/+PHAOEUZ` and
   *compro-mise* `KOPL/+PROPL/+AOEUZ`. Any run of consonants that can start a syllable may go to
   the next stroke, or none.
-- **The join key is optional on these.** Every join is also there without its `+`s:
-  `KOPL/PRO/PHAOEUZ` types *compromise*. Use the `+` when you want to be sure each stroke is
-  read as part of the word and not as a word of its own; leave it off when you are just spelling
-  the word out and the word is not made of ordinary words struck one after the other.
+- **Hold the join key on every stroke after the first**, always: `KOPL/+PRO/+PHAOEUZ`. Without it
+  each stroke is a word of its own (*column*, *prah*, *meyez*), which is the whole point of the key.
 - **A weak last syllable that fits on the stroke before it can fold onto it**: *sensible*
   `SEPB/+SU/+-BL` or `SEPB/+SUBL`.
 

@@ -205,16 +205,6 @@ backup, the same fragment check and the same rule when two words want one text (
 keeps it). With them, 98–99% of the words of two syllables or more in every frequency band have a
 joined way in, and 91–97% have at least two (six to eight on average); before, 63–83% had one.
 
-**The same joins without the join key.** Every join with two strokes or more also exists as plain
-strokes, in `02-lyk-joinless.json` (`src/joinless.rs`): *compromise* `KOPL/PRO/PHAOEUZ` as well as
-`KOPL/+PRO/+PHAOEUZ`. Struck as three separate strokes those are three words (*column*, *prah*,
-*meyez*); the multi-stroke entry is what makes the engine read them as one. The file is derived
-from the backups when the dictionary is written, so the two can never disagree, and it never
-takes an outline anything else has. A spelling made only of strokes that are each a common word
-(top 3,000, alone on a stroke) is left out, so two ordinary words struck one after the other stay
-two words (*compress* `KUPL/PRES` would be *come* *press*). The join key stays the way to be sure:
-with it a stroke can never be read as a word by itself.
-
 **What a stem joins through.** Every direction above builds on a placed word's outline. Each
 stem offers two: its fastest outline, and its own plain rules reading when that is a different
 form of two strokes or more (*profitable* joins as `PROFBLT` and as `PROFT/+-BL`, so *profitably*

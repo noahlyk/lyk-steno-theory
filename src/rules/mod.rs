@@ -649,9 +649,10 @@ impl Rules {
 
     /// Every other place the consonants between two vowels can be broken, one boundary at a time:
     /// the boundary's number (counting vowels from the first) and how many of its consonants start
-    /// the next syllable. Any run that can start a syllable is a valid break, and none at all
-    /// (`comp-ro`, `com-pro`, `compr-o`): the join key means no break has to be the only one.
-    fn boundary_breaks(&self, sounds: &[String]) -> Vec<(usize, usize)> {
+    /// the next syllable. Any run is a valid break, and none at all (`co-mpro`, `com-pro`, `comp-ro`,
+    /// `compr-o`): the join key means no break has to be the only one. Whether a break gives strokes
+    /// that can be struck is decided later, when they are built.
+    fn boundary_breaks(sounds: &[String]) -> Vec<(usize, usize)> {
         let vowels: Vec<usize> = (0..sounds.len()).filter(|&i| sounds[i].ends_with(|c: char| c.is_ascii_digit())).collect();
         let mut breaks = Vec::new();
         for (n, pair) in vowels.windows(2).enumerate() {
@@ -659,12 +660,8 @@ impl Rules {
             if sounds[pair[1]].starts_with("IY.ly") {
                 continue;
             }
-            for take in 0..=cluster.len() {
-                let run: Vec<&str> = cluster[cluster.len() - take..].iter().map(|s| plain(s)).collect();
-                if take == 0 || self.onsets.contains(&run.join(" ")) {
-                    breaks.push((n, take));
-                }
-            }
+            // Any run at all: whether the strokes can be built decides, not English
+            breaks.extend((0..=cluster.len()).map(|take| (n, take)));
         }
         breaks
     }
@@ -939,7 +936,7 @@ impl Rules {
                 let rest = &labelled[skip..];
                 let splits = [(true, None), (false, None)]
                     .into_iter()
-                    .chain(self.boundary_breaks(rest).into_iter().map(|b| (true, Some(b))));
+                    .chain(Self::boundary_breaks(rest).into_iter().map(|b| (true, Some(b))));
                 for (keep_lax, shift) in splits {
                     let Some(syllables) = self.syllables_split(rest, keep_lax, shift) else { continue };
                     for mut strokes in self.syllable_writings(&syllables) {

@@ -27,7 +27,7 @@ type Against = (String, HashMap<String, String>);
 /// [`crate::output`]), and say what it costs to type next to Plover and Lapwing.
 pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against: Option<&Against>) -> Result<()> {
     let generated = generate(setup, briefs, common)?;
-    let files = crate::output::write_dictionary(&generated, setup, out)?;
+    let files = crate::output::write_dictionary(&generated, out)?;
     print_summary(setup, &generated, &files, out);
     let (total, bands, worse) = tally(setup, &generated, against);
     print_costs(&total, &bands, against.map(|(name, _)| name.as_str()));
