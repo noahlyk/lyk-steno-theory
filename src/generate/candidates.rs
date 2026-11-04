@@ -7,7 +7,7 @@ use super::{Briefs, CONTRACTION_TAILS, KEY_WEIGHT, Origin, keys, split_untypable
 use crate::analysis::Setup;
 use crate::ergonomics;
 use crate::stroke::{Stroke, parse_outline, render_outline};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// One legal way to write a word's *primary* outline, considered on equal footing against every
 /// other legal way regardless of where it came from - a gold brief, lyk's own plain rules reading,
@@ -137,8 +137,7 @@ pub fn enumerate_candidates(
     setup: &Setup,
     briefs: &Briefs,
     word: &str,
-    simple: &HashSet<&str>,
-    wanted: &HashSet<&str>,
+    texts: &RulesTexts,
 ) -> Vec<Candidate> {
     let Some(prons) = setup.pron.get(word) else { return Vec::new() };
     let Some(sounds) = prons.first() else { return Vec::new() };
@@ -167,7 +166,7 @@ pub fn enumerate_candidates(
     }
     // 4. Brevity steps, gated by rank.
     if let Some(first) = base.as_ref().filter(|b| b.len() > 1) {
-        pool.shortened(prons, first.len(), simple, wanted);
+        pool.shortened(prons, first.len(), texts);
     }
     // 5. The star ladder on the plain reading and on the spelling variant.
     for outline in [base.as_ref(), variant.as_ref()].into_iter().flatten() {
@@ -256,9 +255,9 @@ impl Pool<'_> {
     }
 
     /// Every brevity step the word's rank allows, over every pronunciation: each form shorter than
-    /// the plain reading (`full` strokes) and its first two star rungs, unless a one-syllable word
-    /// (`simple`) or any word (`wanted`) has that text by its plain rules.
-    fn shortened(&mut self, prons: &[Vec<String>], full: usize, simple: &HashSet<&str>, wanted: &HashSet<&str>) {
+    /// the plain reading (`full` strokes) and its first two star rungs, unless some word has that
+    /// text by its plain rules, and at [`STAR_SURCHARGE`] more if it is a one-syllable stroke's star.
+    fn shortened(&mut self, prons: &[Vec<String>], full: usize, texts: &RulesTexts) {
         let setup = self.setup;
         let own = setup.rank.get(self.word).copied().unwrap_or(usize::MAX);
         for short in setup.rules.brevity().iter().filter(|s| own < s.rank) {
@@ -268,9 +267,15 @@ impl Pool<'_> {
                     let starred =
                         ladder(&outline, setup.rules.join_key()).into_iter().filter(|(n, _)| *n <= 2).map(|(_, o)| o);
                     for candidate in std::iter::once(outline.clone()).chain(starred) {
-                        let text = render_outline(&candidate);
-                        if !simple.contains(text.as_str()) && !wanted.contains(text.as_str()) && seen.insert(candidate.clone()) {
-                            self.push(candidate, Origin::Short(short.step));
+                        if texts.wanted.contains(&render_outline(&candidate)) || !seen.insert(candidate.clone()) {
+                            continue;
+                        }
+                        let from = self.out.len();
+                        self.push(candidate, Origin::Short(short.step));
+                        for pushed in &mut self.out[from..] {
+                            if texts.stars.contains(&render_outline(&pushed.outline)) {
+                                pushed.cost += STAR_SURCHARGE;
+                            }
                         }
                     }
                 }
@@ -342,8 +347,8 @@ pub(super) fn ladder(outline: &[Stroke], join: bool) -> Vec<(u8, Vec<Stroke>)> {
 
 /// Every word `generate` is willing to consider at all, most common first: a real pronunciation on
 /// record, inside the requested frequency window, plain lowercase (apostrophes aside), with "a" the
-/// only single-letter word and no bare contraction tail (`CONTRACTION_TAILS`). Factored out so a test can build the exact same `simple`/`wanted` sets `generate` does
-/// (see [`group_outline_sets`]) without re-deriving this filter by hand.
+/// only single-letter word and no bare contraction tail (`CONTRACTION_TAILS`). Factored out so a test can build the exact same
+/// [`RulesTexts`] `generate` does without re-deriving this filter by hand.
 pub(super) fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)> {
     let mut words: Vec<(&String, usize)> = setup
         .rank
@@ -361,37 +366,36 @@ pub(super) fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)
     words
 }
 
-/// The texts a one-syllable word's own plain rules would produce (`simple`) and the texts *any*
-/// word's plain rules would produce (`wanted`) - the same two sets `generate` has always built
-/// before settling a single word, now feeding [`enumerate_candidates`]'s own brevity-ladder gate
-/// instead of a dedicated pre-pass: a brevity candidate is never offered an outline that one of
-/// these texts already names, the same way a learner could already work either one out by the
-/// plain rules without the brief being guessable at all.
-pub(super) fn group_outline_sets(setup: &Setup, words: &[(&String, usize)]) -> (HashSet<String>, HashSet<String>) {
-    let mut groups: HashMap<String, Vec<&str>> = HashMap::new();
+/// What the plain rules already give some word, which a short form must leave alone or pay for:
+/// built once over every word `generate` considers, before any word is settled.
+pub struct RulesTexts {
+    /// Every text some word's plain rules give: a short form never takes one, so every outline a
+    /// learner could work out by the rules stays that word's
+    wanted: HashSet<String>,
+    /// The starred stroke of every one-syllable rules stroke: kept for the word that sounds like
+    /// it (*doc* `TKOBG`, *dock* `TKO*BG`), so a short form pays [`STAR_SURCHARGE`] to take one
+    stars: HashSet<String>,
+}
+
+/// What a short form pays on top of its own cost to take a one-syllable word's starred stroke:
+/// half a stroke. A short form that would otherwise cost a whole extra stroke and is much commoner
+/// than the sound-alike still takes it (*attack* keeps `TA*BG` over *tack*); one with another
+/// one-stroke form a key or two dearer does not (*donkey* leaves `TKO*BG` to *dock*).
+pub const STAR_SURCHARGE: u32 = STROKE_WEIGHT / 2;
+
+/// [`RulesTexts`] for `words` (see [`ranked_words`]).
+pub(super) fn rules_texts(setup: &Setup, words: &[(&String, usize)]) -> RulesTexts {
+    let mut texts = RulesTexts { wanted: HashSet::new(), stars: HashSet::new() };
     for (word, _) in words {
-        if let Some(outline) = setup.pron[word.as_str()]
-            .iter()
-            .find_map(|sounds| setup.rules.outline(word, sounds))
-        {
-            groups.entry(render_outline(&outline)).or_default().push(word.as_str());
+        let prons = &setup.pron[word.as_str()];
+        let Some(outline) = prons.iter().find_map(|sounds| setup.rules.outline(word, sounds)) else { continue };
+        let one_syllable = prons[0].iter().filter(|s| s.ends_with(|c: char| c.is_ascii_digit())).count() == 1;
+        if let ([stroke], true) = (&outline[..], one_syllable) {
+            texts.stars.insert(render_outline(&[Stroke(stroke.0 | Stroke::STAR)]));
         }
+        texts.wanted.insert(render_outline(&outline));
     }
-    let mut simple: HashSet<String> = HashSet::new();
-    for (text, members) in &groups {
-        let one_syllable = |w: &&str| {
-            setup.pron[*w][0]
-                .iter()
-                .filter(|s| s.ends_with(|c: char| c.is_ascii_digit()))
-                .count()
-                == 1
-        };
-        if members.iter().any(one_syllable) {
-            simple.insert(text.clone());
-        }
-    }
-    let wanted: HashSet<String> = groups.keys().cloned().collect();
-    (simple, wanted)
+    texts
 }
 
 /// `enumerate` applied to every word, in order, split across the machine's cores: candidate

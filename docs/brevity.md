@@ -41,7 +41,10 @@ syllable gives a one-stroke form its left hand (*information* TPH-FGS, *conditio
 *opinion* P*PB), and the glide of *-ion* is not written. A short form never takes an outline that
 any word has by the rules, so the forms a learner can work out stay theirs; when a short form is
 taken, a star on it is tried before giving up, since a star costs a key and a longer form costs a
-stroke. Every word keeps every short form still free beside its own rule outline once its primary
+stroke. A one-syllable word's starred stroke is kept for the word that sounds like it: a short
+form pays half a stroke extra to take one, so it does only when its next form is a whole stroke
+longer and it is said far more often (*attack* keeps `TA*BG` over *tack*, *donkey* leaves
+`TKO*BG` to *dock*; see [collisions](collisions.md)). Every word keeps every short form still free beside its own rule outline once its primary
 is settled, so the dictionary holds both ends of the spectrum and the cheapest one counts toward
 `cheapest` regardless — this now runs as its own pass strictly after every word's primary outline is
 final, which closes a real ordering hazard the old, interleaved version had: a common word's bonus

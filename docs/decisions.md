@@ -2149,3 +2149,18 @@ with *off* taking `OF`), and it demoted the conversational words people do type:
 was narrower: names (fixed above), subtitle sound captions (*sobbing* holding `SOBG` ahead of
 *sock*), and foreign words in subtitled films (*tak* holding `TABG` ahead of *tack*). The last two
 are homophone-marker cases and are handled with the ladder marker's replacement, not frequency.
+
+**A short form pays half a stroke to take a one-syllable word's star (`STAR_SURCHARGE`,
+`RulesTexts` in `src/generate/candidates.rs`).** 266 words had a bare `+*` marker because a longer
+word's short form held their starred stroke (*donkey* `TKO*BG`, so *dock* was `TKOBG/+*`; *sonic*
+`SO*BG` and *sock*). A star on a one-syllable stroke now means its sound-alike first. A hard ban
+was tried and measured: keys per word 3.274 to 3.279, and *alone*, *alive*, *attack*, *hurry*
+and *buddy* lost their one-stroke forms. Reserving the star only where two words share the plain
+stroke still cost *alone* and *attack* theirs. The surcharge (12,500, half of `STROKE_WEIGHT`)
+lets a short form keep the star only when it would otherwise cost a whole stroke and is much
+commoner: keys per word 3.277, strokes unchanged, starred sound-alikes 2,056 to 2,186, bare
+markers 1,325 to 1,234, and ten of the commonest 1,000 words moved (*care* `KAER` to `KAEUR`,
+*treat* `TRAET` to `TRAOET`, *single* `S*EULG` to `SEUPBLG`, *window* `W*EUD` to `WOEUPBD`).
+Replacing the `+*` marker itself was weighed and left alone: the 1,234 words still on it are
+almost all names and interjections, with 129 real words, one of them in the commonest 5,000
+(*suite*). The `simple` set the brevity gate also checked was a subset of `wanted` and is gone.

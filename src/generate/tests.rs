@@ -1,4 +1,5 @@
 use super::*;
+use super::candidates::RulesTexts;
 use super::solver::solve_contested;
 use crate::stroke::parse_outline;
 
@@ -13,21 +14,17 @@ fn entry(word: &str, outline: &str, origin: Origin) -> Entry {
 
 use std::sync::LazyLock;
 
-/// The same `simple`/`wanted` sets `generate` builds from the real, full dictionary, shared
-/// across every test below instead of recomputed per word (the groups pass alone touches every
-/// word in the dictionary).
-static GROUPS: LazyLock<(HashSet<String>, HashSet<String>)> = LazyLock::new(|| {
+/// The same [`RulesTexts`] `generate` builds from the real, full dictionary, shared across every
+/// test below instead of recomputed per word (it touches every word in the dictionary).
+static TEXTS: LazyLock<RulesTexts> = LazyLock::new(|| {
     let setup = crate::dictionary_fixture::setup();
     let words = ranked_words(setup, 100_000);
-    group_outline_sets(setup, &words)
+    rules_texts(setup, &words)
 });
 
 fn candidates_for(word: &str, briefs: &Briefs) -> Vec<Candidate> {
     let setup = crate::dictionary_fixture::setup();
-    let (simple, wanted) = &*GROUPS;
-    let simple: HashSet<&str> = simple.iter().map(String::as_str).collect();
-    let wanted: HashSet<&str> = wanted.iter().map(String::as_str).collect();
-    enumerate_candidates(setup, briefs, word, &simple, &wanted)
+    enumerate_candidates(setup, briefs, word, &TEXTS)
 }
 
 /// The real, built-in briefs, minus the named `[word]` overrides - simulates the dictionary's

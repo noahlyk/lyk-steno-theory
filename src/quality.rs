@@ -399,3 +399,14 @@ fn no_generated_stroke_needs_an_impossible_pinky_chord() {
         .collect();
     assert!(bad.is_empty(), "untypable outlines: {bad:?}");
 }
+
+/// A star on a one-syllable stroke goes to the word that sounds like it before a longer word's
+/// short form (`STAR_SURCHARGE`), and a name yields its stroke to the word it sounds like
+/// (`frequency::NAME_SHARE`). Each pair here was the other way round before.
+#[test]
+fn a_sound_alike_word_holds_the_star_and_the_plain_stroke_before_a_short_form_or_a_name() {
+    let lyk = dictionary_fixture::cheapest();
+    for (word, want) in [("dock", "TKO*BG"), ("sock", "SO*BG"), ("mat", "PHAT")] {
+        assert_eq!(lyk.get(word).map(|o| render_outline(o)).as_deref(), Some(want), "{word}");
+    }
+}

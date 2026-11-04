@@ -118,7 +118,7 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
+| 1 | 89% | 77% | 82% | 5.51 | 5.65 | 5.84 |
 | 2 | 59% | 44% | 51% | 5.86 | 4.90 | 5.25 |
 | 3 | 37% | 25% | 31% | 5.60 | 4.78 | 5.14 |
 | 4+ | 23% | 17% | 18% | 5.73 | 4.94 | 5.18 |

@@ -19,7 +19,7 @@ use crate::rules::Step;
 use crate::ergonomics;
 use crate::stroke::{Stroke, parse_outline, render_outline};
 use anyhow::{Context, Result};
-use candidates::{enumerate_in_parallel, group_outline_sets, ranked_words};
+use candidates::{enumerate_in_parallel, ranked_words, rules_texts};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -275,18 +275,16 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     book.fix("I", parse_outline("EU").context("\"EU\" for the pronoun \"I\"")?, Origin::Brief, "the pronoun \"I\"")?;
 
     let words = ranked_words(setup, common);
-    // The texts one-syllable words' and any word's plain rules give: a brevity candidate never
-    // takes an outline a learner could work out as some other word's (see `enumerate_candidates`).
-    let (simple, wanted) = group_outline_sets(setup, &words);
-    let simple: HashSet<&str> = simple.iter().map(String::as_str).collect();
-    let wanted: HashSet<&str> = wanted.iter().map(String::as_str).collect();
+    // The texts any word's plain rules give, which a brevity candidate never takes, and the
+    // one-syllable strokes' stars it pays to take (see `RulesTexts`).
+    let texts = rules_texts(setup, &words);
 
     // A literal `[word]` outline forces exactly one candidate and is never reopened: a human
     // decision, fixed before any other word competes. A `"plover"`/`"lapwing"` entry only narrows
     // which gold dictionary the word's briefs come from, and still competes.
     let is_literal_override = |word: &str| briefs.word.get(word).is_some_and(|s| s != "plover" && s != "lapwing");
     for (word, _) in words.iter().filter(|(w, _)| is_literal_override(w)) {
-        let candidate = enumerate_candidates(setup, briefs, word, &simple, &wanted)
+        let candidate = enumerate_candidates(setup, briefs, word, &texts)
             .into_iter()
             .next()
             .with_context(|| format!("{word:?}'s brief in rules/briefs.toml does not parse as an outline"))?;
@@ -303,7 +301,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     let competing: Vec<(&str, usize)> =
         words.iter().map(|(w, r)| (w.as_str(), *r)).filter(|(w, _)| !is_literal_override(w)).collect();
     let names: Vec<&str> = competing.iter().map(|(w, _)| *w).collect();
-    let candidates = enumerate_in_parallel(&names, |word| enumerate_candidates(setup, briefs, word, &simple, &wanted));
+    let candidates = enumerate_in_parallel(&names, |word| enumerate_candidates(setup, briefs, word, &texts));
     let pools = settle::Pools::new(competing, candidates);
 
     let vocabulary = || words.iter().map(|(w, _)| w.as_str());

@@ -44,8 +44,18 @@ once a word has already lost.** A word's own four star-ladder steps (a star on t
 star on the last, then one and two extra star-marker strokes) are always present in its candidate
 pool alongside everything else, so a word that loses a contested outline to a more valuable word
 falls through to its own next-cheapest option automatically, as part of the same solve — not a
-retry loop invoked afterward. A short form never takes an outline that a one-syllable word's own
-rules produce, the same eligibility gate a brevity candidate has always had.
+retry loop invoked afterward. A short form never takes an outline that any word's own rules
+produce, the same eligibility gate a brevity candidate has always had.
+
+**A star on a one-syllable stroke means the word that sounds like it.** *doc* is `TKOBG`, so
+*dock* is `TKO*BG`; *sock* is `SO*BG` (`SOBG` is *sobbing*, *sob* plus `-G`). A longer word's
+short form used to take these stars as freely as any other free stroke: *donkey*'s skeleton had
+`TKO*BG` and *dock* was `TKOBG/+*`. Now a short form pays half a stroke on top of its cost to
+take a one-syllable stroke's star. One with another one-stroke form a key or two dearer leaves
+the star to the sound-alike; one that would otherwise be two strokes and is said far more often
+keeps it (*attack* `TA*BG`, so *tack* is `TABG/+*`). A hard ban
+was measured first: it cost *alone*, *alive*, *attack* and *hurry* their one-stroke forms and
+raised keys per word from 3.274 to 3.279, against 3.277 for the surcharge.
 
 **What a word falls to, in order.** Cost decides, so the order is strokes first, then keys: its
 own one-stroke reading; a star on it; a gold brief of its own that is still one stroke; then,
@@ -54,7 +64,9 @@ among two-stroke forms, the cheapest of its stem-plus-suffix reading (*pearly* P
 and its reading with one bare `+*` marker stroke, which is the last resort a one-syllable word has
 (*lice* HRAOEUS/+*, because `HRAOEUS` is *likes* and `HRAO*EUS` is *allies*). The marker is a
 rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with
-`+*` after it.
+`+*` after it. About 1,230 words end that way, almost all names and interjections (*argh*,
+*hah*, *naw*); of the 5,000 commonest words only *suite* does (`SWAOET` is *sweet*,
+`SWAO*ET` is *sweetie*).
 
 ## Names
 
