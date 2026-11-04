@@ -4,7 +4,6 @@
 //! They are judged by how many of the words Plover and Lapwing write they reproduce.
 
 mod analysis;
-mod backup;
 #[cfg(test)]
 mod corpus_extract;
 mod data;

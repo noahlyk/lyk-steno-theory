@@ -24,7 +24,7 @@
 
 use crate::analysis::Setup;
 use crate::family::{Link, PrefixLink, PrefixStroke};
-use crate::generate::{Entry, Origin, best_entry_per_word, typable};
+use super::{Book, Entry, Origin, best_entry_per_word, typable};
 use crate::stroke::{Stroke, render_outline};
 use std::collections::HashMap;
 
@@ -45,11 +45,11 @@ type Join = (String, Vec<Stroke>, String);
 
 /// Adds every backup join it can to `entries`, claiming each text in `taken`. Returns how many
 /// compositions were skipped because their text was already held or went to a commoner word.
-pub fn place(setup: &Setup, entries: &mut Vec<Entry>, taken: &mut HashMap<String, String>, links: &JoinLinks) -> usize {
+pub fn place(setup: &Setup, book: &mut Book, links: &JoinLinks) -> usize {
     let mut skipped = 0;
     for round in 0..MAX_ROUNDS {
         let joins = {
-            let stems = Stems::index(setup, entries, links);
+            let stems = Stems::index(setup, &book.entries, links);
             let mut words: Vec<&str> = stems.outlines.keys().copied().collect();
             words.sort_unstable();
             collect_in_parallel(&words, |word| stems.joins(word, round == 0))
@@ -57,12 +57,11 @@ pub fn place(setup: &Setup, entries: &mut Vec<Entry>, taken: &mut HashMap<String
         let winners = arbitrate(&joins, |word| setup.count.get(word).copied().unwrap_or(0));
         let mut added = 0;
         for ((word, outline, text), won) in joins.into_iter().zip(winners) {
-            if !won || taken.contains_key(&text) {
+            if !won || book.taken.contains_key(&text) {
                 skipped += 1;
                 continue;
             }
-            taken.insert(text, word.clone());
-            entries.push(Entry { word, outline, origin: Origin::Backup, lost_to: None });
+            book.place(&word, outline, Origin::Backup, text);
             added += 1;
         }
         if added == 0 {
