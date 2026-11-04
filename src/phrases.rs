@@ -40,18 +40,24 @@ pub struct Placed {
     pub displaced: usize,
 }
 
-/// Whether an entry made in this way may be taken by a phrase. A suffix, a family member's shape
-/// (it is defined by its stem), a ladder-settled clash, a backup (a stem plus an ending the
-/// learner already knows: the one multi-stroke way in that is predictable, and `takeover` would
-/// price losing it at nothing, since the word's primary is cheaper) and another phrase never are.
-const fn can_be_taken(origin: Origin) -> bool {
-    matches!(
-        origin,
-        Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing | Origin::Short(_) | Origin::Alternate
-    )
+/// Whether an entry may be taken by a phrase. A suffix, a family member's shape (it is defined by
+/// its stem), a ladder-settled clash, another phrase, and a multi-stroke backup (a stem plus an
+/// ending the learner already knows, joined: the one multi-stroke way in that is predictable, and
+/// `takeover` would price losing it at nothing, since the word's primary is cheaper) never are. A
+/// one-stroke backup (a leading sound folded onto a shorter word, `sit` as `s` + `it` `ST`) is a
+/// bonus like a short form, and a common pair may take it (`it is` is `ST`).
+fn can_be_taken(entry: &Entry) -> bool {
+    match entry.origin {
+        Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing | Origin::Short(_) | Origin::Alternate => true,
+        Origin::Backup => entry.outline.len() == 1,
+        _ => false,
+    }
 }
 
-/// Whether the entry is the word's own primary outline.
+/// Whether the entry is a primary outline worth protecting: a brief, the plain reading, a
+/// spelling or voicing variant. A short-form primary (`antonio` `TPH-T`, a one-off the word was
+/// given because it was free) is not: one of the commonest pairs may still take it, and the word
+/// is rehomed to its next short form (`TPHO*EPBT`), see `unclaimed_candidate`.
 const fn is_primary(origin: Origin) -> bool {
     matches!(origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing)
 }
@@ -105,13 +111,13 @@ impl Pass<'_> {
             .map(|(_, e)| e)
     }
 
-    /// The best outline `word` has not got that nobody holds: one of its own candidates, or its
-    /// plain-rules reading.
+    /// The best outline `word` has not got that nobody holds: any of its own candidates (a short
+    /// form or a star rung is as good a primary as any other), or its plain-rules reading.
     fn unclaimed_candidate(&self, word: &str, but: &str) -> Option<(Vec<Stroke>, Origin)> {
         self.pools
             .get(word)
             .into_iter()
-            .flat_map(|pool| pool.iter().filter(|c| is_primary(c.origin)).map(|c| (c.outline.clone(), c.origin)))
+            .flat_map(|pool| pool.iter().map(|c| (c.outline.clone(), c.origin)))
             .chain((self.natural)(word).filter(|outline| typable(outline)).map(|outline| (outline, Origin::Rules)))
             .filter(|(outline, _)| {
                 let text = render_outline(outline);
@@ -125,7 +131,7 @@ impl Pass<'_> {
     fn takeover(&self, text: &str, count: u64) -> Option<Takeover> {
         let index = *self.owner.get(text)?;
         let victim = self.entries.get(index)?;
-        if self.removed.contains(&index) || !can_be_taken(victim.origin) {
+        if self.removed.contains(&index) || !can_be_taken(victim) {
             return None;
         }
         let word = victim.word.as_str();

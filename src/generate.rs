@@ -200,6 +200,14 @@ const EXTRA_KEY_MARGIN: u32 = 3;
 /// Settling passes at most. Family roots are locked after the first (moving only to something
 /// cheaper), so the offers settle within a pass or two after that.
 const MAX_FAMILY_PASSES: usize = 4;
+/// The commonest words are locked to their settled outlines before the final settling pass, the
+/// one in which every word past `SKELETON_LATE_RANK` gets its one-stroke skeleton. See `generate`
+/// and `docs/brevity.md`.
+const LOCK_TOP: usize = 5_000;
+/// A word ranked past this gets its `skeleton` short form (`rules/plover.toml`) only in the final
+/// settling pass, once the `LOCK_TOP` commonest words are locked: the rank the skeleton step was
+/// gated at outright before every word got one, so the earlier passes settle exactly as they did.
+const SKELETON_LATE_RANK: usize = 8_000;
 const KEY_WEIGHT: u32 = 1_000;
 
 /// What it costs a word, in `edge_cost` units, to end up with no primary outline at all: it is
@@ -1290,6 +1298,15 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // Roots only ever get cheaper, so this settles.
     let mut roots: HashMap<String, (String, u32)> = HashMap::new();
     let mut root_texts: HashSet<String> = HashSet::new();
+    // Once the family passes have settled, the `LOCK_TOP` commonest words are locked to their
+    // settled outlines the same way family roots are (nobody else may take one; the word moves only
+    // to something strictly cheaper) and one last pass runs with every rarer word's short forms
+    // (`Origin::Short`) in, which until then stayed out of the pool. So a long rare word's
+    // one-stroke skeleton competes with every other rare word's, but never costs a common word its
+    // outline (see `docs/brevity.md`).
+    let mut locked: HashMap<String, (String, u32)> = HashMap::new();
+    let mut final_pass = false;
+    let rank_of: HashMap<&str, usize> = words.iter().map(|(w, r)| (w.as_str(), *r)).collect();
     let mut contested_count = 0;
     for pass in 0..MAX_FAMILY_PASSES {
         if pass > 0 {
@@ -1305,11 +1322,21 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 })
                 .collect();
             let next = family_offers(&links, &prefix_links, &entries);
-            if next == offers && next_roots == roots {
+            let families_settled = next == offers && next_roots == roots;
+            if final_pass {
                 break;
+            }
+            if families_settled || pass + 1 == MAX_FAMILY_PASSES {
+                final_pass = true;
+                locked = settled
+                    .iter()
+                    .filter(|(w, _)| rank_of.get(*w).is_some_and(|&r| r < LOCK_TOP))
+                    .map(|(w, o)| ((*w).to_owned(), (render_outline(o), candidate_cost(o))))
+                    .collect();
             }
             roots = next_roots;
             root_texts = roots.values().map(|(text, _)| text.clone()).collect();
+            root_texts.extend(locked.values().map(|(text, _)| text.clone()));
             offers = next;
             taken.clone_from(&base_taken);
             entries.truncate(base_entries);
@@ -1322,13 +1349,20 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
                 origin: Origin::Family,
                 cost: candidate_cost(outline).saturating_sub(FAMILY_DISCOUNT),
             });
-            let pinned = roots.get(word.as_str());
+            // A locked common word keeps exactly its settled outline in the final pass; a locked
+            // root keeps its first-pass outline but may still move to something strictly cheaper.
+            // Neither may take another locked word's text, and nobody else may take theirs.
+            let exact = locked.contains_key(word.as_str());
+            let pinned = locked.get(word.as_str()).or_else(|| roots.get(word.as_str()));
+            let late = !final_pass && rank_of.get(word.as_str()).is_none_or(|&r| r >= SKELETON_LATE_RANK);
             let mut by_text: HashMap<String, Candidate> = HashMap::new();
             for candidate in candidates.iter().cloned().chain(family) {
-                // A locked root keeps exactly its first-pass outline, and nobody else may take it.
+                if late && candidate.origin == Origin::Short(Step::Skeleton) {
+                    continue;
+                }
                 let text = render_outline(&candidate.outline);
                 match pinned {
-                    Some((p, cost)) if *p != text && candidate.cost >= *cost => continue,
+                    Some((p, cost)) if *p != text && (exact || candidate.cost >= *cost || root_texts.contains(&text)) => continue,
                     None if root_texts.contains(&text) => continue,
                     _ => {}
                 }
@@ -1545,6 +1579,36 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
             }
         }
 
+    }
+
+    // Unstranding: a word whose entry costs more than one of its own candidates that nobody ended
+    // up holding moves to the cheapest such candidate. The final settling pass reserves every
+    // locked word's and root's text for its owner even when the owner then moves to something
+    // cheaper (a rare root taking its skeleton), which left its old text free but unreachable for
+    // the word that wanted it (*spectre* on `SPEBGT/+*R` with `SPEBGT/+-R` free). Moving to an
+    // unclaimed text can never cost another word anything, so this is exact; in frequency order,
+    // so a text freed by one move is available to the next.
+    {
+        let index: HashMap<String, usize> = entries
+            .iter()
+            .enumerate()
+            .skip(base_entries)
+            .map(|(i, entry)| (entry.word.clone(), i))
+            .collect();
+        for (word, candidates) in pool_words.iter().zip(&pools) {
+            let Some(&i) = index.get(word.as_str()) else { continue };
+            let current = candidate_cost(&entries[i].outline);
+            let better = candidates
+                .iter()
+                .filter(|c| c.cost < current && !taken.contains_key(&render_outline(&c.outline)))
+                .min_by_key(|c| (c.cost, render_outline(&c.outline)));
+            if let Some(better) = better {
+                taken.remove(&render_outline(&entries[i].outline));
+                taken.insert(render_outline(&better.outline), (*word).clone());
+                entries[i].outline = better.outline.clone();
+                entries[i].origin = better.origin;
+            }
+        }
     }
 
     // Other pronunciations are only added where they clash with nothing - unchanged from before
@@ -2107,14 +2171,19 @@ pub fn build(
     };
     let mut total = [0f64; 9];
     // The same, by how common the word is: where the keys go
-    const BANDS: [(usize, &str); 5] = [
+    const BANDS: [(usize, &str); 8] = [
         (100, "top 100"),
         (1_000, "100-1k"),
         (5_000, "1k-5k"),
-        (20_000, "5k-20k"),
-        (usize::MAX, "20k+"),
+        (10_000, "5k-10k"),
+        (20_000, "10k-20k"),
+        (50_000, "20k-50k"),
+        (100_000, "50k-100k"),
+        (usize::MAX, "100k+"),
     ];
-    let mut bands = [[0f64; 5]; BANDS.len()];
+    // Per band: weight, weighted keys (ours, Plover, Lapwing, other), then unweighted: words
+    // counted once, and how many of them are one stroke here, in Plover, and in Lapwing.
+    let mut bands = [[0f64; 9]; BANDS.len()];
     let mut worse: Vec<(f64, &str, u32, u32)> = Vec::new();
     for (word, &(strokes, key_count)) in &ours {
         let (Some(plover), Some(lapwing)) = (
@@ -2145,6 +2214,10 @@ pub fn build(
         bands[band][2] += weight * f64::from(plover.1);
         bands[band][3] += weight * f64::from(lapwing.1);
         bands[band][4] += weight * f64::from(other.1);
+        bands[band][5] += 1.0;
+        bands[band][6] += f64::from(u8::from(strokes == 1));
+        bands[band][7] += f64::from(u8::from(plover.0 == 1));
+        bands[band][8] += f64::from(u8::from(lapwing.0 == 1));
         if key_count > plover.1 {
             worse.push((
                 weight * f64::from(key_count - plover.1),
@@ -2173,8 +2246,9 @@ pub fn build(
             key_count / total[0]
         );
     }
-    println!("\nkeys per word by how common the word is, and the share of all words said");
-    println!("            share     this   plover  lapwing  {other_name}");
+    println!("\nkeys per word by how common the word is, and the share of all words said;");
+    println!("then, counting each word once, how many of the band's words are one stroke");
+    println!("            share     this   plover  lapwing  {other_name:<8}   words  1-stroke  plover  lapwing");
     for ((_, name), band) in BANDS.iter().zip(&bands) {
         if band[0] == 0.0 {
             continue;
@@ -2182,14 +2256,18 @@ pub fn build(
         let other = if against.is_some() {
             format!("  {:>7.3}", band[4] / band[0])
         } else {
-            String::new()
+            String::from("         ")
         };
         println!(
-            "  {name:<9} {:>5.1}%  {:>7.3}  {:>7.3}  {:>7.3}{other}",
+            "  {name:<9} {:>5.1}%  {:>7.3}  {:>7.3}  {:>7.3}{other}  {:>6}  {:>6.1}%  {:>5.1}%  {:>5.1}%",
             100.0 * band[0] / total[0],
             band[1] / band[0],
             band[2] / band[0],
-            band[3] / band[0]
+            band[3] / band[0],
+            band[5],
+            100.0 * band[6] / band[5],
+            100.0 * band[7] / band[5],
+            100.0 * band[8] / band[5],
         );
     }
     println!("\nthe commonest words that lost their outline to a word that sounds the same");
@@ -2915,28 +2993,29 @@ mod tests {
         let single = primary_single_strokes(&generated.entries);
         let any_len = primary_outlines(&generated.entries);
 
-        // Direction (B): "a" (single-stroke primary "A") + "currency" (host, a real two-stroke
-        // primary "KURPB/+SEU") - a real bigram in `setup.bigrams`. The filler "A" merges into
-        // "currency"'s own first stroke "KURPB" (disjoint: "A" shares no key with "KURPB"), and
-        // "currency"'s own second stroke "+SEU" - join bit included - carries through unchanged.
-        // (This used "working" until it became the one-stroke `WOG`.)
-        assert!(setup.bigrams.contains_key(&("a".to_owned(), "currency".to_owned())));
-        assert_eq!(single.get("a").copied(), Some(parse_outline("A").unwrap()[0]));
-        assert_eq!(any_len.get("currency").copied(), Some(&parse_outline("KURPB/+SEU").unwrap()[..]));
-        let a_currency = phrase_candidate_outline(&single, &any_len, "a", "currency");
+        // Direction (B): "the" (single-stroke primary "-T") + "accuracy" (host, a real two-stroke
+        // primary "ABG/+SEU") - a real bigram in `setup.bigrams`. The filler "-T" merges into
+        // "accuracy"'s own first stroke "ABG" (disjoint: "-T" shares no key with "ABG"), and
+        // "accuracy"'s own second stroke "+SEU" - join bit included - carries through unchanged.
+        // (This used "a currency" until "currency" became the one-stroke `KURPBS`, and "a
+        // working" before that, until "working" became `WOG`.)
+        assert!(setup.bigrams.contains_key(&("the".to_owned(), "accuracy".to_owned())));
+        assert_eq!(single.get("the").copied(), Some(parse_outline("-T").unwrap()[0]));
+        assert_eq!(any_len.get("accuracy").copied(), Some(&parse_outline("ABG/+SEU").unwrap()[..]));
+        let the_accuracy = phrase_candidate_outline(&single, &any_len, "the", "accuracy");
         assert_eq!(
-            a_currency,
-            Some(parse_outline("KAURPB/+SEU").unwrap()),
-            "\"a\"'s whole primary should merge into \"currency\"'s own first stroke only"
+            the_accuracy,
+            Some(parse_outline("ABGT/+SEU").unwrap()),
+            "\"the\"'s whole primary should merge into \"accuracy\"'s own first stroke only"
         );
         assert_eq!(
             generated
                 .entries
                 .iter()
-                .find(|e| e.origin == Origin::Phrase && e.word == "a currency")
+                .find(|e| e.origin == Origin::Phrase && e.word == "the accuracy")
                 .map(|e| e.outline.clone()),
-            a_currency,
-            "\"a currency\" should have actually committed with this exact two-stroke outline"
+            the_accuracy,
+            "\"the accuracy\" should have actually committed with this exact two-stroke outline"
         );
 
         // Direction (C), the symmetric case: "accompanied" (host, a real two-stroke primary

@@ -2040,3 +2040,23 @@ could be taken for nothing at all, since the word's primary is cheaper than it. 
 eligible pairs, and `Origin::Backup` is not takeable. Phrases 6,936 to 6,148, of which 127 (was
 930) took a word's stroke; starred-by-a-phrase 134 (15 in the top 5,000); keys per word down in
 every band (100-1,000: 4.394 to 4.380; 1,000-5,000: 5.495 to 5.466). Docs: `docs/phrases.md`.
+
+**Every word gets its one-stroke skeleton; the 5,000 commonest words are locked first
+(`rules/plover.toml`, `generate`'s `LOCK_TOP`/`SKELETON_LATE_RANK`).** The one-stroke brevity
+steps stopped at rank 8,000, a cliff nobody could see: 81% of words ranked 5,000–10,000 were one
+stroke, 58% at 10,000–20,000, 41% at 20,000–50,000. Lifting every step for every word (measured
+first with `--rules`) cut keys per word past 20,000 from 8.5 to 7.1 but made 197 top-5,000 words
+worse, put arbitrary vowel-less skeletons on rare words, and took the build from 13 s to over ten
+minutes (36,000 contested words). What landed: only the vowel-keeping `skeleton` (the derivable
+one) at every rank; `shell`, `ends` and the vowel-less forms still stop at 8,000. A word past
+8,000 holds its skeleton out of the family passes; then the 5,000 commonest words are locked
+exactly (nobody takes theirs, they take nobody's) and one final pass settles everything with the
+skeletons in. Build 14 s, 17,000 contested. Top 1,000 unchanged; 1,000–5,000: 8 worse, 55
+better; 10,000–20,000 one stroke 58% to 73%; 20,000–50,000 41% to 58%; keys per word 5k–20k
+6.76 to 6.55, 20k+ 8.52 to 8.04. Ergonomic average past 10,000 rose 269 to 308, ceiling moved to
+320. Three holes found and closed on the way: a pinned word could take another pinned word's
+text (*ended* took *ed*'s `*ED`, leaving *ed* unplaced); a root that moved left its reserved old
+text unreachable (19 stranded words, fixed by an unstranding step that moves a word to an
+unclaimed cheaper candidate of its own); and the phrase pass did not count a short-form primary
+as a primary, so protection never applied to it, and rehomed a word only to a brief or reading
+rather than its next short form. Docs: `docs/brevity.md`.

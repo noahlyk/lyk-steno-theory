@@ -639,9 +639,10 @@ rank = 100000       # as Plover does: `student` STAOUPBTD, `goodness` TKPWAOPBSD
 # One-stroke forms for long words. `order = "any"` lets the folded consonants land out of steno
 # order (Plover's -RT, -PBGD); without it only forms in reading order are offered.
 [[brevity]]
-step = "skeleton"   # one stroke: the first consonants, then every consonant after the first vowel
-rank = 8000
-order = "any"
+step = "skeleton"   # one stroke: the first consonants, the stressed vowel, then every consonant
+rank = 100000       # after the first vowel. Every word gets this one: it is the one short form a
+order = "any"       # learner can derive (keep every consonant, drop the other vowels). Past rank
+                    # 5,000 it only competes after the commoner words are locked (`generate`).
 
 [[brevity]]
 step = "skeleton"
