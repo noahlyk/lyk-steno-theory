@@ -24,7 +24,11 @@ is settled, so the dictionary holds both ends of the spectrum and the cheapest o
 `cheapest` regardless — this now runs as its own pass strictly after every word's primary outline is
 final, which closes a real ordering hazard the old, interleaved version had: a common word's bonus
 short form could squat on text a later, rarer word needed as its own *primary*, simply because the
-common word was processed first. A word pinned to a literal `[word]` override (see
+common word was processed first. It also runs after the alternate-pronunciation and
+**[backup](syllables.md)** passes, so a stem-plus-ending join (*looks* HRAOBG/+-S) or another
+pronunciation's reading is never blocked by a one-off short form that wanted the same text: when
+the predictable form and the memorised one collide, the predictable one holds it (801 more backups
+and 210 more alternates than the other order). A word pinned to a literal `[word]` override (see
 **[briefs](briefs.md)**) is the one exception — its single entry is a human decision, not reopened
 by a bonus short form any more than by anything else.
 

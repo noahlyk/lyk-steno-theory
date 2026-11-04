@@ -1547,25 +1547,6 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 
     }
 
-    // Bonus short-form entries: after every primary is final, every `Origin::Short` candidate
-    // still free is added too - the dictionary holds every short form a learner might reach for
-    // alongside a word's own primary, and `cheapest` always picks whichever counts. Running this
-    // strictly after every primary is settled (not interleaved, as the old commonest-first loop
-    // did) closes a real ordering hazard for free: a common word's bonus short form can no longer
-    // squat on text a later, rarer word needed as its own primary, since every primary is already
-    // final by the time this runs. A literal `[word]` override keeps its one exclusive entry, the
-    // same as before.
-    for (word, shorts) in short_forms {
-        for (outline, origin) in shorts {
-            let text = render_outline(&outline);
-            if taken.contains_key(&text) {
-                continue;
-            }
-            taken.insert(text, word.clone());
-            entries.push(Entry { word: word.clone(), outline, origin, lost_to: None });
-        }
-    }
-
     // Other pronunciations are only added where they clash with nothing - unchanged from before
     // the solver existed: this only ever adds a bonus `Origin::Alternate` entry on top of a word's
     // already-settled primary (the first pronunciation, handled above), never competes for it.
@@ -1816,6 +1797,28 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 
         if added_this_round == 0 {
             break;
+        }
+    }
+
+    // Bonus short-form entries: after every primary is final and every backup is composed, every
+    // `Origin::Short` candidate still free is added too - the dictionary holds every short form a
+    // learner might reach for alongside a word's own primary, and `cheapest` always picks
+    // whichever counts. Running this strictly after every primary is settled (not interleaved, as
+    // the old commonest-first loop did) closes a real ordering hazard for free: a common word's
+    // bonus short form can no longer squat on text a later, rarer word needed as its own primary,
+    // since every primary is already final by the time this runs. Running it after the backup pass
+    // (it used to run before) is the same principle one level down: a backup is a stem you know
+    // plus an ending you know, a bonus short form is a one-off, and when the two want the same
+    // text the predictable one should hold it (see `docs/brevity.md`). A literal `[word]` override
+    // keeps its one exclusive entry, the same as before.
+    for (word, shorts) in short_forms {
+        for (outline, origin) in shorts {
+            let text = render_outline(&outline);
+            if taken.contains_key(&text) {
+                continue;
+            }
+            taken.insert(text, word.clone());
+            entries.push(Entry { word: word.clone(), outline, origin, lost_to: None });
         }
     }
 

@@ -2021,3 +2021,11 @@ peeled) is a candidate too, at its honest cost, so it sits above `/+*` and a two
 After: 1,415 primaries end in `/+*` (one-syllable words have no suffix to unfold), 437 words
 unplaced (was 483), *pearly* `PERL/+EU`, *rabble* `RAB/+-L`, *thermal* `THERPL/+-L`; the top 1,000
 and 100-1,000 bands are byte-identical. Docs: `docs/syllables.md`, `docs/collisions.md`.
+
+**Bonus short forms are placed after backups and alternates, not before (`generate`).** The bonus
+pass (every `Origin::Short` form still free) ran right after primaries, so a one-off short form
+could hold the text a stem-plus-ending backup or another pronunciation's reading wanted. A backup
+is two things a learner already knows; a bonus short form is a memorised extra. Reordered:
+primaries, alternates, backups, then short forms, then phrases and extras. 801 more backup entries
+(39,491 to 40,292), 210 more alternates, keys per word unchanged in every band. Docs:
+`docs/brevity.md`.
