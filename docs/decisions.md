@@ -2029,3 +2029,14 @@ is two things a learner already knows; a bonus short form is a memorised extra. 
 primaries, alternates, backups, then short forms, then phrases and extras. 801 more backup entries
 (39,491 to 40,292), 210 more alternates, keys per word unchanged in every band. Docs:
 `docs/brevity.md`.
+
+**Phrases take a stroke only from words past rank 5,000, only for the 1,000 commonest pairs, and
+never a backup (`src/phrases.rs`).** The takeover rule priced a pair's saved stroke against the
+word's loss in keys, so a pair nobody will learn ("vicinity of", "with text", "blend of") took a
+real word's plain stroke for the price of one star: 373 starred primaries had a phrase on their
+plain stroke, 50 of them in the top 5,000 (*twenty* `TW*ET`, *vincent* `SR*EUFPBT`). A backup
+could be taken for nothing at all, since the word's primary is cheaper than it. Now
+`PROTECTED_WORDS` is 5,000, `TAKEOVER_TOP_N` limits takeovers to the 1,000 most frequent
+eligible pairs, and `Origin::Backup` is not takeable. Phrases 6,936 to 6,148, of which 127 (was
+930) took a word's stroke; starred-by-a-phrase 134 (15 in the top 5,000); keys per word down in
+every band (100-1,000: 4.394 to 4.380; 1,000-5,000: 5.495 to 5.466). Docs: `docs/phrases.md`.

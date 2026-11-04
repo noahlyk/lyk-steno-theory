@@ -262,12 +262,20 @@ What a phrase can and cannot take:
 
 - **Never taken:** a reserved stroke, a suffix, a hand-written `[word]` outline in `briefs.toml`,
   another phrase, a ladder-settled or family-shaped entry (a family member is defined by its stem),
-  and the **primary of a stem** (the word other words are built from: `object` keeps `OBT`, so
-  `on the` does not get it).
-- **The 1,500 most frequent words keep their primary** (`PROTECTED_WORDS`): `on`, `want`, `after`
-  stay where they are. A phrase can still take a *backup*, a *short form* or an *alternate* from
-  them, since the word keeps its own outline: `sit` loses `ST` and keeps `SEUT`, so `it is` is
-  `ST`.
+  a **backup** (a stem plus an ending you already know, the one multi-stroke way in that is
+  predictable; the rule above would price losing one at nothing, since the word's primary is
+  cheaper), and the **primary of a stem** (the word other words are built from: `object` keeps
+  `OBT`, so `on the` does not get it).
+- **The 5,000 most frequent words keep their primary** (`PROTECTED_WORDS`; was 1,500): `on`,
+  `want`, `after` stay where they are. A phrase can still take a *short form* or an *alternate*
+  from them, since the word keeps its own outline: `sit` loses its short `ST` and keeps `SEUT`, so
+  `it is` is `ST`.
+- **Only the 1,000 most frequent eligible pairs may take a held stroke at all**
+  (`TAKEOVER_TOP_N`); a rarer pair is committed only into a free stroke. With no such limit, 373
+  words carried a star because a pair nobody will learn had taken their plain stroke: `twenty`
+  was `TW*ET` for "with text", `vincent` lost its stroke to "vicinity of", `blessed` to "blend
+  of". The stroke such a pair saves is not real, since the pair is never learned; the star it
+  leaves on the word is.
 - **A word that loses its only way of being written gets another.** Its next-best outline is
   another one it has, or its best own candidate (including its plain-rules reading, any length)
   that nobody holds. `antonio` moves to `TPHOEPBT`. A pair is skipped if the word would end up with
@@ -285,6 +293,13 @@ save 1.6% more strokes but make 13,500 phrases and 1,300 displaced words; not wo
 Phrases committed: 7,292 (was 3,308), of which 854 took their stroke from a rarer word. Every
 phrase is still two strokes you already know OR'd together, so the learnable rule is unchanged:
 `in the` is the stroke for `in` plus the stroke for `the`.
+
+With the three limits above (5,000 protected words, takeovers only by the 1,000 commonest pairs,
+backups never taken): 6,148 phrases, of which 127 took a word's stroke; 134 words carry a star
+because of a phrase (was 373), 15 of them in the top 5,000. The same quote benchmark: **1,092 and
+5,756** strokes with phrases (2% and 1.5% more than the unlimited version's 1,070 and 5,673; still
+12% and 9% fewer than word-by-word), and word-by-word itself got better, since 800 fewer words
+moved. The pairs given up were the ones nobody would have learned.
 
 The first sizing was done on two independent corpora with `tools/phrase_sim.py`
 (`python3 tools/phrase_sim.py [protect_rank] [show]`, run against `out/lyk/`).

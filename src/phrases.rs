@@ -19,9 +19,15 @@ use std::collections::{HashMap, HashSet};
 pub const PHRASE_TOP_N: usize = 20_000;
 
 /// The most frequent words (by `Setup::count`) never lose their *primary* outline to a phrase. A
-/// phrase may still take a backup, a short form or an alternate from them, since the word keeps
-/// its own outline.
-pub const PROTECTED_WORDS: usize = 1_500;
+/// phrase may still take a short form or an alternate from them, since the word keeps its own
+/// outline. Was 1,500: with that, 373 words had been pushed onto a star form by a phrase, 42 of
+/// them ranked 1,500 to 5,000 (*twenty* `TW*ET` for "with text", *vincent* for "vicinity of").
+pub const PROTECTED_WORDS: usize = 5_000;
+
+/// Only this many of the most frequent eligible pairs may take a stroke a word holds; a rarer pair
+/// is committed only into a free stroke. A pair past this point is one nobody will learn, so the
+/// stroke it would save is not real, while the star it puts on a word is.
+pub const TAKEOVER_TOP_N: usize = 1_000;
 
 /// What the pass did.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -35,11 +41,13 @@ pub struct Placed {
 }
 
 /// Whether an entry made in this way may be taken by a phrase. A suffix, a family member's shape
-/// (it is defined by its stem), a ladder-settled clash and another phrase never are.
+/// (it is defined by its stem), a ladder-settled clash, a backup (a stem plus an ending the
+/// learner already knows: the one multi-stroke way in that is predictable, and `takeover` would
+/// price losing it at nothing, since the word's primary is cheaper) and another phrase never are.
 const fn can_be_taken(origin: Origin) -> bool {
     matches!(
         origin,
-        Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing | Origin::Short(_) | Origin::Backup | Origin::Alternate
+        Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing | Origin::Short(_) | Origin::Alternate
     )
 }
 
@@ -221,7 +229,8 @@ pub fn place(
         }
         let text = render_outline(&outline);
         if pass.taken.contains_key(&text) {
-            let Some(takeover) = pass.takeover(&text, count) else {
+            // `candidates` is in count order, so `i` is the pair's rank among eligible pairs.
+            let Some(takeover) = (i < TAKEOVER_TOP_N).then(|| pass.takeover(&text, count)).flatten() else {
                 placed.skipped += 1;
                 continue;
             };
