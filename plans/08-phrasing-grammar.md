@@ -1,6 +1,7 @@
 # Plan: the phrasing grammar (starter + auxiliary + verb in one stroke)
 
-Design, measured, with a prototype to type before it is built into the generator. Extends
+Design, measured, with a prototype to type before it is built into the generator; practice sheet:
+https://claude.ai/artifact/9j4iofTdr7nHt5FLG3XULe (build any stroke on a keyboard, drill the commonest). Extends
 [`06-phrase-briefs.md`](06-phrase-briefs.md) step 2. Status: **prototype for typing**
 (`tools/phrasing_prototype.py`); the generator does not make these yet.
 
