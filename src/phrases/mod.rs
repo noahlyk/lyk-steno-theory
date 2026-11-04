@@ -175,7 +175,7 @@ impl Pass<'_> {
         let word = victim.word.clone();
         if let Some((outline, origin)) = takeover.rehome {
             self.taken.insert(render_outline(&outline), word.clone());
-            self.rehomed.push(Entry { word, outline, origin, lost_to: None });
+            self.rehomed.push(Entry { word, outline, origin });
         } else if lost_primary {
             // The word falls back to an outline it already has. When that is one of its own
             // syllable-path backups (the plain reading it would have been rehomed to, held already
@@ -197,7 +197,7 @@ impl Pass<'_> {
         self.used.insert(entry_word(w2).to_owned());
         self.taken.insert(text.clone(), phrase.clone());
         self.owner.insert(text, usize::MAX);
-        self.entries.push(Entry { word: phrase, outline, origin: Origin::Phrase, lost_to: None });
+        self.entries.push(Entry { word: phrase, outline, origin: Origin::Phrase });
     }
 }
 

@@ -8,7 +8,6 @@ fn entry(word: &str, outline: &str, origin: Origin) -> Entry {
         word: word.to_owned(),
         outline: parse_outline(outline).unwrap(),
         origin,
-        lost_to: None,
     }
 }
 

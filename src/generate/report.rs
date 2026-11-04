@@ -3,7 +3,7 @@
 use super::{Briefs, Entry, Generated, Origin, Setup, cheapest, generate, keys, shortest};
 use crate::num::ToF64;
 use crate::output::Written;
-use crate::stroke::{parse_outline, render_outline};
+use crate::stroke::{Stroke, parse_outline, render_outline};
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
@@ -177,17 +177,42 @@ fn print_costs(total: &Total, bands: &[Band], other: Option<&str>) {
     }
 }
 
-/// The commonest words that lost their outline to a word that sounds the same.
+/// The outline a star-ladder step was taken from: the step's star taken back off its stroke
+/// (steps 1 and 2) or its marker strokes dropped (steps 3 and 4).
+fn unladdered(outline: &[Stroke], step: u8) -> Vec<Stroke> {
+    let mut wanted = outline.to_vec();
+    let unstar = |s: &mut Stroke| *s = Stroke(s.0 & !Stroke::STAR);
+    match step {
+        1 => wanted.first_mut().into_iter().for_each(unstar),
+        2 => wanted.last_mut().into_iter().for_each(unstar),
+        _ => {
+            while wanted.last().is_some_and(|s| s.is_marker()) {
+                wanted.pop();
+            }
+        }
+    }
+    wanted
+}
+
+/// The commonest words on a star-ladder step because another word (a sound-alike, or a brief)
+/// holds the outline the step was taken from, and who holds it.
 fn print_lost(setup: &Setup, generated: &Generated) {
-    println!("\nthe commonest words that lost their outline to a word that sounds the same");
-    let mut lost: Vec<&Entry> =
-        generated.entries.iter().filter(|e| e.lost_to.is_some() && matches!(e.origin, Origin::Ladder(_))).collect();
-    lost.sort_by_key(|e| setup.rank.get(&e.word).copied().unwrap_or(usize::MAX));
-    for entry in lost.iter().take(30) {
-        let holder = entry.lost_to.as_deref().unwrap_or("");
-        let theirs =
-            generated.entries.iter().find(|e| e.word == holder).map_or_else(String::new, |e| render_outline(&e.outline));
-        println!("  {:<12} {:<18} (the outline of {holder}: {theirs})", entry.word, render_outline(&entry.outline));
+    println!("\nthe commonest words on a star because another word holds their outline");
+    let holders: HashMap<String, &str> =
+        generated.entries.iter().map(|e| (render_outline(&e.outline), e.word.as_str())).collect();
+    let mut lost: Vec<(&Entry, String, &str)> = generated
+        .entries
+        .iter()
+        .filter_map(|e| {
+            let Origin::Ladder(step) = e.origin else { return None };
+            let wanted = render_outline(&unladdered(&e.outline, step));
+            let holder = holders.get(&wanted).copied().filter(|h| *h != e.word)?;
+            Some((e, wanted, holder))
+        })
+        .collect();
+    lost.sort_by_key(|(e, _, _)| setup.rank.get(&e.word).copied().unwrap_or(usize::MAX));
+    for (entry, wanted, holder) in lost.iter().take(30) {
+        println!("  {:<12} {:<18} ({wanted} is {holder})", entry.word, render_outline(&entry.outline));
     }
 }
 

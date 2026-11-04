@@ -133,8 +133,6 @@ pub struct Entry {
     pub word: String,
     pub outline: Vec<Stroke>,
     pub origin: Origin,
-    /// The word that has the outline this one wanted
-    pub lost_to: Option<String>,
 }
 
 pub struct Generated {
@@ -224,7 +222,7 @@ impl Book {
     /// Adds `outline` for `word`, `text` being its rendered text, which the caller knows is free.
     pub fn place(&mut self, word: &str, outline: Vec<Stroke>, origin: Origin, text: String) {
         self.taken.insert(text, word.to_owned());
-        self.entries.push(Entry { word: word.to_owned(), outline, origin, lost_to: None });
+        self.entries.push(Entry { word: word.to_owned(), outline, origin });
     }
 
     /// Adds `outline` for `word` ahead of every word: an error naming the holder if its text is not

@@ -342,7 +342,6 @@ fn cheapest_does_not_depend_on_entry_order() {
             word: e.word.clone(),
             outline: e.outline.clone(),
             origin: e.origin,
-            lost_to: e.lost_to.clone(),
         })
         .collect();
     let backward = generate::cheapest(&reversed);
