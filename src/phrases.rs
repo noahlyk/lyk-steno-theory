@@ -79,6 +79,8 @@ struct Pass<'a> {
     taken: &'a mut HashMap<String, String>,
     /// The position in `entries` of each outline's entry, by rendered text
     owner: HashMap<String, usize>,
+    /// The positions in `entries` of each word's entries
+    by_word: HashMap<String, Vec<usize>>,
     /// Positions of entries a phrase has taken
     removed: HashSet<usize>,
     /// Entries given to words that lost one
@@ -100,12 +102,15 @@ struct Pass<'a> {
 impl Pass<'_> {
     /// The other outlines `word` has, apart from the entry at `index` and any alternate
     /// pronunciation (which never stands in for the word).
-    fn others(&self, word: &str, index: usize) -> impl Iterator<Item = &Entry> {
-        self.entries
-            .iter()
-            .enumerate()
-            .filter(move |(j, e)| *j != index && !self.removed.contains(j) && e.word == word && e.origin != Origin::Alternate)
-            .map(|(_, e)| e)
+    fn others(&self, word: &str, index: usize) -> impl Iterator<Item = (usize, &Entry)> {
+        self.by_word
+            .get(word)
+            .into_iter()
+            .flatten()
+            .copied()
+            .filter(move |&j| j != index && !self.removed.contains(&j))
+            .map(|j| (j, &self.entries[j]))
+            .filter(|(_, e)| e.origin != Origin::Alternate)
     }
 
     /// The best outline `word` has not got that nobody holds: any of its own candidates (a short
@@ -142,13 +147,13 @@ impl Pass<'_> {
         // The word falls back to another outline it already has, or to a better one from its own
         // candidates that nobody holds. "Better" is strokes, then keys: the order the
         // stranded-word check uses.
-        let other = self.others(word, index).map(|e| (e.outline.len(), keys(&e.outline))).min();
+        let other = self.others(word, index).map(|(_, e)| (e.outline.len(), keys(&e.outline))).min();
         let rehome = self
             .unclaimed_candidate(word, text)
             .filter(|(outline, _)| other.is_none_or(|o| (outline.len(), keys(outline)) < o));
         let next_best = self
             .others(word, index)
-            .map(|e| candidate_cost(&e.outline))
+            .map(|(_, e)| candidate_cost(&e.outline))
             .chain(rehome.as_ref().map(|(outline, _)| candidate_cost(outline)))
             .min()?;
         let gain = share(count, self.total_pairs) * f64::from(STROKE_WEIGHT);
@@ -172,10 +177,7 @@ impl Pass<'_> {
             // syllable-path backups (the plain reading it would have been rehomed to, held already
             // as a way in), that entry becomes its primary: the word keeps a primary outline.
             let best = self
-                .entries
-                .iter()
-                .enumerate()
-                .filter(|(j, e)| *j != takeover.index && !self.removed.contains(j) && e.word == word && e.origin != Origin::Alternate)
+                .others(&word, takeover.index)
                 .min_by_key(|(_, e)| (e.outline.len(), keys(&e.outline), render_outline(&e.outline)))
                 .map(|(j, e)| (j, e.origin));
             if let Some((j, Origin::Backup)) = best {
@@ -221,10 +223,15 @@ pub fn place(
         ranked.into_iter().take(PROTECTED_WORDS).map(|(w, _)| w.as_str()).collect()
     };
     let owner = entries.iter().enumerate().map(|(i, e)| (render_outline(&e.outline), i)).collect();
+    let mut by_word: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, e) in entries.iter().enumerate() {
+        by_word.entry(e.word.clone()).or_default().push(i);
+    }
     let mut pass = Pass {
         entries,
         taken,
         owner,
+        by_word,
         removed: HashSet::new(),
         rehomed: Vec::new(),
         used: HashSet::new(),

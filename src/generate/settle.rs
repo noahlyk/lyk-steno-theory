@@ -291,20 +291,30 @@ fn place(setup: &Setup, open: Vec<Open>, book: &mut Book) -> usize {
         component.sort_unstable_by_key(|&w| open[w].as_ref().map(|o| o.word));
     }
     components.sort_unstable_by_key(|c| open[c[0]].as_ref().map(|o| o.word));
-    for component in components {
-        let mut no_match = Vec::with_capacity(component.len());
-        let contested: Vec<(&str, Vec<(Candidate, u64)>)> = component
-            .iter()
-            .map(|&w| {
-                let o = open[w].take().expect("each word is in one component");
-                let weight = setup.count.get(o.word).copied().unwrap_or(0);
-                let candidates: Vec<Candidate> = o.options.into_iter().map(|(_, c)| c).collect();
-                no_match.push(no_match_cost(o.word, weight, &candidates));
-                (o.word, candidates.into_iter().map(|c| { let edge = weight * u64::from(c.cost); (c, edge) }).collect())
-            })
-            .collect();
-        let assignment = solve_contested(&contested, &no_match);
-        for (word, candidates) in contested {
+    // Every component's words with their edges (frequency weight times cost) and what leaving each
+    // out would cost, solved on every core; placed back in component order, so the result is the
+    // same however the work was split.
+    let problems: Vec<Problem> = components
+        .into_iter()
+        .map(|component| {
+            let mut no_match = Vec::with_capacity(component.len());
+            let words = component
+                .iter()
+                .map(|&w| {
+                    let o = open[w].take().expect("each word is in one component");
+                    let weight = setup.count.get(o.word).copied().unwrap_or(0);
+                    let candidates: Vec<Candidate> = o.options.into_iter().map(|(_, c)| c).collect();
+                    no_match.push(no_match_cost(o.word, weight, &candidates));
+                    let edges = candidates.into_iter().map(|c| (u64::from(c.cost) * weight, c)).map(|(e, c)| (c, e)).collect();
+                    (o.word, edges)
+                })
+                .collect();
+            (words, no_match)
+        })
+        .collect();
+    let assignments = solve_in_parallel(&problems);
+    for ((words, _), assignment) in problems.into_iter().zip(assignments) {
+        for (word, candidates) in words {
             // Missing only when one component has more mutually exclusive words than texts, even
             // after the solver's own "leave out whoever loses least" fallback: unresolved.
             let Some(&index) = assignment.get(word) else {
@@ -317,6 +327,41 @@ fn place(setup: &Setup, open: Vec<Open>, book: &mut Book) -> usize {
         }
     }
     contested
+}
+
+/// One component for the solver: each word with its candidates and their edge costs, and what
+/// leaving each word out would cost.
+type Problem<'a> = (Vec<(&'a str, Vec<(Candidate, u64)>)>, Vec<u64>);
+
+/// Every problem solved on every core, answers in `problems` order. The biggest components go to
+/// whichever thread is free next, so one large component doesn't hold up a whole chunk.
+fn solve_in_parallel<'a>(problems: &[Problem<'a>]) -> Vec<HashMap<&'a str, usize>> {
+    let threads = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let mut order: Vec<usize> = (0..problems.len()).collect();
+    order.sort_unstable_by_key(|&i| std::cmp::Reverse(problems[i].0.len()));
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut answers: Vec<Option<HashMap<&str, usize>>> = vec![None; problems.len()];
+    let solved: Vec<(usize, HashMap<&str, usize>)> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(&i) = order.get(k) else { break };
+                        let (words, no_match) = &problems[i];
+                        done.push((i, solve_contested(words, no_match)));
+                    }
+                    done
+                })
+            })
+            .collect();
+        workers.into_iter().flat_map(|w| w.join().expect("a solver thread panicked")).collect()
+    });
+    for (i, answer) in solved {
+        answers[i] = Some(answer);
+    }
+    answers.into_iter().map(|a| a.expect("every problem is solved")).collect()
 }
 
 /// A word whose primary costs more than one of its own candidates nobody holds moves to the

@@ -352,20 +352,6 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 /// comment already claims it "never competes with the primary"; this is what actually makes that
 /// true downstream, in both places that used to compare entries by `(len, keys)` alone.
 pub(crate) fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
-    // Ergonomics, then the outline itself, settle what strokes and keys leave tied, so the answer
-    // depends only on which entries exist, never on the order they were pushed in.
-    // Within a stroke count, keys and ergonomics as one number, with a family-shaped entry's
-    // `FAMILY_DISCOUNT` applied the same way the solver applied it, so a word's family shape isn't
-    // shadowed by a bonus short form that merely ties it.
-    let priority = |e: &'a Entry| {
-        let discount = if e.origin == Origin::Family { FAMILY_DISCOUNT } else { 0 };
-        (
-            matches!(e.origin, Origin::Alternate | Origin::Extra),
-            e.outline.len(),
-            (KEY_WEIGHT * keys(&e.outline) + ergonomics::weighted_outline(&e.outline)).saturating_sub(discount),
-            e.outline.as_slice(),
-        )
-    };
     let mut best: HashMap<&str, &Entry> = HashMap::new();
     for entry in entries {
         match best.get(entry.word.as_str()) {
@@ -376,6 +362,21 @@ pub(crate) fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) 
         }
     }
     best
+}
+
+/// How good an entry is as its word's outline, lowest best: any other origin before another
+/// pronunciation or an extra, then strokes, then keys and ergonomics as one number (a family
+/// shape's `FAMILY_DISCOUNT` applied as the solver applied it, so a bonus short form that merely
+/// ties it doesn't shadow it), then the outline itself, so the answer never depends on the order
+/// entries were pushed in.
+pub(super) fn priority(e: &Entry) -> (bool, usize, u32, &[Stroke]) {
+    let discount = if e.origin == Origin::Family { FAMILY_DISCOUNT } else { 0 };
+    (
+        matches!(e.origin, Origin::Alternate | Origin::Extra),
+        e.outline.len(),
+        (KEY_WEIGHT * keys(&e.outline) + ergonomics::weighted_outline(&e.outline)).saturating_sub(discount),
+        e.outline.as_slice(),
+    )
 }
 
 /// Each word's cheapest outline (fewest strokes, then fewest keys) among a list of entries.

@@ -24,7 +24,7 @@
 
 use crate::analysis::Setup;
 use crate::family::{Link, PrefixLink, PrefixStroke};
-use super::{Book, Entry, Origin, best_entry_per_word, typable};
+use super::{Book, Entry, Origin, priority, typable};
 use crate::stroke::{Stroke, render_outline};
 use std::collections::HashMap;
 
@@ -46,27 +46,25 @@ type Join = (String, Vec<Stroke>, String);
 /// Adds every backup join it can to `entries`, claiming each text in `taken`. Returns how many
 /// compositions were skipped because their text was already held or went to a commoner word.
 pub fn place(setup: &Setup, book: &mut Book, links: &JoinLinks) -> usize {
+    let mut stems = Stems::index(setup, &book.entries, links);
     let mut skipped = 0;
     for round in 0..MAX_ROUNDS {
-        let joins = {
-            let stems = Stems::index(setup, &book.entries, links);
-            let mut words: Vec<&str> = stems.outlines.keys().copied().collect();
-            words.sort_unstable();
-            collect_in_parallel(&words, |word| stems.joins(word, round == 0))
-        };
+        let mut words: Vec<&str> = stems.outlines.keys().copied().collect();
+        words.sort_unstable();
+        let joins = collect_in_parallel(&words, |word| stems.joins(word, round == 0));
         let winners = arbitrate(&joins, |word| setup.count.get(word).copied().unwrap_or(0));
-        let mut added = 0;
+        let first_new = book.entries.len();
         for ((word, outline, text), won) in joins.into_iter().zip(winners) {
             if !won || book.taken.contains_key(&text) {
                 skipped += 1;
                 continue;
             }
             book.place(&word, outline, Origin::Backup, text);
-            added += 1;
         }
-        if added == 0 {
+        if book.entries.len() == first_new {
             break;
         }
+        stems.update(&book.entries, first_new);
     }
     skipped
 }
@@ -102,10 +100,12 @@ pub fn arbitrate(joins: &[Join], weight_of: impl Fn(&str) -> u64) -> Vec<bool> {
     (0..joins.len()).map(|i| best.get(joins[i].2.as_str()) == Some(&i)).collect()
 }
 
-/// The index one round composes from.
+/// The index every round composes from, built once and updated as each round adds entries.
 struct Stems<'a> {
     setup: &'a Setup,
     links: &'a JoinLinks<'a>,
+    /// Each placed word's best entry so far, by its position in the entries.
+    best: HashMap<&'a str, usize>,
     /// Each placed word's outlines to join through: its fastest, then its plain rules reading
     /// when that is a different, longer form, star-ladder markers dropped from both.
     outlines: HashMap<&'a str, Vec<Vec<Stroke>>>,
@@ -117,29 +117,54 @@ struct Stems<'a> {
 }
 
 impl<'a> Stems<'a> {
-    fn index(setup: &'a Setup, entries: &'a [Entry], links: &'a JoinLinks<'a>) -> Self {
-        // A standalone suffix's entry is a continuation shape (`ed` is `+-D`), never a stem.
-        let best = best_entry_per_word(entries.iter().filter(|e| e.origin != Origin::Suffix));
-        let mut outlines = HashMap::with_capacity(best.len());
-        let mut by_sounds: HashMap<&[String], Vec<&str>> = HashMap::new();
-        let mut by_sounds_loose: HashMap<Vec<&str>, Vec<&str>> = HashMap::new();
-        for (word, entry) in best {
-            let sounds = setup.pron.get(word).and_then(|p| p.first());
-            let mut own = vec![without_markers(&entry.outline)];
-            if let Some(mut plain) = sounds.and_then(|s| setup.rules.outline(word, s)) {
-                setup.rules.joined(&mut plain);
-                if plain.len() >= 2 && !own.contains(&plain) && typable(&plain) {
-                    own.push(plain);
-                }
+    fn index(setup: &'a Setup, entries: &[Entry], links: &'a JoinLinks<'a>) -> Self {
+        // A standalone suffix's entry is a continuation shape (`ed` is `+-D`), never a stem. Words
+        // are keyed by the pronunciation table's own strings, so the index borrows nothing from
+        // `entries` and can be kept across rounds while they grow.
+        let mut stems = Self {
+            setup,
+            links,
+            best: HashMap::new(),
+            outlines: HashMap::new(),
+            by_sounds: HashMap::new(),
+            by_sounds_loose: HashMap::new(),
+        };
+        stems.update(entries, 0);
+        stems
+    }
+
+    /// Takes the entries from `first_new` on into account: a word whose best entry changed joins
+    /// through its new one from the next round.
+    fn update(&mut self, entries: &[Entry], first_new: usize) {
+        for (at, entry) in entries.iter().enumerate().skip(first_new).filter(|(_, e)| e.origin != Origin::Suffix) {
+            if self.best.get(entry.word.as_str()).is_none_or(|&held| priority(entry) < priority(&entries[held])) {
+                self.set(entries, at);
             }
-            own.retain(|o| !o.is_empty());
-            if let Some(sounds) = sounds {
-                by_sounds.entry(sounds.as_slice()).or_default().push(word);
-                by_sounds_loose.entry(stress_stripped(sounds)).or_default().push(word);
-            }
-            outlines.insert(word, own);
         }
-        Self { setup, links, outlines, by_sounds, by_sounds_loose }
+    }
+
+    /// Makes `entries[at]` its word's best entry: the outlines the word joins through, and the
+    /// word in the sound indexes the first time it is seen.
+    fn set(&mut self, entries: &[Entry], at: usize) {
+        let setup = self.setup;
+        let Some((word, prons)) = setup.pron.get_key_value(entries[at].word.as_str()) else { return };
+        let word = word.as_str();
+        let sounds = prons.first();
+        let mut own = vec![without_markers(&entries[at].outline)];
+        if let Some(mut plain) = sounds.and_then(|s| setup.rules.outline(word, s)) {
+            setup.rules.joined(&mut plain);
+            if plain.len() >= 2 && !own.contains(&plain) && typable(&plain) {
+                own.push(plain);
+            }
+        }
+        own.retain(|o| !o.is_empty());
+        if self.best.insert(word, at).is_none()
+            && let Some(sounds) = sounds
+        {
+            self.by_sounds.entry(sounds.as_slice()).or_default().push(word);
+            self.by_sounds_loose.entry(stress_stripped(sounds)).or_default().push(word);
+        }
+        self.outlines.insert(word, own);
     }
 
     /// Every composition for `word`, finished: join keys set, typable, fragment-checked where the
