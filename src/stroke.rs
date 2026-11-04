@@ -146,6 +146,31 @@ impl Stroke {
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
+
+    /// The keys alone, without the join or spelling-mode marker.
+    pub const fn keys(self) -> Self {
+        Self(self.0 & !(Self::JOIN | Self::SPELL))
+    }
+
+    /// Whether this is the star-ladder marker: a stroke of only the star (`*`, `+*`), struck after
+    /// a word to tell it from another that sounds the same.
+    pub const fn is_marker(self) -> bool {
+        self.keys().0 == Self::STAR
+    }
+
+    /// `next` folded onto this stroke, when `next` is right-hand keys only, none of them already
+    /// down, all of them after this stroke's own keys in steno order: `SU` + `-BL` is `SUBL`, the
+    /// way a reduced syllable joins the stroke before it. The result keeps this stroke's markers.
+    pub const fn fold(self, next: Self) -> Option<Self> {
+        let (own, added) = (self.keys(), next.keys());
+        if added.0 == 0 || added.0 & !Self::RIGHT != 0 || own.0 & added.0 != 0 {
+            return None;
+        }
+        match (own.highest(), added.lowest()) {
+            (Some(high), Some(low)) if high >= low => None,
+            _ => Some(Self(self.0 | added.0)),
+        }
+    }
 }
 
 impl fmt::Display for Stroke {

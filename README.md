@@ -210,12 +210,12 @@ end up with a star form because some other, more valuable word's candidate won t
 instead (`site` and `sight`, `don` and `done`, but also any other collision the global optimizer
 settles this way now, not just a sound-alike pair); `build` lists the commonest. About 500 of the
 100,000 words can't be written by these rules yet, nearly all names and interjections (`hm`,
-`schmidt`, `vlad`). On top of all that, about 177,000 backup entries give every word
+`schmidt`, `vlad`). On top of all that, about 205,000 backup entries give every word
 `+`-joined ways in a learner can work out: a placed word's own outline plus an ending's stroke
 (`build` + `+-G` reaches `building`, `fool` + `+-RB` reaches `foolish`), a prefix's stroke before a
 placed word (`UPB/+KHRAOER` for `unclear`), two words back to back, and the word itself one
 syllable per stroke (`TAEU/+-BL` for `table`). 98–99% of the words of two syllables or more have at
-least one, at about four each, however short their primary is — see
+least one, at four to five each, however short their primary is — see
 [syllables & folding](docs/syllables.md) for the rules.
 
 These numbers move whenever a brief or suffix is added — see [the docs](docs/README.md) for the

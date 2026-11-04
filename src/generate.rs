@@ -147,34 +147,6 @@ pub struct Generated {
     pub prefix_links: HashMap<String, crate::family::PrefixLink>,
 }
 
-/// Among words that all share one exact pronunciation, the one whose own spelling also agrees
-/// with `word`'s at the expected boundary — resolving an ambiguity the sounds alone can't (two
-/// homophones, like `build`/`billed`, sharing the stem sounds `building` needs) the same way
-/// spelling already breaks a tie between words that sound alike elsewhere in this theory (see
-/// `docs/spelling.md`). Sound is still what found these candidates in the first place; spelling
-/// only ever narrows a tie between them, never widens the search. `None` if nobody's spelling
-/// agrees, or if more than one still does.
-/// `sounds`, with each token's trailing stress digit removed — the same trimming
-/// `Rules::syllables` already does to tell a vowel from a consonant, reused here so a word's own
-/// primary-stress pronunciation can still match its secondary-stress form inside a compound
-/// (`my`'s own `M AY1` against `myself`'s own `M AY2 ...`).
-fn stress_stripped(sounds: &[String]) -> Vec<String> {
-    sounds.iter().map(|s| s.trim_end_matches(|c: char| c.is_ascii_digit()).to_owned()).collect()
-}
-
-fn spelled_stem<'a>(word: &str, stems: &[&'a str], boundary: fn(&str, &str) -> bool) -> Option<&'a str> {
-    match *stems {
-        [stem] => Some(stem),
-        _ => {
-            let matches: Vec<&'a str> = stems.iter().copied().filter(|s| boundary(word, s)).collect();
-            match matches[..] {
-                [stem] => Some(stem),
-                _ => None,
-            }
-        }
-    }
-}
-
 /// One legal way to write a word's *primary* outline, considered on equal footing against every
 /// other legal way regardless of where it came from - a gold brief, lyk's own plain rules reading,
 /// a spelling-told-apart variant, a brevity-ladder compression, or a star-ladder step. See
@@ -698,100 +670,6 @@ fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)], no_match:
     result
 }
 
-/// One candidate composed outline from the exhaustive backup pass in [`generate`], checked for a
-/// real fragment (the same safety net every composition kind already used before this pass was
-/// unified) but not yet checked against `taken` or against anything else this same round is also
-/// composing - that has to wait until every word's every direction has been tried, so a text two
-/// different words both compose this round can be arbitrated by cost instead of by whichever one
-/// happened to be found first. Returns `None` when the fragment check alone already rules the
-/// composition out, which never counts toward `backup_skipped` (it was never a real candidate to
-/// begin with, the same as before this pass was split in two).
-fn compose_backup(setup: &Setup, word: &str, sounds: &[String], composed: Vec<Stroke>) -> Option<(Vec<Stroke>, String)> {
-    if !typable(&composed) || !setup.rules.matches_real_consonants(&composed, word, sounds) {
-        return None;
-    }
-    let text = render_outline(&composed);
-    Some((composed, text))
-}
-
-/// Commits one backup candidate that has already won its text for this round - either outright,
-/// the only candidate anyone composed for it, or by the cost arbitration in `generate`'s own
-/// round loop below - as a new [`Origin::Backup`] entry, or counts it in `backup_skipped` if an
-/// earlier round (or any other already-settled entry) already holds that exact text. This is the
-/// only remaining "first wins" check in the whole pass, and it is across rounds, not within one:
-/// a round's own internal contention is already resolved by the time anything reaches here.
-/// `added_this_round` is what the fixed-point loop in `generate` watches to know when nothing
-/// further is left to find.
-fn commit_backup(
-    entries: &mut Vec<Entry>,
-    taken: &mut HashMap<String, String>,
-    backup_skipped: &mut usize,
-    added_this_round: &mut usize,
-    word: &str,
-    composed: Vec<Stroke>,
-    text: String,
-) {
-    if taken.contains_key(&text) {
-        *backup_skipped += 1;
-        return;
-    }
-    taken.insert(text, word.to_owned());
-    entries.push(Entry {
-        word: word.to_owned(),
-        outline: composed,
-        origin: Origin::Backup,
-        lost_to: None,
-    });
-    *added_this_round += 1;
-}
-
-/// For one round's full list of composed backup candidates (word, outline, text - see
-/// [`compose_backup`]), which indices win their text: `true` for a candidate whose text no other
-/// candidate in this same list also wants, or whose own frequency weight is the *largest* among
-/// every candidate that does share its text - the commoner word keeps the shortcut, the same
-/// "commonest word wins contested real estate" principle used everywhere else in this project
-/// (`solve_contested`'s own primary-outline assignment, `which` evicting `charge` from `KH`, and
-/// every other collision this session resolved). This is deliberately *not* a literal mirror of
-/// `solve_contested`'s `edge_cost` minimization: that formula picks the assignment minimizing total
-/// cost across every word's own *required* outline, where losing a slot means taking a specific,
-/// costed alternative instead. A backup entry is optional - losing one here means getting no extra
-/// shortcut at all, not a forced worse outline - so there is no real alternative-cost tradeoff to
-/// minimize, only a question of which word benefits more from the shortcut existing, and that's the
-/// one typed more often. (An earlier version of this function minimized `weight * candidate_cost`
-/// directly, which - since tied candidates always share the same rendered text and therefore the
-/// same cost - collapsed to "the *rarer* word wins," the opposite of the intended rule; caught when
-/// a concrete real example, `spade` (weight 1,796) losing `SPAEUD` to `spayed` (weight 76), was
-/// checked against this project's own established tie-break convention and found to contradict it.)
-///
-/// A tie (possible when two candidates carry the same frequency weight - most commonly two words
-/// both absent from the frequency corpus, both defaulting to a weight of 0) breaks on the word's
-/// own spelling, the same deterministic tie-break `remaining`'s own candidate sort in `generate`
-/// already uses, so a true tie is exactly as reproducible as a real difference, not however the
-/// candidates happened to be ordered going in.
-fn arbitrate_backup_round(candidates: &[(String, Vec<Stroke>, String)], weight_of: impl Fn(&str) -> u64) -> Vec<bool> {
-    let mut by_text: HashMap<&str, Vec<usize>> = HashMap::new();
-    for (i, (_, _, text)) in candidates.iter().enumerate() {
-        by_text.entry(text.as_str()).or_default().push(i);
-    }
-    let mut is_winner = vec![true; candidates.len()];
-    for indices in by_text.values() {
-        if indices.len() < 2 {
-            continue;
-        }
-        let winner = *indices
-            .iter()
-            .max_by_key(|&&i| {
-                let (word, _, _) = &candidates[i];
-                (weight_of(word), std::cmp::Reverse(word.clone()))
-            })
-            .expect("by_text only ever groups indices that exist");
-        for &i in indices {
-            is_winner[i] = i == winner;
-        }
-    }
-    is_winner
-}
-
 /// Each word's own settled *primary* outline, single-stroke only - exactly the entry `generate`'s
 /// own peeling/solver/literal-override step assigned, never a bonus [`Origin::Short`],
 /// [`Origin::Alternate`], or [`Origin::Backup`] entry. Feeds [`phrase_candidate`]: a backup entry
@@ -1281,7 +1159,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     let links = crate::family::links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
     let prefix_links = crate::family::prefix_links(&setup.pron, &setup.count, words.iter().map(|(w, _)| w.as_str()));
     // The wider tables the backup joins use, never the primaries (see `BACKUP_ENDINGS`).
-    let backup_links = crate::family::links_with(
+    let backup_links = crate::family::all_links(
         &setup.pron,
         &setup.count,
         words.iter().map(|(w, _)| w.as_str()),
@@ -1653,266 +1531,13 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         }
     }
 
-    // Backup entries: exhaustive, run to a fixed point. Every round indexes everything placed so
-    // far (the primaries from the loop above in round 0, plus every earlier round's own backup
-    // entries from round 1 on) and tries every split point of every word's own sound sequence
-    // against three composition kinds — a trailing reduced-syllable suffix continuation (one or
-    // two strokes), a leading consonant cluster folded onto a placed word's first stroke, and two
-    // whole placed words back to back — adding every safe, non-colliding composed outline it
-    // finds, not just the first. A word can and does end up with more than one backup entry;
-    // that is the explicit goal here, not something to dedupe away.
-    //
-    // Chaining falls out for free from re-indexing from scratch every round: once `building` has
-    // a backup entry (round 0: `build`'s own outline plus the "-ing" stroke), round 1's rebuilt
-    // index includes it as an eligible stem the same as any primary entry, so `buildings`' own
-    // search finds `building` and continues it with "-s" — `build`/`+-G`/`+-S`, reached without
-    // `building` ever needing its own primary outline to be that shape.
-    //
-    // A standalone suffix's own entry (`rules/suffixes.toml`) is a continuation-stroke shape, not
-    // a real word's own outline — using one as a stem here would carry its join key onto
-    // whatever gets composed from it (`ed`'s own entry is the bare continuation `+-D`, the "-ed"
-    // stroke struck on its own), so those are excluded from standing in as a stem entirely, every
-    // round. Collisions are skipped and counted, never a hard failure, since this is a
-    // best-effort pass over the whole dictionary, not an explicit human-authored override.
-    //
-    // A collision within the same round - two different words (or the same word, by two
-    // different directions) composing the exact same text before either is committed - is not
-    // decided by which one happened to be tried first: every round first collects every
-    // direction's every candidate for every word, then, text by text, keeps only the one
-    // minimizing `weight(word) * candidate_cost(outline)` - the same formula, and the same
-    // `setup.count`-based frequency weighting, `solve_contested`'s own `edge_cost` uses above -
-    // before committing any of the round's winners against `taken`. A collision against a text
-    // some *earlier* round already settled is unaffected: that word already won, fair and square,
-    // under this same rule when its own round ran.
-    //
-    // Capped at a small, fixed number of rounds: growth should already have stopped well before
-    // that in practice (each round can only add entries built from the *previous* round's new
-    // stems, so the search space shrinks every round rather than compounding), and hitting the
-    // cap is worth investigating as a sign something is matching too permissively, not a reason
-    // to just raise it further.
-    const MAX_BACKUP_ROUNDS: usize = 5;
-    let mut backup_skipped = 0usize;
-    for round in 0..MAX_BACKUP_ROUNDS {
-        let word_outline: HashMap<String, Vec<Stroke>> =
-            best_entry_per_word(entries.iter().filter(|e| e.origin != Origin::Suffix))
-                .into_iter()
-                .map(|(word, entry)| (word.to_string(), entry.outline.clone()))
-                .collect();
-        let mut by_sounds: HashMap<&[String], Vec<&str>> = HashMap::new();
-        // A stress-insensitive copy of the same index, for the compound direction (c) only: a
-        // word keeps its own primary stress when struck alone (`my` is `M AY1`) but a compound's
-        // own internal half often carries secondary stress instead (`myself` is `M AY2 S EH1 L
-        // F`) - the same vowel, read the same way, just not the exact token an exact phoneme
-        // match requires. Stripping the trailing stress digit the same way `syllables` already
-        // does elsewhere lets `myself` find `my` as its own first half without also loosening the
-        // suffix/prefix directions (a)/(b), which have never needed it.
-        let mut by_sounds_loose: HashMap<Vec<String>, Vec<&str>> = HashMap::new();
-        for word in word_outline.keys() {
-            if let Some(sounds) = setup.pron.get(word.as_str()).and_then(|prons| prons.first()) {
-                by_sounds.entry(sounds.as_slice()).or_default().push(word.as_str());
-                by_sounds_loose.entry(stress_stripped(sounds)).or_default().push(word.as_str());
-            }
-        }
-
-        // The settled outlines of the prefixes that are words (`un`, `dis`), for (f) below.
-        let prefix_word_outlines: HashMap<&str, &[Stroke]> = crate::family::BACKUP_PREFIXES
-            .iter()
-            .filter_map(|(_, stroke)| match stroke {
-                crate::family::PrefixStroke::Word(w) => word_outline.get(*w).map(|o| (*w, o.as_slice())),
-                crate::family::PrefixStroke::Fixed(_) => None,
-            })
-            .collect();
-        let mut added_this_round = 0usize;
-        // Every direction's every valid composition found this round, word and text alongside
-        // the outline, collected before any of them is checked against `taken` - see the
-        // arbitration block after this word loop for why.
-        let mut round_candidates: Vec<(String, Vec<Stroke>, String)> = Vec::new();
-
-        for word in word_outline.keys().cloned().collect::<Vec<_>>() {
-            let Some(sounds) = setup.pron.get(&word).and_then(|prons| prons.first()) else {
-                continue;
-            };
-
-            // (a) stem + reduced trailing-syllable suffix continuation, one stroke (`build` +
-            // "-ing" -> building; see `Rules::suffix_split`). More than one already-placed word
-            // with the exact same pronunciation (`build`/`billed`): spelling breaks the tie
-            // (`building` starts with `build`, not `billed`) if it can. The two-syllable suffixes
-            // (`-ism`, `-ary`/`-ery`/`-ory`, `-ical`, `-logy`, `-cy`/`-sy`, `-ify`/`-fy`) are
-            // handled separately, by (a2) below, not by extending this one: their own second
-            // syllable's onset consonant sometimes migrates backward onto the *first* suffix
-            // stroke rather than staying on the second the way plain syllabification would place
-            // it (`-ism`'s own `+EUZ/+-PL` ends its first stroke in the "z" that `self.syllables`'
-            // ordinary onset-assignment would otherwise give to the second syllable), so (a2) finds
-            // its stem by spelling and reuses `rules/suffixes.toml`'s own, already hand-verified
-            // chord as-is instead of re-deriving it through sound rules. See `docs/suffixes.md`.
-            if let Some((split, bare)) = setup.rules.suffix_split(&word, sounds)
-                && let Some(stems) = by_sounds.get(&sounds[..split])
-                && let Some(stem) = spelled_stem(&word, stems, |w, s| w.starts_with(s))
-                && stem != word
-            {
-                let mut composed = word_outline[stem].clone();
-                composed.push(bare);
-                setup.rules.joined(&mut composed);
-                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
-                    round_candidates.push((word.clone(), composed, text));
-                }
-            }
-
-            // (a2) stem + a known two-stroke suffix (`-ism`, `-ary`/`-ery`/`-ory`, `-ical`,
-            // `-logy`, `-cy`/`-sy`, `-ify`/`-fy`): the gap (a)'s own comment names above. Found by
-            // spelling, not sound (see `Rules::two_stroke_suffix`'s own doc for why), so the stem
-            // is looked up by its own spelling directly rather than through `by_sounds`.
-            if let Some((suffix_text, suffix_strokes)) = setup.rules.two_stroke_suffix(&word) {
-                let stem_spelling = &word[..word.len() - suffix_text.len()];
-                if let Some(stem_outline) = word_outline.get(stem_spelling) {
-                    let mut composed = stem_outline.clone();
-                    composed.extend_from_slice(suffix_strokes);
-                    setup.rules.joined(&mut composed);
-                    if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
-                        round_candidates.push((word.clone(), composed, text));
-                    }
-                }
-            }
-
-            // (b) leading consonant cluster onto a placed word's first stroke, since lyk's join
-            // key only ever continues a stroke forward, never backward: a continuation stroke can
-            // follow a stem, but nothing can precede one (`ever` -> `never`, the extra sound "N").
-            // Tries every leading length, not just the first that works. When the leading sounds'
-            // own keys overlap a key the matched word's first stroke already uses, this direction
-            // simply can't rescue the word (`unclear` needs `un-`'s own `TPH`, which shares an
-            // `H` with `clear`'s own "cl" onset cluster `KHR`) — skipped, not forced; a real,
-            // structural gap in the theory, not a bug in this pass.
-            for split in 1..sounds.len().min(4) {
-                let Some(stems) = by_sounds.get(&sounds[split..]) else {
-                    continue;
-                };
-                let Some(stem) = spelled_stem(&word, stems, |w, s| w.ends_with(s)) else {
-                    continue;
-                };
-                if stem == word {
-                    continue;
-                }
-                let Some(leading) = setup.rules.prefix_keys(&word, sounds, split) else {
-                    continue;
-                };
-                let Some(&target_first) = word_outline[stem].first() else {
-                    continue;
-                };
-                if leading.0 & target_first.0 != 0 {
-                    continue;
-                }
-                let mut composed = word_outline[stem].clone();
-                composed[0] = Stroke(leading.0 | target_first.0);
-                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
-                    round_candidates.push((word.clone(), composed, text));
-                }
-            }
-
-            // (d) family: the stem's own outline, whatever it is, plus the ending's standalone
-            // stroke from `rules/suffixes.toml` (`call` + "-ed" -> `KAUL/+-D`). Unlike (a), the
-            // ending need not be a syllable of its own, so "-s" and "-ed" are covered too, and the
-            // stem is found by spelling confirmed by sound (`crate::family::links`).
-            // The family link and the wider backup link (`BACKUP_ENDINGS`: `fool` + "-ish") both.
-            for link in [links.get(&word), backup_links.get(&word)].into_iter().flatten() {
-                let Some(stem_outline) = word_outline.get(&link.stem) else { continue };
-                // No fragment check: both halves are already real outlines (the stem's own entry and
-                // the ending's standalone stroke), so there is no partial chord to catch, and a
-                // stem stroked by brief (`fight` `TPAOEUT` + "-ing") would otherwise be refused.
-                let mut composed = stem_outline.clone();
-                composed.extend_from_slice(&link.strokes);
-                setup.rules.joined(&mut composed);
-                let text = render_outline(&composed);
-                if typable(&composed) {
-                    round_candidates.push((word.clone(), composed, text));
-                }
-            }
-
-            // (f) a prefix struck before its stem (`BACKUP_PREFIXES`: `de` + `code` `TKE/+KOED`,
-            // `un` + `clear`), the stem's own outline joined after the prefix's stroke.
-            if let Some(link) = backup_prefix_links.get(&word)
-                && let Some(stem_outline) = word_outline.get(&link.stem)
-                && let Some(composed) =
-                    crate::family::prefixed(link, stem_outline, &prefix_word_outlines).filter(|o| typable(o))
-            {
-                let text = render_outline(&composed);
-                round_candidates.push((word.clone(), composed, text));
-            }
-
-            // (c) two whole placed words back to back (`myself` -> `my` + `self`), composed as
-            // the first word's own outline followed by the second's, every stroke of the second
-            // marked as a join continuation exactly the way any other multi-stroke word already
-            // is. Unlike (a), the second half doesn't have to be a *reduced* syllable at all —
-            // it's a whole word's own outline, stressed vowel and all.
-            //
-            // Sound alone is too loose a net here: `myself` also sounds exactly like `mice` +
-            // `elf` (a real, phonetically exact split at a different point), no relation to
-            // either word's own sense and nothing a learner would ever guess — unlike
-            // `doctor`/`docked`+`-er` or `crash`/`rash`, which are at least coincidences at the
-            // word's own *real* boundary. Spelling is what tells these apart: only a split where
-            // the word's own spelling is the literal concatenation of both halves' own spelling
-            // is trusted (`myself` really is `"my"` + `"self"`, letter for letter; `"mice"` +
-            // `"elf"` isn't `"myself"`'s spelling at all). Tries every split, adding every one
-            // that passes — `outside` is genuinely both `"out"` + `"side"` and `"outs"` + `"ide"`,
-            // and both are kept as separate entries.
-            // (e) the word one syllable per stroke, from every pronunciation it has: with reduced
-            // syllables as bare continuations and with every vowel written, the prefix folded and
-            // struck alone, both syllable splits (`Rules::syllable_paths`). Needs no other word,
-            // so only round 0 runs it. However short a word's primary is, this is the way in a
-            // learner can always work out from the sound alone.
-            if round == 0 {
-                for pron in &setup.pron[&word] {
-                    for mut path in setup.rules.syllable_paths(&word, pron) {
-                        setup.rules.joined(&mut path);
-                        if let Some((composed, text)) = compose_backup(setup, &word, pron, path) {
-                            round_candidates.push((word.clone(), composed, text));
-                        }
-                    }
-                }
-            }
-
-            let loose = stress_stripped(sounds);
-            for split in 1..loose.len() {
-                let Some(firsts) = by_sounds_loose.get(&loose[..split]) else {
-                    continue;
-                };
-                let Some(seconds) = by_sounds_loose.get(&loose[split..]) else {
-                    continue;
-                };
-                let Some(first) = spelled_stem(&word, firsts, |w, s| w.starts_with(s)) else {
-                    continue;
-                };
-                let Some(second) = spelled_stem(&word, seconds, |w, s| w.ends_with(s)) else {
-                    continue;
-                };
-                if first == word || second == word || word != format!("{first}{second}") {
-                    continue;
-                }
-                let mut composed = word_outline[first].clone();
-                composed.extend(word_outline[second].iter().copied());
-                setup.rules.joined(&mut composed);
-                if let Some((composed, text)) = compose_backup(setup, &word, sounds, composed) {
-                    round_candidates.push((word.clone(), composed, text));
-                }
-            }
-        }
-
-        // Cost arbitration: see `arbitrate_backup_round`'s own doc for the rule. Every winner is
-        // then committed exactly as before (still subject to `commit_backup`'s own `taken` check,
-        // for a text an *earlier* round already settled); every loser - cost-arbitrated away here,
-        // or simply already `taken` - counts toward `backup_skipped` all the same.
-        let is_winner = arbitrate_backup_round(&round_candidates, |word| setup.count.get(word).copied().unwrap_or(0));
-        for (i, (word, composed, text)) in round_candidates.into_iter().enumerate() {
-            if is_winner[i] {
-                commit_backup(&mut entries, &mut taken, &mut backup_skipped, &mut added_this_round, &word, composed, text);
-            } else {
-                backup_skipped += 1;
-            }
-        }
-
-        if added_this_round == 0 {
-            break;
-        }
-    }
+    // Backup joins: every `+` way into a word a learner can work out (see `crate::backup`).
+    let backup_skipped = crate::backup::place(
+        setup,
+        &mut entries,
+        &mut taken,
+        &crate::backup::JoinLinks { endings: &backup_links, prefixes: &backup_prefix_links },
+    );
 
     // Bonus short-form entries: after every primary is final and every backup is composed, every
     // `Origin::Short` candidate still free is added too - the dictionary holds every short form a
@@ -2051,7 +1676,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 /// cost alone - its own doc
 /// comment already claims it "never competes with the primary"; this is what actually makes that
 /// true downstream, in both places that used to compare entries by `(len, keys)` alone.
-fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
+pub(crate) fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
     // Ergonomics, then the outline itself, settle what strokes and keys leave tied, so the answer
     // depends only on which entries exist, never on the order they were pushed in.
     // Within a stroke count, keys and ergonomics as one number, with a family-shaped entry's
@@ -3151,44 +2776,6 @@ mod tests {
         let backward = vec![forward[1].clone(), forward[0].clone()];
         assert_eq!(
             arbitrate_phrase_round(&backward),
-            vec![true, false],
-            "the winner must not depend on which candidate was tried first"
-        );
-    }
-
-    #[test]
-    fn backup_round_arbitration_picks_the_commoner_word_not_whoever_is_tried_first() {
-        // Two words whose composed backup both land on the exact same text within one round -
-        // which, since text is `render_outline` of the composed outline, means they are the exact
-        // same outline and so always carry the exact same `candidate_cost`. Before this fix,
-        // `try_add_backup` kept whichever one `generate`'s own round loop happened to visit first
-        // (`word_outline`'s `HashMap` iteration order, undefined from the caller's point of view)
-        // and silently discarded the other - no frequency comparison at all. The fix gives it to
-        // whichever word is struck more often: `common` (weight 1,000) over `rare` (weight 5) -
-        // the same "commonest word wins contested real estate" rule used everywhere else in this
-        // project, however the two candidates are ordered going in.
-        let same_outline = parse_outline("TK").unwrap();
-        let weight_of = |word: &str| match word {
-            "common" => 1_000,
-            "rare" => 5,
-            other => unreachable!("unexpected word in this test: {other}"),
-        };
-
-        let forward = vec![
-            ("rare".to_owned(), same_outline.clone(), "SAME".to_owned()),
-            ("common".to_owned(), same_outline.clone(), "SAME".to_owned()),
-        ];
-        assert_eq!(
-            arbitrate_backup_round(&forward, weight_of),
-            vec![false, true],
-            "common should win even when rare is listed (and so would have been visited) first"
-        );
-
-        // Same two candidates, reversed input order: the winner must still be `common`, confirming
-        // the outcome depends on frequency alone, never on processing order.
-        let backward = vec![forward[1].clone(), forward[0].clone()];
-        assert_eq!(
-            arbitrate_backup_round(&backward, weight_of),
             vec![true, false],
             "the winner must not depend on which candidate was tried first"
         );

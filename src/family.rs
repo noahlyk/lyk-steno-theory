@@ -8,8 +8,8 @@
 //! family's members are stroked. See `docs/syllables.md`.
 
 use crate::data::Pronunciations;
-use crate::stroke::{Stroke, parse_outline};
-use std::collections::{BTreeMap, HashMap};
+use crate::stroke::{Stroke, parse_outline, render_outline};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 const SUFFIXES: &str = include_str!("../rules/suffixes.toml");
 const FAMILIES: &str = include_str!("../rules/families.toml");
@@ -31,7 +31,7 @@ fn families() -> Families {
 
 /// Words that pass the spelling and sound checks by coincidence (`better` is not `bet` + "-er"),
 /// from `rules/families.toml`.
-fn not_family() -> std::collections::HashSet<String> {
+fn not_family() -> HashSet<String> {
     families().not_family.into_iter().collect()
 }
 
@@ -184,28 +184,31 @@ pub fn links<'a>(
     count: &HashMap<String, u64>,
     vocabulary: impl IntoIterator<Item = &'a str>,
 ) -> HashMap<String, Link> {
-    links_with(pron, count, vocabulary, FAMILY_ENDINGS)
+    all_links(pron, count, vocabulary, FAMILY_ENDINGS)
+        .into_iter()
+        .filter_map(|(word, links)| links.into_iter().next().map(|link| (word, link)))
+        .collect()
 }
 
-/// [`links`] over any list of endings, longest first: [`BACKUP_ENDINGS`] for the backup joins.
-pub fn links_with<'a>(
+/// Every link each word in `vocabulary` has through `endings`, in the order of `endings` (longest
+/// first), an irregular form's link (`rules/families.toml`) ahead of them: [`links`] keeps the
+/// first, the backup joins use them all ([`BACKUP_ENDINGS`]: *artistic* is both *artist* + "-ic"
+/// and, were it a word, *artist* + ...). A word in `not_family` has none.
+pub fn all_links<'a>(
     pron: &Pronunciations,
     count: &HashMap<String, u64>,
     vocabulary: impl IntoIterator<Item = &'a str>,
     endings: &[&'static str],
-) -> HashMap<String, Link> {
+) -> HashMap<String, Vec<Link>> {
     let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
-    let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
+    let known: HashSet<&str> = vocabulary.iter().copied().collect();
     let strokes = suffix_strokes(endings);
     let not_family = not_family();
-    let mut out = HashMap::new();
-    for &word in &vocabulary {
-        'endings: for &ending in endings {
+    let said = |w: &str| count.get(w).copied().unwrap_or(0);
+    let mut out: HashMap<String, Vec<Link>> = HashMap::new();
+    for &word in vocabulary.iter().filter(|w| !not_family.contains(**w)) {
+        for &ending in endings {
             let Some(options) = strokes.get(ending) else { continue };
-            if not_family.contains(word) {
-                break;
-            }
-            let said = |w: &str| count.get(w).copied().unwrap_or(0);
             // Every spelling that passes, the most frequent kept: `robber` is `rob` + "-er", not
             // the name `robb`; `lived` is `live` + "-d", not `liv`.
             let best = stem_spellings(word, ending)
@@ -216,33 +219,41 @@ pub fn links_with<'a>(
                 .max_by(|(a, _), (b, _)| said(a).cmp(&said(b)).then_with(|| b.cmp(a)));
             let Some((stem, last_sound)) = best else { continue };
             // "s" has two strokes: `+-S` for a word that really ends in "s", `+-Z` otherwise.
-            let chosen = if ending == "s" {
-                let want = if last_sound == "S" { "S" } else { "Z" };
-                options.iter().find(|o| crate::stroke::render_outline(o).ends_with(want))
-            } else {
-                options.first()
-            };
-            let Some(chosen) = chosen else { continue };
-            out.insert(word.to_owned(), Link { stem, suffix: ending, strokes: chosen.clone() });
-            break 'endings;
+            let chosen = if ending == "s" { ending_stroke(options, last_sound == "S") } else { options.first() };
+            if let Some(chosen) = chosen {
+                out.entry(word.to_owned()).or_default().push(Link { stem, suffix: ending, strokes: chosen.clone() });
+            }
         }
     }
     // Irregular forms from `rules/families.toml`, by rule rather than by spelling or sound: a past
     // form is its stem plus -ed's stroke, a plural its stem plus -s's (`+-S` after an "s" sound).
     let families = families();
     for (table, ending) in [(&families.past, "ed"), (&families.plural, "s")] {
+        let Some(options) = strokes.get(ending) else { continue };
         for (word, stem) in table {
             if !known.contains(word.as_str()) || !known.contains(stem.as_str()) {
                 continue;
             }
-            let Some(options) = strokes.get(ending) else { continue };
-            let ends_in_s = pron.get(word.as_str()).and_then(|p| p.first()).and_then(|p| p.last()).is_some_and(|s| s == "S");
-            let want = if ending == "s" && !ends_in_s { "Z" } else if ending == "s" { "S" } else { "D" };
-            let Some(chosen) = options.iter().find(|o| crate::stroke::render_outline(o).ends_with(want)) else { continue };
-            out.insert(word.clone(), Link { stem: stem.clone(), suffix: ending, strokes: chosen.clone() });
+            let chosen = if ending == "s" {
+                let ends_in_s = pron.get(word.as_str()).and_then(|p| p.first()).and_then(|p| p.last()).is_some_and(|s| s == "S");
+                ending_stroke(options, ends_in_s)
+            } else {
+                options.iter().find(|o| render_outline(o).ends_with('D'))
+            };
+            if let Some(chosen) = chosen {
+                out.entry(word.clone())
+                    .or_default()
+                    .insert(0, Link { stem: stem.clone(), suffix: ending, strokes: chosen.clone() });
+            }
         }
     }
     out
+}
+
+/// The "-s" stroke for a word: `+-S` when it really ends in an "s" sound, `+-Z` otherwise.
+fn ending_stroke(options: &[Vec<Stroke>], ends_in_s: bool) -> Option<&Vec<Stroke>> {
+    let want = if ends_in_s { 'S' } else { 'Z' };
+    options.iter().find(|o| render_outline(o).ends_with(want))
 }
 
 /// The prefixes a word can be a family member through, longest first, each with how it is
@@ -319,7 +330,7 @@ pub fn prefix_links_with<'a>(
     prefixes: &[(&'static str, PrefixStroke)],
 ) -> HashMap<String, PrefixLink> {
     let vocabulary: Vec<&str> = vocabulary.into_iter().collect();
-    let known: std::collections::HashSet<&str> = vocabulary.iter().copied().collect();
+    let known: HashSet<&str> = vocabulary.iter().copied().collect();
     let not_family = not_family();
     let said = |w: &str| count.get(w).copied().unwrap_or(0);
     let mut out = HashMap::new();
@@ -509,7 +520,7 @@ mod tests {
         assert_eq!(stem("need"), None, "ne is far too rare to be need's stem");
         assert_eq!(stem("robber"), Some(("rob", "er")), "the commoner rob, not the name robb");
         assert_eq!(stem("better"), None, "listed in rules/families.toml");
-        let s = |w: &str| crate::stroke::render_outline(&links[w].strokes);
+        let s = |w: &str| render_outline(&links[w].strokes);
         assert_eq!(s("cats"), "+-S", "really ends in an s sound");
         assert_eq!(s("boxes"), "+-Z", "ends in a z sound");
     }
@@ -523,7 +534,7 @@ mod tests {
         assert!(contains_stem(&o("KAUL"), &o("KAUL/+-D")));
         assert!(contains_stem(&o("SART/+-R"), &o("SART/+-RZ")));
         assert!(!contains_stem(&o("SART/+-R"), &o("SART")));
-        let text = |v: Vec<Vec<Stroke>>| v.iter().map(|s| crate::stroke::render_outline(s)).collect::<Vec<_>>();
+        let text = |v: Vec<Vec<Stroke>>| v.iter().map(|s| render_outline(s)).collect::<Vec<_>>();
         let g = o("-G")[0].0;
         let d = o("-D")[0].0;
         assert_eq!(text(shapes(&o("PWHR"), g)), ["PWHR-G"]);

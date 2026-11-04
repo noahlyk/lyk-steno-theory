@@ -148,8 +148,9 @@ a longer one, which never touches a primary: on top of those endings, `-ation` (
 `-ible` (*sense* + `+-BL`, the same sound and stroke as `-able`), `-ward`, `-ism`, `-ist` (*art* +
 `+EUFT`), `-ity`, `-ize`, `-ous`, `-ish` (*fool* + `+-RB`), `-ive`, `-age`, `-ic`, `-al`, `-en`,
 `-or` (*sail* + `+-R`, the same sound and stroke as `-er`) and `-y`, each with the sounds it adds,
-checked the same way (`BACKUP_ENDINGS` in `src/family.rs`). A word gets both its family link and
-this one when they differ.
+checked the same way (`BACKUP_ENDINGS` in `src/family.rs`). A word gets a join for *every*
+ending it matches, not just the first: *artistic* is *artist* + `-ic`, and any other split that
+checks out is kept beside it.
 
 **Prefixes struck before their stem.** A prefix can't fold onto a stem's first stroke when they
 share a key, but it can always be a stroke of its own, with the stem's whole outline joined after
@@ -187,7 +188,17 @@ syllable keeps its vowel rather than becoming a bare consonant stroke: `PRAF/+U/
 the word, `PRA/+-F/+-T/+-BL` does not. These candidates go through the same round as every other
 backup, the same fragment check and the same rule when two words want one text (the commoner word
 keeps it). With them, 98–99% of the words of two syllables or more in every frequency band have a
-joined way in, and 83–93% have at least two (about four on average); before, 63–83% had one.
+joined way in, and 84–94% have at least two (four to five on average); before, 63–83% had one.
+
+**What a stem joins through.** Every direction above builds on a placed word's outline. Each
+stem offers two: its fastest outline, and its own plain rules reading when that is a different
+form of two strokes or more (*profitable* joins as `PROFBLT` and as `PROFT/+-BL`, so *profitably*
+is reachable from either). A star-ladder marker stroke (`+*`, which only tells a word from one
+that sounds the same) is dropped from a stem before it is joined: *sorting* is `SORT/+-G`, never
+`SOR/+*/+TEUG`. And a join of three strokes or more whose last stroke fits on the stroke before it
+(right-hand keys only, none already down, all later in steno order) is offered folded too, the
+way a reduced syllable joins the stroke before it: *sensible* `SEPB/+SU/+-BL` and `SEPB/+SUBL`.
+A join never folds down to one stroke: one-stroke outlines are the primaries' business.
 
 **Families share one shape in their one-stroke outlines too.** Backups make every member
 reachable as stem plus ending, but a member's own fastest outline used to be chosen alone, so

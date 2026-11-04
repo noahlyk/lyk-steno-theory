@@ -2082,3 +2082,14 @@ in per word 1.0–1.5 to 3.8–4.2. One-stroke share in every band unchanged, to
 unchanged; backups 40,856 to 176,611. A word whose primary a phrase took and whose plain reading
 is now one of its own syllable paths gets that path as its primary instead of a bare backup.
 Docs: `docs/syllables.md`, `docs/prefixes.md`, `docs/suffixes.md`, `docs/brevity.md`.
+
+**Joins build on every link and on a stem's long form, without ladder markers, and fold when
+they fit (`src/backup.rs`).** The backup pass moved out of `generate` into its own module and
+changed in four ways: a word gets a join for every ending it matches (`family::all_links`), not
+just the first; a stem joins through its fastest outline and its plain rules reading when that is
+a longer form; a stem's star-ladder marker stroke is dropped (1,927 joins carried a mid-word `+*`,
+*sorting* `SOR/+*/+TEUPBG`); and a join of three strokes or more whose last stroke fits on the one
+before is also offered folded (*sensible* `SEPB/+SUBL`). A stem's plain reading is only used when it
+is two strokes or more: as a one-stroke stem it produced 600 more one-stroke backups that took
+strokes the extras and short forms had. Backups 176,611 to 205,390; joined ways in per word 3.8–4.2
+to 4.1–4.7; keys per word unchanged (3.278 to 3.277). Composition now runs on every core.
