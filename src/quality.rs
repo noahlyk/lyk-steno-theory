@@ -41,7 +41,7 @@ fn no_two_words_share_the_same_deployed_outline() {
 /// `docs/decisions.md`): a real contraction with a real `CMUdict` entry, absent from the deployed
 /// dictionary entirely because of a corpus mismatch nothing surfaced until someone hit it live.
 /// This would have caught it automatically. Mirrors `generate()`'s own word-list filter
-/// (`src/generate.rs`'s `words` construction) so it only asks for a word the generator itself
+/// (`src/generate/`'s `words` construction) so it only asks for a word the generator itself
 /// should have tried to place, not one it deliberately skips (a stray single-letter frequency
 /// artifact, for instance).
 #[test]

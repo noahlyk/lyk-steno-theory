@@ -75,7 +75,7 @@ generates for them unprompted now is each word's own correct, full phonetic read
 fallback each override's own comment already named as the alternative to its exploit.
 
 **Cost, for ranking candidates against each other, is strokes first, then keys, then physical
-ergonomics as the final tie-break** — one explicit function (`candidate_cost`, `src/generate.rs`)
+ergonomics as the final tie-break** — one explicit function (`candidate_cost`, `src/generate/candidates.rs`)
 applied uniformly everywhere a candidate's intrinsic cost matters: 25,000 per stroke, 1,000 per
 key, and an ergonomics score that always stays under 1,000. A stroke costs more than every key a
 single stroke can hold (24), so for any one word fewer strokes always wins outright; among

@@ -2084,7 +2084,7 @@ is now one of its own syllable paths gets that path as its primary instead of a 
 Docs: `docs/syllables.md`, `docs/prefixes.md`, `docs/suffixes.md`, `docs/brevity.md`.
 
 **Joins build on every link and on a stem's long form, without ladder markers, and fold when
-they fit (`src/backup.rs`).** The backup pass moved out of `generate` into its own module and
+they fit (`src/generate/backup.rs`).** The backup pass moved out of `generate` into its own module and
 changed in four ways: a word gets a join for every ending it matches (`family::all_links`), not
 just the first; a stem joins through its fastest outline and its plain rules reading when that is
 a longer form; a stem's star-ladder marker stroke is dropped (1,927 joins carried a mid-word `+*`,
@@ -2102,3 +2102,17 @@ pair that is a two-stroke suffix reads as the suffix. The plugin's source moved 
 `format!` string inside `rules.rs` into `src/rules/plugin_template.rs.in` with `__NAME__`
 placeholders, and a test now compiles the generated plugin with `rustc` and checks it reads a set
 of outlines exactly as `Rules::resolve` does: before, nothing checked that the two agreed.
+
+**The generator is split into modules, settles with interned ids, and builds in 8 s instead of 21
+s (`src/generate/`, `src/rules/`).** No word's outline changed: every output file is byte-identical
+before and after. `src/generate.rs` (3,500 lines, one 630-line function) became `src/generate/`
+(`candidates`, `settle`, `solver`, `backup`, `fill`, `report`, and a short `generate()` that runs
+the passes in order over a `Book` of entries and taken texts); `src/rules.rs` became `src/rules/`
+(`brevity`, `fragments`, `resolve`, `plugin`). Where the time went, and what changed:
+settling re-rendered every candidate's outline to a string on every peeling round (7.8 s); texts
+are now rendered once, interned to dense ids per pass, and peeling is one worklist over how many
+words hold each text, which reaches the same fixed point because peeling never takes a text
+another unsettled word holds (3.3 s, components then solved on every core). The phrase pass
+scanned all 400,000 entries for every takeover (2.7 s, now an index: 0.24 s). The backup pass
+rebuilt its stem index every round (2.9 s, now built once and updated: 1.3 s). `cargo clippy
+--all-targets` is clean under pedantic and nursery, which `Cargo.toml` now sets.

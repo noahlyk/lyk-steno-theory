@@ -289,7 +289,7 @@ pub struct Rules {
     /// `rules/suffixes.toml`'s two-stroke entries (`-ism`, `-ary`/`-ery`/`-ory`, `-ical`, `-logy`,
     /// `-cy`/`-sy`, `-ify`/`-fy`) - each one's own spelling and its two-stroke chord, exactly as
     /// written there. Consulted by [`Self::two_stroke_suffix`] for the backup-generation pass in
-    /// `generate.rs`, by spelling rather than re-derived sound rules (see that method's own doc).
+    /// `generate/backup.rs`, by spelling rather than re-derived sound rules (see that method's own doc).
     two_stroke_suffixes: Vec<(String, Vec<Stroke>)>,
 }
 

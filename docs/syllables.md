@@ -42,7 +42,7 @@ plus a second "k" has nowhere to go; *building* has no such excuse, so its own c
 the fused `PWEULGD`, unrelated to *build*'s own `PWEULD`. A separate, later pass in `generate()`
 fixes this on purpose instead of by accident: for every word, if its last syllable is a reduced
 syllable that could be struck as a standalone continuation stroke on its own ([`Rules::suffix_split`
-in `src/rules.rs`]), and the sounds left over exactly match some other already-placed word's own
+in `src/rules/mod.rs`]), and the sounds left over exactly match some other already-placed word's own
 pronunciation, that word's own real outline plus the continuation stroke is added as a *second*,
 additional entry — `build`'s `PWEULD` plus `+-G` also reaches *building*, whether or not that agrees
 with *building*'s own cheapest outline above. This never changes which outline wins as a word's own

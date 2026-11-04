@@ -81,7 +81,7 @@ spelling tell these apart when the dictionary is built; a miss has no word to go
 has to pick one reading for the stroke alone, every time, the same way. It picks `UW.oo` over the
 other two — not because "book"'s vowel is rare in general, but because it's rare specifically as
 an unreduced vowel landing on a *continuation* stroke, where "-oo" endings are common. See
-`vowel_rank` in `src/rules.rs` for the exact tie-break and why.
+`vowel_rank` in `src/rules/mod.rs` for the exact tie-break and why.
 
 ## As a real steno engine's last resort
 

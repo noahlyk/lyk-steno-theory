@@ -59,7 +59,7 @@ fn two_stroke_suffixes_are_found_by_spelling_not_sound() {
     assert!(rules.two_stroke_suffix("ism").is_none());
     // A word that merely contains the letters, not as a true suffix match at all, still
     // matches by spelling - this function only ever answers "could this be composed this
-    // way," `generate.rs`'s own stem lookup (does a placed word exist with this exact
+    // way," the backup pass's own stem lookup (does a placed word exist with this exact
     // remaining spelling) is what actually gates whether a backup entry gets built.
     assert!(rules.two_stroke_suffix("prism").is_some());
     // No suffix spelling present at all.
@@ -469,7 +469,7 @@ fn a_long_word_can_be_one_skeleton_stroke() {
 /// Diagnostic: measures how often the *final, settled* dictionary (what `build` actually
 /// ships, after briefs/compressions/backups all compete) lands on an outline that keeps a
 /// stray, partial trace of one of this theory's required multi-key chords — the thing
-/// [`Rules::matches_real_consonants`] flags, now that `gold_candidates` (`src/generate.rs`,
+/// [`Rules::matches_real_consonants`] flags, now that `gold_candidates` (`src/generate/`,
 /// commit b070938) no longer blanket-rejects those candidates before they can win. Two
 /// outcomes for a word whose chosen outline shares *any* key with its own first syllable's
 /// onset chord or last syllable's coda chord: holding *none* of that chord's keys is a clean,
