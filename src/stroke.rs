@@ -33,12 +33,10 @@ impl Stroke {
 
     /// Parse notation such as `KAT`, `-T` or `STPH*`. Numbers and a bare `#` are not supported.
     pub fn parse(text: &str) -> Option<Self> {
-        let (mut bits, text) = if let Some(rest) = text.strip_prefix('+') {
-            (Self::JOIN, rest)
-        } else if let Some(rest) = text.strip_prefix('~') {
-            (Self::SPELL, rest)
-        } else {
-            (0, text)
+        let (mut bits, text) = match (text.strip_prefix('+'), text.strip_prefix('~')) {
+            (Some(rest), _) => (Self::JOIN, rest),
+            (None, Some(rest)) => (Self::SPELL, rest),
+            (None, None) => (0, text),
         };
         let mut cursor = 0usize;
         for c in text.bytes() {
@@ -139,7 +137,7 @@ impl Stroke {
         if self.0 == 0 {
             None
         } else {
-            Some(31 - self.0.leading_zeros())
+            Some(self.0.ilog2())
         }
     }
 
@@ -182,11 +180,11 @@ impl fmt::Display for Stroke {
         } else if self.0 & Self::SPELL != 0 {
             write!(f, "~")?;
         }
-        for (index, &key) in KEYS.iter().enumerate() {
+        for (index, &key) in (0u32..).zip(KEYS.iter()) {
             if self.0 & (1 << index) == 0 {
                 continue;
             }
-            if hyphen && index as u32 >= RIGHT {
+            if hyphen && index >= RIGHT {
                 write!(f, "-")?;
                 hyphen = false;
             }

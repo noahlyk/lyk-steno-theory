@@ -141,8 +141,7 @@ impl Rules {
         // text as its stem, not the stroke's bare sounds: `SKP/+-R` ("and" plus "-er") is "ander",
         // never "sper". A one-stroke outline that is a placed word was a dictionary hit already,
         // so this is only ever a real continuation run.
-        let mut at = 0;
-        if outline.len() > 1
+        let mut at = if outline.len() > 1
             && let Some(stem) = stems.and_then(|stems| stems.get(&outline[0]))
         {
             // A silent final `e` drops before a piece that starts with a vowel letter: `have` +
@@ -153,8 +152,10 @@ impl Rules {
                 text.push(' ');
             }
             text.push_str(&next);
-            at = 1 + used;
-        }
+            1 + used
+        } else {
+            0
+        };
         while at < outline.len() {
             let (piece, needs_space, used) = self.piece_at(outline, at)?;
             if needs_space && !text.is_empty() {

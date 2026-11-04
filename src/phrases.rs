@@ -43,7 +43,7 @@ pub struct Placed {
 /// `takeover` would price losing it at nothing, since the word's primary is cheaper) never are. A
 /// one-stroke backup (a leading sound folded onto a shorter word, `sit` as `s` + `it` `ST`) is a
 /// bonus like a short form, and a common pair may take it (`it is` is `ST`).
-fn can_be_taken(entry: &Entry) -> bool {
+const fn can_be_taken(entry: &Entry) -> bool {
     match entry.origin {
         Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing | Origin::Short(_) | Origin::Alternate => true,
         Origin::Backup => entry.outline.len() == 1,
@@ -286,7 +286,7 @@ pub fn place(
 /// another; a primary assignment is `generate`'s own invariant instead - one single-stroke outline
 /// per word, stable and already heavily tested - and that is what phrase-briefing is built on. See
 /// `docs/phrases.md`'s "why primary-only" section for the full reasoning.
-pub(crate) fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
+pub fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
     entries
         .iter()
         .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_) | Origin::Family))
@@ -305,7 +305,7 @@ pub(crate) fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke>
 /// its length - that pass already merges a leading consonant onto `word_outline[stem][0]` and
 /// leaves every later stroke (join bits included) untouched, real, shipped, tested code this
 /// mirrors rather than a new risk. See `docs/phrases.md`.
-pub(crate) fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
+pub fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
     entries
         .iter()
         .filter(|e| matches!(e.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Ladder(_) | Origin::Family))
@@ -375,7 +375,7 @@ fn phrase_candidate_outline(
     None
 }
 
-pub(crate) fn enumerate_phrase_candidates(
+pub fn enumerate_phrase_candidates(
     setup: &Setup,
     single: &HashMap<&str, Stroke>,
     any_len: &HashMap<&str, &[Stroke]>,
@@ -404,7 +404,7 @@ pub(crate) fn enumerate_phrase_candidates(
 /// differ (`setup.bigrams[(w1, w2)]`'s own bits happening to union the same way as some other
 /// pair's) - the winner is whichever bigram was actually said more often, with a lexical tie-break
 /// on the phrase text for determinism.
-pub(crate) fn arbitrate_phrase_round(candidates: &[((String, String), Vec<Stroke>, u64)]) -> Vec<bool> {
+pub fn arbitrate_phrase_round(candidates: &[((String, String), Vec<Stroke>, u64)]) -> Vec<bool> {
     let mut by_text: HashMap<String, Vec<usize>> = HashMap::new();
     for (i, (_, outline, _)) in candidates.iter().enumerate() {
         by_text.entry(render_outline(outline)).or_default().push(i);

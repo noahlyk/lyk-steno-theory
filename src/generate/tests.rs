@@ -450,7 +450,7 @@ fn solve_contested_handles_a_larger_random_bipartite_graph() {
         let n = 2 + (rand() % 3) as usize;
         let mut chosen: Vec<usize> = Vec::new();
         while chosen.len() < n {
-            let t = (rand() % texts.len() as u64) as usize;
+            let t = usize::try_from(rand() % u64::try_from(texts.len()).unwrap()).unwrap();
             if !chosen.contains(&t) {
                 chosen.push(t);
             }

@@ -124,7 +124,7 @@ fn ending_sounds(ending: &str) -> &'static [&'static [&'static str]] {
         "s" => &[&["S"], &["Z"], &["IH", "Z"], &["AH", "Z"]],
         "ed" => &[&["D"], &["T"], &["IH", "D"], &["AH", "D"]],
         "ing" => &[&["IH", "NG"]],
-        "er" => &[&["ER"]],
+        "er" | "or" => &[&["ER"]],
         "est" => &[&["AH", "S", "T"], &["IH", "S", "T"]],
         "ly" => &[&["L", "IY"]],
         "ness" => &[&["N", "AH", "S"], &["N", "IH", "S"]],
@@ -147,7 +147,6 @@ fn ending_sounds(ending: &str) -> &'static [&'static [&'static str]] {
         "ic" => &[&["IH", "K"]],
         "al" => &[&["AH", "L"]],
         "en" => &[&["AH", "N"]],
-        "or" => &[&["ER"]],
         "y" => &[&["IY"]],
         _ => &[],
     }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::num::ToF64;
 use crate::stroke::{parse_outline, render_outline};
 
 fn sounds(text: &str) -> Vec<String> {
@@ -289,7 +290,7 @@ fn a_reduced_er_continuation_keeps_its_r_when_its_onset_goes_on_the_left() {
     let examiner = sounds("IH0 G Z AE1 M AH0 N ER0");
     let outline = rules.outline("examiner", &examiner).unwrap();
     let last = render_outline(&outline[outline.len() - 1..]);
-    assert!(last.ends_with("R"), "examiner's continuation is {last}, which has lost its -er");
+    assert!(last.ends_with('R'), "examiner's continuation is {last}, which has lost its -er");
     let amber = sounds("AE1 M B ER0");
     let outline = rules.outline("amber", &amber).unwrap();
     assert_eq!(render_outline(&outline), "APL/PW-R");
@@ -520,7 +521,7 @@ fn dump_stray_fragment_leftovers() {
             continue;
         };
 
-        let weight = setup.count.get(word).copied().unwrap_or(0) as f64;
+        let weight = setup.count.get(word).copied().unwrap_or(0).to_f64();
         total_words += 1;
         total_weight += weight;
 
@@ -636,9 +637,9 @@ fn dump_stray_fragment_leftovers() {
          {cat_a_weight:.0} usage ({:.3}% of weighted typing)\n\
          Category B (stray leftover): {cat_b:>6} words ({:.3}% of words), \
          {cat_b_weight:.0} usage ({:.3}% of weighted typing)",
-        100.0 * cat_a as f64 / total_words as f64,
+        100.0 * cat_a.to_f64() / total_words.to_f64(),
         100.0 * cat_a_weight / total_weight,
-        100.0 * cat_b as f64 / total_words as f64,
+        100.0 * cat_b.to_f64() / total_words.to_f64(),
         100.0 * cat_b_weight / total_weight,
     );
 

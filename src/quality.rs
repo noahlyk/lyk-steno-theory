@@ -6,6 +6,8 @@
 //! found the hard way, so a future change that reintroduces one of them fails immediately instead
 //! of waiting for someone to notice live, the way "don't" and "quitters" both were noticed.
 
+use crate::num::ToF64;
+
 use crate::data;
 use crate::dictionary_fixture;
 use crate::generate;
@@ -104,7 +106,7 @@ fn the_contested_set_after_peeling_stays_a_minority_of_the_dictionary() {
     const CONTESTED_SHARE_MAX: f64 = 0.35;
     let generated = dictionary_fixture::generated();
     let lyk = dictionary_fixture::cheapest();
-    let share = generated.contested as f64 / lyk.len() as f64;
+    let share = generated.contested.to_f64() / lyk.len().to_f64();
     assert!(
         share <= CONTESTED_SHARE_MAX,
         "{:.1}% of the dictionary ({} of {} words) was still contested after fixed-point peeling, \
@@ -214,10 +216,10 @@ fn no_generated_outline_collides_with_a_reserved_stroke() {
 }
 
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and
-/// `data::fallback_pronunciations`) for any word CMUdict has no entry for at all - this is the
+/// `data::fallback_pronunciations`) for any word `CMUdict` has no entry for at all - this is the
 /// regression guard that the fallback is actually wired in and still reaches a real number of
 /// words, not just the hand-picked ones `rules::tests`/`reverse::tests` check individually. A real
-/// run measured 8,174 of the 32,182 words with zero CMUdict entry among the top 100,000 by
+/// run measured 8,174 of the 32,182 words with zero `CMUdict` entry among the top 100,000 by
 /// frequency rank (`dictionary_fixture`'s own `COMMON`) as rescuable this way (see
 /// `docs/decisions.md`'s entry on this fallback); the threshold below is set well under that
 /// measured count, the same way `CONTESTED_SHARE_MAX` and the stranded-word baseline are - a

@@ -10,6 +10,8 @@
 //! prose nobody picked to make lyk look good, which is the entire point: a benchmark curated to
 //! win would be measuring the curation, not the theory.
 
+use crate::num::ToF64;
+
 use crate::dictionary_fixture;
 use crate::quote::{cost, rows_for};
 
@@ -394,10 +396,10 @@ fn lyk_beats_plover_and_lapwing_across_a_hundred_unpicked_passages() {
     let word_fewer_keys_pct_lapwing = Stats::pct(stats.word_fewer_keys_lapwing, stats.words);
     let word_more_keys_pct_plover = Stats::pct(stats.word_more_keys_plover, stats.words);
     let word_more_keys_pct_lapwing = Stats::pct(stats.word_more_keys_lapwing, stats.words);
-    let savings_pct_plover = (stats.total_keys_plover as f64 - stats.total_keys_lyk_vs_plover as f64) * 100.0
-        / stats.total_keys_plover as f64;
-    let savings_pct_lapwing = (stats.total_keys_lapwing as f64 - stats.total_keys_lyk_vs_lapwing as f64) * 100.0
-        / stats.total_keys_lapwing as f64;
+    let savings_pct_plover = (stats.total_keys_plover.to_f64() - stats.total_keys_lyk_vs_plover.to_f64()) * 100.0
+        / stats.total_keys_plover.to_f64();
+    let savings_pct_lapwing = (stats.total_keys_lapwing.to_f64() - stats.total_keys_lyk_vs_lapwing.to_f64()) * 100.0
+        / stats.total_keys_lapwing.to_f64();
 
     assert!(
         passage_win_pct_plover >= t::PASSAGE_WIN_PCT_PLOVER,
@@ -527,11 +529,11 @@ fn lyk_beats_plover_and_lapwing_across_extracted_gutenberg_prose() {
     let word_fewer_keys_pct_lapwing = Stats::pct(stats.word_fewer_keys_lapwing, stats.words);
     let word_more_keys_pct_plover = Stats::pct(stats.word_more_keys_plover, stats.words);
     let word_more_keys_pct_lapwing = Stats::pct(stats.word_more_keys_lapwing, stats.words);
-    let savings_pct_plover = (stats.total_keys_plover as f64 - stats.total_keys_lyk_vs_plover as f64) * 100.0
-        / stats.total_keys_plover as f64;
-    let savings_pct_lapwing = (stats.total_keys_lapwing as f64 - stats.total_keys_lyk_vs_lapwing as f64)
+    let savings_pct_plover = (stats.total_keys_plover.to_f64() - stats.total_keys_lyk_vs_plover.to_f64()) * 100.0
+        / stats.total_keys_plover.to_f64();
+    let savings_pct_lapwing = (stats.total_keys_lapwing.to_f64() - stats.total_keys_lyk_vs_lapwing.to_f64())
         * 100.0
-        / stats.total_keys_lapwing as f64;
+        / stats.total_keys_lapwing.to_f64();
 
     assert!(
         passage_win_pct_plover >= t::PASSAGE_WIN_PCT_PLOVER,

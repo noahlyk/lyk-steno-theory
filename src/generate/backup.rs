@@ -324,13 +324,10 @@ fn stress_stripped(sounds: &[String]) -> Vec<&str> {
 /// Of the placed words that share the sounds `word` needs, the one whose spelling also sits at
 /// the boundary (`building` starts with `build`, not `billed`); `None` when no single one does.
 fn spelled_stem<'s>(word: &str, stems: &[&'s str], boundary: fn(&str, &str) -> bool) -> Option<&'s str> {
-    match *stems {
-        [stem] => Some(stem),
-        _ => {
-            let mut matches = stems.iter().copied().filter(|s| boundary(word, s));
-            let first = matches.next()?;
-            matches.next().is_none().then_some(first)
-        }
+    if let [stem] = *stems { Some(stem) } else {
+        let mut matches = stems.iter().copied().filter(|s| boundary(word, s));
+        let first = matches.next()?;
+        matches.next().is_none().then_some(first)
     }
 }
 

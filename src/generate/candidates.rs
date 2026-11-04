@@ -140,154 +140,143 @@ pub fn enumerate_candidates(
     simple: &HashSet<&str>,
     wanted: &HashSet<&str>,
 ) -> Vec<Candidate> {
-    let mut out: Vec<Candidate> = Vec::new();
-    let Some(prons) = setup.pron.get(word) else {
-        return out;
-    };
-    let Some(sounds) = prons.first() else {
-        return out;
-    };
-    let join = setup.rules.join_key();
+    let Some(prons) = setup.pron.get(word) else { return Vec::new() };
+    let Some(sounds) = prons.first() else { return Vec::new() };
+    let mut pool = Pool { setup, word, sounds, out: Vec::new() };
 
-    let push = |out: &mut Vec<Candidate>, mut outline: Vec<Stroke>, origin: Origin| {
-        setup.rules.joined(&mut outline);
+    // 1. Gold briefs; a literal override is the one candidate and nothing else competes with it.
+    match briefs.word.get(word).map(String::as_str) {
+        Some("plover") => pool.briefs(setup.gold.plover.get(word)),
+        Some("lapwing") => pool.briefs(setup.gold.lapwing.get(word)),
+        Some(literal) => return pool.literal(literal),
+        None => {
+            pool.briefs(setup.gold.plover.get(word));
+            pool.briefs(setup.gold.lapwing.get(word));
+        }
+    }
+    // 2. The plain rules reading, every time, brief or not; 2b. the stem-plus-suffix readings.
+    let base = setup.rules.outline(word, sounds);
+    if let Some(outline) = &base {
+        pool.push(outline.clone(), Origin::Rules);
+    }
+    pool.suffixed();
+    // 3. The spelling variant that tells a homophone apart, beside the plain reading.
+    let variant = setup.rules.variant(word, sounds);
+    if let Some(outline) = &variant {
+        pool.push(outline.clone(), Origin::Spelling);
+    }
+    // 4. Brevity steps, gated by rank.
+    if let Some(first) = base.as_ref().filter(|b| b.len() > 1) {
+        pool.shortened(prons, first.len(), simple, wanted);
+    }
+    // 5. The star ladder on the plain reading and on the spelling variant.
+    for outline in [base.as_ref(), variant.as_ref()].into_iter().flatten() {
+        for (n, laddered) in ladder(outline, setup.rules.join_key()) {
+            pool.push(laddered, Origin::Ladder(n));
+        }
+    }
+    // 6. S-for-Z coda alternates.
+    for outline in voicing_alternates(word, &pool.out) {
+        pool.push(outline, Origin::Voicing);
+    }
+    pool.out
+}
+
+/// One word's candidates as they are gathered.
+struct Pool<'a> {
+    setup: &'a Setup,
+    word: &'a str,
+    sounds: &'a [String],
+    out: Vec<Candidate>,
+}
+
+impl Pool<'_> {
+    /// Adds `outline`, join keys set. One that can't be typed as written is offered with one pinky
+    /// key swapped for its partner (still one stroke) and with the offending pinky keys moved onto
+    /// a continuation stroke: never just dropped.
+    fn push(&mut self, mut outline: Vec<Stroke>, origin: Origin) {
+        let rules = &self.setup.rules;
+        rules.joined(&mut outline);
         if !typable(&outline) {
-            // Not typable as written. Offer, in this order of preference, the same outline with
-            // one pinky key swapped for its partner (still one stroke), and the offending pinky
-            // keys moved onto a continuation stroke; never just drop the word's candidate.
             if let [bad] = outline.iter().filter(|s| !s.typable()).collect::<Vec<_>>()[..] {
                 let at = outline.iter().position(|s| s == bad).expect("it is in the outline");
                 for swapped in bad.typable_swaps() {
                     let mut repaired = outline.clone();
                     repaired[at] = swapped;
                     let cost = candidate_cost(&repaired);
-                    out.push(Candidate { outline: repaired, origin, cost });
+                    self.out.push(Candidate { outline: repaired, origin, cost });
                 }
             }
             let Some(split) = split_untypable(&outline) else { return };
             outline = split;
-            setup.rules.joined(&mut outline);
+            rules.joined(&mut outline);
         }
         let cost = candidate_cost(&outline);
-        out.push(Candidate { outline, origin, cost });
-    };
+        self.out.push(Candidate { outline, origin, cost });
+    }
 
-    // 1. Gold-brief candidates (see this function's own doc). A literal override forces exactly
-    // one candidate and returns immediately - nothing else in this word's list competes with it.
-    if let Some(explicit) = briefs.word.get(word) {
-        match explicit.as_str() {
-            "plover" => {
-                for outline in gold_candidates(&setup.rules, setup.gold.plover.get(word), word, sounds) {
-                    push(&mut out, outline, Origin::Brief);
-                }
+    /// A gold dictionary's outlines for the word, each raw and with its fragments dropped.
+    fn briefs(&mut self, outlines: Option<&Vec<String>>) {
+        for outline in gold_candidates(&self.setup.rules, outlines, self.word, self.sounds) {
+            self.push(outline, Origin::Brief);
+        }
+    }
+
+    /// A literal `[word]` outline: the user's own choice, so never filtered here (it is checked,
+    /// and reported, where literals are placed). The word's only candidate.
+    fn literal(mut self, literal: &str) -> Vec<Candidate> {
+        if let Some(mut outline) = parse_outline(literal) {
+            self.setup.rules.joined(&mut outline);
+            let cost = candidate_cost(&outline);
+            self.out.push(Candidate { outline, origin: Origin::Brief, cost });
+        }
+        self.out
+    }
+
+    /// The stem-plus-suffix readings: the trailing reduced syllable struck as its own continuation
+    /// after the rules reading of the rest (`pearly` `PERL/+EU` when `PERL` is taken), up to two
+    /// syllables peeled. Never fewer strokes than the plain reading, so it is the predictable way
+    /// down when every one-stroke form is gone, ahead of a bare `/+*` or a two-stroke gold brief.
+    fn suffixed(&mut self) {
+        let rules = &self.setup.rules;
+        let mut stem_sounds: Vec<String> = self.sounds.to_vec();
+        let mut suffix_strokes: Vec<Stroke> = Vec::new();
+        for _ in 0..2 {
+            let Some((split, suffix)) = rules.suffix_split(self.word, &stem_sounds) else { break };
+            if split == 0 {
+                break;
             }
-            "lapwing" => {
-                for outline in gold_candidates(&setup.rules, setup.gold.lapwing.get(word), word, sounds) {
-                    push(&mut out, outline, Origin::Brief);
-                }
-            }
-            literal => {
-                // A literal is the user's own choice: never filtered here, checked (and reported)
-                // where literals are placed.
-                if let Some(mut outline) = parse_outline(literal) {
-                    setup.rules.joined(&mut outline);
-                    let cost = candidate_cost(&outline);
-                    out.push(Candidate { outline, origin: Origin::Brief, cost });
-                }
-                return out;
+            suffix_strokes.insert(0, suffix);
+            stem_sounds.truncate(split);
+            if let Some(mut outline) = rules.outline(self.word, &stem_sounds) {
+                outline.extend(suffix_strokes.iter().copied());
+                self.push(outline, Origin::Rules);
             }
         }
-    } else {
-        for outline in gold_candidates(&setup.rules, setup.gold.plover.get(word), word, sounds) {
-            push(&mut out, outline, Origin::Brief);
-        }
-        for outline in gold_candidates(&setup.rules, setup.gold.lapwing.get(word), word, sounds) {
-            push(&mut out, outline, Origin::Brief);
-        }
     }
 
-    // 2. Rules-derived candidate: lyk's own plain reading, every time, brief or not.
-    let base = setup.rules.outline(word, sounds);
-    if let Some(outline) = &base {
-        push(&mut out, outline.clone(), Origin::Rules);
-    }
-
-    // 2b. The stem-plus-suffix reading: the word's trailing reduced syllable struck as its own
-    // standalone continuation stroke after the rules reading of what is left (`pearly` `PERL/+EU`
-    // when `PERL` is taken; `needlessly` `TPHAOEDLS/+-L`, then `TPHAOED/+-LS/+-L`), one syllable
-    // peeled per step. Always at least as many strokes as the plain reading, so it never beats a
-    // one-stroke form for the word itself: it is the predictable way down when every one-stroke
-    // candidate is gone, ahead of a bare `/+*` marker or a gold dictionary's own two-stroke brief.
-    // See `docs/syllables.md`.
-    let mut stem_sounds: Vec<String> = sounds.clone();
-    let mut suffix_strokes: Vec<Stroke> = Vec::new();
-    for _ in 0..2 {
-        let Some((split, suffix)) = setup.rules.suffix_split(word, &stem_sounds) else { break };
-        if split == 0 {
-            break;
-        }
-        suffix_strokes.insert(0, suffix);
-        stem_sounds.truncate(split);
-        if let Some(mut outline) = setup.rules.outline(word, &stem_sounds) {
-            outline.extend(suffix_strokes.iter().copied());
-            push(&mut out, outline, Origin::Rules);
-        }
-    }
-
-    // 3. Homophone resolution folded into legality: see this function's own doc for why this is
-    // always offered alongside the plain reading rather than instead of it.
-    let variant = setup.rules.variant(word, sounds);
-    if let Some(outline) = &variant {
-        push(&mut out, outline.clone(), Origin::Spelling);
-    }
-
-    // 4. Brevity-ladder candidates: a long word written shorter by one of the shortening steps,
-    // gated by rank exactly as before.
-    if let Some(first) = &base {
-        let own = setup.rank.get(word).copied().unwrap_or(usize::MAX);
-        if first.len() > 1 {
-            for short in setup.rules.brevity().iter().filter(|s| own < s.rank) {
-                let mut seen_this_step: HashSet<Vec<Stroke>> = HashSet::new();
-                for pron_sounds in prons {
-                    for outline in setup.rules.shorten(*short, word, pron_sounds) {
-                        if outline.len() >= first.len() {
-                            continue;
-                        }
-                        let starred: Vec<Vec<Stroke>> = ladder(&outline, join)
-                            .into_iter()
-                            .filter(|(n, _)| *n <= 2)
-                            .map(|(_, o)| o)
-                            .collect();
-                        for candidate in std::iter::once(outline).chain(starred) {
-                            let text = render_outline(&candidate);
-                            if simple.contains(text.as_str()) || wanted.contains(text.as_str()) {
-                                continue;
-                            }
-                            if !seen_this_step.insert(candidate.clone()) {
-                                continue;
-                            }
-                            push(&mut out, candidate, Origin::Short(short.step));
+    /// Every brevity step the word's rank allows, over every pronunciation: each form shorter than
+    /// the plain reading (`full` strokes) and its first two star rungs, unless a one-syllable word
+    /// (`simple`) or any word (`wanted`) has that text by its plain rules.
+    fn shortened(&mut self, prons: &[Vec<String>], full: usize, simple: &HashSet<&str>, wanted: &HashSet<&str>) {
+        let setup = self.setup;
+        let own = setup.rank.get(self.word).copied().unwrap_or(usize::MAX);
+        for short in setup.rules.brevity().iter().filter(|s| own < s.rank) {
+            let mut seen: HashSet<Vec<Stroke>> = HashSet::new();
+            for sounds in prons {
+                for outline in setup.rules.shorten(*short, self.word, sounds).into_iter().filter(|o| o.len() < full) {
+                    let starred =
+                        ladder(&outline, setup.rules.join_key()).into_iter().filter(|(n, _)| *n <= 2).map(|(_, o)| o);
+                    for candidate in std::iter::once(outline.clone()).chain(starred) {
+                        let text = render_outline(&candidate);
+                        if !simple.contains(text.as_str()) && !wanted.contains(text.as_str()) && seen.insert(candidate.clone()) {
+                            self.push(candidate, Origin::Short(short.step));
                         }
                     }
                 }
             }
         }
     }
-
-    // 5. Full-outline ladder candidates: the star ladder on top of the plain reading, and on top
-    // of the spelling variant too, when it has one.
-    for outline in [base.as_ref(), variant.as_ref()].into_iter().flatten() {
-        for (n, laddered) in ladder(outline, join) {
-            push(&mut out, laddered, Origin::Ladder(n));
-        }
-    }
-
-    // 6. S-for-Z coda alternates: see `voicing_alternates`'s own doc.
-    for outline in voicing_alternates(word, &out) {
-        push(&mut out, outline, Origin::Voicing);
-    }
-
-    out
 }
 
 /// Every candidate in `out` whose last stroke's coda is a voiced `-Z`, respelled with that `-Z`

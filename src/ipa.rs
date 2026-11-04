@@ -1,32 +1,32 @@
-//! IPA to ARPAbet: translating `data/pronunciation/english_us_mfa.dict` and
-//! `wikipron_us_broad.tsv` (both IPA) into the exact 39-symbol ARPAbet alphabet
+//! IPA to `ARPAbet`: translating `data/pronunciation/english_us_mfa.dict` and
+//! `wikipron_us_broad.tsv` (both IPA) into the exact 39-symbol `ARPAbet` alphabet
 //! `data/pronunciation/cmudict.phones` lists and `rules/plover.toml`'s onset/coda/vowel tables
-//! are keyed on - so a word CMUdict has no entry for at all can still be looked up there, as a
+//! are keyed on - so a word `CMUdict` has no entry for at all can still be looked up there, as a
 //! fallback (see `data::merge_fallback_pronunciations`). CMUdict-covered words never pass through
 //! here.
 //!
 //! The base consonant/vowel correspondence is the standard one: Wikipedia's ARPABET article
 //! (<https://en.wikipedia.org/wiki/ARPABET>, itself citing the usual speech-processing
-//! references), cross-checked against `cmudict.phones`' own 39 symbols - CMUdict never uses
-//! ARPAbet's extended symbols (`DX`, `NX`, `Q`, `WH`, `AX`, `IX`, `UX`, `EL`, `EM`, `EN`), so
-//! neither does this table; every one of those collapses onto the plain symbol CMUdict itself
+//! references), cross-checked against `cmudict.phones`' own 39 symbols - `CMUdict` never uses
+//! `ARPAbet`'s extended symbols (`DX`, `NX`, `Q`, `WH`, `AX`, `IX`, `UX`, `EL`, `EM`, `EN`), so
+//! neither does this table; every one of those collapses onto the plain symbol `CMUdict` itself
 //! would have used for the same sound (e.g. the flap `DX`/ɾ is always spelled as its underlying
-//! `T` or `D`, exactly as CMUdict spells "water"/"ladder" without ever writing a flap).
+//! `T` or `D`, exactly as `CMUdict` spells "water"/"ladder" without ever writing a flap).
 //!
 //! MFA's own symbol set (documented at
 //! <https://mfa-models.readthedocs.io/en/latest/dictionary/English/English%20(US)%20MFA%20dictionary.html>)
-//! and WikiPron's (scraped from Wiktionary per Lee, Ashby, Prud'hommeaux & Hulden, *WikiPron: A
+//! and `WikiPron`'s (scraped from Wiktionary per Lee, Ashby, Prud'hommeaux & Hulden, *`WikiPron`: A
 //! Multilingual Pronunciation Dictionary from Wiktionary*, LREC 2020) are themselves two
 //! different IPA conventions, not one - confirmed directly against the real files in this repo:
 //! MFA writes each diphthong as one token (`aw`, `ej`) and marks aspiration/palatalization with
-//! modifier letters (`pʰ`, `tʲ`); WikiPron instead splits a diphthong across two adjacent vowel
+//! modifier letters (`pʰ`, `tʲ`); `WikiPron` instead splits a diphthong across two adjacent vowel
 //! tokens (`b a ʊ t` for "bout", not one `aʊ` token) and is considerably noisier - scraped from
 //! many Wiktionary contributors, it carries dialectal and narrow-transcription variants even for
 //! common words (see `docs/decisions.md`'s entry on this fallback for the "bird" example: eleven
 //! wildly different transcriptions in the real file, several not General American at all).
 //!
 //! Neither file marks lexical stress at all (confirmed: zero `ˈ`/`ˌ` characters in either real
-//! downloaded file) - ARPAbet vowels are not optional about this (ever digit-suffixed: `AH0`,
+//! downloaded file) - `ARPAbet` vowels are not optional about this (ever digit-suffixed: `AH0`,
 //! `AH1`, `AH2`; `Rules::syllables` only recognises a token as a vowel at all if it ends in a
 //! digit). With no stress signal to translate, [`translate`] assigns the crudest defensible
 //! default instead of guessing per-word: the first vowel is marked primary stress (`1`), every
@@ -38,9 +38,9 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// Consonants: IPA symbol (after [`clean`] strips non-distinctive diacritics) to its ARPAbet
-/// letter. Several IPA symbols collapse onto the same ARPAbet consonant because ARPAbet (and
-/// CMUdict) does not distinguish allophones the acoustic-model-driven sources do:
+/// Consonants: IPA symbol (after [`clean`] strips non-distinctive diacritics) to its `ARPAbet`
+/// letter. Several IPA symbols collapse onto the same `ARPAbet` consonant because `ARPAbet` (and
+/// `CMUdict`) does not distinguish allophones the acoustic-model-driven sources do:
 /// aspirated/unaspirated stops, palatalized consonants, the flap, or the wine/whine distinction.
 const CONSONANTS: &[(&str, &str)] = &[
     ("p", "P"),
@@ -88,7 +88,7 @@ const CONSONANTS: &[(&str, &str)] = &[
 ];
 
 /// Vowels, bare (no stress digit - [`translate`] appends that separately). A handful of IPA
-/// symbols that only ever show up as one half of a diphthong pair in WikiPron's split-diphthong
+/// symbols that only ever show up as one half of a diphthong pair in `WikiPron`'s split-diphthong
 /// style (`e`, `o`, a bare `a`) are deliberately *not* listed here: they must be consumed by
 /// [`DIPHTHONGS`] first, and a leftover, unpaired one should make the whole pronunciation fail
 /// to translate rather than silently map to some monophthong it was never meant to be.
@@ -116,7 +116,7 @@ const VOWELS: &[(&str, &str)] = &[
     ("ɛ", "EH"),
 ];
 
-/// Two-token diphthongs: WikiPron's own style splits each one across two adjacent vowel tokens
+/// Two-token diphthongs: `WikiPron`'s own style splits each one across two adjacent vowel tokens
 /// (`b a ʊ t` for "bout", not one `aʊ` token) - confirmed directly against the real file, and
 /// inconsistently: the offglide sometimes carries a non-syllabic diacritic (`ʊ̯`) and sometimes
 /// not, and "mouth" uses `ʊ` for its offglide while "house" uses the glide consonant `w` for the
@@ -154,7 +154,7 @@ static TABLES: LazyLock<Tables> = LazyLock::new(|| Tables {
 });
 
 /// Strips the modifier letters and combining marks this module treats as non-distinctive for
-/// ARPAbet's purposes (aspiration, palatalization, labialization, length, the dental and
+/// `ARPAbet`'s purposes (aspiration, palatalization, labialization, length, the dental and
 /// affricate-tie marks), and separately reports whether the syllabic-consonant mark (`◌̩`) was
 /// present, since that changes the token into two output phones rather than one (see
 /// [`translate`]). Every character stripped here is a deliberate, named exception - this does
@@ -173,12 +173,12 @@ fn clean(token: &str) -> (String, bool) {
             | '\u{032A}' // ̪ dental
             | '\u{0361}' // ͡ tie bar above
             | '\u{035C}' // ͜ tie bar below
+            | '\u{032F}' // ̯ non-syllabic (diphthong offglide marker)
             => false,
             '\u{0329}' => { // ̩ syllabic
                 syllabic = true;
                 false
             }
-            '\u{032F}' => false, // ̯ non-syllabic (diphthong offglide marker)
             _ => true,
         })
         .collect();
@@ -186,7 +186,7 @@ fn clean(token: &str) -> (String, bool) {
 }
 
 /// One word's IPA pronunciation (as `load_mfa`/`load_wikipron` return it, one phone per token) to
-/// ARPAbet, or `None` if any phone in it is not one this module recognises - a deliberate refusal
+/// `ARPAbet`, or `None` if any phone in it is not one this module recognises - a deliberate refusal
 /// rather than a guess (see module doc). Each output vowel carries a stress digit: `1` for the
 /// first vowel, `0` for every other one (there is no stress information in the source to do
 /// better with - see module doc).

@@ -4,7 +4,7 @@
 //! the two answer the same way: a query with no lowercase letter that parses as a stroke outline
 //! resolves forward (what does this stroke type); anything else is text to find the stroke(s)
 //! for, a single word or a whole phrase, word by word, next to Plover's and Lapwing's. A word with
-//! no pronunciation at all anywhere (CMUdict, MFA, or WikiPron - see `crate::ipa`) falls back to
+//! no pronunciation at all anywhere (`CMUdict`, MFA, or `WikiPron` - see `crate::ipa`) falls back to
 //! [`crate::rules::Rules::spell_word`]'s spelling-mode outline rather than going unanswered - see
 //! `docs/spelling-mode.md`.
 
@@ -24,16 +24,15 @@ pub fn classify(input: &str) -> Query {
     let trimmed = input.trim();
     let looks_like_a_stroke =
         !trimmed.is_empty() && !trimmed.chars().any(|c| c.is_ascii_lowercase());
-    if looks_like_a_stroke {
-        if let Some(strokes) = stroke::parse_outline(trimmed) {
+    if looks_like_a_stroke
+        && let Some(strokes) = stroke::parse_outline(trimmed) {
             return Query::Stroke(strokes);
         }
-    }
     Query::Text(trimmed.to_string())
 }
 
 /// One word's reverse lookup: lyk's own best candidate next to Plover's and Lapwing's shortest,
-/// any of the three `None` when that theory (or CMUdict) has nothing for the word.
+/// any of the three `None` when that theory (or `CMUdict`) has nothing for the word.
 #[derive(Debug, Clone)]
 pub struct WordLookup {
     pub word: String,
@@ -57,7 +56,7 @@ pub struct WordLookup {
 /// dictionary was built with, or not a real English word - `ander` has no dictionary entry of its
 /// own, since nobody writes "ander", but the rules can still read it back once struck; see
 /// `Rules::resolve`'s own stem-recognition fallback for that case instead), then to spelling mode
-/// for a word with no pronunciation on record anywhere (CMUdict, nor MFA or WikiPron's translated
+/// for a word with no pronunciation on record anywhere (`CMUdict`, nor MFA or `WikiPron`'s translated
 /// fallback - see `crate::ipa`) for the rules to run from at all (`aboveground`; see
 /// `Rules::spell_word`). Both fallback tiers set `lyk_deployed: false` - a real phonetic reading or
 /// a spelling-mode outline is worth showing even when it was never assigned that exact stroke

@@ -167,13 +167,13 @@ const KEY_WEIGHT: u32 = 1_000;
 /// How much cheaper a family-shaped candidate (`Origin::Family`) counts than its raw cost: two
 /// keys, so a member takes its root's shape (`building` `PWHR-G`, not Plover's `PW-LG`) unless
 /// that costs more than two extra keys. See `docs/syllables.md`.
-pub(super) const FAMILY_DISCOUNT: u32 = 2_000;
+pub const FAMILY_DISCOUNT: u32 = 2_000;
 
 /// Every outline a real keymux config already gives to a command, a punctuation mark, or
 /// fingerspelling - never available to a word, whatever the rules would have generated for it.
 /// Pulled out of [`generate`] so a test can confirm the invariant it exists to guarantee (no
 /// generated word ever lands on one of these) without re-deriving this list by hand.
-pub(crate) fn reserved_outlines() -> Result<HashMap<String, String>> {
+pub fn reserved_outlines() -> Result<HashMap<String, String>> {
     let mut taken = HashMap::new();
     for (kind, json) in RESERVED {
         let strokes: HashMap<String, String> = serde_json::from_str(json)
@@ -351,7 +351,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 /// cost alone - its own doc
 /// comment already claims it "never competes with the primary"; this is what actually makes that
 /// true downstream, in both places that used to compare entries by `(len, keys)` alone.
-pub(crate) fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
+pub fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) -> HashMap<&'a str, &'a Entry> {
     let mut best: HashMap<&str, &Entry> = HashMap::new();
     for entry in entries {
         match best.get(entry.word.as_str()) {
@@ -369,7 +369,7 @@ pub(crate) fn best_entry_per_word<'a>(entries: impl Iterator<Item = &'a Entry>) 
 /// shape's `FAMILY_DISCOUNT` applied as the solver applied it, so a bonus short form that merely
 /// ties it doesn't shadow it), then the outline itself, so the answer never depends on the order
 /// entries were pushed in.
-pub(super) fn priority(e: &Entry) -> (bool, usize, u32, &[Stroke]) {
+pub fn priority(e: &Entry) -> (bool, usize, u32, &[Stroke]) {
     let discount = if e.origin == Origin::Family { FAMILY_DISCOUNT } else { 0 };
     (
         matches!(e.origin, Origin::Alternate | Origin::Extra),
@@ -466,7 +466,7 @@ pub const CONTRACTION_TAILS: &[&str] = &["'s", "'d", "'ll", "'re", "'m", "'ve", 
 /// bigrams here.
 /// The pronoun's own entry is the capitalized "I" (see `generate`), while the bigram corpus and
 /// the frequency list only ever spell it lowercase.
-pub(crate) fn entry_word(word: &str) -> &str {
+pub fn entry_word(word: &str) -> &str {
     if word == "i" { "I" } else { word }
 }
 
@@ -487,16 +487,16 @@ pub fn written(word: &str) -> String {
 }
 
 /// Whether every stroke of `outline` can be pressed (see [`Stroke::typable`]).
-pub(crate) fn typable(outline: &[Stroke]) -> bool {
+pub fn typable(outline: &[Stroke]) -> bool {
     outline.iter().all(|stroke| stroke.typable())
 }
 
 /// `outline` with every untypable stroke written as two (see [`Stroke::split_untypable`]).
-pub(crate) fn split_untypable(outline: &[Stroke]) -> Option<Vec<Stroke>> {
+pub fn split_untypable(outline: &[Stroke]) -> Option<Vec<Stroke>> {
     let mut out = Vec::with_capacity(outline.len() + 1);
     for stroke in outline {
         match stroke.split_untypable() {
-            Some((first, rest)) => out.extend([first, rest]),
+            Some(pair) => out.extend(<[Stroke; 2]>::from(pair)),
             None => out.push(*stroke),
         }
     }

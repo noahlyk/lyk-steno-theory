@@ -60,12 +60,12 @@ pub fn load_wikipron(path: &Path) -> Result<Pronunciations> {
     Ok(words)
 }
 
-/// For every word CMUdict has no entry for at all, a translated ARPAbet pronunciation from MFA or
-/// WikiPron (see `crate::ipa`) - never for a word CMUdict already covers, so a caller that merges
+/// For every word `CMUdict` has no entry for at all, a translated `ARPAbet` pronunciation from MFA or
+/// `WikiPron` (see `crate::ipa`) - never for a word `CMUdict` already covers, so a caller that merges
 /// this in with `Pronunciations::entry(..).or_insert(..)` leaves every CMUdict-covered word
-/// byte-for-byte untouched. MFA is preferred over WikiPron whenever a word has a usable
+/// byte-for-byte untouched. MFA is preferred over `WikiPron` whenever a word has a usable
 /// pronunciation in both: its single, well-documented symbol inventory translates more reliably
-/// than WikiPron's noisier, multi-dialect Wiktionary scrape (see `crate::ipa`'s module doc and
+/// than `WikiPron`'s noisier, multi-dialect Wiktionary scrape (see `crate::ipa`'s module doc and
 /// `docs/decisions.md`). A word's own variants are tried in file order and kept only if they
 /// translate; a word with every variant rejected by `crate::ipa::translate` (an IPA symbol or
 /// cluster this module does not recognise) is simply absent here, exactly as if neither source had

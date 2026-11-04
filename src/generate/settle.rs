@@ -211,107 +211,27 @@ fn open_words<'a>(pools: &Pools<'a>, offers: &HashMap<String, Vec<Vec<Stroke>>>,
 /// Settles every open word into `book`: peeling, then the solver per component. Returns how many
 /// words the solver had to arbitrate.
 fn place(setup: &Setup, open: Vec<Open>, book: &mut Book) -> usize {
-    // Every text as a dense id, every word's options as ids.
-    let mut ids: HashMap<&str, u32> = HashMap::new();
-    let lists: Vec<Vec<u32>> = open
-        .iter()
-        .map(|o| {
-            o.options
-                .iter()
-                .map(|(text, _)| {
-                    let next = u32::try_from(ids.len()).expect("fewer than 2^32 texts");
-                    *ids.entry(text.as_str()).or_insert(next)
-                })
-                .collect()
-        })
-        .collect();
-    let texts = ids.len();
-    drop(ids);
-
-    // Who holds each text, and how many unsettled words still do.
-    let mut holders: Vec<Vec<u32>> = vec![Vec::new(); texts];
-    for (w, list) in lists.iter().enumerate() {
-        for &t in list {
-            holders[t as usize].push(u32::try_from(w).expect("fewer than 2^32 words"));
-        }
-    }
-    let mut count: Vec<u32> = holders.iter().map(|h| u32::try_from(h.len()).expect("fewer than 2^32 words")).collect();
-    let mut settled = vec![false; open.len()];
-    let mut queue: Vec<usize> = (0..open.len()).filter(|&w| count[lists[w][0] as usize] == 1).collect();
-    while let Some(w) = queue.pop() {
-        if settled[w] {
-            continue;
-        }
-        settled[w] = true;
-        for &t in &lists[w] {
-            count[t as usize] -= 1;
-            if count[t as usize] == 1
-                && let Some(&other) = holders[t as usize].iter().find(|&&o| !settled[o as usize])
-                && lists[other as usize][0] == t
-            {
-                queue.push(other as usize);
-            }
-        }
-    }
-
-    // Components of what is left, linked by shared texts.
-    let mut parent: Vec<usize> = (0..open.len()).collect();
-    fn find(parent: &mut [usize], mut x: usize) -> usize {
-        while parent[x] != x {
-            parent[x] = parent[parent[x]];
-            x = parent[x];
-        }
-        x
-    }
-    for holders in &holders {
-        let mut live = holders.iter().map(|&w| w as usize).filter(|&w| !settled[w]);
-        if let Some(first) = live.next() {
-            for other in live {
-                let (a, b) = (find(&mut parent, first), find(&mut parent, other));
-                parent[a] = b;
-            }
-        }
-    }
-    let mut components: HashMap<usize, Vec<usize>> = HashMap::new();
-    for w in (0..open.len()).filter(|&w| !settled[w]) {
-        components.entry(find(&mut parent, w)).or_default().push(w);
-    }
-    let contested = components.values().map(Vec::len).sum();
+    let graph = Graph::new(&open);
+    let settled = graph.peel();
+    let mut components = graph.components(&settled);
+    let contested = components.iter().map(Vec::len).sum();
 
     let mut open: Vec<Option<Open>> = open.into_iter().map(Some).collect();
-    for (w, slot) in open.iter_mut().enumerate() {
-        if settled[w] {
-            let Open { word, mut options } = slot.take().expect("each word is settled once");
-            let (text, candidate) = options.swap_remove(0);
-            book.place(word, candidate.outline, candidate.origin, text);
-        }
+    for (slot, _) in open.iter_mut().zip(&settled).filter(|(_, settled)| **settled) {
+        let Open { word, mut options } = slot.take().expect("each word is settled once");
+        let (text, candidate) = options.swap_remove(0);
+        book.place(word, candidate.outline, candidate.origin, text);
     }
-    let mut components: Vec<Vec<usize>> = components.into_values().collect();
+    let word_of = |w: usize| open[w].as_ref().map(|o| o.word);
     for component in &mut components {
-        component.sort_unstable_by_key(|&w| open[w].as_ref().map(|o| o.word));
+        component.sort_unstable_by_key(|&w| word_of(w));
     }
-    components.sort_unstable_by_key(|c| open[c[0]].as_ref().map(|o| o.word));
+    components.sort_unstable_by_key(|c| word_of(c[0]));
+
     // Every component's words with their edges (frequency weight times cost) and what leaving each
-    // out would cost, solved on every core; placed back in component order, so the result is the
-    // same however the work was split.
-    let problems: Vec<Problem> = components
-        .into_iter()
-        .map(|component| {
-            let mut no_match = Vec::with_capacity(component.len());
-            let words = component
-                .iter()
-                .map(|&w| {
-                    let o = open[w].take().expect("each word is in one component");
-                    let weight = setup.count.get(o.word).copied().unwrap_or(0);
-                    let candidates: Vec<Candidate> = o.options.into_iter().map(|(_, c)| c).collect();
-                    no_match.push(no_match_cost(o.word, weight, &candidates));
-                    let edges = candidates.into_iter().map(|c| (u64::from(c.cost) * weight, c)).map(|(e, c)| (c, e)).collect();
-                    (o.word, edges)
-                })
-                .collect();
-            (words, no_match)
-        })
-        .collect();
+    // out would cost, solved on every core and placed back in component order, so the result is
+    // the same however the work was split.
+    let problems: Vec<Problem> = components.into_iter().map(|component| problem(setup, &component, &mut open)).collect();
     let assignments = solve_in_parallel(&problems);
     for ((words, _), assignment) in problems.into_iter().zip(assignments) {
         for (word, candidates) in words {
@@ -327,6 +247,130 @@ fn place(setup: &Setup, open: Vec<Open>, book: &mut Book) -> usize {
         }
     }
     contested
+}
+
+/// The open words' options as dense text ids, and which words hold each text.
+struct Graph {
+    lists: Vec<Vec<u32>>,
+    holders: Vec<Vec<u32>>,
+}
+
+impl Graph {
+    fn new(open: &[Open]) -> Self {
+        let mut ids: HashMap<&str, u32> = HashMap::new();
+        let lists: Vec<Vec<u32>> = open
+            .iter()
+            .map(|o| {
+                o.options
+                    .iter()
+                    .map(|(text, _)| {
+                        let next = dense(ids.len());
+                        *ids.entry(text.as_str()).or_insert(next)
+                    })
+                    .collect()
+            })
+            .collect();
+        let mut holders: Vec<Vec<u32>> = vec![Vec::new(); ids.len()];
+        for (w, list) in lists.iter().enumerate() {
+            for &t in list {
+                holders[t as usize].push(dense(w));
+            }
+        }
+        Self { lists, holders }
+    }
+
+    /// Which words peeling settles: one whose cheapest text no other unsettled word holds, until
+    /// none is left. Settling a word only lowers how many words hold each of its texts, so a
+    /// worklist over those counts reaches the same fixed point as rounds would.
+    fn peel(&self) -> Vec<bool> {
+        let mut count: Vec<u32> = self.holders.iter().map(|h| dense(h.len())).collect();
+        let mut settled = vec![false; self.lists.len()];
+        let mut queue: Vec<usize> = (0..self.lists.len()).filter(|&w| count[self.lists[w][0] as usize] == 1).collect();
+        while let Some(w) = queue.pop() {
+            if settled[w] {
+                continue;
+            }
+            settled[w] = true;
+            for &t in &self.lists[w] {
+                count[t as usize] -= 1;
+                if count[t as usize] == 1
+                    && let Some(&other) = self.holders[t as usize].iter().find(|&&o| !settled[o as usize])
+                    && self.lists[other as usize][0] == t
+                {
+                    queue.push(other as usize);
+                }
+            }
+        }
+        settled
+    }
+
+    /// The unsettled words, grouped into components linked by shared texts.
+    fn components(&self, settled: &[bool]) -> Vec<Vec<usize>> {
+        let mut sets = UnionFind::new(self.lists.len());
+        for holders in &self.holders {
+            let mut live = holders.iter().map(|&w| w as usize).filter(|&w| !settled[w]);
+            if let Some(first) = live.next() {
+                for other in live {
+                    sets.union(first, other);
+                }
+            }
+        }
+        let mut components: HashMap<usize, Vec<usize>> = HashMap::new();
+        for w in (0..self.lists.len()).filter(|&w| !settled[w]) {
+            components.entry(sets.find(w)).or_default().push(w);
+        }
+        components.into_values().collect()
+    }
+}
+
+/// `n` as a dense `u32` id: there are far fewer words and texts than 2^32.
+fn dense(n: usize) -> u32 {
+    u32::try_from(n).expect("fewer than 2^32 words and texts")
+}
+
+/// Disjoint sets over `0..n`, with path halving.
+struct UnionFind(Vec<usize>);
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self((0..n).collect())
+    }
+
+    fn find(&mut self, mut x: usize) -> usize {
+        while self.0[x] != x {
+            self.0[x] = self.0[self.0[x]];
+            x = self.0[x];
+        }
+        x
+    }
+
+    fn union(&mut self, a: usize, b: usize) {
+        let (a, b) = (self.find(a), self.find(b));
+        self.0[a] = b;
+    }
+}
+
+/// One component's words taken out of `open`, as a solver problem.
+fn problem<'a>(setup: &Setup, component: &[usize], open: &mut [Option<Open<'a>>]) -> Problem<'a> {
+    let mut no_match = Vec::with_capacity(component.len());
+    let words = component
+        .iter()
+        .map(|&w| {
+            let o = open[w].take().expect("each word is in one component");
+            let weight = setup.count.get(o.word).copied().unwrap_or(0);
+            let candidates: Vec<Candidate> = o.options.into_iter().map(|(_, c)| c).collect();
+            no_match.push(no_match_cost(o.word, weight, &candidates));
+            let edges = candidates
+                .into_iter()
+                .map(|c| {
+                    let edge = weight * u64::from(c.cost);
+                    (c, edge)
+                })
+                .collect();
+            (o.word, edges)
+        })
+        .collect();
+    (words, no_match)
 }
 
 /// One component for the solver: each word with its candidates and their edge costs, and what

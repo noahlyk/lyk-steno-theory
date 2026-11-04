@@ -11,6 +11,7 @@ mod data;
 mod dictionary_fixture;
 mod fetch;
 mod generate;
+mod num;
 mod output;
 mod phrases;
 mod gold;
@@ -253,8 +254,14 @@ fn main() -> Result<()> {
             limit,
             missing,
             after,
-        } => analysis::mismatches(&setup(None)?, *syllables, *limit, *missing, *after),
-        Command::Learn { min, limit } => analysis::learn(&setup(None)?, *min, *limit),
+        } => {
+            analysis::mismatches(&setup(None)?, *syllables, *limit, *missing, *after);
+            Ok(())
+        }
+        Command::Learn { min, limit } => {
+            analysis::learn(&setup(None)?, *min, *limit);
+            Ok(())
+        }
         Command::Explain { word, common, briefs } => {
             let setup = setup(Some(*common))?;
             let briefs = match briefs {
@@ -263,7 +270,8 @@ fn main() -> Result<()> {
             };
             let generated = generate::generate(&setup, &briefs, *common)?;
             let dictionary = generate::cheapest(&generated.entries);
-            analysis::explain(&setup, &dictionary, word)
+            analysis::explain(&setup, &dictionary, word);
+            Ok(())
         }
         Command::Plugin { out, common, briefs } => {
             let setup = setup(Some(*common))?;

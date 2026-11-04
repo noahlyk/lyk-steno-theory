@@ -3,6 +3,7 @@
 use super::STROKE_WEIGHT;
 use super::candidates::Candidate;
 use crate::stroke::render_outline;
+use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
 
 /// What it costs a word, in `edge_cost` units, to end up with no primary outline at all: it is
@@ -42,154 +43,147 @@ pub(super) fn solve_contested<'a>(contested: &[(&'a str, Vec<(Candidate, u64)>)]
     if contested.is_empty() {
         return HashMap::new();
     }
-
     // Node numbering: 0 = source, 1..=W = one per word, W+1..=W+T = one per distinct outline text,
-    // W+T+1 = sink.
-    let word_count = contested.len();
+    // W+T+1 = sink. Each word's edges are in its own candidate order, so an edge's position is the
+    // candidate's index.
+    let words = contested.len();
     let mut text_index: HashMap<String, usize> = HashMap::new();
-    // For each word: (text node offset, edge cost) per candidate, in the word's own candidate order
-    // - the candidate's own index in this word's list is implicit in its position here.
-    let mut word_edges: Vec<Vec<(usize, u64)>> = vec![Vec::new(); word_count];
-
-    for (w, (_, candidates)) in contested.iter().enumerate() {
-        for (candidate, cost) in candidates {
-            let text = render_outline(&candidate.outline);
-            let next = text_index.len();
-            let t = *text_index.entry(text).or_insert(next);
-            word_edges[w].push((t, *cost));
-        }
-    }
-
-    let text_count = text_index.len();
-    let source = 0usize;
+    let word_edges: Vec<Vec<(usize, u64)>> = contested
+        .iter()
+        .map(|(_, candidates)| {
+            candidates
+                .iter()
+                .map(|(candidate, cost)| {
+                    let next = text_index.len();
+                    (*text_index.entry(render_outline(&candidate.outline)).or_insert(next), *cost)
+                })
+                .collect()
+        })
+        .collect();
+    let (source, sink) = (0, 1 + words + text_index.len());
     let word_node = |w: usize| 1 + w;
-    let text_node = |t: usize| 1 + word_count + t;
-    let sink = 1 + word_count + text_count;
-    let node_count = sink + 1;
-
-    // A standard residual graph: each edge stores the index of its own reverse edge in `to`'s
-    // adjacency list.
-    #[derive(Clone)]
-    struct Edge {
-        to: usize,
-        rev: usize,
-        cap: u32,
-        cost: i64,
-    }
-    let mut graph: Vec<Vec<Edge>> = vec![Vec::new(); node_count];
-    let link = |graph: &mut Vec<Vec<Edge>>, from: usize, to: usize, cap: u32, cost: i64| {
-        let fwd = graph[from].len();
-        let rev = graph[to].len();
-        graph[from].push(Edge { to, rev, cap, cost });
-        graph[to].push(Edge { to: from, rev: fwd, cap: 0, cost: -cost });
-    };
-
-    for w in 0..word_count {
-        link(&mut graph, source, word_node(w), 1, 0);
-        for &(t, cost) in &word_edges[w] {
-            link(&mut graph, word_node(w), text_node(t), 1, i64::try_from(cost).unwrap_or(i64::MAX));
+    let text_node = |t: usize| 1 + words + t;
+    let mut network = Network::new(sink + 1);
+    for (w, edges) in word_edges.iter().enumerate() {
+        network.link(source, word_node(w), 0);
+        for &(t, cost) in edges {
+            network.link(word_node(w), text_node(t), i64::try_from(cost).unwrap_or(i64::MAX));
         }
-        // A direct, private escape valve straight to the sink, bypassing every text: a genuine
-        // Hall-violation can still happen inside one connected component (more mutually-exclusive
-        // words than distinct texts - a multi-way homophone cluster deeper than its own star
-        // ladder). Its cost is `no_match_cost`'s, so the solver leaves unplaced whichever word
-        // loses least by it, measured on the same scale as every real candidate.
-        let no_match_cost = i64::try_from(no_match[w]).unwrap_or(i64::MAX);
-        link(&mut graph, word_node(w), sink, 1, no_match_cost);
+        // A private escape straight to the sink: one component can still hold more mutually
+        // exclusive words than texts (a homophone cluster deeper than its star ladder). At
+        // `no_match_cost`, the solver leaves out whichever word loses least by it.
+        network.link(word_node(w), sink, i64::try_from(no_match[w]).unwrap_or(i64::MAX));
     }
-    for t in 0..text_count {
-        link(&mut graph, text_node(t), sink, 1, 0);
+    for t in 0..text_index.len() {
+        network.link(text_node(t), sink, 0);
     }
 
-    let mut potential = vec![0i64; node_count];
-    let mut flow = 0usize;
-
-    while flow < word_count {
-        // Dijkstra over reduced costs `cost(u,v) + potential[u] - potential[v]`, which stay
-        // non-negative as long as `potential` was last updated by a real shortest-path run - true
-        // on the first iteration (all zero, all real costs non-negative) and maintained below.
-        let mut dist = vec![i64::MAX; node_count];
-        let mut prev_edge: Vec<Option<(usize, usize)>> = vec![None; node_count];
-        dist[source] = 0;
-        let mut heap: BinaryHeap<std::cmp::Reverse<(i64, usize)>> = BinaryHeap::new();
-        heap.push(std::cmp::Reverse((0, source)));
-        while let Some(std::cmp::Reverse((d, u))) = heap.pop() {
-            if d > dist[u] {
-                continue;
-            }
-            // Only the path to the sink is needed: every node still unsettled has a distance of
-            // at least `dist[sink]`, which the potential update below accounts for.
-            if u == sink {
-                break;
-            }
-            for (ei, edge) in graph[u].iter().enumerate() {
-                if edge.cap == 0 {
-                    continue;
-                }
-                let reduced = edge.cost + potential[u] - potential[edge.to];
-                let nd = d + reduced;
-                if nd < dist[edge.to] {
-                    dist[edge.to] = nd;
-                    prev_edge[edge.to] = Some((u, ei));
-                    heap.push(std::cmp::Reverse((nd, edge.to)));
-                }
-            }
-        }
-        if dist[sink] == i64::MAX {
-            break;
-        }
-        // Capping every node at `dist[sink]` (settled nodes are already below it; unsettled and
-        // unreached ones are not) keeps every residual edge's reduced cost non-negative for the
-        // next round - the standard early-exit form of successive shortest paths.
-        let dist_sink = dist[sink];
-        for (v, slot) in potential.iter_mut().enumerate() {
-            *slot += dist[v].min(dist_sink);
-        }
-        // Walk the augmenting path once more, pushing one unit of flow along it (every capacity
-        // here is 1, so there is never a smaller bottleneck to find first) - this only ever moves
-        // flow between a word's own candidate edges (see this function's own doc: the source-word
-        // edge, once saturated, is never the one that gets displaced), so the final matching is
-        // read off directly from edge capacities once flow is complete, not tracked here.
-        let mut v = sink;
-        let mut path: Vec<(usize, usize)> = Vec::new();
-        while let Some((u, ei)) = prev_edge[v] {
-            path.push((u, ei));
-            v = u;
-        }
-        for (u, ei) in path {
-            let (to, rev) = (graph[u][ei].to, graph[u][ei].rev);
-            graph[u][ei].cap -= 1;
-            graph[to][rev].cap += 1;
-        }
+    let mut flow = 0;
+    while flow < words
+        && let Some(path) = network.shortest_path(source, sink)
+    {
+        network.augment(&path);
         flow += 1;
     }
-
     assert_eq!(
-        flow, word_count,
-        "the contested-subgraph solver failed to saturate every word's own source edge - every \
-         word has a guaranteed path to the sink (a real candidate, or its own no-match escape \
-         valve above), so this is a bug in solve_contested, not a legitimate shortfall"
+        flow, words,
+        "every word has a path to the sink (a candidate, or its own escape), so the solver must \
+         saturate every word: this is a bug in solve_contested"
     );
 
-    // The source-word edge (index 0 in each word node's own adjacency list) is always saturated
-    // and never displaced once flow is complete (see the loop above); exactly one of the edges
-    // after it is the one actually carrying flow - either a real candidate (its index in the
-    // word's own list is what `generate` asked for) or this word's own no-match escape valve
-    // (the last edge added, right after its real candidates) - a genuine Hall-violation inside
-    // this component that the escape valve's own cost-scaling chose to sacrifice. `generate`
-    // treats a word missing from the returned map as unresolved, exactly as it would have been
-    // before this solver existed.
+    // Each word node's first edge is from the source; exactly one edge after it carries flow: a
+    // real candidate (its position is the candidate's index) or the escape (the last edge), which
+    // leaves the word out of the map, unresolved.
     let mut result = HashMap::new();
     for (w, (word, _)) in contested.iter().enumerate() {
-        let real_count = word_edges[w].len();
-        let matched = graph[word_node(w)].iter().skip(1).position(|edge| edge.cap == 0);
+        let matched = network.edges[word_node(w)].iter().skip(1).position(|edge| edge.cap == 0);
         match matched {
-            Some(candidate_index) if candidate_index < real_count => {
-                result.insert(*word, candidate_index);
+            Some(index) if index < word_edges[w].len() => {
+                result.insert(*word, index);
             }
-            Some(_) => {} // the no-match escape valve won: a genuine, cost-minimal sacrifice
+            Some(_) => {}
             None => unreachable!("the saturation assert above guarantees every word has a match"),
         }
     }
     result
+}
+
+/// A residual flow network of unit capacities: each edge knows the position of its reverse edge
+/// in `to`'s list. Successive shortest paths keep Johnson potentials, so Dijkstra's reduced costs
+/// stay non-negative.
+struct Network {
+    edges: Vec<Vec<Edge>>,
+    potential: Vec<i64>,
+}
+
+#[derive(Clone)]
+struct Edge {
+    to: usize,
+    rev: usize,
+    cap: u32,
+    cost: i64,
+}
+
+impl Network {
+    fn new(nodes: usize) -> Self {
+        Self { edges: vec![Vec::new(); nodes], potential: vec![0; nodes] }
+    }
+
+    /// An edge of capacity one from `from` to `to`, and its empty reverse.
+    fn link(&mut self, from: usize, to: usize, cost: i64) {
+        let (fwd, rev) = (self.edges[from].len(), self.edges[to].len());
+        self.edges[from].push(Edge { to, rev, cap: 1, cost });
+        self.edges[to].push(Edge { to: from, rev: fwd, cap: 0, cost: -cost });
+    }
+
+    /// The cheapest path from `source` to `sink` with room left, as (node, edge position) steps
+    /// from the sink back, updating the potentials; `None` when there is none. Stops as soon as the
+    /// sink is settled: every node still unsettled is at least as far, which capping the
+    /// potential update at the sink's distance accounts for.
+    fn shortest_path(&mut self, source: usize, sink: usize) -> Option<Vec<(usize, usize)>> {
+        let nodes = self.edges.len();
+        let mut dist = vec![i64::MAX; nodes];
+        let mut prev: Vec<Option<(usize, usize)>> = vec![None; nodes];
+        dist[source] = 0;
+        let mut heap = BinaryHeap::from([Reverse((0, source))]);
+        while let Some(Reverse((d, u))) = heap.pop() {
+            if d > dist[u] {
+                continue;
+            }
+            if u == sink {
+                break;
+            }
+            for (ei, edge) in self.edges[u].iter().enumerate().filter(|(_, e)| e.cap > 0) {
+                let next = d + edge.cost + self.potential[u] - self.potential[edge.to];
+                if next < dist[edge.to] {
+                    dist[edge.to] = next;
+                    prev[edge.to] = Some((u, ei));
+                    heap.push(Reverse((next, edge.to)));
+                }
+            }
+        }
+        if dist[sink] == i64::MAX {
+            return None;
+        }
+        let reach = dist[sink];
+        for (slot, d) in self.potential.iter_mut().zip(&dist) {
+            *slot += (*d).min(reach);
+        }
+        let mut path = Vec::new();
+        let mut v = sink;
+        while let Some((u, ei)) = prev[v] {
+            path.push((u, ei));
+            v = u;
+        }
+        Some(path)
+    }
+
+    /// One unit of flow along `path`: every capacity is one, so there is no bottleneck to find.
+    fn augment(&mut self, path: &[(usize, usize)]) {
+        for &(u, ei) in path {
+            let (to, rev) = (self.edges[u][ei].to, self.edges[u][ei].rev);
+            self.edges[u][ei].cap -= 1;
+            self.edges[to][rev].cap += 1;
+        }
+    }
 }

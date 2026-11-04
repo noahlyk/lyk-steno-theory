@@ -132,7 +132,7 @@ impl Rules {
         }
         choices.push((Step::Skeleton, all));
         let mut some = if stress == 0 {
-            first_coda.clone()
+            first_coda
         } else {
             Vec::new()
         };

@@ -1,5 +1,7 @@
 //! Judging the rules against Plover and Lapwing, and learning which rules are missing.
 
+use crate::num::ToF64;
+
 use crate::data::{
     Pronunciations, fallback_pronunciations, load_bigrams, load_cmudict, load_frequency_bounded,
     load_mfa, load_wikipron,
@@ -14,12 +16,12 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 /// The frequency corpus (`data/frequency/en_full.txt`) strips every apostrophe, so a contraction
-/// is counted there under its bare, misspelled form (`dont`) while CMUdict, the only source of
+/// is counted there under its bare, misspelled form (`dont`) while `CMUdict`, the only source of
 /// pronunciation, keeps the real spelling (`don't`). [`Setup::load`]'s word list is built from the
 /// *intersection* of a rank and a pronunciation - `dont` has no pronunciation, `don't` has no
 /// rank - so every contraction below was silently invisible to the whole generator, no matter how
 /// common it actually is, until this table backfills `don't`'s rank from `dont`'s. Hand-curated,
-/// not derived by stripping every apostrophe CMUdict has, because most of those are unrelated
+/// not derived by stripping every apostrophe `CMUdict` has, because most of those are unrelated
 /// possessive-noun pronunciation entries (`thing's`) that would otherwise wrongly borrow their
 /// plural twin's rank (`things`) - this list is closed-class English contractions only, verified
 /// against both files. A few (`he'll`/`hell`, `we'll`/`well`, `who're`/`whore`) share their
@@ -310,23 +312,23 @@ fn tallies(setup: &Setup, briefs: &generate::Briefs, common: usize) -> Result<Ve
             tally.plover += usize::from(plover);
             tally.lapwing += usize::from(lapwing);
             tally.either += usize::from(plover || lapwing);
-            let weight = setup.count.get(word).copied().unwrap_or(0) as f64;
+            let weight = setup.count.get(word).copied().unwrap_or(0).to_f64();
             tally.usage_weight += weight;
             if let Some((&(this_strokes, this_keys), (plover_strokes, plover_keys))) = cost {
                 tally.costed += 1;
-                tally.this_strokes += this_strokes as f64;
+                tally.this_strokes += this_strokes.to_f64();
                 tally.this_keys += f64::from(this_keys);
-                tally.plover_strokes += plover_strokes as f64;
+                tally.plover_strokes += plover_strokes.to_f64();
                 tally.plover_keys += f64::from(plover_keys);
-                tally.this_strokes_weighted += weight * this_strokes as f64;
+                tally.this_strokes_weighted += weight * this_strokes.to_f64();
                 tally.this_keys_weighted += weight * f64::from(this_keys);
-                tally.plover_strokes_weighted += weight * plover_strokes as f64;
+                tally.plover_strokes_weighted += weight * plover_strokes.to_f64();
                 tally.plover_keys_weighted += weight * f64::from(plover_keys);
             }
             if let Some((&(_, _), (lapwing_strokes, lapwing_keys))) = lcost {
-                tally.lapwing_strokes += lapwing_strokes as f64;
+                tally.lapwing_strokes += lapwing_strokes.to_f64();
                 tally.lapwing_keys += f64::from(lapwing_keys);
-                tally.lapwing_strokes_weighted += weight * lapwing_strokes as f64;
+                tally.lapwing_strokes_weighted += weight * lapwing_strokes.to_f64();
                 tally.lapwing_keys_weighted += weight * f64::from(lapwing_keys);
             }
         }
@@ -358,7 +360,7 @@ pub fn score(setup: &Setup, briefs: &generate::Briefs, common: usize) -> Result<
          lapwing  by frequency: lyk  plover  lapwing"
     );
     for (label, t) in rows {
-        let pct = |n: usize| format!("{:>5.1}%", 100.0 * n as f64 / t.words.max(1) as f64);
+        let pct = |n: usize| format!("{:>5.1}%", 100.0 * n.to_f64() / t.words.max(1).to_f64());
         let per_stroke = |keys: f64, strokes: f64| keys / strokes.max(1.0);
         println!(
             "{label:<9} {:>7} {:>8} {:>8} {:>8} {:>8}  {:>16.3} {:>7.3} {:>7.3}  {:>13.3} \
@@ -383,7 +385,7 @@ pub fn score(setup: &Setup, briefs: &generate::Briefs, common: usize) -> Result<
 /// stroke, by syllable count, counting every distinct word once. Rendered fresh from `tallies`
 /// between the `<!-- lyk:score-table:start/end -->` markers.
 fn score_markdown(rows: &[(String, Tally)]) -> Result<String> {
-    let pct = |n: usize, of: usize| format!("{:.0}%", 100.0 * n as f64 / of.max(1) as f64);
+    let pct = |n: usize, of: usize| format!("{:.0}%", 100.0 * n.to_f64() / of.max(1).to_f64());
     let per_stroke = |keys: f64, strokes: f64| format!("{:.2}", keys / strokes.max(1.0));
     let mut out = String::new();
     out.push_str(
@@ -454,7 +456,7 @@ fn syllable_words_markdown(rows: &[(String, Tally)]) -> Result<String> {
         writeln!(
             out,
             "| {label} | {:.0}% |",
-            100.0 * t.words as f64 / total_words.max(1) as f64
+            100.0 * t.words.to_f64() / total_words.max(1).to_f64()
         )?;
     }
     Ok(out)
@@ -617,7 +619,7 @@ pub fn check_readme(
 /// deployed outline, which also accounts for briefs, collisions, and the backup-entry pass (see
 /// `deployed`, printed separately, for that; `dictionary` is `generate::cheapest` over a real
 /// `generate::generate` run, built once by the caller).
-pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str) -> Result<()> {
+pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str) {
     let word = word.to_lowercase();
     let Some(variants) = setup.pron.get(&word) else {
         // No pronunciation at all for the rules to run from: spelling mode, letter by letter,
@@ -629,7 +631,7 @@ pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str)
             ),
             None => println!("{word}: no pronunciation in CMUdict, and not spellable (a-z only)"),
         }
-        return Ok(());
+        return;
     };
     for sounds in variants {
         println!("{word}  /{}/", sounds.join(" "));
@@ -643,8 +645,7 @@ pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str)
                         syllable.onset.join(" "),
                         syllable.vowel,
                         syllable.coda.join(" "),
-                        stroke.map_or("cannot be written in one stroke".to_owned(), |s| s
-                            .to_string())
+                        stroke.map_or_else(|| "cannot be written in one stroke".to_owned(), |s| s.to_string())
                     );
                 }
             }
@@ -686,7 +687,6 @@ pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str)
             .get(&word)
             .map_or(String::new(), |v| v.join("  "))
     );
-    Ok(())
 }
 
 /// The most common words the rules get wrong, with what Plover and Lapwing write.
@@ -696,7 +696,7 @@ pub fn mismatches(
     limit: usize,
     missing: bool,
     after: usize,
-) -> Result<()> {
+) {
     let mut shown = 0;
     for word in setup.words() {
         if setup.syllable_count(word) != syllables
@@ -728,12 +728,11 @@ pub fn mismatches(
             break;
         }
     }
-    Ok(())
 }
 
 /// For one-syllable words that Plover and Lapwing write the same way in one stroke, which keys
 /// each group of sounds went on. This is where the rules come from.
-pub fn learn(setup: &Setup, min: usize, limit: usize) -> Result<()> {
+pub fn learn(setup: &Setup, min: usize, limit: usize) {
     type Counts = HashMap<String, HashMap<String, usize>>;
     let (mut onsets, mut rimes): (Counts, Counts) = (HashMap::new(), HashMap::new());
     for word in setup.words() {
@@ -808,5 +807,4 @@ pub fn learn(setup: &Setup, min: usize, limit: usize) -> Result<()> {
         }
         println!();
     }
-    Ok(())
 }
