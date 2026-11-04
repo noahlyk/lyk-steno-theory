@@ -100,6 +100,10 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
 - **A weak last syllable that fits on the stroke before it can fold onto it**: *sensible*
   `SEPB/+SU/+-BL` or `SEPB/+SUBL`.
 
+- **Any run of sounds is a stroke.** The two-stroke ways are all in the dictionary; longer ones
+  (*complete* `KU/+PH/+HRAOET`, `K/+UPL/+PHRAOET`) are found by the same rules but only the
+  cheapest few are kept. `lyk paths complete` lists every way and which are in.
+
 ## 4. Or the short form
 
 Most long words also have a one-stroke short form (see [how short](brevity.md)): *profitable*

@@ -183,6 +183,20 @@ enum Command {
         #[arg(long)]
         briefs: Option<PathBuf>,
     },
+    /// Every way a word can be written as joined strokes (the lattice over its sounds, cheapest
+    /// first), and what became of each: in the dictionary, taken by another word, or rejected.
+    Paths {
+        word: String,
+        /// How many paths to list
+        #[arg(long, default_value_t = 200)]
+        limit: usize,
+        /// Words to cover when building the dictionary, most common first
+        #[arg(long, default_value_t = 100_000)]
+        common: usize,
+        /// Briefs to use instead of the built-in ones
+        #[arg(long)]
+        briefs: Option<PathBuf>,
+    },
     /// Show a word's whole family (`build`, `builds`, `building`, `buildings`, ...): each member's
     /// stem and ending, its outline, its stem-plus-ending backup, and whether its outline starts
     /// from the stem's own keys. With no word, prints the family report for the whole dictionary.
@@ -315,6 +329,7 @@ fn main() -> Result<()> {
             common,
             briefs,
         } => commands::run_lookup(&setup, query, *common, briefs.as_deref()),
+        Command::Paths { word, limit, common, briefs } => commands::run_paths(&setup, word, *limit, *common, briefs.as_deref()),
         Command::Family { word, common, briefs } => commands::run_family(&setup, word.as_deref(), *common, briefs.as_deref()),
         Command::Ergonomics { query, common, briefs } => {
             commands::run_ergonomics(&setup, query, *common, briefs.as_deref())

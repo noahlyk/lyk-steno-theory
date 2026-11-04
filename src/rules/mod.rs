@@ -9,6 +9,7 @@ use std::path::Path;
 /// The rules that ship with the program.
 mod brevity;
 mod fragments;
+mod lattice;
 mod plugin;
 mod resolve;
 
@@ -25,6 +26,8 @@ const BUILT_IN_SUFFIXES: &str = include_str!("../../rules/suffixes.toml");
 
 /// The right-hand `R`, the one key a vowel (`ER`, `AR`) and a cluster (`-FRB`) may share.
 const R_KEY: u32 = 1 << 14;
+/// How many sounds of one stroke may fall out of steno order (see `consonants_shared`).
+const MAX_OUT_OF_ORDER: u32 = 2;
 
 #[derive(Deserialize, Default)]
 struct Raw {
@@ -524,23 +527,7 @@ impl Rules {
         let mut bits = 0u32;
         let mut at = 0;
         while at < sounds.len() {
-            let (stroke, used) = (2..=sounds.len() - at)
-                .rev()
-                .find_map(|n| {
-                    let run = &sounds[at..at + n];
-                    let labelled = run.join(" ");
-                    let bare = run.iter().map(|s| plain(s)).collect::<Vec<_>>().join(" ");
-                    clusters
-                        .get(&labelled)
-                        .or_else(|| clusters.get(&bare))
-                        .map(|&s| (s, n))
-                })
-                .or_else(|| {
-                    single
-                        .get(&sounds[at])
-                        .or_else(|| single.get(plain(&sounds[at])))
-                        .map(|&s| (s, 1))
-                })?;
+            let (stroke, used) = Self::next_run(sounds, at, single, clusters)?;
             let highest = Stroke(bits).highest();
             // Only a star may go anywhere: it belongs to the vowels
             let keys = Stroke(stroke.0 & !Stroke::STAR);
@@ -559,13 +546,77 @@ impl Rules {
         Some(Stroke(bits))
     }
 
+    /// [`Self::consonants`] where a sound may share keys already down, and may come out of steno
+    /// order: a sound whose keys are all down already adds nothing (*m-p-r* is `PHR`, the *p* is
+    /// inside the `PH` of the *m*), and a sound whose new keys fall before the ones down is out of
+    /// order, which is allowed up to [`MAX_OUT_OF_ORDER`] times and counted, for the caller to price.
+    /// A chord is a set of keys, so order never stops a stroke being struck, only from reading as
+    /// the sounds in the order they were said.
+    fn consonants_shared(
+        sounds: &[String],
+        single: &HashMap<String, Stroke>,
+        clusters: &HashMap<String, Stroke>,
+    ) -> Option<(Stroke, u32)> {
+        let mut bits = 0u32;
+        let mut out_of_order = 0;
+        let mut at = 0;
+        while at < sounds.len() {
+            let (stroke, used) = Self::next_run(sounds, at, single, clusters)?;
+            let keys = Stroke(stroke.0 & !Stroke::STAR);
+            let new = Stroke(keys.0 & !bits);
+            if let (Some(highest), Some(lowest)) = (Stroke(bits).highest(), new.lowest())
+                && lowest <= highest
+            {
+                out_of_order += 1;
+                if out_of_order > MAX_OUT_OF_ORDER {
+                    return None;
+                }
+            }
+            bits |= stroke.0;
+            at += used;
+        }
+        Some((Stroke(bits), out_of_order))
+    }
+
+    /// The keys of the cluster (longest first) or the single sound at `at`, and how many sounds
+    /// they cover.
+    fn next_run(
+        sounds: &[String],
+        at: usize,
+        single: &HashMap<String, Stroke>,
+        clusters: &HashMap<String, Stroke>,
+    ) -> Option<(Stroke, usize)> {
+        (2..=sounds.len() - at)
+            .rev()
+            .find_map(|n| {
+                let run = &sounds[at..at + n];
+                let labelled = run.join(" ");
+                let bare = run.iter().map(|s| plain(s)).collect::<Vec<_>>().join(" ");
+                clusters.get(&labelled).or_else(|| clusters.get(&bare)).map(|&s| (s, n))
+            })
+            .or_else(|| single.get(&sounds[at]).or_else(|| single.get(plain(&sounds[at]))).map(|&s| (s, 1)))
+    }
+
     /// The keys that write one syllable, if one stroke can.
     pub fn syllable_stroke(&self, syllable: &Syllable) -> Option<Stroke> {
         self.stroke_for(syllable, false)
     }
 
     fn stroke_for(&self, syllable: &Syllable, fold: bool) -> Option<Stroke> {
-        let onset = Self::consonants(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
+        self.stroke_with(syllable, fold, false).map(|(stroke, _)| stroke)
+    }
+
+    /// [`Self::stroke_for`], with consonants that may share keys and fall out of order (see
+    /// [`Self::consonants_shared`]) when `share`; also the number of sounds out of order.
+    fn stroke_with(&self, syllable: &Syllable, fold: bool, share: bool) -> Option<(Stroke, u32)> {
+        let run = |sounds: &[String], single, clusters, fold| {
+            if share {
+                Self::consonants_shared(sounds, single, clusters)
+            } else {
+                Self::consonants(sounds, single, clusters, fold).map(|stroke| (stroke, 0))
+            }
+        };
+        let (onset, onset_out) = run(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
         let base = syllable
             .vowel
             .trim_end_matches(|c: char| c.is_ascii_digit());
@@ -591,7 +642,7 @@ impl Rules {
                 .map(|&v| (v, &syllable.coda[1..]))
         });
         let rest = &syllable.coda[..];
-        let with = |vowel: Stroke, coda: &[String]| -> Option<Stroke> {
+        let with = |vowel: Stroke, coda: &[String]| -> Option<(Stroke, u32)> {
             // A vowel with an `R` of its own (`ER`, `AR`) and a cluster that has the `R` in it
             // too, as in `serve` -FRB, `march` -FRPB or `harsh` -RB, share the key; any other
             // key used twice does not fit, and nor does a second `R` sound (`harder`)
@@ -600,14 +651,14 @@ impl Rules {
             } else {
                 R_KEY
             };
-            let coda = Self::consonants(coda, &self.coda, &self.coda_cluster, fold)?;
+            let (coda, coda_out) = run(coda, &self.coda, &self.coda_cluster, fold)?;
             if vowel.0 & coda.0 & Stroke::RIGHT & !shared != 0 {
                 return None;
             }
             if vowel.0 & coda.0 & Stroke::STAR != 0 {
                 return None;
             }
-            Some(Stroke(onset.0 | vowel.0 | coda.0))
+            Some((Stroke(onset.0 | vowel.0 | coda.0), onset_out + coda_out))
         };
         joined
             .and_then(|(vowel, coda)| with(vowel, coda))

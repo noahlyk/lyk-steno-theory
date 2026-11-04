@@ -2179,3 +2179,16 @@ Measured with the twin in: backups 201,931 to 368,491, joined ways in per word 4
 6.0–8.0, 91–97% of words with two or more, one primary changed (*parfitt*, rank 65,894), keys per
 word (each word's fastest outline only) 3.277 to 3.276. A backup with a bare `+` stroke in it
 (13, *authorization*) predates this.
+
+**Joins come from a lattice over the word's sounds (`src/rules/lattice.rs`, `lyk paths`).** The
+syllable paths covered a handful of splits and could not write a cluster whose sounds share a key:
+*co-mpro-mise* `KO/+PHRO/+PHAOEUZ` needs *m-p-r* as `PHR`, and the strict builder (keys in steno
+order, none twice) refused it. A new builder lets a sound share keys already down and fall out of
+steno order, up to two sounds a stroke, priced instead of refused. On it, a best-first search over
+positions in the sounds lists the cheapest paths of two strokes or more, from syllable strokes down
+to one sound per stroke, priced by where they cut and how they write each stroke. The cheapest 12
+per pronunciation join the backups beside the older directions: *complete* has 12 backup joins from them.
+Cap sweep, backups file size and paths per word: 6 is 19 MB and 10, 12 is 30 MB and 16, 20 is 45
+MB and 24, 40 is 83 MB and 41 (13 MB before). Keys per word is 3.275 to 3.276 at every cap and
+only two primaries moved: the cap is about size alone. A flat cap crowds out the longer
+variants (at 12, *complete* has one three-stroke path), which is the open question.

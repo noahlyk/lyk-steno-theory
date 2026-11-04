@@ -14,7 +14,9 @@
 //! - **compound**: two placed words back to back, when the spelling is the two joined (*myself*);
 //! - **ending**: a family link's stem plus its ending's stroke (*call* + "-ed", *fool* + "-ish");
 //! - **prefix**: a prefix's stroke, then a placed stem's outline (*un* + *clear*);
-//! - **syllables**: the word itself one syllable per stroke (`Rules::syllable_paths`), round 0 only.
+//! - **syllables**: the word itself one syllable per stroke (`Rules::syllable_paths`), round 0 only;
+//! - **lattice**: the best [`LATTICE_PATHS`] ways to write the word's sounds as strokes of any size
+//!   (`Rules::lattice_paths`), round 0 only.
 //!
 //! A stem joins through its fastest outline and through its own plain rules reading when that
 //! differs (*profitable* `PROFBLT` and `PROFT/+-BL`), with any star-ladder marker stroke dropped: the
@@ -27,6 +29,9 @@ use crate::family::{Link, PrefixLink, PrefixStroke};
 use super::{Book, Entry, Origin, priority, typable};
 use crate::stroke::{Stroke, render_outline};
 use std::collections::{HashMap, HashSet};
+
+/// How many of a word's cheapest lattice paths are offered as joins.
+pub const LATTICE_PATHS: usize = 12;
 
 /// Rounds at most. Each round only builds on the previous round's new entries, so growth stops
 /// well before this; hitting it would mean something matches too permissively.
@@ -220,6 +225,9 @@ impl<'a> Stems<'a> {
                 for outline in self.setup.rules.syllable_paths(word, pron) {
                     push(outline, Some(pron));
                 }
+                for (_, outline) in self.setup.rules.lattice_paths(word, pron, LATTICE_PATHS) {
+                    push(outline, Some(pron));
+                }
             }
         }
         out
@@ -355,6 +363,61 @@ fn spelled_stem<'s>(word: &str, stems: &[&'s str], boundary: fn(&str, &str) -> b
         let mut matches = stems.iter().copied().filter(|s| boundary(word, s));
         let first = matches.next()?;
         matches.next().is_none().then_some(first)
+    }
+}
+
+/// Prints every lattice path of `word` with its cost and what became of it in the finished
+/// dictionary: in it, taken by another word, or rejected before it could compete; then everything
+/// the dictionary holds for the word.
+pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limit: usize) {
+    let Some(prons) = setup.pron.get(word) else {
+        println!("{word}: no pronunciation on record");
+        return;
+    };
+    let held = super::index(generated);
+    for pron in prons {
+        println!("{word}  /{}/", pron.join(" "));
+        let paths = setup.rules.lattice_paths(word, pron, limit);
+        println!("  {} lattice paths, cheapest first; the dictionary offers the first {LATTICE_PATHS}", paths.len());
+        let (mut kept, mut taken, mut rejected, mut beyond) = (0, 0, 0, 0);
+        for (n, (cost, mut outline)) in paths.into_iter().enumerate() {
+            setup.rules.joined(&mut outline);
+            let text = render_outline(&outline);
+            let fate = if n >= LATTICE_PATHS {
+                beyond += 1;
+                "past the cap, not offered".to_owned()
+            } else if !typable(&outline) {
+                rejected += 1;
+                "rejected: the right pinky cannot press it".to_owned()
+            } else if !setup.rules.matches_real_consonants(&outline, word, pron) {
+                rejected += 1;
+                "rejected: its keys do not match the word's consonants".to_owned()
+            } else {
+                match held.get(&text) {
+                    Some(&owner) if owner == word => {
+                        kept += 1;
+                        "in the dictionary".to_owned()
+                    }
+                    Some(owner) => {
+                        taken += 1;
+                        format!("taken by {owner}")
+                    }
+                    None => {
+                        rejected += 1;
+                        "not placed".to_owned()
+                    }
+                }
+            };
+            println!("  {cost:>3}  {text:<34} {fate}");
+        }
+        println!("  {kept} in the dictionary, {taken} taken by another word, {rejected} rejected, {beyond} past the cap");
+    }
+    let mut all: Vec<(&Entry, String)> =
+        generated.entries.iter().filter(|e| e.word == word).map(|e| (e, render_outline(&e.outline))).collect();
+    all.sort_by_key(|(e, text)| (priority(e), text.matches('/').count(), text.len()));
+    println!("\nevery outline the dictionary holds for {word}: {}", all.len());
+    for (entry, text) in all {
+        println!("  {text:<38} {:?}", entry.origin);
     }
 }
 

@@ -12,6 +12,7 @@ mod solver;
 mod tests;
 
 pub use candidates::{Candidate, STROKE_WEIGHT, candidate_cost, enumerate_candidates};
+pub use backup::print_paths;
 pub use report::build;
 
 use crate::analysis::Setup;

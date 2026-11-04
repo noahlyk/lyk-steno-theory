@@ -228,6 +228,21 @@ pub fn write_plugin(
     Ok(())
 }
 
+/// `paths`: every way the lattice writes a word, and what became of each.
+pub fn run_paths(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    word: &str,
+    limit: usize,
+    common: usize,
+    briefs_path: Option<&Path>,
+) -> Result<()> {
+    let setup = setup(Some(common))?;
+    let briefs = generate::Briefs::from_path(briefs_path)?;
+    let generated = generate::generate(&setup, &briefs, common)?;
+    generate::print_paths(&setup, &generated, word, limit);
+    Ok(())
+}
+
 /// `family`: one word's family, or the whole dictionary's family report.
 pub fn run_family(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,

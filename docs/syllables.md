@@ -205,6 +205,30 @@ backup, the same fragment check and the same rule when two words want one text (
 keeps it). With them, 98–99% of the words of two syllables or more in every frequency band have a
 joined way in, and 91–97% have at least two (six to eight on average); before, 63–83% had one.
 
+**Every way to write a word: the lattice.** The syllable paths above are the common cases of one
+general idea (`src/rules/lattice.rs`). A word's sounds are positions; a stroke is any run of them
+with at most one vowel; a way to type the word is any path from the first sound to the last, two
+strokes or more, each stroke after the first with the join key. *complete* (`K AH M P L IY T`)
+has `KUPL/+PHRAOET`, `KO/+PHRAOET`, `K-PL/+PHRAOET`, then `KU/+PH/+HRAOET`, `K/+UPL/+PHRAOET`, down
+to one sound per stroke (over 200 of them). Three things make that many valid at once:
+
+- **A stroke writes any run of sounds it can.** Consonants may share keys: *m-p-r* is `PHR`, the
+  *p* already inside the `PH`. A vowel is heard (`U`) or spelled (`O`), or a reduced syllable is
+  dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
+  last vowel, the left hand before the first, either between.
+- **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
+  (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5
+  through a syllable); a spelled or dropped vowel, the wrong hand, a star, or a sound out of steno
+  order (up to two to a stroke, 3 each) costs a little. Keys that clash are the only hard no.
+- **The cheapest paths are listed, not all of them.** A best-first search with an exact lower bound
+  returns the cheapest `LATTICE_PATHS` (12) per pronunciation, which is all the two-stroke ones and
+  few longer ones; they join the other backups, the same fragment check applies, and a text two
+  words want goes to the commoner word. The cap is about file size (see `docs/decisions.md`).
+
+`lyk paths WORD` lists a word's lattice paths with their cost and what became of each (in the
+dictionary, taken by another word, rejected, or past the cap), then everything the dictionary
+holds for the word.
+
 **What a stem joins through.** Every direction above builds on a placed word's outline. Each
 stem offers two: its fastest outline, and its own plain rules reading when that is a different
 form of two strokes or more (*profitable* joins as `PROFBLT` and as `PROFT/+-BL`, so *profitably*

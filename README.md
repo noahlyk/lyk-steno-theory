@@ -89,6 +89,7 @@ cargo run --release -- deploy              # build + plugin, copied straight int
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
 cargo run --release -- explain moon        # which rules wrote a word, next to Plover and Lapwing
 cargo run --release -- family build       # build, builds, building...: each one's outline and its stem + ending entry
+cargo run --release -- paths complete     # every way to write a word as joined strokes, and what became of each
 cargo run --release -- mismatches --syllables 2 --after 500    # where the rules differ
 cargo run --release -- learn               # which keys Plover and Lapwing use for each sound group
 cargo run --release -- build --against magnum.rtf   # add a third dictionary to the cost tables
@@ -119,9 +120,9 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 77% | 82% | 5.51 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 5.84 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.59 | 4.78 | 5.14 |
+| 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
+| 2 | 59% | 44% | 51% | 5.82 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.58 | 4.78 | 5.14 |
 | 4+ | 23% | 17% | 18% | 5.73 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
@@ -134,7 +135,7 @@ of very common words dominate it and a long tail of rare ones barely move it:
 |---|---|---|---|
 | 1 | 2.82 | 3.19 | 3.59 |
 | 2 | 4.69 | 4.70 | 5.00 |
-| 3 | 4.69 | 4.92 | 5.25 |
+| 3 | 4.68 | 4.92 | 5.25 |
 | 4+ | 5.09 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 

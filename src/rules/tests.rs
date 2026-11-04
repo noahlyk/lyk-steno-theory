@@ -617,3 +617,36 @@ impl StrayTally {
         }
     }
 }
+
+#[test]
+fn sounds_may_share_a_key_already_down() {
+    // The p of m-p-r is inside the PH of the m: one chord, PHR, not a refusal
+    let rules = Rules::built_in().unwrap();
+    let paths = rules.lattice_paths("compromise", &sounds("K AA1 M P R AH0 M AY2 Z"), 400);
+    let texts: Vec<String> = paths.iter().map(|(_, o)| render_outline(o)).collect();
+    assert!(texts.contains(&"KO/PHRO/PHAOEUZ".to_owned()), "co-mpro-mise is a path");
+    assert!(texts.contains(&"KOPL/PRO/PHAOEUZ".to_owned()), "com-pro-mise is a path");
+}
+
+#[test]
+fn the_lattice_lists_every_break_and_size_of_stroke_cheapest_first() {
+    let rules = Rules::built_in().unwrap();
+    let paths = rules.lattice_paths("complete", &sounds("K AH0 M P L IY1 T"), 2_000);
+    let texts: Vec<String> = paths.iter().map(|(_, o)| render_outline(o)).collect();
+    for want in ["KUPL/PHRAOET", "KO/PHRAOET", "K/UPL/PHRAOET", "KO/PH/PHRAOET", "K/O/PH/PHRAOET"] {
+        assert!(texts.contains(&want.to_owned()), "{want} is a way to write complete: {texts:?}");
+    }
+    assert!(paths.windows(2).all(|w| w[0].0 <= w[1].0), "cheapest first");
+    assert!(paths.iter().all(|(_, o)| o.len() >= 2), "one stroke is the primary's business");
+    let strokes = |n: usize| paths.iter().any(|(_, o)| o.len() == n);
+    assert!(strokes(2) && strokes(3) && strokes(4) && strokes(5), "two to five strokes");
+}
+
+#[test]
+fn a_sound_out_of_steno_order_costs_but_is_not_refused() {
+    let rules = Rules::built_in().unwrap();
+    // `-MP` would put the m after the p: PL after P. Offered, and dearer than an in-order writing.
+    let paths = rules.lattice_paths("temper", &sounds("T EH1 M P ER0"), 400);
+    assert!(!paths.is_empty());
+    assert!(paths.windows(2).all(|w| w[0].0 <= w[1].0));
+}
