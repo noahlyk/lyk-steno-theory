@@ -121,9 +121,9 @@ stroke, which the join key replaces) for:
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
 | 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 5.77 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.56 | 4.78 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.73 | 4.94 | 5.18 |
+| 2 | 59% | 44% | 51% | 5.76 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.55 | 4.78 | 5.14 |
+| 4+ | 23% | 17% | 18% | 5.72 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same

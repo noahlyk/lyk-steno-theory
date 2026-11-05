@@ -143,8 +143,17 @@ fn read(w: &[char], at: usize, so_far: &mut Vec<Phone>, out: &mut Vec<Vec<Phone>
     }
     if is_vowel_letter(c) {
         let (short, long) = short_long(c);
-        // a final silent e after a consonant is not a syllable
-        let silent_e = c == 'e' && at + 1 == w.len() && at >= 2 && !is_vowel_letter(w[at - 1]) && has_vowel_before;
+        // a silent e after a consonant is not a syllable: at the end of the word (`table`), or
+        // before the next consonant when a vowel and a consonant come right before it, as in
+        // `move` `ment`, `hope` `ful`, `care` `less`
+        let silent_e = c == 'e'
+            && at >= 2
+            && !is_vowel_letter(w[at - 1])
+            && has_vowel_before
+            && match w.get(at + 1) {
+                None => true,
+                Some(&n) => !is_vowel_letter(n) && is_vowel_letter(w[at - 2]),
+            };
         if silent_e {
             options.push((Vec::new(), 1));
         }

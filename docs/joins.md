@@ -108,7 +108,8 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
 - **Or spell it the way it looks.** Every word is also held the way its letters read, a syllable
   at a time, even where the dictionary hears something else: *contemplation* `KOPB/+TEPL/+PHRAEU/+SHUPB`
   (*con* with an o, *tem* with an e), *hour* `H/+O/+UR`. Each vowel letter may be short (`A`), long
-  (`AEU`) or weak (`U`); *c*, *g* and *s* may be hard or soft; a silent final *e* is optional.
+  (`AEU`) or weak (`U`); *c*, *g* and *s* may be hard or soft; a silent *e* is optional at the end (*table*) and between a vowel-consonant and the next
+  consonant (*move* `PHOF` + *ment* `PHEPBT`, *hope* + *ful*).
   So if you can read the word's syllables, you can type them.
 - **A word that sounds like a commoner one takes that one's paths and the star** when it has no
   joins of its own. *ok* sounds like *okay*: `O/+KAEU/+*`, the same path with the star marker stroke

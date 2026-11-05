@@ -698,6 +698,9 @@ fn a_word_is_also_spelled_out_a_syllable_at_a_time_from_its_letters() {
     // `hour` is h-o-ur
     let hour = texts("hour");
     assert!(hour.contains(&"H/O/UR".to_owned()) || hour.contains(&"H/O/U/-R".to_owned()), "{hour:?}");
+    // `move` `ment`: the e before a consonant is silent when a vowel and a consonant come before it
+    let movement = texts("movement");
+    assert!(movement.contains(&"PHOF/PHEPBT".to_owned()), "{movement:?}");
     // a one-vowel word has nothing to spell out in pieces
     assert!(texts("cat").is_empty());
 }

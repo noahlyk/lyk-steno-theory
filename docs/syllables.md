@@ -231,7 +231,7 @@ to one sound per stroke (687 of them; *control*, with its plain-letter vowel bel
   *th*, *ph*, *ck*, *ng*, *qu*, *-tion*, doubled consonants once, *ea ee ai ay oa ow oo ou oi au*
   and the like as one vowel), and the same lattice runs over it. Each vowel letter is offered
   short (*a* `A`), long (`AEU`) and weak (`U`, droppable as in `-BL`); a letter with two readings
-  (*c* as *k* or *s*, *g*, *s*, a silent final *e*, *ch*, *gh*) gets both. Up to 6 / 6 / 4 / 2 / 1
+  (*c* as *k* or *s*, *g*, *s*, a silent *e* at the end or before a consonant, as in *move-ment*, *ch*, *gh*) gets both. Up to 6 / 6 / 4 / 2 / 1
   paths of two to six strokes (`SPELLING_QUOTAS`) join the sound-based ones. So a word is held both
   as you say it and as you spell it: *contemplation* `KOPB/+TEPL/+PHRAEU/+SHUPB`, *hour* `H/+O/+UR`.
 - **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
