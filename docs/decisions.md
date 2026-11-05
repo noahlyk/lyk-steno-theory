@@ -2226,3 +2226,23 @@ them as they are in memory and is mapped (0.6 ms to start, 76 MB), the first par
 (2.3 s), nearby outlines compare one contiguous run (about 1 ms), and a lookup runs on its own thread so
 each key press cancels the search before it. JSON stays the file lyk writes; keymux bakes the packed
 cache once per change. Open: lyk writing the packed file itself would remove the 2.3 s.
+
+## Every word gets joins; a sound-alike takes the star (2026-11-04)
+
+Counting the joined outlines per word found 929 words of two syllables or more with none (*hour*, *ok*,
+*principle*, *dessert*, *honour*, *development*) and a fifth of the one-syllable words. Two causes.
+(1) The syllable and lattice paths were only composed for words that already had an entry when the
+backups ran, and a word whose plain reading was taken only got its short forms later (*development*);
+they need only its sounds, so every ranked word with a pronunciation now gets them. (2) A word that
+sounds like a commoner one (*hour*/*our*, *ok*/*okay*, *principle*/*principal*, *dessert*/*desert*,
+*honour*/*honor*) lost every path to the commoner word, as it should. Its cheapest three two-stroke
+and three three-stroke paths are now offered with the star marker stroke after them (`MARKED_QUOTAS`),
+contested by the same commoner-word-first rule, and only for a word that has no join of its own. Result,
+over words with a pronunciation: two syllables or more 98.3% to 99.9% (929 words with none to 56),
+one syllable 80.0% to 98.0%, counting a marked join as a way in (the speed and coverage tables elsewhere
+still do not). The phrase pass ignores a marked join when it asks whether a word keeps another
+outline, otherwise *ar* `AR` and *hannah* `HAPB` went to "for a" and "has an". Primaries that moved:
+*ro* and *rolf* (the plain-letter vowel above), and the short forms of *closet*, *condense*
+and *strength*. 56 words are still without one, mostly where the fragment check refuses a glide
+(*curious*, *curiosity*, *culinary*: `K Y UH`) or an unusual spelling (*apologise*, *realisation*).
+Backups file 76 MB to 78 MB.

@@ -594,3 +594,19 @@ fn multi_syllable_words_get_suffix_prefix_and_syllable_joins() {
         .collect();
     assert!(missing.len() * 100 < joined.len() * 3, "{} multi-syllable words have no joined way in: {:?}", missing.len(), &missing[..missing.len().min(20)]);
 }
+
+#[test]
+fn a_word_that_sounds_like_a_commoner_one_is_reached_by_that_ones_paths_and_the_star() {
+    let generated = crate::dictionary_fixture::generated();
+    let has = |word: &str, outline: &str| {
+        generated.entries.iter().any(|e| e.word == word && render_outline(&e.outline) == outline)
+    };
+    // Every join of `hour` is `our`'s, and `ok` is `okay`'s: they keep a way in with the marker
+    assert!(has("hour", "OU/+-R/+*"), "hour: our's path and the star");
+    assert!(has("ok", "O/+KAEU/+*"), "ok: okay's path and the star");
+    assert!(!has("our", "OU/+-R/+*"), "the commoner word keeps the plain path");
+    // A word with a path of its own gets no marked copy
+    assert!(has("control", "KOPB/+TROL") && !has("control", "KOPB/+TROL/+*"));
+    // A word the phrase pass could take a stroke from keeps it: a marked join is not a fallback
+    assert!(has("ar", "AR"), "ar keeps its stroke");
+}

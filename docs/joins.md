@@ -103,7 +103,14 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
 - **Any run of sounds is a stroke.** Three, four, five and six strokes work too: *complete*
   `KU/+PH/+HRAOET`, `K/+UPL/+PHRAOET`, `KU/+-PL/+-P/+HRAOET`. The cheapest of each length are in
   the dictionary (24 / 24 / 12 / 6 / 3 for two to six strokes); `lyk paths complete` lists every
-  way and which are in.
+  way and which are in. Every word with a pronunciation gets these, whether or not it has a
+  primary yet when the joins are placed.
+- **A word that sounds like a commoner one takes that one's paths and the star.** *hour* sounds
+  like *our*, so every join of *hour* is *our*'s: `OU/+-R` is *our*. *hour* is `OU/+-R/+*`, the same
+  path with the star marker stroke after it, the way a name takes its sound-alike's stroke (*matt*
+  `PHAT/+*`). So are *ok* (`O/+KAEU/+*`, *okay* has `O/+KAEU`), *principle* and *dessert*. A word
+  that has a join of its own gets no marked copy, and the marked ones never count as a spare outline
+  when the phrase pass decides whether a word can lose its stroke to a phrase (*ar* keeps `AR`).
 
 ## 4. Or the short form
 

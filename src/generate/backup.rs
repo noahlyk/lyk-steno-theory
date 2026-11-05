@@ -33,6 +33,10 @@ use std::collections::{HashMap, HashSet};
 /// How many lattice paths of two strokes, three, four, five and six are offered as joins for a word.
 pub const LATTICE_QUOTAS: [usize; 5] = [24, 24, 12, 6, 3];
 
+/// How many paths of two strokes and of three a word with no join of its own is given, each with
+/// the star marker after it (see [`Stems::marked_joins`]).
+const MARKED_QUOTAS: [usize; 5] = [3, 3, 0, 0, 0];
+
 /// Rounds at most. Each round only builds on the previous round's new entries, so growth stops
 /// well before this; hitting it would mean something matches too permissively.
 const MAX_ROUNDS: usize = 5;
@@ -50,13 +54,19 @@ type Join = (String, Vec<Stroke>, String);
 
 /// Adds every backup join it can to `entries`, claiming each text in `taken`. Returns how many
 /// compositions were skipped because their text was already held or went to a commoner word.
-pub fn place(setup: &Setup, book: &mut Book, links: &JoinLinks) -> usize {
+pub fn place(setup: &Setup, book: &mut Book, links: &JoinLinks, ranked: &[&str]) -> usize {
     let mut stems = Stems::index(setup, &book.entries, links);
     let mut skipped = 0;
     for round in 0..MAX_ROUNDS {
         let mut words: Vec<&str> = stems.outlines.keys().copied().collect();
         words.sort_unstable();
-        let joins = collect_in_parallel(&words, |word| stems.joins(word, round == 0));
+        let mut joins = collect_in_parallel(&words, |word| stems.joins(word, round == 0));
+        if round == 0 {
+            // A word with no entry yet (every outline its rules read it with was taken) still has
+            // its syllable and lattice paths: they need only its sounds, not a stem
+            let unplaced: Vec<&str> = ranked.iter().copied().filter(|w| !stems.outlines.contains_key(w)).collect();
+            joins.extend(collect_in_parallel(&unplaced, |word| stems.spelled_joins(word)));
+        }
         let winners = arbitrate(&joins, |word| setup.count.get(word).copied().unwrap_or(0));
         let first_new = book.entries.len();
         for ((word, outline, text), won) in joins.into_iter().zip(winners) {
@@ -70,6 +80,29 @@ pub fn place(setup: &Setup, book: &mut Book, links: &JoinLinks) -> usize {
             break;
         }
         stems.update(&book.entries, first_new);
+    }
+    skipped + place_marked(setup, book, &stems, ranked)
+}
+
+/// A word whose every join went to a commoner word that sounds the same (*hour* to *our*, *ok* to
+/// *okay*, *principle* to *principal*) is given a few of the same paths with the star marker after
+/// them, the way a name takes its sound-alike's stroke (*matt* `PHAT/+*`). Same contest as the
+/// other joins: the commoner word wins a text. Returns how many compositions were skipped.
+fn place_marked(setup: &Setup, book: &mut Book, stems: &Stems, ranked: &[&str]) -> usize {
+    let lacking: Vec<&str> = {
+        let has: HashSet<&str> =
+            book.entries.iter().filter(|e| e.origin == Origin::Backup && e.outline.len() >= 2).map(|e| e.word.as_str()).collect();
+        ranked.iter().copied().filter(|w| !has.contains(w)).collect()
+    };
+    let joins = collect_in_parallel(&lacking, |word| stems.marked_joins(word));
+    let winners = arbitrate(&joins, |word| setup.count.get(word).copied().unwrap_or(0));
+    let mut skipped = 0;
+    for ((word, outline, text), won) in joins.into_iter().zip(winners) {
+        if !won || book.taken.contains_key(&text) {
+            skipped += 1;
+            continue;
+        }
+        book.place(&word, outline, Origin::Backup, text);
     }
     skipped
 }
@@ -189,20 +222,7 @@ impl<'a> Stems<'a> {
     fn joins(&self, word: &str, first_round: bool) -> Vec<Join> {
         let Some(sounds) = self.setup.pron.get(word).and_then(|p| p.first()) else { return Vec::new() };
         let mut out: Vec<Join> = Vec::new();
-        let mut push = |outline: Vec<Stroke>, sounds: Option<&[String]>| {
-            let mut outline = outline;
-            self.setup.rules.joined(&mut outline);
-            if !typable(&outline) || sounds.is_some_and(|s| !self.setup.rules.matches_real_consonants(&outline, word, s)) {
-                return;
-            }
-            let folded = folded(&outline).filter(|o| typable(o));
-            for outline in std::iter::once(outline).chain(folded) {
-                let text = render_outline(&outline);
-                if !out.iter().any(|(_, _, t)| *t == text) {
-                    out.push((word.to_owned(), outline, text));
-                }
-            }
-        };
+        let mut push = |outline: Vec<Stroke>, sounds: Option<&[String]>| self.push_join(word, outline, sounds, &mut out);
         // Pieces that are not whole outlines (a bare syllable, a folded-on cluster) are checked
         // against the word's sounds; whole outlines joined together need no check.
         for outline in self.suffixed(word, sounds) {
@@ -228,6 +248,55 @@ impl<'a> Stems<'a> {
                 for (_, outline) in self.setup.rules.lattice_paths(word, pron, &LATTICE_QUOTAS) {
                     push(outline, Some(pron));
                 }
+            }
+        }
+        out
+    }
+
+    /// Finishes one composition for `word` (join keys set, typable, fragment-checked against
+    /// `sounds` where the pieces are not whole outlines) and adds it, and its folded form, to `out`.
+    fn push_join(&self, word: &str, mut outline: Vec<Stroke>, sounds: Option<&[String]>, out: &mut Vec<Join>) {
+        self.setup.rules.joined(&mut outline);
+        if !typable(&outline) || sounds.is_some_and(|s| !self.setup.rules.matches_real_consonants(&outline, word, s)) {
+            return;
+        }
+        let folded = folded(&outline).filter(|o| typable(o));
+        for outline in std::iter::once(outline).chain(folded) {
+            let text = render_outline(&outline);
+            if !out.iter().any(|(_, _, t)| *t == text) {
+                out.push((word.to_owned(), outline, text));
+            }
+        }
+    }
+
+    /// The joins that need only `word`'s sounds: every way to strike its syllables, and every path
+    /// of the lattice. For a word with no stem to build on.
+    fn spelled_joins(&self, word: &str) -> Vec<Join> {
+        let mut out = Vec::new();
+        for pron in self.setup.pron.get(word).into_iter().flatten() {
+            for outline in self.setup.rules.syllable_paths(word, pron) {
+                self.push_join(word, outline, Some(pron), &mut out);
+            }
+            for (_, outline) in self.setup.rules.lattice_paths(word, pron, &LATTICE_QUOTAS) {
+                self.push_join(word, outline, Some(pron), &mut out);
+            }
+        }
+        out
+    }
+
+    /// A few of `word`'s cheapest lattice paths with the star marker after each: for a word that
+    /// sounds like a commoner one and so has no join to itself.
+    fn marked_joins(&self, word: &str) -> Vec<Join> {
+        let marker = Stroke(Stroke::STAR | Stroke::JOIN);
+        let mut out = Vec::new();
+        for pron in self.setup.pron.get(word).into_iter().flatten() {
+            for (_, mut outline) in self.setup.rules.lattice_paths(word, pron, &MARKED_QUOTAS) {
+                self.setup.rules.joined(&mut outline);
+                if !self.setup.rules.matches_real_consonants(&outline, word, pron) {
+                    continue;
+                }
+                outline.push(marker);
+                self.push_join(word, outline, None, &mut out);
             }
         }
         out

@@ -313,8 +313,13 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 
     let settled = settle::settle(setup, &pools, &settle::Families { links: &links, prefixes: &prefix_links }, &mut book);
     fill::alternates(setup, &words, &mut book);
-    let backup_skipped =
-        backup::place(setup, &mut book, &backup::JoinLinks { endings: &join_endings, prefixes: &join_prefixes });
+    let ranked: Vec<&str> = words.iter().map(|(w, _)| w.as_str()).collect();
+    let backup_skipped = backup::place(
+        setup,
+        &mut book,
+        &backup::JoinLinks { endings: &join_endings, prefixes: &join_prefixes },
+        &ranked,
+    );
     fill::short_forms(&pools, &mut book);
 
     // Phrases see every backup in `taken`, and run before extras so a word that lost its stroke

@@ -55,6 +55,12 @@ const fn can_be_taken(entry: &Entry) -> bool {
     }
 }
 
+/// A join that ends in the star marker (`hour` `OU/+-R/+*`): the way a word that sounds like a
+/// commoner one is reached, not an outline it can fall back on when a phrase takes its stroke.
+fn is_marked_join(entry: &Entry) -> bool {
+    entry.origin == Origin::Backup && entry.outline.len() >= 2 && entry.outline.last() == Some(&Stroke(Stroke::STAR | Stroke::JOIN))
+}
+
 /// Whether the entry is a primary outline worth protecting: a brief, the plain reading, a
 /// spelling or voicing variant. A short-form primary (`antonio` `TPH-T`, a one-off the word was
 /// given because it was free) is not: one of the commonest pairs may still take it, and the word
@@ -114,7 +120,7 @@ impl Pass<'_> {
             .copied()
             .filter(move |&j| j != index && !self.removed.contains(&j))
             .map(|j| (j, &self.entries[j]))
-            .filter(|(_, e)| e.origin != Origin::Alternate)
+            .filter(|(_, e)| e.origin != Origin::Alternate && !is_marked_join(e))
     }
 
     /// The best outline `word` has not got that nobody holds: any of its own candidates (a short
