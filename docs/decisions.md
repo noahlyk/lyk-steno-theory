@@ -2197,7 +2197,32 @@ fastest outline only) at 3.275 to 3.276 throughout: flat 6 is 19 MB, 12 is 30 MB
 is 83 MB; the quotas above are 76 MB (2.2 million entries, 21 s build, against 13 MB before); the
 same quotas only for words with no one-stroke outline, and fewer for the rest, was 45 MB and was
 rejected too, since *complete* has a one-stroke outline and is the word that was asked for.
-keymux loads the 76 MB folder cold in 1.5 s with a 545 MB peak, and in 0.12 s from its cache (a
-scratch config, `keymux steno lookup`). 41 words' primary entries changed, none in the top 5,000:
+keymux's load times are not given here: the figures first measured with `keymux steno lookup` were
+wrong, because that command reads with the plain Plover layout and skipped every joined entry (see
+the keymux entry below for the real ones). 41 words' primary entries changed, none in the top 5,000:
 rare words that now have a backup can give their stroke to a phrase (*wa* `WA` to "with a", *sa* to
 "is a"), and several multi-stroke primaries moved to a cheaper join (*lt* `EL/+TAOE` to `E/+-LT`).
+
+## Long vowels written with their plain letter (2026-11-04)
+
+*control* had `KOPB/+TROEL` but not `KOPB/+TROL`, the way Plover writes it, because the lattice only
+offered a vowel as heard (`OW` is `OE`) or as one of the few spelled labels. A `[[plain_spelled]]`
+rule now offers `OW` written with a plain *o* as `O`, for the joined strokes only: a primary is never
+built from it. It does not fire for *oa*, *ow*, *oe*, *ou*, *oo*, *oi*, *ough*. *control* has 774
+lattice paths (was 687) and its `TROL` forms are in the dictionary. Four primaries moved, all rare
+(*ro* `RO` to `-R/+O`, *rolf*): the plain-spelled `-R/+O` gives *ro* a second outline, so the phrase
+pass can let "are to" take `RO`. Clippy is clean and the tests pass; the backups file goes from 77 MB
+to 76 MB, since the quota is spent on the new forms. Speed numbers are unchanged because they use each
+word's fastest outline.
+
+## keymux at millions of entries (2026-11-04, branch `perf-million-entries` in keymux)
+
+Measured with the theory's real layout (`+` as an extra key) on the 400,000-word window, 3.6 million
+entries: the old table (a hash map of heap-allocated outlines and a second one for reverse lookup)
+took 9.1 s to parse a changed file, 0.94 s to restore from its cache, 830 MB, and 66 to 300 ms per key
+press for the nearby-outlines view; typing into a lookup froze until the search finished. Now the file
+is packed sorted arrays grouped by stroke count with each translation stored once, the cache holds
+them as they are in memory and is mapped (0.6 ms to start, 76 MB), the first parse streams the JSON
+(2.3 s), nearby outlines compare one contiguous run (about 1 ms), and a lookup runs on its own thread so
+each key press cancels the search before it. JSON stays the file lyk writes; keymux bakes the packed
+cache once per change. Open: lyk writing the packed file itself would remove the 2.3 s.

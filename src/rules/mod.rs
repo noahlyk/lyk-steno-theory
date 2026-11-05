@@ -48,6 +48,8 @@ struct Raw {
     #[serde(default)]
     spelled: Vec<Spelled>,
     #[serde(default)]
+    plain_spelled: Vec<Spelled>,
+    #[serde(default)]
     reduce: RawReduce,
     #[serde(default)]
     theory: RawTheory,
@@ -265,6 +267,8 @@ pub struct Rules {
     onsets: HashSet<String>,
     lax: HashSet<String>,
     spelled: Vec<Spelled>,
+    /// Spellings that only the joined strokes use: a long vowel written with its plain letter
+    plain_spelled: Vec<Spelled>,
     reduce: HashSet<String>,
     keep: HashSet<String>,
     lone: HashSet<String>,
@@ -471,6 +475,7 @@ impl Rules {
             onsets: raw.syllables.onsets.into_iter().collect(),
             lax: raw.syllables.lax.into_iter().collect(),
             spelled: raw.spelled,
+            plain_spelled: raw.plain_spelled,
             reduce: raw.reduce.vowels.into_iter().collect(),
             keep: raw.reduce.except.into_iter().collect(),
             lone: raw.reduce.lone.into_iter().collect(),
@@ -673,6 +678,23 @@ impl Rules {
 
     /// [`Self::label`], also using the rules that only tell apart words that sound the same.
     fn label_with(&self, word: &str, sounds: &[String], clash: bool) -> Vec<String> {
+        Self::label_by(&self.spelled, word, sounds, clash)
+    }
+
+    /// [`Self::label`] with the plain spellings of the long vowels (`control` `OW` written `O`):
+    /// the joined strokes offer these beside the vowel as it is heard and as the rules spell it.
+    pub fn label_plain(&self, word: &str, sounds: &[String]) -> Vec<String> {
+        let spelled = self.label(word, sounds);
+        let plain = Self::label_by(&self.plain_spelled, word, sounds, false);
+        spelled
+            .into_iter()
+            .zip(plain)
+            .zip(sounds)
+            .map(|((spelled, plain), sound)| if plain == *sound { spelled } else { plain })
+            .collect()
+    }
+
+    fn label_by(rules: &[Spelled], word: &str, sounds: &[String], clash: bool) -> Vec<String> {
         let is_vowel = |s: &String| s.ends_with(|c: char| c.is_ascii_digit());
         let syllables = sounds.iter().filter(|s| is_vowel(s)).count();
         let first_vowel = sounds.iter().position(is_vowel).unwrap_or(usize::MAX);
@@ -681,7 +703,7 @@ impl Rules {
             .enumerate()
             .map(|(at, sound)| {
                 let stress: String = sound.chars().filter(char::is_ascii_digit).collect();
-                let rule = self.spelled.iter().find(|r| {
+                let rule = rules.iter().find(|r| {
                     (clash || !r.clash)
                         && r.sound == plain(sound)
                         && r.applies(word, sounds, at, syllables, first_vowel)

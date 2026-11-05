@@ -79,7 +79,8 @@ impl Rules {
             .iter()
             .map(|s| if matches!(super::unlabelled(s).as_str(), "AH0" | "IH0") { super::unlabelled(s) } else { s.clone() })
             .collect();
-        let lattice = Lattice::new(self, &heard, &spelled);
+        let plain = self.label_plain(word, sounds);
+        let lattice = Lattice::new(self, &heard, &spelled, &plain);
         lattice.best_paths(quotas)
     }
 
@@ -143,7 +144,7 @@ struct Lattice {
 }
 
 impl Lattice {
-    fn new(rules: &Rules, heard: &[String], spelled: &[String]) -> Self {
+    fn new(rules: &Rules, heard: &[String], spelled: &[String], plain: &[String]) -> Self {
         let n = heard.len();
         let cuts = cut_costs(rules, heard);
         let vowels: Vec<usize> = (0..n).filter(|&i| is_vowel(&heard[i])).collect();
@@ -163,7 +164,7 @@ impl Lattice {
                     Bank::Between
                 };
                 let mut writings: HashMap<Stroke, u32> = HashMap::new();
-                for (list, extra) in [(heard, 0), (spelled, SPELLED_VOWEL)] {
+                for (list, extra) in [(heard, 0), (spelled, SPELLED_VOWEL), (plain, SPELLED_VOWEL)] {
                     for (stroke, cost) in rules.segment_writings(list, from, to, bank) {
                         let slot = writings.entry(stroke).or_insert(u32::MAX);
                         *slot = (*slot).min(cost + extra);

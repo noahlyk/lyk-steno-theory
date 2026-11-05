@@ -102,6 +102,7 @@ ER = "UR"
 "IY.lly" = "EU"
 "OW.oa" = "AO"
 "OW.ed" = "OE"
+"OW.o" = "O"
 
 # A vowel and the consonant after it that go on the keys together: `AA R` is the A and -R of `car`.
 [vowel_coda]
@@ -534,6 +535,14 @@ sound = "OW"
 label = "OW.oa"
 contains = "oa"
 clash = true
+
+# The long vowel written with the plain letter, for the joined strokes only (a primary is never
+# built from these): `control` `KOPB/+TROL` as well as `KOPB/+TROEL`
+[[plain_spelled]]
+sound = "OW"
+label = "OW.o"
+contains = "o"
+unless = ["oa", "ow", "oe", "ou", "oo", "oi", "ough"]
 
 # A prefix with keys of its own, in front of the first stroke of the rest: `expect` KPEBGT
 [[prefix]]

@@ -650,3 +650,23 @@ fn a_sound_out_of_steno_order_costs_but_is_not_refused() {
     assert!(!paths.is_empty());
     assert!(paths.windows(2).all(|w| w[0].0 <= w[1].0));
 }
+
+#[test]
+fn a_long_vowel_spelled_with_its_plain_letter_is_offered_beside_the_heard_one() {
+    let rules = Rules::built_in().unwrap();
+    let texts = |word: &str, pron: &str| -> Vec<String> {
+        rules
+            .lattice_paths(word, &sounds(pron), &[2_000; 5])
+            .iter()
+            .map(|(_, o)| render_outline(o))
+            .collect()
+    };
+    // `control`: the heard OE and the spelled O, the way Plover writes it
+    let control = texts("control", "K AH0 N T R OW1 L");
+    for want in ["KOPB/TROEL", "KOPB/TROL"] {
+        assert!(control.contains(&want.to_owned()), "{want}: {control:?}");
+    }
+    // a word spelled with another vowel letter keeps only the heard one
+    let boat = texts("reboat", "R IY0 B OW1 T");
+    assert!(boat.iter().all(|o| !o.contains("BOT")), "oa is not a plain o: {boat:?}");
+}

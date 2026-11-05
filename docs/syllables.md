@@ -210,11 +210,13 @@ general idea (`src/rules/lattice.rs`). A word's sounds are positions; a stroke i
 with at most one vowel; a way to type the word is any path from the first sound to the last, two
 strokes or more, each stroke after the first with the join key. *complete* (`K AH M P L IY T`)
 has `KUPL/+PHRAOET`, `KO/+PHRAOET`, `K-PL/+PHRAOET`, then `KU/+PH/+HRAOET`, `K/+UPL/+PHRAOET`, down
-to one sound per stroke (687 of them). Three things make that many valid at once:
+to one sound per stroke (687 of them; *control*, with its plain-letter vowel below, has 774). Three things make that many valid at once:
 
 - **A stroke writes any run of sounds it can.** Consonants may share keys: *m-p-r* is `PHR`, the
-  *p* already inside the `PH`. A vowel is heard (`U`) or spelled (`O`), or a reduced syllable is
-  dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
+  *p* already inside the `PH`. A vowel is heard (`U`), spelled (`O`), or, for a long vowel written
+  with its plain letter, that letter's short key (*control* `KOPB/+TROL` as well as `KOPB/+TROEL`;
+  the `[[plain_spelled]]` rules in `rules/plover.toml`, today `OW` written *o* and never *oa*, *ow*,
+  *oe*, *ou*, *oo*, *oi*, *ough*), or a reduced syllable is dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
   last vowel, the left hand before the first, either between.
 - **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
   (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5
