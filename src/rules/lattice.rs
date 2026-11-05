@@ -87,7 +87,7 @@ impl Rules {
             .map(|((plain, spelled), heard)| if plain == *spelled { heard.clone() } else { plain })
             .collect();
         let lattice = Lattice::new(self, &heard, &spelled, &plain);
-        lattice.best_paths(quotas)
+        lattice.best_paths(quotas, 2)
     }
 
     /// [`Self::lattice_paths`] over sounds already read from the spelling (`orthography.rs`): the
@@ -98,8 +98,9 @@ impl Rules {
         spelled: &[String],
         plain: &[String],
         quotas: &Quotas,
+        first: usize,
     ) -> Vec<(u32, Vec<Stroke>)> {
-        Lattice::new(self, heard, spelled, plain).best_paths(quotas)
+        Lattice::new(self, heard, spelled, plain).best_paths(quotas, first)
     }
 
     /// Every chord that writes the sounds `from..to` of `sounds` as one stroke.
@@ -210,12 +211,12 @@ impl Lattice {
         Self { sounds: n, edges, to_go }
     }
 
-    /// For each stroke count `k` (from 2), the `quotas[k - 2]` cheapest paths of exactly `k`
-    /// strokes, all together cheapest first. Each count is its own best-first search with an exact
-    /// bound, so the longer, dearer paths are found as cheaply as the short ones.
-    fn best_paths(&self, quotas: &Quotas) -> Vec<(u32, Vec<Stroke>)> {
+    /// For each stroke count `k` (from `first`), the `quotas[k - first]` cheapest paths of exactly
+    /// `k` strokes, all together cheapest first. Each count is its own best-first search with an
+    /// exact bound, so the longer, dearer paths are found as cheaply as the short ones.
+    fn best_paths(&self, quotas: &Quotas, first: usize) -> Vec<(u32, Vec<Stroke>)> {
         let mut found: Vec<(u32, Vec<Stroke>)> = Vec::new();
-        for (k, &quota) in (2..).zip(quotas) {
+        for (k, &quota) in (first..).zip(quotas) {
             if k >= self.to_go.len() || quota == 0 || self.to_go[k][0] == u32::MAX {
                 continue;
             }

@@ -2288,3 +2288,16 @@ backups file 86.6 → 109.6 MB (12/12/8/4/2 reached 78% at 134 MB, not worth it)
 accepted: `hour` no longer needs its marked `OU/+-R/+*` (it spells itself), and about 30 rare words
 (*hannah*, *mei*, *chai*, *wool*) moved from a one-stroke primary to a joined one, because they now
 have spare outlines and the phrase pass may take their stroke (*hannah*'s `HAPB` is now *has an*).
+
+## Reading the tape for big-word mistakes (2026-11-05)
+
+Two hours of the tape: most of it single-word groping, but the multi-stroke misses were all one shape.
+`PHOF` then `PHEPBT` for *movement* twelve times, `PART` `EUBG` `KUL` `AR` for *particular*, `KOPL`
+`PHRAOET` for *complete* (that one was an older deploy). In each, the typist strikes a real word first
+(*move*, *part*) and spells the rest, and the lattice only offered cuts at sound boundaries
+(*par-ti-cu-lar*) and never a word-sized first stroke. The new `stemmed` pass (a start of the word that
+is a placed one-stroke word, then `spelled_remainder` of the rest, 3 / 4 / 4 / 2 ways of one to four
+strokes) adds them; a silent *e* before a consonant is optional in the spelling reading
+(*move-ment*), and the rest may be a single stroke. The cost is the backups file 110.9 → 131.4 MB
+(quotas of 3/5/5/3 were 137 MB, no more useful). 51 rare words whose primary was a join moved to another join.
+Not done: the tape cannot show `+`, so a missing join key still looks like a missing outline.

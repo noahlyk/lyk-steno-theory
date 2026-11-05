@@ -111,6 +111,11 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
   (`AEU`) or weak (`U`); *c*, *g* and *s* may be hard or soft; a silent *e* is optional at the end (*table*) and between a vowel-consonant and the next
   consonant (*move* `PHOF` + *ment* `PHEPBT`, *hope* + *ful*).
   So if you can read the word's syllables, you can type them.
+- **A shorter word, then the rest spelled out.** Any start of the word that is a word with a
+  one-stroke outline of its own can be struck as that word, with the rest after it spelled the same
+  way, from one stroke up: *movement* `PHOF/+PHEPBT` (*move* then *ment*), *particular*
+  `PART/+EUBG/+UL/+AR` (*part*, *ic*, *ul*, *ar*). Up to 3 / 4 / 4 / 2 ways for the rest in one, two,
+  three, four strokes (`REST_QUOTAS`).
 - **A word that sounds like a commoner one takes that one's paths and the star** when it has no
   joins of its own. *ok* sounds like *okay*: `O/+KAEU/+*`, the same path with the star marker stroke
   after it, the way a name takes its sound-alike's stroke (*matt* `PHAT/+*`). So are *principle* and

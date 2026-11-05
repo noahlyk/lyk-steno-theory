@@ -234,6 +234,11 @@ to one sound per stroke (687 of them; *control*, with its plain-letter vowel bel
   (*c* as *k* or *s*, *g*, *s*, a silent *e* at the end or before a consonant, as in *move-ment*, *ch*, *gh*) gets both. Up to 6 / 6 / 4 / 2 / 1
   paths of two to six strokes (`SPELLING_QUOTAS`) join the sound-based ones. So a word is held both
   as you say it and as you spell it: *contemplation* `KOPB/+TEPL/+PHRAEU/+SHUPB`, *hour* `H/+O/+UR`.
+- **A stem struck as a word, then the rest spelled** (`stemmed` in `src/generate/backup.rs`). For
+  every start of a word (three letters or more) that is a placed word with a one-stroke outline,
+  that outline is followed by the cheapest ways to spell the rest of the word, from one stroke
+  (*move* + `PHEPBT`), where a single vowel is enough. This is how a typist reads *particular* as
+  *part-ic-ul-ar*, which the sound lattice cuts as *par-ti-cu-lar* and never offers.
 - **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
   (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5
   through a syllable); a spelled or dropped vowel, the wrong hand, a star, or a sound out of steno

@@ -34,6 +34,8 @@ use std::collections::{HashMap, HashSet};
 pub const LATTICE_QUOTAS: [usize; 5] = [24, 24, 12, 6, 3];
 /// The same for the lattice over a word's spelling.
 pub const SPELLING_QUOTAS: [usize; 5] = [6, 6, 4, 2, 1];
+/// The same for the rest of a word after a stem struck as a word: one stroke, two, three, four.
+pub const REST_QUOTAS: [usize; 4] = [3, 4, 4, 2];
 
 /// How many paths of two strokes and of three a word with no join of its own is given, each with
 /// the star marker after it (see [`Stems::marked_joins`]).
@@ -254,6 +256,28 @@ impl<'a> Stems<'a> {
             for (_, outline) in self.setup.rules.orthographic_paths(word, &SPELLING_QUOTAS) {
                 push(outline, None);
             }
+            for outline in self.stemmed(word) {
+                push(outline, None);
+            }
+        }
+        out
+    }
+
+    /// A shorter word struck as itself, then the rest of the word spelled out: `part` then
+    /// `icular`, `move` then `ment`. Only a stem of a stroke of its own, and the rest in its
+    /// cheapest few ways ([`REST_QUOTAS`]).
+    fn stemmed(&self, word: &str) -> Vec<Vec<Stroke>> {
+        let mut out = Vec::new();
+        let rules = &self.setup.rules;
+        for at in 3..word.len().saturating_sub(1) {
+            let (stem, rest) = word.split_at(at);
+            if !word.is_char_boundary(at) || !rest.contains(['a', 'e', 'i', 'o', 'u']) {
+                continue;
+            }
+            let Some(head) = self.of(stem, word).iter().find(|o| o.len() == 1) else { continue };
+            for (_, path) in rules.spelled_remainder(rest, &REST_QUOTAS) {
+                out.push([head.as_slice(), &path].concat());
+            }
         }
         out
     }
@@ -287,6 +311,9 @@ impl<'a> Stems<'a> {
             }
         }
         for (_, outline) in self.setup.rules.orthographic_paths(word, &SPELLING_QUOTAS) {
+            self.push_join(word, outline, None, &mut out);
+        }
+        for outline in self.stemmed(word) {
             self.push_join(word, outline, None, &mut out);
         }
         out

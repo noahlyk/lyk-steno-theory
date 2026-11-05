@@ -82,12 +82,22 @@ impl Rules {
     /// stroke count over every reading of its letters, at most `quotas[k - 2]` of those with `k`
     /// strokes, cheapest first.
     pub fn orthographic_paths(&self, word: &str, quotas: &[usize]) -> Vec<(u32, Vec<Stroke>)> {
+        self.spelled_paths(word, quotas, 2)
+    }
+
+    /// The same for the end of a word whose beginning is struck as a word of its own (`part` then
+    /// `icular`): from one stroke up, and a single vowel is enough.
+    pub fn spelled_remainder(&self, rest: &str, quotas: &[usize]) -> Vec<(u32, Vec<Stroke>)> {
+        self.spelled_paths(rest, quotas, 1)
+    }
+
+    fn spelled_paths(&self, word: &str, quotas: &[usize], first: usize) -> Vec<(u32, Vec<Stroke>)> {
         let mut all: Vec<(u32, Vec<Stroke>)> = Vec::new();
-        for reading in readings(word) {
+        for reading in readings(word, first) {
             let heard: Vec<String> = reading.iter().map(|p| p.heard.clone()).collect();
             let long: Vec<String> = reading.iter().map(|p| p.long.clone()).collect();
             let weak: Vec<String> = reading.iter().map(|p| p.weak.clone()).collect();
-            for (cost, path) in self.lattice_paths_from(&heard, &long, &weak, quotas) {
+            for (cost, path) in self.lattice_paths_from(&heard, &long, &weak, quotas, first) {
                 match all.iter_mut().find(|(_, p)| *p == path) {
                     Some(seen) => seen.0 = seen.0.min(cost),
                     None => all.push((cost, path)),
@@ -97,7 +107,7 @@ impl Rules {
         all.sort_by_key(|(cost, path)| (*cost, path.len()));
         let mut taken = vec![0usize; quotas.len()];
         all.retain(|(_, path)| {
-            let k = path.len().saturating_sub(2);
+            let k = path.len().saturating_sub(first);
             if k >= quotas.len() || taken[k] >= quotas[k] {
                 return false;
             }
@@ -109,14 +119,14 @@ impl Rules {
 }
 
 /// The pseudo-pronunciations of a word's letters.
-fn readings(word: &str) -> Vec<Vec<Phone>> {
+fn readings(word: &str, min_vowels: usize) -> Vec<Vec<Phone>> {
     let letters: Vec<char> = word.chars().collect();
     if !letters.iter().all(char::is_ascii_lowercase) {
         return Vec::new();
     }
     let mut out = Vec::new();
     read(&letters, 0, &mut Vec::new(), &mut out);
-    out.retain(|r| r.iter().filter(|p| p.heard.ends_with(|c: char| c.is_ascii_digit())).count() >= 2);
+    out.retain(|r| r.iter().filter(|p| p.heard.ends_with(|c: char| c.is_ascii_digit())).count() >= min_vowels);
     out
 }
 

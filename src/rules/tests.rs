@@ -704,3 +704,14 @@ fn a_word_is_also_spelled_out_a_syllable_at_a_time_from_its_letters() {
     // a one-vowel word has nothing to spell out in pieces
     assert!(texts("cat").is_empty());
 }
+
+#[test]
+fn the_rest_of_a_word_after_a_stem_is_spelled_from_one_stroke_up() {
+    let rules = Rules::built_in().unwrap();
+    let texts = |rest: &str| -> Vec<String> {
+        rules.spelled_remainder(rest, &[6, 6, 6, 6]).iter().map(|(_, o)| render_outline(o)).collect()
+    };
+    // `move` then `ment` in one stroke, `part` then `ic` `ul` `ar`
+    assert!(texts("ment").contains(&"PHEPBT".to_owned()), "{:?}", texts("ment"));
+    assert!(texts("icular").contains(&"EUBG/UL/AR".to_owned()), "{:?}", texts("icular"));
+}
