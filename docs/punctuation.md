@@ -9,7 +9,8 @@ This chapter is the actual content: what's in `rules/reserved/punctuation.json` 
 
 ## Punctuation (`rules/reserved/punctuation.json`)
 
-196 strokes: 144 forked from Plover's own punctuation dictionary, plus the 52 glued
+200 strokes: 144 forked from Plover's own punctuation dictionary, 4 hyphen and dash strokes from
+[Lapwing's chapter 20](https://lapwing.aerick.ca/Chapter-20.html), plus the 52 glued
 fingerspelling letters (`A*` a, `A*P` A, ...) documented in
 **[fingerspelling & misc keys](fingerspelling.md#fingerspelling-in-running-text)**. Most marks have far more than one
 stroke because Plover's convention gives each mark several chords for several different contexts —
@@ -41,9 +42,12 @@ Beyond the sentence-ending marks, the same file carries:
 - **Quotes and apostrophes** — opening/closing double quotes (`KR*GS`/`KR-GS`), a possessive or
   contraction apostrophe (`-PBT`, `SKW*T`/`SKW-T`).
 - **Parens and brackets** — `P*PB` opens `(`, `P*PBT` closes `)`.
-- **Dashes and ellipses** — `TK-LS` for a plain dash, `HR-PS`/`SW-BS` for `...`.
+- **Dashes and ellipses** — an en dash `TPH-RB` and an em dash `PH-RB` attach to the words either
+  side (*2020* `TPH-RB` *2024* types `2020–2024`); `TPH*RB` is an en dash with a space on each side
+  (*a* `TPH*RB` *b* types `a – b`). `HR-PS`/`SW-BS` are `...`.
 - **Hyphens** — `H-PB` joins the words either side of it with a hyphen and no spaces: *well*
-  `H-PB` *known* types `well-known` (`H-B`, `H*FPB` and `HA*EPB` do the same). `H-PBS` types a
+  `H-PB` *known* types `well-known` (`H-B`, `H*FPB` and `HA*EPB` do the same). `H*PB`, the same
+  stroke with the star, is a hyphen with a space on each side: *test* `H*PB` *test* types `test - test`. `H-PBS` types a
   hyphen glued to the next word, with the space before it kept (*ls* `H-PBS` *a* types `ls -a`;
   `HAO*EPB` does the same), and `H-PBZ` two hyphens (`--verbose`): the command-line flag forms.
   `PWHR-T` glues a hyphen to the word before and capitalizes the next.
@@ -60,7 +64,7 @@ Beyond the sentence-ending marks, the same file carries:
 
 ## Commands (`rules/reserved/commands.json`)
 
-66 strokes, smaller and more purpose-built than the punctuation file. Grouped by what they do:
+70 strokes, smaller and more purpose-built than the punctuation file. Grouped by what they do:
 
 | Group | Strokes | What they send |
 |---|---|---|
@@ -81,7 +85,11 @@ Beyond the sentence-ending marks, the same file carries:
 | The word just written in capitals | `*UPD` | `{*<}`: *pay `*UPD`* types `PAY` |
 | Plover engine control | `PHRO*F`, `PHRO*PB`, `PHROLG` | Suspend / Resume / Toggle Plover |
 | Add a translation | `TKUPT` | Plover's "add translation" dialog |
-| The literal/raw stroke | `^`, `SP-LS` | `{*!}` — Plover's "don't autocorrect this one" |
+| Put the space back | `S-PD` | `{*?}`: retroactively insert a space (*cornet* `S-PD` types `core net`) |
+| No space before the next word | `SP-S` | `{^^}`: *how* `SP-S` *ever* types `however`; the same as `TK-LS` |
+| Remove the last space | `SP-LS` | `{*!}`: *more* *over* `SP-LS` types `moreover` |
+| The next word starts lowercase | `HRO*ER` | `{:case:lower_first_char}`: after `KPA` or a sentence end, cancels the capital |
+| The word just written starts lowercase | `HRO*ERD` | `{:retro_case:lower_first_char}`: *Pay* `HRO*ERD` types `pay` |
 
 Plover's own engine-control strokes (suspend/resume/toggle, add-translation) are here because
 they're reserved the same way any other command is: a word can never silently take over the
@@ -91,5 +99,8 @@ The `STPH` movement family and the F-keys are Lapwing's own strokes (`data/dicti
 minus its number-key (`#`) variants, which lyk's stroke model has no key for. Lapwing's repeated-arrow chords
 (`STPH-RS` for Left twice, and so on) and its Plover-engine-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`)
 were left out, so there is no caps-lock: for a run of words in capitals, strike `KPA*L` before each.
+The spacing and case commands (`S-PD`, `SP-S`, `HRO*ER`, `HRO*ERD`) and the dash strokes are Lapwing's own,
+from its [chapter 20](https://lapwing.aerick.ca/Chapter-20.html). To undo a capital struck by mistake
+(`KPA` or `KPA*`), strike `*` for the stroke, or `HRO*ER` to keep the stroke and lower the next word.
 
 Next: **[fingerspelling & misc keys](fingerspelling.md)**.

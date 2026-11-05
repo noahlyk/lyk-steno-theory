@@ -2246,3 +2246,16 @@ outline, otherwise *ar* `AR` and *hannah* `HAPB` went to "for a" and "has an". P
 and *strength*. 56 words are still without one, mostly where the fragment check refuses a glide
 (*curious*, *curiosity*, *culinary*: `K Y UH`) or an unusual spelling (*apologise*, *realisation*).
 Backups file 76 MB to 78 MB.
+
+## Lapwing's spacing, dash and case strokes (2026-11-04)
+
+Asked how to type `test - test` and how to undo a stray `KPA`, the reserved set had no answer: no hyphen
+with spaces, no lowercase-next, no retroactive space. Lapwing's chapter 20 has all of them, so they are
+added with its strokes and values (not Plover's variants): `H*PB` a hyphen with a space on each side,
+`TPH-RB`/`TPH*RB` an en dash attached/spaced, `PH-RB` an em dash attached, `S-PD` retroactive space
+(`{*?}`), `SP-S` suppress the next space (`{^^}`), `HRO*ER` the next word lowercase and `HRO*ERD` the word
+just written lowercase. Two doc errors found on the way: `TK-LS` is `{^^}`, which types nothing, not a
+dash; and `SP-LS` is `{*!}`, remove the last space, not a "literal stroke". The new strokes were held by
+rare words (*harmony*, *machinery*, *suspicious*, *subpoenaed*, *lore*, *loder*), which settled elsewhere.
+keymux already reads `lower_first_char` and `retro_case`. Not added: Lapwing has no caps lock or
+uppercase-next either, so `KPA*L` stays the way to write a word in capitals.

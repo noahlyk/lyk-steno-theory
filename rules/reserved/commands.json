@@ -64,5 +64,9 @@
 "TPWAOEUPB": "{#F9}",
 "TPWEPB": "{#F10}",
 "TPHREFPB": "{#F11}",
-"TPWEFL": "{#F12}"
+"TPWEFL": "{#F12}",
+"S-PD": "{*?}",
+"SP-S": "{^^}",
+"HRO*ER": "{:case:lower_first_char}",
+"HRO*ERD": "{:retro_case:lower_first_char}"
 }
