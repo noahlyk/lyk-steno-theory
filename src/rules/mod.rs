@@ -39,6 +39,9 @@ struct Raw {
     vowel: HashMap<String, String>,
     #[serde(default)]
     vowel_coda: HashMap<String, String>,
+    /// The key each vowel letter is struck on when a vowel is written as the word spells it
+    #[serde(default)]
+    letter_vowel: HashMap<String, String>,
     #[serde(default)]
     onset_cluster: HashMap<String, String>,
     #[serde(default)]
@@ -431,7 +434,7 @@ impl Rules {
         }
         let onset = strokes(raw.onset, "onset")?;
         let coda = strokes(raw.coda, "coda")?;
-        let vowel = strokes(raw.vowel, "vowel")?;
+        let mut vowel = strokes(raw.vowel, "vowel")?;
         let vowel_coda = strokes(raw.vowel_coda, "vowel_coda")?;
         let onset_cluster = strokes(raw.onset_cluster, "onset_cluster")?;
         let coda_cluster = strokes(raw.coda_cluster, "coda_cluster")?;
@@ -454,6 +457,15 @@ impl Rules {
             })
             .collect();
         vowel_coda_rev.sort_by(|a, b| (&a.1, &a.2).cmp(&(&b.1, &b.2)));
+        // Every vowel sound can be struck as any vowel letter: `AA.o`, `EY.a`, `AH.e`
+        let letters = strokes(raw.letter_vowel, "letter_vowel")?;
+        let sounds: HashSet<String> =
+            vowel.keys().map(|k| k.split('.').next().unwrap_or(k).to_owned()).collect();
+        for sound in &sounds {
+            for (letter, &keys) in &letters {
+                vowel.entry(format!("{sound}.{letter}")).or_insert(keys);
+            }
+        }
         let spelling = spelling_table(BUILT_IN_SPELLING)?;
         let suffixes = single_stroke_suffixes(BUILT_IN_SUFFIXES)?;
         let two_stroke_suffixes = two_stroke_suffixes(BUILT_IN_SUFFIXES)?;
@@ -686,12 +698,57 @@ impl Rules {
     pub fn label_plain(&self, word: &str, sounds: &[String]) -> Vec<String> {
         let spelled = self.label(word, sounds);
         let plain = Self::label_by(&self.plain_spelled, word, sounds, false);
+        let letters = Self::vowel_letters(word, sounds);
         spelled
             .into_iter()
             .zip(plain)
             .zip(sounds)
-            .map(|((spelled, plain), sound)| if plain == *sound { spelled } else { plain })
+            .enumerate()
+            .map(|(at, ((spelled, plain), sound))| match letters[at] {
+                Some(letter) => {
+                    let stress: String = sound.chars().filter(char::is_ascii_digit).collect();
+                    format!("{}.{letter}{stress}", self::plain(sound))
+                }
+                None if plain == *sound => spelled,
+                None => plain,
+            })
             .collect()
+    }
+
+    /// The vowel letter each vowel sound is written with, found by lining the word's vowel
+    /// letters up with its vowel sounds in order: `contemplation` is `o` `e` `a` `io` against
+    /// four sounds. Only a sound that lines up with a single letter has one, and only when
+    /// the counts agree (a silent final `e` is not counted).
+    fn vowel_letters(word: &str, sounds: &[String]) -> Vec<Option<char>> {
+        let mut groups: Vec<String> = Vec::new();
+        let mut run = String::new();
+        for c in word.chars() {
+            if "aeiouy".contains(c) {
+                run.push(c);
+            } else if !run.is_empty() {
+                groups.push(std::mem::take(&mut run));
+            }
+        }
+        if !run.is_empty() {
+            groups.push(run);
+        }
+        let heard = sounds.iter().filter(|s| s.ends_with(|c: char| c.is_ascii_digit())).count();
+        if groups.len() == heard + 1 && groups.last().is_some_and(|g| g == "e") && word.ends_with('e') {
+            groups.pop();
+        }
+        let mut out = vec![None; sounds.len()];
+        if groups.len() != heard {
+            return out;
+        }
+        let mut n = 0;
+        for (at, sound) in sounds.iter().enumerate() {
+            if sound.ends_with(|c: char| c.is_ascii_digit()) {
+                let mut letters = groups[n].chars();
+                out[at] = letters.next().filter(|c| "aeiou".contains(*c) && letters.next().is_none());
+                n += 1;
+            }
+        }
+        out
     }
 
     fn label_by(rules: &[Spelled], word: &str, sounds: &[String], clash: bool) -> Vec<String> {
@@ -1004,7 +1061,29 @@ impl Rules {
         if let Some((keys, skip)) = self.prefix(word, &heard) {
             starts.push((Some(keys), skip));
         }
-        for labelled in [&heard, &spelled] {
+        // The plain letters where a sound has one; a weak vowel with none stays droppable (`-tion`)
+        let plain: Vec<String> = self
+            .label_plain(word, sounds)
+            .into_iter()
+            .zip(&spelled)
+            .zip(&heard)
+            .map(|((plain, spelled), heard)| if plain == *spelled { heard.clone() } else { plain })
+            .collect();
+        // The same, with only the short vowels (and `OW`) read as their letters; the long ones keep
+        // their heard keys: `contemplation` `PHRAEUGS`, not only `PHRAGS`
+        let plain_short: Vec<String> = plain
+            .iter()
+            .zip(&heard)
+            .zip(sounds)
+            .map(|((plain, heard), sound)| {
+                if matches!(self::plain(sound), "AA" | "AH" | "AE" | "EH" | "IH" | "UH" | "OW") {
+                    plain.clone()
+                } else {
+                    heard.clone()
+                }
+            })
+            .collect();
+        for labelled in [&heard, &spelled, &plain, &plain_short] {
             for &(prefix, skip) in &starts {
                 let rest = &labelled[skip..];
                 let splits = [(true, None), (false, None)]

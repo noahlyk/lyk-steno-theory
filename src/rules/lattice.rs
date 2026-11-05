@@ -79,7 +79,13 @@ impl Rules {
             .iter()
             .map(|s| if matches!(super::unlabelled(s).as_str(), "AH0" | "IH0") { super::unlabelled(s) } else { s.clone() })
             .collect();
-        let plain = self.label_plain(word, sounds);
+        let plain: Vec<String> = self
+            .label_plain(word, sounds)
+            .into_iter()
+            .zip(&spelled)
+            .zip(&heard)
+            .map(|((plain, spelled), heard)| if plain == *spelled { heard.clone() } else { plain })
+            .collect();
         let lattice = Lattice::new(self, &heard, &spelled, &plain);
         lattice.best_paths(quotas)
     }

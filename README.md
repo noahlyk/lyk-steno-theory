@@ -121,8 +121,8 @@ stroke, which the join key replaces) for:
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
 | 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 5.81 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.58 | 4.78 | 5.14 |
+| 2 | 59% | 44% | 51% | 5.78 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.57 | 4.78 | 5.14 |
 | 4+ | 23% | 17% | 18% | 5.73 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
@@ -134,7 +134,7 @@ of very common words dominate it and a long tail of rare ones barely move it:
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
 | 1 | 2.82 | 3.19 | 3.59 |
-| 2 | 4.69 | 4.70 | 5.00 |
+| 2 | 4.68 | 4.70 | 5.00 |
 | 3 | 4.68 | 4.92 | 5.25 |
 | 4+ | 5.09 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->

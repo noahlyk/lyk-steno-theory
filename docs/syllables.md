@@ -214,9 +214,16 @@ to one sound per stroke (687 of them; *control*, with its plain-letter vowel bel
 
 - **A stroke writes any run of sounds it can.** Consonants may share keys: *m-p-r* is `PHR`, the
   *p* already inside the `PH`. A vowel is heard (`U`), spelled (`O`), or, for a long vowel written
-  with its plain letter, that letter's short key (*control* `KOPB/+TROL` as well as `KOPB/+TROEL`;
-  the `[[plain_spelled]]` rules in `rules/plover.toml`, today `OW` written *o* and never *oa*, *ow*,
-  *oe*, *ou*, *oo*, *oi*, *ough*), or a reduced syllable is dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
+  with the letter it is spelled with: the word's vowel letters are lined up with its vowel sounds
+  in order, and when the counts agree each sound that meets a single letter may be struck as that
+  letter's key (`[letter_vowel]` in `rules/plover.toml`: a `A`, e `E`, i `EU`, o `O`, u `U`). So
+  *control* `KOPB/+TROL` as well as `KOPB/+TROEL`, and *contemplation* `KOPB/+TEPL/+PHRAEUGS` and
+  `KOPB/+TEPL/+PHRAGS`: *con* is an o, *tem* an e, *-ation* the heard `AEU` or the letter a. A
+  silent final *e* is not counted (*table*); a pair of vowel letters (*ea*, *io*) or a count that
+  disagrees (*every*) lines up with nothing, and then only the heard and `[[spelled]]` vowels are
+  offered. The joined syllable paths also try the version where only the short vowels take
+  their letter and the long ones stay heard, so both `PHRAGS` and `PHRAEUGS` are held. A
+  reduced syllable is dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
   last vowel, the left hand before the first, either between.
 - **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
   (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5

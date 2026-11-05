@@ -670,3 +670,18 @@ fn a_long_vowel_spelled_with_its_plain_letter_is_offered_beside_the_heard_one() 
     let boat = texts("reboat", "R IY0 B OW1 T");
     assert!(boat.iter().all(|o| !o.contains("BOT")), "oa is not a plain o: {boat:?}");
 }
+
+#[test]
+fn every_vowel_can_be_struck_as_the_letter_the_word_spells_it_with() {
+    let rules = Rules::built_in().unwrap();
+    let pron = sounds("K AA2 N T AH0 M P L EY1 SH AH0 N");
+    let texts: Vec<String> =
+        rules.lattice_paths("contemplation", &pron, &[2_000; 5]).iter().map(|(_, o)| render_outline(o)).collect();
+    // `con` as the letter o, `tem` as the letter e, `-ation` as the heard AEU or the letter A
+    for want in ["KOPB/TEPL/PHRAEU/-GS", "KOPB/TEPL/PHRA/-GS"] {
+        assert!(texts.contains(&want.to_owned()), "{want}: {texts:?}");
+    }
+    // the letters only line up when the word has as many vowel letter groups as vowel sounds
+    let lined = Rules::vowel_letters("contemplation", &sounds("K AA2 N T AH0 M P L EY1 SH AH0 N"));
+    assert_eq!(lined.iter().flatten().collect::<Vec<_>>(), [&'o', &'e', &'a']);
+}

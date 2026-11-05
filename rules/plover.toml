@@ -104,6 +104,15 @@ ER = "UR"
 "OW.ed" = "OE"
 "OW.o" = "O"
 
+# The keys of a vowel letter, for any vowel sound written with that letter (`AA.o`, `EY.a`, `AH.e`):
+# the joined strokes offer a vowel as the word spells it as well as as it is heard
+[letter_vowel]
+a = "A"
+e = "E"
+i = "EU"
+o = "O"
+u = "U"
+
 # A vowel and the consonant after it that go on the keys together: `AA R` is the A and -R of `car`.
 [vowel_coda]
 "EH R" = "AEUR"

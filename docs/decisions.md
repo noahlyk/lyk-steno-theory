@@ -2259,3 +2259,18 @@ dash; and `SP-LS` is `{*!}`, remove the last space, not a "literal stroke". The 
 rare words (*harmony*, *machinery*, *suspicious*, *subpoenaed*, *lore*, *loder*), which settled elsewhere.
 keymux already reads `lower_first_char` and `retro_case`. Not added: Lapwing has no caps lock or
 uppercase-next either, so `KPA*L` stays the way to write a word in capitals.
+
+## Vowels struck as the letter the word spells them with (2026-11-04)
+
+*contemplation* was typed `KOPB/TEPL/PHRAGS` and missed three ways: no join key, `A` for the `AEU` of
+*-ation*, and no `KOPB` because the `AA.a` spelled rule reads the *o* of *con* as an "ah" whenever the
+word has an *a* anywhere. Each earlier hole (*control*) had been patched with one more `plain_spelled`
+rule; that does not end. The general rule instead: line the word's vowel letters up with its vowel
+sounds in order, and when the counts agree (a silent final *e* is not counted), any sound that meets one
+letter may be struck as that letter (`[letter_vowel]`: a `A`, e `E`, i `EU`, o `O`, u `U`, for every vowel
+sound). It is offered beside the heard and `[[spelled]]` vowels in both the lattice and the syllable paths,
+priced as a spelled vowel, and a second version keeps the long vowels heard so `PHRAEUGS` and `PHRAGS`
+both exist. Primaries are untouched except two rare words (*faz*, *nighttime*); about 18,000 words gain
+backups, 3,800 lose some to the per-length quotas (the lost ones were mostly implausible vowel splits),
+and the backups file grows 82.5 → 86.6 MB. Not covered: a vowel written with two letters (*ea*, *io*) or a
+word whose letter groups and sounds disagree, which keep only the heard and `[[spelled]]` vowels.
