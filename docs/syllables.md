@@ -225,6 +225,15 @@ to one sound per stroke (687 of them; *control*, with its plain-letter vowel bel
   their letter and the long ones stay heard, so both `PHRAGS` and `PHRAEUGS` are held. A
   reduced syllable is dropped to its consonants (`-BL`). A run of consonants alone goes on the right hand after the
   last vowel, the left hand before the first, either between.
+- **The word's spelling has a lattice of its own** (`src/rules/orthography.rs`). The sounds in the
+  dictionary are not always what you read: *contemplation* has an "ah" where you see the *o* of
+  *con*. So the letters are read as a pseudo-pronunciation, each letter or pair a sound (*ch*, *sh*,
+  *th*, *ph*, *ck*, *ng*, *qu*, *-tion*, doubled consonants once, *ea ee ai ay oa ow oo ou oi au*
+  and the like as one vowel), and the same lattice runs over it. Each vowel letter is offered
+  short (*a* `A`), long (`AEU`) and weak (`U`, droppable as in `-BL`); a letter with two readings
+  (*c* as *k* or *s*, *g*, *s*, a silent final *e*, *ch*, *gh*) gets both. Up to 6 / 6 / 4 / 2 / 1
+  paths of two to six strokes (`SPELLING_QUOTAS`) join the sound-based ones. So a word is held both
+  as you say it and as you spell it: *contemplation* `KOPB/+TEPL/+PHRAEU/+SHUPB`, *hour* `H/+O/+UR`.
 - **Nothing is forbidden, everything is priced.** A stroke costs 8; a cut costs by where it falls
   (nothing at an ordinary syllable break, 2 inside the consonants between syllables, 3 to 5
   through a syllable); a spelled or dropped vowel, the wrong hand, a star, or a sound out of steno

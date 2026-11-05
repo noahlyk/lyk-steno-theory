@@ -685,3 +685,19 @@ fn every_vowel_can_be_struck_as_the_letter_the_word_spells_it_with() {
     let lined = Rules::vowel_letters("contemplation", &sounds("K AA2 N T AH0 M P L EY1 SH AH0 N"));
     assert_eq!(lined.iter().flatten().collect::<Vec<_>>(), [&'o', &'e', &'a']);
 }
+
+#[test]
+fn a_word_is_also_spelled_out_a_syllable_at_a_time_from_its_letters() {
+    let rules = Rules::built_in().unwrap();
+    let texts = |word: &str| -> Vec<String> {
+        rules.orthographic_paths(word, &[12; 5]).iter().map(|(_, o)| render_outline(o)).collect()
+    };
+    // `con` `tem` `pla` `tion`, read off the letters, whatever the dictionary hears in them
+    let word = texts("contemplation");
+    assert!(word.contains(&"KOPB/TEPL/PHRAEU/SHUPB".to_owned()), "{word:?}");
+    // `hour` is h-o-ur
+    let hour = texts("hour");
+    assert!(hour.contains(&"H/O/UR".to_owned()) || hour.contains(&"H/O/U/-R".to_owned()), "{hour:?}");
+    // a one-vowel word has nothing to spell out in pieces
+    assert!(texts("cat").is_empty());
+}

@@ -32,6 +32,8 @@ use std::collections::{HashMap, HashSet};
 
 /// How many lattice paths of two strokes, three, four, five and six are offered as joins for a word.
 pub const LATTICE_QUOTAS: [usize; 5] = [24, 24, 12, 6, 3];
+/// The same for the lattice over a word's spelling.
+pub const SPELLING_QUOTAS: [usize; 5] = [6, 6, 4, 2, 1];
 
 /// How many paths of two strokes and of three a word with no join of its own is given, each with
 /// the star marker after it (see [`Stems::marked_joins`]).
@@ -249,6 +251,9 @@ impl<'a> Stems<'a> {
                     push(outline, Some(pron));
                 }
             }
+            for (_, outline) in self.setup.rules.orthographic_paths(word, &SPELLING_QUOTAS) {
+                push(outline, None);
+            }
         }
         out
     }
@@ -280,6 +285,9 @@ impl<'a> Stems<'a> {
             for (_, outline) in self.setup.rules.lattice_paths(word, pron, &LATTICE_QUOTAS) {
                 self.push_join(word, outline, Some(pron), &mut out);
             }
+        }
+        for (_, outline) in self.setup.rules.orthographic_paths(word, &SPELLING_QUOTAS) {
+            self.push_join(word, outline, None, &mut out);
         }
         out
     }

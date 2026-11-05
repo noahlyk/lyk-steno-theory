@@ -90,6 +90,18 @@ impl Rules {
         lattice.best_paths(quotas)
     }
 
+    /// [`Self::lattice_paths`] over sounds already read from the spelling (`orthography.rs`): the
+    /// short, long and weak readings of each position.
+    pub(super) fn lattice_paths_from(
+        &self,
+        heard: &[String],
+        spelled: &[String],
+        plain: &[String],
+        quotas: &Quotas,
+    ) -> Vec<(u32, Vec<Stroke>)> {
+        Lattice::new(self, heard, spelled, plain).best_paths(quotas)
+    }
+
     /// Every chord that writes the sounds `from..to` of `sounds` as one stroke.
     fn segment_writings(&self, sounds: &[String], from: usize, to: usize, bank: Bank) -> Vec<Writing> {
         let segment = &sounds[from..to];

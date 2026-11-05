@@ -2274,3 +2274,17 @@ both exist. Primaries are untouched except two rare words (*faz*, *nighttime*); 
 backups, 3,800 lose some to the per-length quotas (the lost ones were mostly implausible vowel splits),
 and the backups file grows 82.5 → 86.6 MB. Not covered: a vowel written with two letters (*ea*, *io*) or a
 word whose letter groups and sounds disagree, which keep only the heard and `[[spelled]]` vowels.
+
+## The word's spelling gets a lattice too (2026-11-04)
+
+Letter-aligned vowels fixed one class of hole, but "spell it out the way it looks" still failed on
+most words: a typist reading *evidence*, *zipped* or *hour* syllable by syllable says letters, and
+the lattice only knew sounds. A crude oracle (split the letters at every syllable boundary, strike
+each chunk letter by letter, ask whether that joined outline is held, for single-letter-vowel words
+of the 3,000 most common) was met by 41% of words before and 73% after. The fix is not more rules:
+the word's letters are read as a pseudo-pronunciation (`orthography.rs`) and the same lattice, with
+its stroke building, pricing and quotas, runs over it, 6 / 6 / 4 / 2 / 1 paths per stroke count. Cost: the
+backups file 86.6 → 109.6 MB (12/12/8/4/2 reached 78% at 134 MB, not worth it). Side effects, both
+accepted: `hour` no longer needs its marked `OU/+-R/+*` (it spells itself), and about 30 rare words
+(*hannah*, *mei*, *chai*, *wool*) moved from a one-stroke primary to a joined one, because they now
+have spare outlines and the phrase pass may take their stroke (*hannah*'s `HAPB` is now *has an*).

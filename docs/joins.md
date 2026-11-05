@@ -105,12 +105,16 @@ When nothing above fits, say the word and stroke each syllable as you hear it.
   the dictionary (24 / 24 / 12 / 6 / 3 for two to six strokes); `lyk paths complete` lists every
   way and which are in. Every word with a pronunciation gets these, whether or not it has a
   primary yet when the joins are placed.
-- **A word that sounds like a commoner one takes that one's paths and the star.** *hour* sounds
-  like *our*, so every join of *hour* is *our*'s: `OU/+-R` is *our*. *hour* is `OU/+-R/+*`, the same
-  path with the star marker stroke after it, the way a name takes its sound-alike's stroke (*matt*
-  `PHAT/+*`). So are *ok* (`O/+KAEU/+*`, *okay* has `O/+KAEU`), *principle* and *dessert*. A word
-  that has a join of its own gets no marked copy, and the marked ones never count as a spare outline
-  when the phrase pass decides whether a word can lose its stroke to a phrase (*ar* keeps `AR`).
+- **Or spell it the way it looks.** Every word is also held the way its letters read, a syllable
+  at a time, even where the dictionary hears something else: *contemplation* `KOPB/+TEPL/+PHRAEU/+SHUPB`
+  (*con* with an o, *tem* with an e), *hour* `H/+O/+UR`. Each vowel letter may be short (`A`), long
+  (`AEU`) or weak (`U`); *c*, *g* and *s* may be hard or soft; a silent final *e* is optional.
+  So if you can read the word's syllables, you can type them.
+- **A word that sounds like a commoner one takes that one's paths and the star** when it has no
+  joins of its own. *ok* sounds like *okay*: `O/+KAEU/+*`, the same path with the star marker stroke
+  after it, the way a name takes its sound-alike's stroke (*matt* `PHAT/+*`). So are *principle* and
+  *dessert*. The marked ones never count as a spare outline when the phrase pass decides whether a
+  word can lose its stroke to a phrase (*ar* keeps `AR`).
 
 ## 4. Or the short form
 

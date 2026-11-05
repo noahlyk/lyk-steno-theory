@@ -601,8 +601,9 @@ fn a_word_that_sounds_like_a_commoner_one_is_reached_by_that_ones_paths_and_the_
     let has = |word: &str, outline: &str| {
         generated.entries.iter().any(|e| e.word == word && render_outline(&e.outline) == outline)
     };
-    // Every join of `hour` is `our`'s, and `ok` is `okay`'s: they keep a way in with the marker
-    assert!(has("hour", "OU/+-R/+*"), "hour: our's path and the star");
+    // `ok` is `okay`'s: it keeps a way in with the marker. `hour` no longer needs it: the
+    // lattice over its spelling gives it joins of its own
+    assert!(has("hour", "H/+O/+UR"), "hour: spelled h-o-ur");
     assert!(has("ok", "O/+KAEU/+*"), "ok: okay's path and the star");
     assert!(!has("our", "OU/+-R/+*"), "the commoner word keeps the plain path");
     // A word with a path of its own gets no marked copy
