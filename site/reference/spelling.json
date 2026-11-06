@@ -9,11 +9,11 @@
   },
   {
    "t": "p",
-   "x": "Spelling picks between ways to write a sound. A spelling rule looks at the whole word, its start, its end, the sound before, or a prefix on an unstressed first vowel. When one fits, the sound becomes a named variant (`UW.oo`) with its own keys. Every choice is one line in `rules/plover.toml`, and `explain` shows which fired."
+   "x": "Spelling picks between ways to write a sound. A spelling rule looks at the whole word, its start, its end, the sound before, or a prefix on an unstressed first vowel. When one fits, the sound becomes a named variant (`UW.oo`) with its own keys. Every choice is one line in `rules/plover.toml`, and `!explain` shows which fired."
   },
   {
    "t": "p",
-   "x": "Examples: `UW` is [[AO]] in *moon* but [[AOU]] in *tune*; `T` is [[-D]] in *walked*; `ou` is the plain [[U]] in *rough* where `o` is [[O]] in *love*; `be-` is [[E]] in *believe*, `a-` is [[A]] in *about*."
+   "x": "Examples: `UW` is [[AO]] in *moon* but [[AOU]] in *tune*; `T` is [[-D]] in *walked*; `!ou` is the plain [[U]] in *rough* where `o` is [[O]] in *love*; `be-` is [[E]] in *believe*, `a-` is [[A]] in *about*."
   },
   {
    "t": "h",
@@ -117,7 +117,7 @@
    "rows": [
     [
      "ew (UW)",
-     "the word contains `oo`",
+     "the word contains `!oo`",
      "UW.oo",
      "[[AO]]",
      "[[moon|PHAOPB]], [[food|TPAOD]] (plain: [[tune|TAOUPB]])"
@@ -173,7 +173,7 @@
     ],
     [
      "oo (UH)",
-     "contains `oo`",
+     "contains `!oo`",
      "UH",
      "[[AO]]",
      "[[look|HRAOBG]], [[good|AOD]]"
@@ -299,7 +299,7 @@
     ],
     [
      "u (AH)",
-     "contains `ou`",
+     "contains `!ou`",
      "AH",
      "[[U]]",
      "[[rough|RUF]], [[touch|TUFP]]"
@@ -354,7 +354,7 @@
   },
   {
    "t": "p",
-   "x": "These variants combine with a following R (or `ng`) in [vowel + R](#/ref/phonetic-rules): [[AR]] for `war`, [[UR]] for `sure`, [[AER]] for `dear`, `hear`, `stare`, `their`, and [[ER]] for `berry`."
+   "x": "These variants combine with a following R (or `!ng`) in [vowel + R](#/ref/phonetic-rules): [[AR]] for `war`, [[UR]] for `sure`, [[AER]] for `dear`, `hear`, `stare`, `their`, and [[ER]] for `berry`."
   },
   {
    "t": "h",
@@ -362,7 +362,7 @@
   },
   {
    "t": "p",
-   "x": "In joined strokes only (never in a primary outline) a long `o` written with the plain letter also gets the plain keys: `control` is [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]. The rule: sound `OW`, word contains `o` and none of `oa`, `ow`, `oe`, `ou`, `oo`, `oi`, `ough`."
+   "x": "In joined strokes only (never in a primary outline) a long `o` written with the plain letter also gets the plain keys: `control` is [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]. The rule: sound `OW`, word contains `o` and none of `oa`, `!ow`, `!oe`, `!ou`, `!oo`, `!oi`, `ough`."
   },
   {
    "t": "h",

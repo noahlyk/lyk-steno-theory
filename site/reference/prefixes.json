@@ -75,7 +75,7 @@
   {
    "t": "list",
    "items": [
-    "The first row that matches the word's spelling and sounds wins, so a prefix that starts a longer one is checked after it: `inter`, `under`, `over` and `mis` come before `un`, or every `under-` word would be read as `un-` plus a leftover syllable.",
+    "The first row that matches the word's spelling and sounds wins, so a prefix that starts a longer one is checked after it: `inter`, `!under`, `!over` and `mis` come before `!un`, or every `under-` word would be read as `un-` plus a leftover syllable.",
     "`over-`, `under-` and `inter-` end in the r-coloured vowel, which their keys already include. `over-` reuses the onset of V ([[SR]]). `under-` and `inter-` use the onsets of their consonants (N + D is [[TPH]] + [[TK]]; N + T is [[TPH]] + [[T]]) plus a left-hand [[R]] for the vowel, which also keeps `inter-` distinct from `un-`.",
     "`mis-` is written like `dis-`: M's onset [[PH]] plus a left-hand [[S]] for the coda.",
     "`un-` is just the onset of N, [[TPH]], with no vowel kept, the same way a suffix drops its vowel."

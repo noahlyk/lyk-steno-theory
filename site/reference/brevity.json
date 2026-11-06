@@ -51,25 +51,25 @@
      "[[community|KPH-T]]"
     ],
     [
-     "`shell`, with the stressed vowel",
+     "`!shell`, with the stressed vowel",
      "one stroke: the first consonants and those of the stressed and last syllables",
      "8,000",
      "-"
     ],
     [
-     "`shell`, no vowel",
+     "`!shell`, no vowel",
      "the same with no vowel; three or more syllables",
      "8,000",
      "-"
     ],
     [
-     "`ends`, with the stressed vowel",
+     "`!ends`, with the stressed vowel",
      "one stroke: the first consonants and those of the last syllable",
      "8,000",
      "-"
     ],
     [
-     "`ends`, no vowel",
+     "`!ends`, no vowel",
      "the same with no vowel; three or more syllables",
      "8,000",
      "-"
@@ -79,7 +79,7 @@
   {
    "t": "note",
    "kind": "rule",
-   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `shell`, `ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words."
+   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `!shell`, `!ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words."
   },
   {
    "t": "p",
@@ -131,7 +131,7 @@
   {
    "t": "list",
    "items": [
-    "Every word keeps every short form still free beside its rule outline, once its primary is settled. The dictionary holds both ends of the spectrum, and the cheapest counts toward `cheapest` regardless.",
+    "Every word keeps every short form still free beside its rule outline, once its primary is settled. The dictionary holds both ends of the spectrum, and the cheapest counts toward `!cheapest` regardless.",
     "This pass runs strictly after every word's primary outline is final, so a common word's bonus short form can never take text a rarer word needed as its primary.",
     "It also runs after the alternate-pronunciation and [backup](#/ref/syllables) passes, so a stem-plus-ending join ([[looks|HRAOBG/+-S]]) or another pronunciation's reading is never blocked by a one-off short form that wanted the same text. When the predictable form and the memorised one collide, the predictable one holds it.",
     "A word pinned to a literal `[word]` override (see [briefs](#/ref/briefs)) is the one exception: its single entry is a human decision, not reopened by a bonus short form."
@@ -148,7 +148,7 @@
   },
   {
    "t": "p",
-   "x": "`build` prints how many strokes and keys a word takes on average, weighted by how often it is said, next to Plover and Lapwing on the same words. See [build and files](#/ref/build-and-files)."
+   "x": "`!build` prints how many strokes and keys a word takes on average, weighted by how often it is said, next to Plover and Lapwing on the same words. See [build and files](#/ref/build-and-files)."
   }
  ]
 }

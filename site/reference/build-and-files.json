@@ -21,7 +21,7 @@
     "**Optimized for speed, not for being guessable.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs the least to type. Nothing has to be derivable from the word's sound or spelling.",
     "**One primary outline per word, extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed, so they cost no other word anything.",
     "**An explicit join key.** Continuation strokes are never mistaken for words, which is what lets a suffix be one key.",
-    "**Measured, not asserted.** `build` and `score` print cost and match-rate against Plover and Lapwing on the same words every time. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
+    "**Measured, not asserted.** `!build` and `!score` print cost and match-rate against Plover and Lapwing on the same words every time. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
     "**A miss always resolves.** A stroke the dictionary lacks still reads back as something sensible, as a real engine's last resort: see [the fallback](#/ref/fallback)."
    ],
    "ordered": false
@@ -50,7 +50,7 @@
      "Show what was loaded."
     ],
     [
-     "`score`",
+     "`!score`",
      "How often the rules match Plover or Lapwing."
     ],
     [
@@ -62,7 +62,7 @@
      "Rewrite any stale README table in place."
     ],
     [
-     "`build`",
+     "`!build`",
      "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)), and print the cost."
     ],
     [
@@ -70,8 +70,8 @@
      "Generate keymux's WASM fallback plugin from the rules (default `out/lyk-orthographic-fallback.rs`). See [the fallback](#/ref/fallback/keeping-the-plugin-honest)."
     ],
     [
-     "`deploy`",
-     "`build` plus `plugin`, copied straight into keymux's live config. Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
+     "`!deploy`",
+     "`!build` plus `plugin`, copied straight into keymux's live config. Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
     ],
     [
      "`explain WORD`",
@@ -146,7 +146,7 @@
   },
   {
    "t": "p",
-   "x": "`build` does not write one big dictionary. It writes several small Plover JSON files, one for each **way an entry came about**, and `deploy` puts them in keymux's folder next to the reserved-stroke files. What a stroke means does not depend on the split."
+   "x": "`!build` does not write one big dictionary. It writes several small Plover JSON files, one for each **way an entry came about**, and `!deploy` puts them in keymux's folder next to the reserved-stroke files. What a stroke means does not depend on the split."
   },
   {
    "t": "table",
@@ -200,10 +200,10 @@
   {
    "t": "list",
    "items": [
-    "The generator keeps exactly one word per outline, so **no outline appears in two files** and the load order never changes what a stroke types. `build` checks this.",
+    "The generator keeps exactly one word per outline, so **no outline appears in two files** and the load order never changes what a stroke types. `!build` checks this.",
     "Which file an entry goes in is decided in one place, `Role::of` in `src/output.rs`, from the entry's `Origin`.",
-    "The file name tells you what kind of outline you are looking at: a `+` outline in `backups` is a fallback, and the same word's primary is in `words`.",
-    "keymux caches and reloads per file. A change that moves only some entries rewrites only those files, and `build` compares bytes first, so a file whose content did not change is not rewritten and keymux sees nothing to do for it."
+    "The file name tells you what kind of outline you are looking at: a `+` outline in `backups` is a fallback, and the same word's primary is in `!words`.",
+    "keymux caches and reloads per file. A change that moves only some entries rewrites only those files, and `!build` compares bytes first, so a file whose content did not change is not rewritten and keymux sees nothing to do for it."
    ],
    "ordered": false
   },
@@ -217,7 +217,7 @@
   },
   {
    "t": "p",
-   "x": "`deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed the same way every time, so the same dictionary always gives the same bytes."
+   "x": "`!deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed the same way every time, so the same dictionary always gives the same bytes."
   },
   {
    "t": "h",
@@ -236,7 +236,7 @@
    "rows": [
     [
      "`holders.py OUTLINE @word ...`",
-     "Who holds an outline (`TKO*BG` is *dock*, in `words`), or every outline a word has, fastest first. Quote outlines that contain a star."
+     "Who holds an outline (`TKO*BG` is *dock*, in `!words`), or every outline a word has, fastest first. Quote outlines that contain a star."
     ],
     [
      "`diff_builds.py BEFORE [AFTER] [N]`",

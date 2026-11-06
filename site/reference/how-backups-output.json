@@ -79,7 +79,7 @@
       ["[[AOEU]]", "eye (the letter i is not given this stroke)"],
       ["[[WOEU]]", "I would"]
     ] },
-    { "t": "p", "x": "A full `build` takes about 8 seconds. `score --check-readme` takes about 4.6 seconds; `--write-readme` rewrites stale README tables." },
+    { "t": "p", "x": "A full `!build` takes about 8 seconds. `score --check-readme` takes about 4.6 seconds; `--write-readme` rewrites stale README tables." },
     { "t": "h3", "x": "Checks that run on every build and test run" },
     { "t": "list", "items": [
       "No two raw entries share an outline. `write_json` keys by outline text, so a duplicate would silently lose an entry.",

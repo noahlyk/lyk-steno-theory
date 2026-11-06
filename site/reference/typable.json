@@ -112,7 +112,7 @@
     ],
     [
      "Hand-written outlines in `rules/briefs.toml`",
-     "Refused loudly: `build` stops with an error naming the word."
+     "Refused loudly: `!build` stops with an error naming the word."
     ],
     [
      "The stranded-word check",

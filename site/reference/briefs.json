@@ -73,7 +73,7 @@
   },
   {
    "t": "p",
-   "x": "Frequency never changes a candidate's own cost. Two words considering the same outline agree on what it costs; what decides who gets it is how much each word's total result is worth, using the **raw usage count** of the word in the frequency corpus. The solver's objective is therefore exactly the headline number `build` and `score` report: average keys per word, weighted by how often the word is said."
+   "x": "Frequency never changes a candidate's own cost. Two words considering the same outline agree on what it costs; what decides who gets it is how much each word's total result is worth, using the **raw usage count** of the word in the frequency corpus. The solver's objective is therefore exactly the headline number `!build` and `!score` report: average keys per word, weighted by how often the word is said."
   },
   {
    "t": "h",
@@ -85,7 +85,7 @@
   },
   {
    "t": "p",
-   "x": "A guard counts words whose final outline costs more than their own plain-rules reading even though that reading is unclaimed (a family-shaped word is exempt). `build` prints it as \"words stranded on a worse outline than their own, unclaimed plain reading\", and a test holds it to zero. A true global optimum cannot leave a cheaper free outline unused, so zero is expected by construction."
+   "x": "A guard counts words whose final outline costs more than their own plain-rules reading even though that reading is unclaimed (a family-shaped word is exempt). `!build` prints it as \"words stranded on a worse outline than their own, unclaimed plain reading\", and a test holds it to zero. A true global optimum cannot leave a cheaper free outline unused, so zero is expected by construction."
   },
   {
    "t": "h",
@@ -97,7 +97,7 @@
   },
   {
    "t": "p",
-   "x": "So a rare name losing its last slot is weighed honestly against a common word's extra stroke. Example: *early*, said about 85,000 times, keeps [[early|ERL]]; the rarest member of its cluster (*errol*, *earle*, *earl*) is the one that pays. Words left unplaced this way are counted by `build` as \"words the rules could not place\"; every one is rarer than rank 20,000."
+   "x": "So a rare name losing its last slot is weighed honestly against a common word's extra stroke. Example: *early*, said about 85,000 times, keeps [[early|ERL]]; the rarest member of its cluster (*errol*, *earle*, *earl*) is the one that pays. Words left unplaced this way are counted by `!build` as \"words the rules could not place\"; every one is rarer than rank 20,000."
   },
   {
    "t": "h",

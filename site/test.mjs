@@ -1,6 +1,6 @@
 // Tests the stroke-to-text engine against the real data: `node site/test.mjs`.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine } from './js/engine.js';
@@ -102,6 +102,18 @@ expect('SKP/+-L is read back, not an entry', def('SKP/+-L').how, 'guess');
   expect('list with a non-match', classifyList('ends, zzzzqx', dict), null);
   expect('prose is not a list', classifyList('ends the line', dict), null);
   expect('plain separator-only', classifyList(', ', dict), null);
+}
+
+// the `!name` opt-out (js/lesson.js): only on lower-case words, where it means something, and never
+// on an outline or a word the page teaches as a chip
+for (const dir of ['reference', 'lessons']) {
+  for (const f of readdirSync(join(root, dir)).filter((x) => x.endsWith('.json'))) {
+    const text = readFileSync(join(root, dir, f), 'utf8');
+    for (const m of text.matchAll(/`!([^`]+)`|\{\{!([^}]+)\}\}/g)) {
+      const w = m[1] ?? m[2];
+      if (!/^[a-z][a-z' -]*$/.test(w)) errors.push(`${dir}/${f}: opt-out !${w} is not a lower-case word (opt-outs only matter on words)`);
+    }
+  }
 }
 
 // a run with the keys shown counts as a run but never sets the best

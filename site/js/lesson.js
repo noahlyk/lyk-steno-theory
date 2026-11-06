@@ -12,6 +12,10 @@ import { grammarComposer } from './grammar.js';
 
 const TOKEN = /\[\[(.+?)\]\]|`(.+?)`|\*\*(.+?)\*\*|\{\{(.+?)\}\}|\[([^\]]+)\]\(((?:https?:\/\/|#\/)[^)\s]+)\)|\*([^*\s`[][^*`[]*?)\*/g;
 
+// `!name` / {{!name}}: a word that only names something on the page (a step, a command), not an
+// example of typing, so the hover board (hover.js) leaves it alone. A table header `!Step` does it for a column.
+const optOut = (text) => text.length > 1 && text[0] === '!';
+
 /** Inline markup: [[word|OUTLINE]], [[OUTLINE]], `code`, **bold**, {{italic word}}, *italic*, [text](url). */
 export function inline(text) {
   const out = [];
@@ -19,11 +23,11 @@ export function inline(text) {
   for (const m of text.matchAll(TOKEN)) {
     if (m.index > last) out.push(text.slice(last, m.index));
     if (m[1] !== undefined) out.push(...chip(m[1]));
-    else if (m[2] !== undefined) out.push(el('code', {}, m[2]));
+    else if (m[2] !== undefined) out.push(optOut(m[2]) ? el('code', { 'data-nohover': true }, m[2].slice(1)) : el('code', {}, m[2]));
     else if (m[3] !== undefined) out.push(el('strong', {}, ...inline(m[3])));
     else if (m[5] !== undefined) out.push(el('a', { href: m[6], rel: 'noopener' }, m[5]));
     else if (m[7] !== undefined) out.push(el('em', {}, m[7]));
-    else out.push(el('span', { class: 'word' }, m[4]));
+    else out.push(optOut(m[4]) ? el('span', { class: 'word', 'data-nohover': true }, m[4].slice(1)) : el('span', { class: 'word' }, m[4]));
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -57,7 +61,7 @@ const BLOCKS = {
   list: (b) => el(b.ordered ? 'ol' : 'ul', { class: 'steps' }, b.items.map((i) => el('li', {}, inline(i)))),
   note: (b) => el('div', { class: `note ${b.kind ? `note--${b.kind}` : ''}` }, el('p', {}, inline(b.x))),
   table: (b) => el('div', { class: 'tablewrap' }, el('table', {},
-    b.head ? el('thead', {}, el('tr', {}, b.head.map((h) => el('th', {}, h)))) : null,
+    b.head ? el('thead', {}, el('tr', {}, b.head.map((h) => (optOut(h) ? el('th', { 'data-nohover': true }, h.slice(1)) : el('th', {}, h))))) : null,
     el('tbody', {}, b.rows.map((r) => el('tr', {}, r.map((c) => el('td', {}, inline(String(c))))))))),
   explore: (b) => explore(b),
   try: (b) => {

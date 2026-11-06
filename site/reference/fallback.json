@@ -13,7 +13,7 @@
   },
   {
    "t": "p",
-   "x": "A real steno engine uses it as its last resort: look the stroke up in the dictionary first, and only on a miss run `resolve` instead of echoing the keys. In Plover it is a `StenoDictionary` plugin loaded at the bottom of the stack. In keymux it is a WASM module asked only after every dictionary ahead of it has missed, and only for one stroke or a run the join key declared as one word."
+   "x": "A real steno engine uses it as its last resort: look the stroke up in the dictionary first, and only on a miss run `!resolve` instead of echoing the keys. In Plover it is a `StenoDictionary` plugin loaded at the bottom of the stack. In keymux it is a WASM module asked only after every dictionary ahead of it has missed, and only for one stroke or a run the join key declared as one word."
   },
   {
    "t": "h",
@@ -33,14 +33,14 @@
   },
   {
    "t": "p",
-   "x": "For any stroke after the first that carries the join key, `resolve` first checks `rules/suffixes.toml`'s chords, before the ordinary read-back. So `+-D` after a stroke with no entry reads `ed`, not the bare consonant `d`."
+   "x": "For any stroke after the first that carries the join key, `!resolve` first checks `rules/suffixes.toml`'s chords, before the ordinary read-back. So `+-D` after a stroke with no entry reads `!ed`, not the bare consonant `d`."
   },
   {
    "t": "list",
    "items": [
     "A two-stroke suffix is checked first, as a pair: `-ism` `+EUZ/+-PL`, `-ity` `+U/+TEU`.",
     "This is unconditional: a suffix does not need a particular composed outline to be a dictionary entry already.",
-    "A suffix struck alone, with no stroke before it, is already a literal dictionary entry; `resolve` is never reached for it."
+    "A suffix struck alone, with no stroke before it, is already a literal dictionary entry; `!resolve` is never reached for it."
    ],
    "ordered": false
   },
@@ -54,7 +54,7 @@
   },
   {
    "t": "p",
-   "x": "When the run's first stroke is already a single-stroke word, `resolve` uses that word's real text instead of decoding the keys. [[and|SKP]] is a brief with no phonetic link to its spelling, so `SKP/+-R` reads `ander`, not `sper`. Rules-derived words get the same treatment: [[build|PWHR]] plus `+-D` reads `builded`."
+   "x": "When the run's first stroke is already a single-stroke word, `!resolve` uses that word's real text instead of decoding the keys. [[and|SKP]] is a brief with no phonetic link to its spelling, so `SKP/+-R` reads `!ander`, not `sper`. Rules-derived words get the same treatment: [[build|PWHR]] plus `+-D` reads `builded`."
   },
   {
    "t": "list",
@@ -70,7 +70,7 @@
   },
   {
    "t": "p",
-   "x": "English spelling is not plain concatenation, so `resolve` looks at the first letter of the next piece before it commits the stem:"
+   "x": "English spelling is not plain concatenation, so `!resolve` looks at the first letter of the next piece before it commits the stem:"
   },
   {
    "t": "table",
@@ -124,7 +124,7 @@
   },
   {
    "t": "p",
-   "x": "Bare `AO` is a three-way tie: `UH` (*book*, *put*), `UW.oo` (*too*, *moon*, *kangaroo*) and `OW.oa` (*boat*). A word's full pronunciation settles this when the dictionary is built; a miss has no word, so `resolve` picks **`UW.oo`**, because `UH` is rare as an unreduced vowel on a continuation stroke, where \"-oo\" endings are common. The tie-break is `vowel_rank` in `src/rules/mod.rs`."
+   "x": "Bare `AO` is a three-way tie: `UH` (*book*, *put*), `UW.oo` (*too*, *moon*, *kangaroo*) and `OW.oa` (*boat*). A word's full pronunciation settles this when the dictionary is built; a miss has no word, so `!resolve` picks **`UW.oo`**, because `UH` is rare as an unreduced vowel on a continuation stroke, where \"-oo\" endings are common. The tie-break is `vowel_rank` in `src/rules/mod.rs`."
   },
   {
    "t": "h",
@@ -136,7 +136,7 @@
   },
   {
    "t": "p",
-   "x": "`resolve` prints the reading and whether the outline is already in the dictionary. Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
+   "x": "`!resolve` prints the reading and whether the outline is already in the dictionary. Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
   },
   {
    "t": "h",
@@ -148,7 +148,7 @@
   },
   {
    "t": "p",
-   "x": "`plugin` generates the WASM plugin's `.rs` source **directly from the rule tables**: the same onset/vowel/coda data and the same \"no vowel key means no vowel sound\" logic as `resolve`, ported to plain `u32`s, inside a fixed `alloc`/`fallback` ABI template. Nothing is hand-copied. Regenerate and redeploy the file after any change to the rule tables; never hand-edit the deployed plugin."
+   "x": "`plugin` generates the WASM plugin's `.rs` source **directly from the rule tables**: the same onset/vowel/coda data and the same \"no vowel key means no vowel sound\" logic as `!resolve`, ported to plain `u32`s, inside a fixed `alloc`/`!fallback` ABI template. Nothing is hand-copied. Regenerate and redeploy the file after any change to the rule tables; never hand-edit the deployed plugin."
   },
   {
    "t": "h3",

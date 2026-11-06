@@ -157,7 +157,7 @@
   },
   {
    "t": "p",
-   "x": "`Rules::spell_word(word)` is the exact inverse: it looks each letter up in the table and returns the outline with `~` on the first stroke and `+` on every one after it. It returns nothing for a word with a character outside plain a-z. `lookup`, `explain` and `quote` fall back to it once a word has no pronunciation, rather than calling the word untypeable."
+   "x": "`Rules::spell_word(word)` is the exact inverse: it looks each letter up in the table and returns the outline with `~` on the first stroke and `+` on every one after it. It returns nothing for a word with a character outside plain a-z. `lookup`, `!explain` and `!quote` fall back to it once a word has no pronunciation, rather than calling the word untypeable."
   },
   {
    "t": "h",

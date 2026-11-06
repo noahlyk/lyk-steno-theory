@@ -42,9 +42,9 @@
       "It is built from the word's own sounds, so it exists from the start. The backup entries below need the stem to be a placed word first."
     ] },
     { "t": "h", "x": "Backup entries: the idea" },
-    { "t": "p", "x": "The theory keeps one single-stroke outline per word, but allows unlimited multi-stroke ones, judged on predictability rather than brevity. The backup entries are those multi-stroke ones. A word's primary (shown by `explain`) does not change; backups only add extra ways in, so you can always reach the word from parts you know." },
+    { "t": "p", "x": "The theory keeps one single-stroke outline per word, but allows unlimited multi-stroke ones, judged on predictability rather than brevity. The backup entries are those multi-stroke ones. A word's primary (shown by `!explain`) does not change; backups only add extra ways in, so you can always reach the word from parts you know." },
     { "t": "p", "x": "Folding alone is not consistent. [[breaking|PWRAEUBG/+-G]] keeps *break*'s [[break|PWRAEUBG]] only because a second `k` has nowhere to go, while *building* has no such excuse and its own cheapest outline is the fused [[building|PW-LG]], unrelated to [[build|PWHR]]. A later pass in `generate()` fixes this on purpose: it adds *build*'s own outline plus a continuation stroke as a second entry, so [[build|PWHR]] plus [[+-G]] also reaches [[building|PWHR/+-G]]." },
-    { "t": "p", "x": "A collision with an outline something else already has is skipped and counted (in `build`'s report line), never a hard failure." },
+    { "t": "p", "x": "A collision with an outline something else already has is skipped and counted (in `!build`'s report line), never a hard failure." },
     { "t": "h", "x": "Exhaustive and repeated to a fixed point" },
     { "t": "list", "items": [
       "Every word tries every split of its own sounds against every direction below, not just the first that works. Every safe, non-colliding composed outline is added, so a word often has several backup entries.",
@@ -76,7 +76,7 @@
       "Some pronunciation of the word is some pronunciation of the stem followed by exactly the sounds that ending adds (`-ed`: D, T or IH D; `-s`: S, Z or IH Z; `-ing`: IH NG; and so on). So *used* is *use* + *-ed*, never *us* + *-ed*.",
       "The stem is said at least 1/50th as often as the word, so *need* is not *ne* + *-ed*.",
       "When several stems pass, the most frequent is kept: *robber* is *rob* + *-er* (not the name *robb*), *lived* is *live* + *-d* (not *liv*).",
-      "The word is not listed in `not_family` in `rules/families.toml`. That list holds words that pass every check by coincidence: an ending that is part of the word (*better*, *letter*, *moment*, *forest*, *feed*) or a name (*walter*, *peter*). Add a word there if `family` shows it linked to something it is not built from."
+      "The word is not listed in `not_family` in `rules/families.toml`. That list holds words that pass every check by coincidence: an ending that is part of the word (*better*, *letter*, *moment*, *forest*, *feed*) or a name (*walter*, *peter*). Add a word there if `!family` shows it linked to something it is not built from."
     ] },
     { "t": "h3", "x": "What a family member gets" },
     { "t": "p", "x": "Every linked word gets its stem's own outline (a brief, a rules reading or a star form) plus the ending's standalone stroke from [the suffix table](#/ref/suffixes). The ending is `+-S` when the word really ends in an s sound, `+-Z` otherwise." },
@@ -184,7 +184,7 @@
     ] },
     { "t": "p", "x": "So a word is held both as you say it and as you spell it: [[contemplation|KOPB/+TEPL/+PHRAEU/+SHUPB]], [[hour|H/+O/+UR]]." },
     { "t": "h3", "x": "A stem struck as a word, then the rest spelled" },
-    { "t": "p", "x": "For every start of a word (three letters or more) that is a placed word with a one-stroke outline, that outline is followed by the cheapest ways to spell the rest, from one stroke up (`stemmed` in `src/generate/backup.rs`): [[movement|PHOF/+PHEPBT]] (*move* + *ment*). This is how a typist reads *particular* as *part-ic-ul-ar*, which the sound lattice cuts as *par-ti-cu-lar* and never offers." },
+    { "t": "p", "x": "For every start of a word (three letters or more) that is a placed word with a one-stroke outline, that outline is followed by the cheapest ways to spell the rest, from one stroke up (`!stemmed` in `src/generate/backup.rs`): [[movement|PHOF/+PHEPBT]] (*move* + *ment*). This is how a typist reads *particular* as *part-ic-ul-ar*, which the sound lattice cuts as *par-ti-cu-lar* and never offers." },
     { "t": "h3", "x": "Nothing is forbidden, everything is priced" },
     { "t": "table", "head": ["Thing", "Cost"], "rows": [
       ["A stroke", "8"],
@@ -218,7 +218,7 @@
     { "t": "p", "x": "Backups make every member reachable as stem plus ending. The members' own fastest outlines follow their family too, so *build* is [[build|PWHR]] and *builds* is [[builds|PWHR-Z]], not an unrelated shape. Settling primaries runs twice:" },
     { "t": "list", "ordered": true, "items": [
       "The first pass settles every word on cost alone.",
-      "Every family root (a word with family members) is locked to the outline it won, and every member is offered its root's outline written by the **family rules**, applied to the root's last stroke (`shapes` in `src/family.rs`).",
+      "Every family root (a word with family members) is locked to the outline it won, and every member is offered its root's outline written by the **family rules**, applied to the root's last stroke (`!shapes` in `src/family.rs`).",
       "Every word is settled again from scratch with those offers in its pool."
     ] },
     { "t": "h3", "x": "The three family rules" },
@@ -254,12 +254,12 @@
     { "t": "p", "x": "Locking the roots matters: without it a root could trade its outline away in the second pass (*come* gave `KUPL` to *cum* for the equally long `KOPL`) after its members were offered shapes built on the old one. A locked root may still move to a strictly cheaper outline of its own if the re-solve frees one up; its family is then re-offered shapes on the new outline in the next pass. Roots only get cheaper, so this settles, usually within two or three solves." },
     { "t": "h3", "x": "The two-key family preference" },
     { "t": "p", "x": "A family offer counts **two keys cheaper** than its raw cost (`FAMILY_DISCOUNT`). Without it, cost alone kept a shorter unrelated brief (*building* stayed Plover's 4-key `PW-LG` over the 5-key `PWHR-G`). With it, a member takes its family's shape unless that costs more than two extra keys." },
-    { "t": "note", "kind": "rule", "x": "The discount never buys a stroke: a stroke weighs 25 keys. The same two-key preference applies when choosing which of a word's entries to call its outline (`cheapest`, used by `lookup`, `quote` and phrases), so a family shape is not shadowed by a bonus short form that only ties it: [[talked|TAUBGD]], not the bonus `TO*BGT`." },
+    { "t": "note", "kind": "rule", "x": "The discount never buys a stroke: a stroke weighs 25 keys. The same two-key preference applies when choosing which of a word's entries to call its outline (`!cheapest`, used by `lookup`, `!quote` and phrases), so a family shape is not shadowed by a bonus short form that only ties it: [[talked|TAUBGD]], not the bonus `TO*BGT`." },
     { "t": "h3", "x": "Checking a family" },
     { "t": "pre", "x": "cargo run --release -- family build\ncargo run --release -- family" },
     { "t": "list", "items": [
       "`family WORD` prints one family: every member, its stem and ending, its own outline, its stem-plus-ending entry, and whether its own outline follows the family (one of the rule shapes above, or keeping every key of its stem's outline).",
-      "`family` with no word prints the numbers for the whole dictionary by ending, and the commonest members that do not follow the family: one-stroke briefs that beat the family shape by more than two keys, such as [[guys|AOEUS]] against [[guy|TKPAOEU]] and [[needs|AOEDZ]] against [[need|TPHAED]]. The stem-plus-ending entry is always there for them as the predictable way in."
+      "`!family` with no word prints the numbers for the whole dictionary by ending, and the commonest members that do not follow the family: one-stroke briefs that beat the family shape by more than two keys, such as [[guys|AOEUS]] against [[guy|TKPAOEU]] and [[needs|AOEDZ]] against [[need|TPHAED]]. The stem-plus-ending entry is always there for them as the predictable way in."
     ] },
     { "t": "h", "x": "Collisions within one backup pass" },
     { "t": "p", "x": "Two different words (or one word by two different directions) can compose the exact same text in the same pass. The pass does not keep whichever it visits first. It first collects every direction's every candidate for every word, then, text by text, keeps only the one minimizing `weight(word) * cost(outline)`, the same formula and frequency weighting the solver uses for every primary (see [collisions](#/ref/collisions)). Only then are the pass's winners committed." },

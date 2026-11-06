@@ -10,7 +10,7 @@ const flatPages = (idx) => idx.sections.flatMap((s) => s.pages.map((p) => ({ ...
 
 /** Plain text of a block's inline markup: `[[word|OUT]]` becomes "word OUT", the rest loses its marks. */
 const plain = (t) => String(t).replace(/\[\[(?:([^|\]]*)\|)?([^\]]*)\]\]/g, (_, w, o) => `${(w ?? '').replace(/^=/, '')} ${o}`.trim())
-  .replace(/\{\{(.+?)\}\}/g, '$1').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`(.+?)`/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+  .replace(/\{\{!?(.+?)\}\}/g, '$1').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`!?(.+?)`/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 
 /** The searchable pieces of a page: one per block, each knowing the heading it sits under. */
 function pieces(page, meta) {

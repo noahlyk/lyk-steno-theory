@@ -45,7 +45,7 @@
   },
   {
    "t": "p",
-   "x": "Spelling answers \"who may even propose this word's plain, unstressed-vowel reading\", not \"who should win it\". *sail* (`ai`) and *sale* (silent e) sound identical but spell the stressed vowel differently, so the rules write two outlines: [[sail|SAEUL]] for the `ai` spelling and the shorter [[sale|SAEL]] for the silent e. Both are candidates for their words. Which gets the longer or the shorter form is decided by the same cost-and-frequency solve, which usually gives the commoner member of a pair the cheaper pick. See [spelling](#/ref/spelling) for how a sound becomes a spelling-told-apart variant."
+   "x": "Spelling answers \"who may even propose this word's plain, unstressed-vowel reading\", not \"who should win it\". *sail* (`!ai`) and *sale* (silent e) sound identical but spell the stressed vowel differently, so the rules write two outlines: [[sail|SAEUL]] for the `!ai` spelling and the shorter [[sale|SAEL]] for the silent e. Both are candidates for their words. Which gets the longer or the shorter form is decided by the same cost-and-frequency solve, which usually gives the commoner member of a pair the cheaper pick. See [spelling](#/ref/spelling) for how a sound becomes a spelling-told-apart variant."
   },
   {
    "t": "h",

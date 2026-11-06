@@ -10,7 +10,7 @@
       "**Contraction tails** (`'s 'd 'll 're 'm 've 't 'n 'a`). The tokenizer splits \"I've\" into \"i\" + \"'ve\", so each tail would carry a whole contraction family's count. Struck alone it would type the tail with its space. The strokes they would have held go to real words: [[guess|ES]], [[you'll|UL]], [[um|UPL]], [[tour|TUR]]. Clipped words that are real on their own (`'cause`, `'em`, `'til`) stay."
     ] },
     { "t": "h", "x": "Strokes spoken for before any word" },
-    { "t": "p", "x": "These go into the `taken` map first, and no word can land on them." },
+    { "t": "p", "x": "These go into the `!taken` map first, and no word can land on them." },
     { "t": "table", "head": ["What", "Strokes", "Source"], "rows": [
       ["Punctuation", "144", "`rules/reserved/punctuation.json`, forked from Plover"],
       ["Fingerspelling", "52", "[[A*]] writes a, [[A*P]] writes A, through [[STKPW*]] and [[STKPW*P]]"],
@@ -30,7 +30,7 @@
       ["Rules-derived", "`Origin::Rules`", "lyk's own phonetic reading, built from the pronunciation against the onset, vowel and coda tables."],
       ["Stem plus suffix", "`Origin::Rules`", "The same reading with the trailing reduced syllable struck as its own standalone continuation after the reading of the rest: [[pearly|PERL/+EU]], rabble's stem reading [[RAB/+-L]]. Up to two syllables are peeled. Never fewer strokes than the fold, so it is the predictable way down when every one-stroke form is taken."],
       ["Spelling variant", "`Origin::Spelling`", "For a homophone group (their, there, they're), the members that need telling apart get a spelling-marked variant. See [Spelling](#/ref/spelling)."],
-      ["Brevity ladder", "`Origin::Short(_)`", "Shortenings that drop a sound outright, each a cheaper alternative to the full reading. The vowel-keeping `skeleton` (first consonants, stressed vowel, every later consonant) is offered at every rank. `shell`, `ends` and the vowel-less forms stop at rank 8,000, since which consonants they drop is not derivable. See [How short](#/ref/brevity)."],
+      ["Brevity ladder", "`Origin::Short(_)`", "Shortenings that drop a sound outright, each a cheaper alternative to the full reading. The vowel-keeping `!skeleton` (first consonants, stressed vowel, every later consonant) is offered at every rank. `!shell`, `!ends` and the vowel-less forms stop at rank 8,000, since which consonants they drop is not derivable. See [How short](#/ref/brevity)."],
       ["Star ladder", "`Origin::Ladder(n)`", "The same outline with a star on the first stroke (1), the last stroke (2), or one or two extra `+*` strokes (3, 4). See [When two words sound the same](#/ref/collisions)."],
       ["Family shape", "`Origin::Family`", "Added from the second settling pass: a family member's root outline written by the family rules, counted two keys cheaper than it is (`FAMILY_DISCOUNT` is 2,000). See [How the solver works](#/ref/how-solver)."],
       ["S-for-Z coda", "`Origin::Voicing`", "Any candidate ending in a voiced `-Z`, offered again with `-S` when the word is spelled with a final s: girls."]
@@ -59,7 +59,7 @@
     { "t": "h3", "x": "Where frequency enters" },
     { "t": "p", "x": "Frequency is not in the formula above. The solver multiplies a candidate's cost by how often the word is said (its count in the frequency corpus), one level up:" },
     { "t": "pre", "x": "edge_cost(word, candidate) = weight(word) x candidate_cost(candidate.outline)" },
-    { "t": "p", "x": "Minimizing the sum of `edge_cost` over every word is the whole objective, and it is the same metric `build` reports as keys per word weighted by how often it is said. For one word, frequency changes nothing about which of its own candidates is best. It only decides who wins when two words want the same text." },
+    { "t": "p", "x": "Minimizing the sum of `edge_cost` over every word is the whole objective, and it is the same metric `!build` reports as keys per word weighted by how often it is said. For one word, frequency changes nothing about which of its own candidates is best. It only decides who wins when two words want the same text." },
     { "t": "h3", "x": "Why a stroke weighs 25 keys" },
     { "t": "p", "x": "25 is the smallest round number above the 24 keys one stroke can hold, so the per-word order is fixed; only cross-word trades move. The weight is finite on purpose: once frequency is multiplied in, one extra stroke for a rare word is weighed against extra keys for a common one instead of always winning. An effectively infinite weight made trades like these:" },
     { "t": "table", "head": ["Common word", "Pushed to", "So that a rarer word could keep one stroke"], "rows": [

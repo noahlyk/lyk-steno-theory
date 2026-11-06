@@ -30,7 +30,7 @@
     { "t": "h", "x": "The star" },
     { "t": "p", "x": "`*` sits in the vowel group but is not a vowel. It is a **tiebreaker**: when two words would take the same stroke, one gets the star. You will see it in lesson 9." },
     { "t": "h", "x": "Two spellings of the same sound" },
-    { "t": "p", "x": "A few vowel sounds take different keys depending on how the word is spelled. {{moon}} has `oo` and uses `AO`; {{tune}} has `u` and uses `AOU`. The rules read the spelling to pick, so you can too: spell it, then strike what you see." },
+    { "t": "p", "x": "A few vowel sounds take different keys depending on how the word is spelled. {{moon}} has `!oo` and uses `AO`; {{tune}} has `u` and uses `AOU`. The rules read the spelling to pick, so you can too: spell it, then strike what you see." },
     { "t": "quiz", "q": "Which keys make the vowel in {{bet}}?", "opts": ["[[E]]", "[[EU]]", "[[AEU]]"], "a": 0, "why": "Short e is the bare E key." }
   ],
   "drill": {
