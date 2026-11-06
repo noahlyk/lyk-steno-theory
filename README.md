@@ -1,8 +1,10 @@
-# lyk-steno-theory · [Learn lyk: interactive lessons →](https://noahlyk.github.io/lyk-steno-theory/)
+# lyk-steno-theory
 
-[Lessons](https://noahlyk.github.io/lyk-steno-theory/) ·
+**[Learn lyk with the interactive lessons →](https://noahlyk.github.io/lyk-steno-theory/)**
+
 [Lookup](https://noahlyk.github.io/lyk-steno-theory/#/lookup) ·
 [Key chart](https://noahlyk.github.io/lyk-steno-theory/#/chart) ·
+[Practice layout](https://noahlyk.github.io/lyk-steno-theory/#/keys) ·
 [Full docs](docs/README.md)
 
 **lyk is steno with explicit word boundaries.** Every stroke after the first of a word carries a
