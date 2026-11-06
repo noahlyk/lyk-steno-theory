@@ -72,7 +72,7 @@ export function renderBlocks(blocks) {
 function explore(b) {
   const host = el('div');
   const label = el('span', { class: 'boardbox__label' }, ' ');
-  const hint = el('span', { class: 'boardbox__hint' }, 'Click the board, then strike keys together. Or click the keys.');
+  const hint = el('span', { class: 'boardbox__hint' }, 'Strike keys together on your keyboard or steno machine, or click the keys.');
   const keys = new Set();
   const ctl = createBoard(host, { onToggle: (k) => {
     if (keys.has(k)) keys.delete(k);
@@ -90,25 +90,35 @@ function explore(b) {
   const box = el('div', { class: 'boardbox' },
     el('div', { class: 'boardbox__head' }, label, hint),
     el('div', { class: 'boardbox__scroll' }, host), el('div', { class: 'row', style: 'margin-top:.5rem' }, clear));
-  // the keyboard is only read while the board has focus, so Space still scrolls the page
+  // the keyboard (or a steno machine) is read while the board is on screen: no click needed, and it
+  // lets go of the keys when it scrolls away. Space is not a steno key, so the page still scrolls.
   let stop = null;
   let timer = 0;
-  box.tabIndex = 0;
-  box.addEventListener('focus', () => {
+  const startListening = () => {
     if (stop) return;
-    hint.textContent = 'Listening: strike keys together. Q is the join key.';
+    hint.textContent = 'Strike keys together on your keyboard or steno machine. Q is the join key.';
     stop = listen((s) => {
+      clearTimeout(timer);
       keys.clear();
       for (const k of s) keys.add(k);
       paint();
-      clearTimeout(timer);
       timer = setTimeout(() => { keys.clear(); paint(); }, 1500);
+    }, (held) => {
+      if (!held.size) return;
+      clearTimeout(timer);
+      keys.clear();
+      for (const k of held) keys.add(k);
+      paint();
     });
-  });
-  box.addEventListener('blur', () => {
+  };
+  const stopListening = () => {
     stop?.();
     stop = null;
-  });
+    clearTimeout(timer);
+  };
+  if (typeof IntersectionObserver !== 'undefined') {
+    new IntersectionObserver(([e]) => (e.isIntersecting ? startListening() : stopListening()), { threshold: 0.5 }).observe(box);
+  }
   return el('div', {}, b.x ? el('p', {}, b.x) : null, box);
 }
 
