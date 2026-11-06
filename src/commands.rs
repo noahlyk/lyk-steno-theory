@@ -212,7 +212,7 @@ pub fn write_plugin(
     };
     let generated = generate::generate(setup, briefs, common)?;
     // Only the commonest words are embedded: a rarer word as the start of a run reads back from
-    // its sounds, which is what a stem table is only a nicer spelling of. See `docs/fallback.md`.
+    // its sounds, which is what a stem table is only a nicer spelling of. See `site/reference/fallback.json`.
     let mut stems = generate::single_stroke_stems(&generated);
     let mut ranked: Vec<(&String, &u64)> = setup.count.iter().collect();
     ranked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));

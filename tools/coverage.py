@@ -3,7 +3,7 @@ python3 tools/coverage.py [word ...]   (after `build`; a word prints every outli
 
 Columns: words in the band, the share with a one-stroke outline, the share with at least one
 joined way in (two strokes or more, not a bare `/+*` marker), the share with a stem-plus-ending
-backup, joined ways in per word, and the share with two or more. See docs/joins.md."""
+backup, joined ways in per word, and the share with two or more. See site/reference/ways-to-join.json."""
 import sys
 import lyk_out
 

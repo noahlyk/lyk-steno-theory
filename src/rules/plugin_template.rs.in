@@ -199,7 +199,7 @@ fn parse_stroke(text: &str) -> Option<u32> {
 }
 
 /// A spelling-mode run (`SPELL` on its first stroke) read back letter by letter instead of
-/// sounded out: see `docs/spelling-mode.md` and `Rules::resolve_spelling`, which this mirrors.
+/// sounded out: see `site/reference/spelling-mode.json` and `Rules::resolve_spelling`, which this mirrors.
 fn resolve_spelling(outline: &str) -> Option<String> {
     let mut text = String::new();
     for part in outline.split('/') {

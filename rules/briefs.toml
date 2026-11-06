@@ -18,7 +18,7 @@ default = "plover"
 # spoken for this way (`-F` "of", `-B` "be", `-T` "the"); these claim the rest, each for a common
 # word that keeps its longer form as a second, ordinary outline:
 up = "-P"    # AH reduces: "up" was "UP" (was silently losing this to punctuation's own "-P"
-             # for "." until that reservation was dropped — see docs/punctuation.md)
+             # for "." until that reservation was dropped — see site/reference/punctuation.json)
 all = "-L"   # ends in the L sound: "all" was "AUL"
 go = "-G"    # first letter: "go" was "TKW"
 do = "-D"    # first letter: "do" was "TKO"
@@ -55,7 +55,7 @@ were = "WR"  # ER reduces (same rule the suffix table uses): W, then the reduced
 work = "WORBG"
 # "working" was pinned to the two-stroke `WORBG/+-G` for the same reason, until the live tape
 # showed Plover's one-stroke `WOG` being reached for it again and again; the fragment objection
-# above predates the cost-only rule (`docs/briefs.md`), and one stroke beats family consistency for
+# above predates the cost-only rule (`site/reference/briefs.json`), and one stroke beats family consistency for
 # a top-400 word. The `WORBG/+-G` composition still exists as a backup entry.
 working = "WOG"
 
@@ -66,7 +66,7 @@ working = "WOG"
 # bare and vowel-less, the rules' own read-back for "m" alone with no invented vowel): a free,
 # star-free slot, one key shorter than Plover's own brief, for a word common enough that burning a
 # star on it at all was never worth it. (The slot is only free because `rules/reserved/punctuation.json`
-# no longer claims it for `.` — see [docs/punctuation.md](../docs/punctuation.md) for why plenty of
+# no longer claims it for `.` — see site/reference/punctuation.json for why plenty of
 # other period strokes are left.)
 am = "-PL"
 
@@ -274,7 +274,7 @@ lead = "HRAED"
 
 # Arbitrary short briefs for a batch of extremely common words, with little or no phonetic
 # connection to the word itself - a deliberate, scoped exception to this project's usual
-# "exhaustively derivable" ethos (see `docs/README.md`), chosen on purpose: for a word common
+# "exhaustively derivable" ethos (see the Reference, `site/reference/index.json`), chosen on purpose: for a word common
 # enough, the time saved by typing one key instead of five or seven beats being able to
 # reconstruct it from sound alone. Sourced from an unattributed phrase-briefing cheat sheet that
 # was liked on sight, not copied wholesale - each one checked individually against lyk's own real
@@ -320,7 +320,7 @@ has = "HA"   # was HAZ, 3 keys -> 2; bumps "ha" off this stroke
 # phonetic stroke and getting something else: `AOEU` came out as the bare letter "i" or "aye",
 # `OE` as "owe", and "oh" itself was typed out letter by letter instead of as its 7-key brief.
 # Both lost to rarer words because one extra stroke for the rarer word outweighed any number of
-# extra keys for the commoner one, before `STROKE_WEIGHT` became finite (see `docs/briefs.md`);
+# extra keys for the commoner one, before `STROKE_WEIGHT` became finite (see `site/reference/briefs.json`);
 # kept pinned because the tape shows these are the strokes actually reached for.
 eye = "AOEU"   # was KWRAOEU, 7 keys -> 4; bumps "aye" off this stroke
 oh = "OE"      # was O*ERBGS, 7 keys -> 2; bumps "owe" off this stroke

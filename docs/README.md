@@ -1,81 +1,38 @@
-# lyk documentation — read in this order
+# lyk documentation
 
-[← back to the main README](../README.md) for the pitch, the CLI commands, and the data sources.
+**The documentation lives on the site**: <https://noahlyk.github.io/lyk-steno-theory/>. Lessons teach
+you to type it; the **Reference** (`#/ref`) holds every rule, table and mechanism, searchable. Its
+source is JSON under [`site/reference/`](../site/reference) and [`site/lessons/`](../site/lessons)
+(see [`site/README.md`](../site/README.md)). Docs outrank code: a change to `rules/*.toml` or
+`src/*.rs` that changes what a word strokes as lands with the Reference page edit in the same commit.
 
-**Want to learn it by doing?** [The interactive lessons](https://noahlyk.github.io/lyk-steno-theory/)
-condense these chapters into 18 short lessons with an on-screen board and chord drills (source in
-[`site/`](../site/README.md)). These chapters are the reference behind them.
+What stays in this folder is the maintainers' record, not something to learn from:
 
-This isn't a lookup table — it's a sequential read. Each chapter builds on the one before it, and
-each one ends with a link to the next. Start at the top and read straight through if you want to
-learn the whole theory; come back here to jump to a specific chapter once you know your way around.
+- [`decisions.md`](decisions.md): why changes landed the way they did. Its links to chapter files
+  that used to live here now point at the Reference pages below.
+- [`roadmap.md`](roadmap.md): a working plan.
 
-**One rule underlies everything below: a word has exactly one *primary* single-stroke outline.**
-That is the one the theory teaches, the one `lookup` and `explain` report, and the only one a
-stroke is ever *fought over* for: there is never a choice between `NOT`, `OT`, and `PHOT` for
-*not* in what you are meant to learn. Briefs, the star ladder, and spelling disambiguation
-(chapters 3, 5, and 8) exist to hold that invariant even when two words would otherwise fight over
-the same stroke. **Everything else is added only where it costs nobody anything.** After every
-primary, backup, and phrase is placed, a word's other one-stroke candidates (its Plover and
-Lapwing briefs, its plain phonetic reading, a spelling or `-S` variant, a family shape) take any
-stroke still unclaimed, up to three per word and within three keys of its primary: a second way
-in that never displaces anything and is never the outline reported. **Multi-stroke outlines built
-on the join key are unlimited**: a word can have as many `+`-joined backup outlines as the
-generator can honestly derive, on top of its primary. What matters for a multi-stroke outline isn't brevity — it's predictability:
-whether it breaks down into pieces a learner already knows (an already-placed whole word, or one
-of the hardcoded suffix/prefix patterns in chapters 7 and 10) rather than its own one-off,
-memorized shorthand. See **[syllables & folding](syllables.md)** for where that shows up as actual
-generated entries.
+Where the old chapters went (`https://noahlyk.github.io/lyk-steno-theory/#/ref/<page>`):
 
-1. **[The join key](join-key.md)** — why word boundaries are explicit, and what the `+` key buys
-   every chapter after this one.
-2. **[Reserved strokes](reserved-strokes.md)** — commands, punctuation, and fingerspelling are
-   pinned before any word is, ahead of even briefs. (The actual content of those strokes is
-   chapters 10 and 11, once the word-generation rules below are out of the way.)
-3. **[Briefs](briefs.md)** — a word can keep the outline people already know from Plover or
-   Lapwing, competing on cost against everything else the rules can derive for it, the same way as
-   any other candidate.
-4. **[Phonetic rules](phonetic-rules.md)** — onset, vowel, coda: how a plain syllable gets its
-   stroke when it has no brief.
-5. **[Spelling disambiguation](spelling.md)** — picking between more than one way to write the
-   same sound.
-6. **[Prefixes with their own keys](prefixes.md)** — `ex-`, `dis-`, `un-`, `mis-`, `over-`,
-   `under-`, `inter-`, folded onto the stem or struck before it (`UPB/+KHRAOER`).
-7. **[Syllables & folding](syllables.md)** — how an unstressed syllable joins the stroke before
-   it, or becomes a continuation stroke of its own; and every `+` way into a word: stem plus
-   ending, prefix plus stem, two words, and the word syllable by syllable.
-   **[Every way to join a word](joins.md)** is the one-page sheet of all of it, for practice.
-8. **[Phrase-briefing](phrases.md)** — two already-settled whole words merged into one brand-new
-   stroke when their keys don't collide, a real 2-strokes-to-1 compression for a common word pair.
-9. **[When two words sound the same](collisions.md)** — briefs, spelling, and the star ladder, all
-   settled together by one global optimization instead of a fixed order of passes.
-10. **[How short](brevity.md)** — the brevity steps that shrink a long word's outline, by hand or
-    by rule.
-11. **[The full suffix table](suffixes.md)** — every standalone continuation stroke a suffix gets
-    on its own (`+-G` "ing", `+-D` "ed", and the rest), the one rule they're all derived from, and
-    which ones aren't covered yet.
-12. **[Punctuation & commands](punctuation.md)** — the actual content of the punctuation and
-    command strokes reserved back in chapter 2.
-13. **[Fingerspelling & misc keys](fingerspelling.md)** ("Emily's") — the alphabet, numbers,
-    function keys, symbols, and OS-modifier chording, likewise reserved back in chapter 2.
-14. **[The fallback](fallback.md)** — what happens when a stroke misses every dictionary above
-    outright, and how that same logic becomes keymux's WASM fallback plugin.
-15. **[Spelling mode](spelling-mode.md)** — a deliberate, letter-exact way to type a word with no
-    pronunciation to generate from at all, reusing the join key's own multi-stroke mechanism.
-16. **[The dictionary files](files.md)** — what `build` writes (several small files, one per way an
-    entry came about, rather than one big one) and how keymux reloads only the ones that changed.
-17. **[Strokes you can type](typable.md)** — the right pinky cannot press a diagonal pair (`-TZ`,
-    `-SD`) or three of its four keys, so no outline contains one; what a word does instead.
-
-The benchmarks come last, as a measured result of everything above rather than a rule of their
-own — and they already live on [the main README](../README.md#where-lyk-stands), not here: the one
-overall number up top, and the full breakdown (every table, auto-checked against
-`score --check-readme`) at [its bottom](../README.md#full-benchmarks).
-
-**[The roadmap](roadmap.md)** is not part of this reading order — it's a working plan, not theory.
-
-**[Decisions](decisions.md)** is also not part of this reading order — a maintainer's log of why
-real changes landed the way they did, so none of them get silently reverted by accident.
-
-If you only have time for one chapter: start at 1 and keep going: it's written to be read straight
-through, not sampled.
+| Old file | Reference page |
+|---|---|
+| `join-key.md` | `join-key` |
+| `reserved-strokes.md` | `reserved-strokes` |
+| `briefs.md` | `briefs` |
+| `phonetic-rules.md` | `phonetic-rules` |
+| `spelling.md` | `spelling` |
+| `prefixes.md` | `prefixes` |
+| `syllables.md` | `syllables` |
+| `joins.md` | `ways-to-join` |
+| `phrases.md` | `phrases` |
+| `collisions.md` | `collisions` |
+| `brevity.md` | `brevity` |
+| `suffixes.md` | `suffixes` |
+| `punctuation.md` | `punctuation` |
+| `fingerspelling.md` | `fingerspelling` |
+| `fallback.md` | `fallback` |
+| `spelling-mode.md` | `spelling-mode` |
+| `files.md` | `build-and-files` |
+| `typable.md` | `typable` |
+| the Lyk Pipeline artifact | `how-stroke-setup`, `how-candidates-cost`, `how-solver`, `how-backups-output` |
+| the Lyk Phrasing Grammar artifact | lessons `19-phrasing-grammar`, `20-phrasing-strokes` |

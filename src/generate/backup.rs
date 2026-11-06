@@ -1,6 +1,6 @@
 //! Backup joins: every `+` way into a word a learner can work out from pieces they already know,
 //! added beside the word's primary once every primary is settled. None of them can change a
-//! primary; they only ever take a text nobody holds. See `docs/syllables.md`.
+//! primary; they only ever take a text nobody holds. See `site/reference/syllables.json`.
 //!
 //! Each round indexes everything placed so far (every primary, and from round 1 on every earlier
 //! round's backups too, which is how *building* + `+-S` reaches *buildings*), collects every

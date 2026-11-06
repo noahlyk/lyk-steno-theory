@@ -146,8 +146,8 @@ pub fn phrase_map(generated: &Generated) -> HashMap<(String, String), Vec<Stroke
 /// roughly flat, or even very slightly worse, on a real passage - not because phrase-briefing
 /// failed, but because `lyk` (`generate::cheapest`) picks each word's own globally cheapest entry
 /// *of any origin*, including a backup composition cheaper than that word's own primary (see
-/// `docs/phrases.md`'s note on this interaction), while a firing phrase is necessarily built from
-/// both words' own *primaries* specifically (see `docs/phrases.md`'s "why primary-only"). Comparing
+/// `site/reference/phrases.json`'s note on this interaction), while a firing phrase is necessarily built from
+/// both words' own *primaries* specifically (see `site/reference/phrases.json`'s "why primary-only"). Comparing
 /// key totals alone can therefore slightly understate or even invert the real win; the stroke total
 /// is the metric that is never ambiguous about which direction is better.
 ///

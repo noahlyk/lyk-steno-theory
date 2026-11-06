@@ -4,7 +4,7 @@
 //! in [`candidates`]; this module decides which candidates are committed. A candidate whose
 //! merged stroke is free is committed as is. A candidate whose stroke a word already holds
 //! *competes* for it: it takes the stroke when the pair is said often enough to be worth more than
-//! the word loses by moving to its next-best outline. See `docs/phrases.md`, "Phrases compete for
+//! the word loses by moving to its next-best outline. See `site/reference/phrases.json`, "Phrases compete for
 //! strokes".
 
 mod candidates;

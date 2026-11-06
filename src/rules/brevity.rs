@@ -1,5 +1,5 @@
 //! How short: the brevity steps (`[[brevity]]` in the rules) that write a word in fewer strokes
-//! than its plain reading, down to one-stroke skeletons. See `docs/brevity.md`.
+//! than its plain reading, down to one-stroke skeletons. See `site/reference/brevity.json`.
 
 use super::{Rules, Shortening, Step, Syllable, plain};
 use crate::stroke::Stroke;

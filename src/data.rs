@@ -267,7 +267,7 @@ pub fn report(root: &Path) -> Result<()> {
         .count();
     println!(
         "\nbigram pairs (Norvig count_2w, American English, consumed by phrase-briefing - see \
-         docs/phrases.md): {bigrams_known} of {bigram_pairs} have both words pronounceable"
+         site/reference/phrases.json): {bigrams_known} of {bigram_pairs} have both words pronounceable"
     );
 
     println!("\nthe 5000 most common words that have a pronunciation");

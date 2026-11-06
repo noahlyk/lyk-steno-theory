@@ -1,7 +1,7 @@
 # Word families (`src/family.rs`): a word is linked to its stem when it is the stem's spelling plus
 # a regular ending and sounds like the stem plus exactly that ending's sounds. A few words pass both
 # checks by coincidence - their ending is part of the word, not added to another word - and get no
-# family link at all. List them here. See docs/syllables.md.
+# family link at all. List them here. See site/reference/syllables.json.
 #
 # `cargo run --release -- family <word>` shows what a word is linked to.
 

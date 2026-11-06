@@ -1,7 +1,7 @@
 """Words whose primary outline ends in a bare `/+*` marker stroke, by frequency band, split into
 real words, names and neither (by the gold dictionaries, as `Gold::is_name` splits them), with
 who holds the plain and starred stroke each real word wanted. Usage: python3 tools/markers.py [N=40]
-See docs/collisions.md."""
+See site/reference/collisions.json."""
 import re, sys
 import lyk_out
 

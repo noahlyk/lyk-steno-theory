@@ -8,7 +8,7 @@
 //! (each letter or letter pair a sound, a vowel letter offered short, long and as a weak
 //! droppable vowel, the letters that can be read two ways, like *c* and *g*, read both) and the
 //! same lattice runs over it, with the same stroke building, pricing and quotas. See
-//! `docs/syllables.md`.
+//! `site/reference/syllables.json`.
 
 use super::Rules;
 use crate::stroke::Stroke;

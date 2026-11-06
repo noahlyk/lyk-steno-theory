@@ -162,7 +162,7 @@ struct Stats {
     /// strokes to one wherever it fires. A genuinely separate, additive figure - not folded into
     /// `total_strokes_lyk`, `total_keys_lyk`, or either `_vs_plover`/`_vs_lapwing` total above, none
     /// of which this benchmark's own thresholds (calibrated word-by-word) should ever move because
-    /// of phrase entries existing. See `docs/phrases.md`.
+    /// of phrase entries existing. See `site/reference/phrases.json`.
     total_strokes_lyk_with_phrases: u64,
     /// Lyk's full-coverage key total, walked the same phrase-aware way - reported alongside the
     /// stroke figures above, but see `quote::total_cost_with_phrases`'s own doc for why this number
@@ -237,7 +237,7 @@ impl Stats {
         let stroke_savings = signed(self.total_strokes_lyk) - signed(self.total_strokes_lyk_with_phrases);
         let key_savings = signed(self.total_keys_lyk) - signed(self.total_keys_lyk_with_phrases);
         println!(
-            "phrase-aware walk (greedy longest-match over word pairs - see docs/phrases.md; a \
+            "phrase-aware walk (greedy longest-match over word pairs - see site/reference/phrases.json; a \
              separate, additive figure, never folded into any total above): {} phrase entries \
              fired over {} words",
             self.phrase_hits, self.words
@@ -249,7 +249,7 @@ impl Stats {
         );
         println!(
             "  keys:    {} with phrases vs {} word-by-word ({} fewer keys) - expected to stay \
-             roughly flat, see docs/phrases.md",
+             roughly flat, see site/reference/phrases.json",
             self.total_keys_lyk_with_phrases, self.total_keys_lyk, key_savings
         );
     }

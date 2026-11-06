@@ -28,7 +28,7 @@ impl Stroke {
     /// The spelling-mode marker: this stroke starts a run read letter-by-letter from
     /// `rules/spelling.toml` instead of sounded out. Written `~` before the keys, only ever on
     /// the first stroke of such a run — every stroke after it carries the ordinary join key
-    /// instead, the same way any other multi-stroke word continues. See `docs/spelling-mode.md`.
+    /// instead, the same way any other multi-stroke word continues. See `site/reference/spelling-mode.json`.
     pub const SPELL: u32 = 1 << 24;
 
     /// Parse notation such as `KAT`, `-T` or `STPH*`. Numbers and a bare `#` are not supported.

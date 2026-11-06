@@ -12,7 +12,7 @@
 //! costs by where it falls (free at an ordinary syllable break, a little inside a consonant
 //! cluster between syllables, more through a syllable), and a spelled vowel, a dropped vowel or a
 //! bank other than the usual one costs a little. Every stroke after the first carries the join key
-//! (set later, by `Rules::joined`). See `docs/syllables.md`.
+//! (set later, by `Rules::joined`). See `site/reference/syllables.json`.
 
 use super::{Rules, Syllable};
 use crate::stroke::Stroke;

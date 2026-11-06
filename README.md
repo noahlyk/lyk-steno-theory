@@ -5,7 +5,7 @@
 [Lookup](https://noahlyk.github.io/lyk-steno-theory/#/lookup) ·
 [Key chart](https://noahlyk.github.io/lyk-steno-theory/#/chart) ·
 [Practice layout](https://noahlyk.github.io/lyk-steno-theory/#/keys) ·
-[Full docs](docs/README.md)
+[Reference](https://noahlyk.github.io/lyk-steno-theory/#/ref)
 
 **lyk is steno with explicit word boundaries.** Every stroke after the first of a word carries a
 join key (`+`), so a stroke without it always starts a word. Continuation strokes live apart from
@@ -45,30 +45,23 @@ as fine as a brief has always been), and free to drop a sound entirely rather th
 *part* of a key combination the rules only ever use *together* for one sound (`good`'s old Plover
 brief kept half of its "g" sound's four keys and dropped the rest, reading back as a different,
 wrong consonant) — a fragment like that is confusing in a way neither a whole memorized shortcut
-nor a cleanly dropped sound ever is. See [the briefs chapter](docs/briefs.md) for the rule.
+nor a cleanly dropped sound ever is. See [the briefs chapter](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs) for the rule.
 
 ## Documentation
 
-**To learn lyk, use [the interactive lessons](https://noahlyk.github.io/lyk-steno-theory/)**: 18
-short lessons with an on-screen board, chord drills on your own keyboard, a dictionary lookup and
-saved progress (source in [`site/`](site/README.md), deployed from `main`).
-
-The full literature lives in [`docs/`](docs/README.md), written to be read start to finish, not
-looked up — **start there for the full table of contents and reading order.** A few waypoints:
-
-- **[The join key](docs/join-key.md)** — why word boundaries are explicit. Read this first.
-- **[Briefs](docs/briefs.md)** — the rule book for the commonest words' outlines.
-- **[The full suffix table](docs/suffixes.md)** — every standalone suffix (`+-G` "ing", `+-D`
-  "ed", ...), the one rule they're derived from, and what isn't covered yet.
-- **[Punctuation & commands](docs/punctuation.md)** and
-  **[fingerspelling & misc keys](docs/fingerspelling.md)** — the reserved strokes pinned ahead of
-  every word.
-- **[The orthographic fallback](docs/fallback.md)** — what a stroke that misses the dictionary
-  reads back as, and how that logic becomes keymux's WASM plugin, generated rather than hand-copied.
+**Everything lives on [the site](https://noahlyk.github.io/lyk-steno-theory/)** (source in
+[`site/`](site/README.md), deployed from `main`): 20 short lessons with an on-screen board and chord
+drills, and the **[Reference](https://noahlyk.github.io/lyk-steno-theory/#/ref)**, which holds every
+rule, table and mechanism, searchable: the [cheat sheet](https://noahlyk.github.io/lyk-steno-theory/#/ref/cheatsheet),
+[how it works](https://noahlyk.github.io/lyk-steno-theory/#/ref/how-stroke-setup), the rules, the
+[briefs](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs), the
+[suffix table](https://noahlyk.github.io/lyk-steno-theory/#/ref/suffixes), punctuation and
+fingerspelling, the [fallback](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback). The
+maintainer's logs stay here: [`docs/decisions.md`](docs/decisions.md) and [`docs/roadmap.md`](docs/roadmap.md).
 
 The numbers themselves (this page's "Where lyk stands" above, and the full breakdown at
-[the bottom of this README](#full-benchmarks)) aren't a separate doc page — they're meant to be
-seen, not looked up.
+[the bottom of this README](#full-benchmarks)) aren't a separate page: they're meant to be seen,
+not looked up.
 
 ## Main features
 
@@ -85,7 +78,7 @@ seen, not looked up.
 - **Measured, not asserted**: `build` and `score` print cost and match-rate against Plover and
   Lapwing on the same words, every time — see [the full benchmarks](#full-benchmarks).
 - **A miss always resolves**: a stroke the dictionary doesn't have still reads back as something
-  sensible, phonetically, as a real engine's last resort — see [the fallback page](docs/fallback.md).
+  sensible, phonetically, as a real engine's last resort — see [the fallback page](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
 
 ## Use
 
@@ -95,7 +88,7 @@ cargo run --release -- report              # what was loaded
 cargo run --release -- score               # how often the rules match Plover or Lapwing
 cargo run --release -- score --check-readme   # do this README's tables still match?
 cargo run --release -- score --write-readme   # ...and rewrite any stale one in place
-cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see docs/files.md), with the cost
+cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files), with the cost
 cargo run --release -- plugin              # generate keymux's WASM fallback plugin from the rules
 cargo run --release -- deploy              # build + plugin, copied straight into keymux's live config
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
@@ -116,8 +109,8 @@ has the scripts for measuring what a change did to the built dictionary.
 | What | Source |
 |---|---|
 | Pronunciations | CMUdict (primary); MFA US dictionary, then WikiPron US broad, as a fallback translated from IPA (`src/ipa.rs`) for the words CMUdict has no entry for at all |
-| Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018), each name's count cut to a tenth so a name never outranks the word it sounds like ([collisions](docs/collisions.md#names)) |
-| Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](docs/phrases.md) |
+| Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018), each name's count cut to a tenth so a name never outranks the word it sounds like ([collisions](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)) |
+| Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](https://noahlyk.github.io/lyk-steno-theory/#/ref/phrases) |
 | Dictionaries to match | Plover `main.json` and `commands.json`, Lapwing dictionaries |
 
 ## Full benchmarks
@@ -125,7 +118,7 @@ has the scripts for measuring what a change did to the built dictionary.
 Everything behind [the one overall number above](#where-lyk-stands), in full. On the 100,000 most
 common words that Plover or Lapwing write and have a pronunciation on record (CMUdict, or - for
 the small slice CMUdict has no entry for at all - a translated fallback from MFA or WikiPron; see
-[spelling mode](docs/spelling-mode.md)), the rules write 99.9% of them, and write the word the way
+[spelling mode](https://noahlyk.github.io/lyk-steno-theory/#/ref/spelling-mode)), the rules write 99.9% of them, and write the word the way
 Plover or Lapwing does (ignoring the join key and the `KWR` or star they put on a continuation
 stroke, which the join key replaces) for:
 
@@ -213,8 +206,8 @@ rules can only move the rest. Lyk beats Plover across every frequency tier, incl
 rarest words — every word's primary outline is settled by a single global optimization over every
 legal candidate at once (briefs, the plain rules reading, brevity, the star ladder, all competing
 on cost together), not a commonest-word-first pass that only ever revisits a word's own brief
-attempt; see [briefs](docs/briefs.md) for how. Past rank 5,000 the one-stroke share is what
-moves: every word gets its one-stroke consonant skeleton (see [how short](docs/brevity.md)), so
+attempt; see [briefs](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs) for how. Past rank 5,000 the one-stroke share is what
+moves: every word gets its one-stroke consonant skeleton (see [how short](https://noahlyk.github.io/lyk-steno-theory/#/ref/brevity)), so
 a word ranked 10,000–20,000 is one stroke 79% of the time, against 46% in Plover.
 
 That is with the join key on every continuation stroke counted, and with a Plover outline counted
@@ -230,8 +223,8 @@ settles this way now, not just a sound-alike pair); `build` lists the commonest.
 placed word (`UPB/+KHRAOER` for `unclear`), two words back to back, and the word itself one
 syllable per stroke (`TAEU/+-BL` for `table`). 98–99% of the words of two syllables or more have at
 least one, at four to five each, however short their primary is — see
-[syllables & folding](docs/syllables.md) for the rules.
+[syllables & folding](https://noahlyk.github.io/lyk-steno-theory/#/ref/syllables) for the rules.
 
-These numbers move whenever a brief or suffix is added — see [the docs](docs/README.md) for the
+These numbers move whenever a brief or suffix is added — see [the Reference](https://noahlyk.github.io/lyk-steno-theory/#/ref) for the
 rule, and run `cargo run --release -- score --check-readme` before committing a rules change
 to catch drift here automatically.

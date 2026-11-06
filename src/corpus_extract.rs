@@ -118,7 +118,7 @@ fn split_sentences(paragraph: &str) -> Vec<String> {
 /// either and are silently excluded from that comparison - unfairly inflating one side's aggregate
 /// key total over a formatting quirk, not a real difference in terseness. Steno handles a
 /// hyphenated phrase as separate strokes for its separate words anyway (this project's whole join-
-/// key design is built around explicit word boundaries, see `docs/join-key.md`), so splitting every
+/// key design is built around explicit word boundaries, see `site/reference/join-key.json`), so splitting every
 /// hyphen and dash into its own space-separated word is the fair, representative choice here, not
 /// a hack: it's what typing this phrase actually looks like.
 fn normalize_dashes(text: &str) -> String {

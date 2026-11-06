@@ -118,7 +118,7 @@ pub struct Setup {
     /// generator's own vocabulary, not the raw corpus's (see `data::load_bigrams` for what that
     /// filters out). Consumed by `generate`'s phrase-briefing pass (`enumerate_phrase_candidates`)
     /// to rank which bigrams are worth attempting to merge into a single stroke - see
-    /// `docs/phrases.md`.
+    /// `site/reference/phrases.json`.
     pub bigrams: HashMap<(String, String), u64>,
 }
 

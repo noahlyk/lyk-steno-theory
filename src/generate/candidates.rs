@@ -1,7 +1,7 @@
 //! Every word's candidate pool: every legal way to write its primary outline, from every source
 //! at once (gold briefs from Plover and Lapwing, the rules reading, the stem-plus-suffix reading,
 //! a spelling variant, brevity steps, the star ladder), each with the one cost every choice in
-//! this theory is made on: strokes, then keys, then comfort. See `docs/collisions.md`.
+//! this theory is made on: strokes, then keys, then comfort. See `site/reference/collisions.json`.
 
 use super::{Briefs, CONTRACTION_TAILS, KEY_WEIGHT, Origin, keys, split_untypable, typable};
 use crate::analysis::Setup;
@@ -28,7 +28,7 @@ pub const STROKE_WEIGHT: u32 = 25_000;
 /// is 25 keys - more than the 24 keys one stroke can hold - so no word ever prefers a longer
 /// outline for itself; it is finite, rather than effectively infinite, so that once frequency is
 /// folded in, one extra stroke for a rare word is weighed against extra keys for a common one
-/// instead of always winning (see `docs/briefs.md`). Ergonomics stays bounded under `KEY_WEIGHT`.
+/// instead of always winning (see `site/reference/briefs.json`). Ergonomics stays bounded under `KEY_WEIGHT`.
 ///
 /// Frequency does NOT belong here - it is a property of a *word* wanting a candidate, not of the
 /// candidate itself, reusable as-is by any other word considering the exact same outline. Frequency

@@ -1,6 +1,6 @@
 //! Phrase candidates: which word pairs could share one stroke, and the merged outline each would
 //! get. Built only from settled primaries, never from a backup or short form, so a phrase rests on
-//! the one invariant `generate` guarantees (see `docs/phrases.md`).
+//! the one invariant `generate` guarantees (see `site/reference/phrases.json`).
 
 use crate::analysis::Setup;
 use crate::generate::{Entry, Origin, entry_word, typable};
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 /// internals change, so building a phrase on top of one would stack one best-effort pass on
 /// another; a primary assignment is `generate`'s own invariant instead - one single-stroke outline
 /// per word, stable and already heavily tested - and that is what phrase-briefing is built on. See
-/// `docs/phrases.md`'s "why primary-only" section for the full reasoning.
+/// `site/reference/phrases.json`'s "why primary-only" section for the full reasoning.
 pub fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
     entries
         .iter()
@@ -33,7 +33,7 @@ pub fn primary_single_strokes(entries: &[Entry]) -> HashMap<&str, Stroke> {
 /// backup-composition pass's own direction (b) already reads a stem's outline from regardless of
 /// its length - that pass already merges a leading consonant onto `word_outline[stem][0]` and
 /// leaves every later stroke (join bits included) untouched, real, shipped, tested code this
-/// mirrors rather than a new risk. See `docs/phrases.md`.
+/// mirrors rather than a new risk. See `site/reference/phrases.json`.
 pub fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
     entries
         .iter()
@@ -49,7 +49,7 @@ pub fn primary_outlines(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
 /// `w1`'s own strokes with `w2`'s own strokes costs exactly `strokes(w1) + strokes(w2)`, identical
 /// to just striking the two words separately - nothing for such an entry to actually do. Merging
 /// into one brand-new, previously-unclaimed stroke genuinely halves the stroke count instead. See
-/// `docs/phrases.md`.
+/// `site/reference/phrases.json`.
 ///
 /// Kept, alongside [`phrase_candidate_outline`], as the original both-single-stroke-only check:
 /// still exactly what every existing test and diagnostic in this module exercises directly. No
@@ -88,7 +88,7 @@ pub fn merge_into_host_first_stroke(filler: Stroke, host: &[Stroke]) -> Option<V
 /// single-stroke primary - both multi-stroke - stays out of scope entirely (`None`): reaching into
 /// *both* words' internal join-key structure at once is a different, bigger risk than folding one
 /// whole single-stroke word onto one multi-stroke word's first stroke, and isn't attempted here.
-/// See `docs/phrases.md`'s "What qualifies" and "Not in scope" sections.
+/// See `site/reference/phrases.json`'s "What qualifies" and "Not in scope" sections.
 pub fn phrase_candidate_outline(
     single: &HashMap<&str, Stroke>,
     any_len: &HashMap<&str, &[Stroke]>,

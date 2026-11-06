@@ -6,7 +6,7 @@
 //! for, a single word or a whole phrase, word by word, next to Plover's and Lapwing's. A word with
 //! no pronunciation at all anywhere (`CMUdict`, MFA, or `WikiPron` - see `crate::ipa`) falls back to
 //! [`crate::rules::Rules::spell_word`]'s spelling-mode outline rather than going unanswered - see
-//! `docs/spelling-mode.md`.
+//! `site/reference/spelling-mode.json`.
 
 use crate::analysis::Setup;
 use crate::stroke::{self, Stroke, render_outline};

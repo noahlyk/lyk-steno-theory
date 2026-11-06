@@ -41,7 +41,7 @@ pub fn alternates(setup: &Setup, words: &[(&String, usize)], book: &mut Book) {
 /// Every word's `Origin::Short` candidates still free, beside its primary: the dictionary holds
 /// every short form a learner might reach for, and `cheapest` picks whichever counts. After every
 /// primary and every backup join, so a one-off short form never takes a text a primary or a
-/// predictable join wanted (see `docs/brevity.md`).
+/// predictable join wanted (see `site/reference/brevity.json`).
 pub fn short_forms(pools: &Pools, book: &mut Book) {
     for (p, (word, candidates)) in pools.iter().enumerate() {
         for (candidate, text) in candidates.iter().zip(&pools.texts[p]) {

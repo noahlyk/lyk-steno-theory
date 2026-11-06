@@ -1,6 +1,6 @@
 //! Reading strokes back: the same tables that write a word, read the other way, so a stroke the
-//! dictionary misses still reads as something (`docs/fallback.md`), and the spelling-mode tables
-//! read letter by letter (`docs/spelling-mode.md`).
+//! dictionary misses still reads as something (`site/reference/fallback.json`), and the spelling-mode tables
+//! read letter by letter (`site/reference/spelling-mode.json`).
 
 use super::{Rules, plain};
 use crate::stroke::Stroke;
@@ -98,7 +98,7 @@ impl Rules {
     /// A spelling-mode run (`Stroke::SPELL` on its first stroke) read back letter by letter: no
     /// vowel-guessing ambiguity the phonetic fallback has, since each letter was struck
     /// explicitly. `None` if any stroke's bare chord (join/spell bits aside) isn't in
-    /// `rules/spelling.toml`. See `docs/spelling-mode.md`.
+    /// `rules/spelling.toml`. See `site/reference/spelling-mode.json`.
     pub(super) fn resolve_spelling(&self, outline: &[Stroke]) -> Option<String> {
         let mut text = String::new();
         for &stroke in outline {

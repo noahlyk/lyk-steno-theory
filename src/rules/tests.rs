@@ -210,7 +210,7 @@ fn a_word_with_no_pronunciation_can_be_spelled_letter_by_letter() {
 fn spell_word_is_resolve_spellings_exact_inverse() {
     let rules = Rules::built_in().unwrap();
     // The encode direction: given just the word, not a stroke sequence someone already wrote
-    // out by hand, produce the same outline `docs/spelling-mode.md` hand-writes for
+    // out by hand, produce the same outline `site/reference/spelling-mode.json` hand-writes for
     // "aboveground" - a word with no pronunciation on record anywhere (CMUdict, MFA, or
     // WikiPron) for the phonetic rules to run from.
     let outline = rules.spell_word("aboveground").unwrap();

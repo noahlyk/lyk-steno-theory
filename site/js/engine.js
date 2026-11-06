@@ -2,7 +2,7 @@
 // Pure (no DOM): `createEngine(data)` takes parsed JSON; `loadEngine()` fetches it in the browser.
 //
 // A stream is split into runs: a stroke without the join key starts a run, every stroke with it
-// continues the run before. A run is read in this order (src/rules/resolve.rs, docs/fallback.md):
+// continues the run before. A run is read in this order (src/rules/resolve.rs, site/reference/fallback.json):
 //   1. the run as one dictionary entry (`ED/+-D` is "ended" if it is an entry), or the reserved
 //      punctuation and commands;
 //   2. otherwise `resolve`: a single-stroke word as the stem, then each continuation as a

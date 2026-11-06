@@ -124,7 +124,7 @@ fn the_contested_set_after_peeling_stays_a_minority_of_the_dictionary() {
 /// `explain` command, and the deployed keymux WASM plugin's own fallback source) - a known word
 /// found there stands in for a continuation run's own raw phonemes. A phrase entry's `word` is two
 /// words' own text ("of the"), not a real single word a continuation stroke could ever sensibly
-/// follow (`"of the" + "-s"` would read back as "of thes", nonsense) - see `docs/phrases.md`. This
+/// follow (`"of the" + "-s"` would read back as "of thes", nonsense) - see `site/reference/phrases.json`. This
 /// is the regression guard for that exclusion: a future change to `single_stroke_stems`'s own
 /// filter that drops the `Origin::Phrase` exclusion would otherwise only surface live, the way
 /// "don't" and "quitters" both did.
@@ -248,7 +248,7 @@ fn the_ipa_fallback_rescues_a_real_minimum_of_cmudict_gap_words() {
 }
 
 /// Nearly every family member among the common words can be typed as its stem's own outline plus
-/// the ending's stroke (see `crate::family` and `docs/syllables.md`): measured at 94-100% per
+/// the ending's stroke (see `crate::family` and `site/reference/syllables.json`): measured at 94-100% per
 /// ending when the family direction landed, held here at 90% for the three biggest endings, plus
 /// a few hand-checked members.
 #[test]
@@ -283,7 +283,7 @@ fn common_family_members_are_reachable_as_stem_plus_ending() {
 
 /// Extra single-stroke entries (`Origin::Extra`) only fill strokes nobody else needed, and are
 /// never the outline reported for a word that has any other entry: `lookup`, `explain`, `quote`,
-/// phrases, and the family report must keep showing the primary. See `docs/briefs.md`.
+/// phrases, and the family report must keep showing the primary. See `site/reference/briefs.json`.
 #[test]
 fn extra_entries_fill_gaps_and_never_become_a_words_reported_outline() {
     let generated = dictionary_fixture::generated();
@@ -364,7 +364,7 @@ fn the_commonest_words_have_one_stroke_and_no_ladder_marker() {
     const TOP_N: usize = 1_000;
     // Neither "american" nor "lt" has a one-stroke candidate at all: "american"'s M-R-K-N coda has
     // no cluster, and "lt" (lieutenant) has no gold brief. "impossible" is a prefix family member,
-    // written as its prefix and its stem the way "rebuild" is RE/+PWHR (`docs/prefixes.md`), and
+    // written as its prefix and its stem the way "rebuild" is RE/+PWHR (`site/reference/prefixes.json`), and
     // as Plover writes it (EUPL/POB).
     const MULTI_STROKE_OK: &[&str] = &["american", "lt", "impossible"];
     let setup = dictionary_fixture::setup();
@@ -385,7 +385,7 @@ fn the_commonest_words_have_one_stroke_and_no_ladder_marker() {
     assert!(problems.is_empty(), "common words on a slow or unpredictable outline: {problems:#?}");
 }
 
-/// The right pinky cannot press a diagonal pair or three of its four keys (`docs/typable.md`), so
+/// The right pinky cannot press a diagonal pair or three of its four keys (`site/reference/typable.json`), so
 /// no generated outline may contain one.
 #[test]
 fn no_generated_stroke_needs_an_impossible_pinky_chord() {

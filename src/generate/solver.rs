@@ -11,7 +11,7 @@ use std::collections::{BinaryHeap, HashMap};
 /// than one stroke worse than the word's own worst real candidate, so the solver only ever leaves
 /// a word unplaced when every real option is already gone. Comparable to every other edge cost on
 /// purpose: a rare word losing its last slot is weighed against a common word's extra stroke
-/// honestly, rather than treated as a near-hard constraint (see `docs/collisions.md`).
+/// honestly, rather than treated as a near-hard constraint (see `site/reference/collisions.json`).
 pub(super) fn no_match_cost(word: &str, weight: u64, candidates: &[Candidate]) -> u64 {
     let worst = candidates.iter().map(|c| u64::from(c.cost)).max().unwrap_or(0);
     let letters = u64::try_from(word.chars().count()).unwrap_or(u64::MAX);

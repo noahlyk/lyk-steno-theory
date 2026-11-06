@@ -8,12 +8,12 @@
 //! words, splits into connected components (words linked by a shared text), each solved exactly
 //! by min-cost matching ([`super::solver`]); components can't affect each other.
 //!
-//! Passes repeat over **family offers** (see `docs/syllables.md`): after the first, every family
+//! Passes repeat over **family offers** (see `site/reference/syllables.json`): after the first, every family
 //! member is offered its root's settled outline with its endings' keys (`Origin::Family`), every
 //! root is held to its first-pass outline (moving only to something strictly cheaper), and the
 //! whole dictionary is settled again from the same start, until the offers stop changing. Then
 //! the `LOCK_TOP` commonest words are locked exactly and one final pass runs with every rarer
-//! word's skeleton short form in (see `docs/brevity.md`). Last, any word on a worse outline than
+//! word's skeleton short form in (see `site/reference/brevity.json`). Last, any word on a worse outline than
 //! one of its own candidates nobody holds moves to it.
 
 use super::candidates::{Candidate, candidate_cost};

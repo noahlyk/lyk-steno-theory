@@ -1,6 +1,6 @@
 //! Putting the dictionary together: fixed entries first, then every word's primary settled at
 //! once, then every other way in, each only where nobody holds the text. See [`generate`] for the
-//! order and `docs/collisions.md` for why.
+//! order and `site/reference/collisions.json` for why.
 
 mod backup;
 mod candidates;
@@ -112,7 +112,7 @@ pub enum Origin {
     Backup,
     /// A family member's root's own settled outline with the member's endings' keys added
     /// (`build` `PWHR` -> `builds` `PWHRZ`), offered after a first settling pass so a family can
-    /// share one shape - see `family_offers` and `docs/syllables.md`. Competes on cost like any
+    /// share one shape - see `family_offers` and `site/reference/syllables.json`. Competes on cost like any
     /// other candidate.
     Family,
     /// Two already-placed words' own settled single-stroke *primaries*, merged into one new,
@@ -120,13 +120,13 @@ pub enum Origin {
     /// compression for a common bigram (`setup.bigrams`), not a cosmetic one. The entry's `word`
     /// field holds the two-word phrase text ("of the"), never a real single word competing for
     /// anything. Never a stem a continuation stroke can follow — see `single_stroke_stems`'s own
-    /// exclusion filter and `docs/phrases.md`, which this whole mechanism is documented in.
+    /// exclusion filter and `site/reference/phrases.json`, which this whole mechanism is documented in.
     Phrase,
     /// Another single-stroke way to write a word, added last of all: a candidate (a gold brief,
     /// the plain rules reading, a spelling variant, an `-S` respelling, a family shape) that lost
     /// its word's primary slot but whose stroke nobody else ended up needing. It never takes a
     /// stroke from anything and never becomes the outline `cheapest` reports - see
-    /// `docs/briefs.md`.
+    /// `site/reference/briefs.json`.
     Extra,
 }
 
@@ -151,7 +151,7 @@ pub struct Generated {
     /// this staying small; see `quality::the_contested_set_after_peeling_stays_small`.
     pub contested: usize,
     /// How many [`Origin::Phrase`] entries the phrase-briefing pass actually committed - see
-    /// `docs/phrases.md`.
+    /// `site/reference/phrases.json`.
     pub phrases_added: usize,
     /// A phrase candidate that lost its merged stroke, either to something `taken` already held
     /// or to another eligible bigram this same pass arbitrated away (see `arbitrate_phrase_round`).
@@ -170,7 +170,7 @@ const KEY_WEIGHT: u32 = 1_000;
 
 /// How much cheaper a family-shaped candidate (`Origin::Family`) counts than its raw cost: two
 /// keys, so a member takes its root's shape (`building` `PWHR-G`, not Plover's `PW-LG`) unless
-/// that costs more than two extra keys. See `docs/syllables.md`.
+/// that costs more than two extra keys. See `site/reference/syllables.json`.
 pub const FAMILY_DISCOUNT: u32 = 2_000;
 
 /// Every outline a real keymux config already gives to a command, a punctuation mark, or
@@ -249,7 +249,7 @@ impl Book {
     }
 }
 
-/// The whole dictionary, in the order every choice is made (see `docs/collisions.md`):
+/// The whole dictionary, in the order every choice is made (see `site/reference/collisions.json`):
 ///
 /// 1. reserved strokes (commands, punctuation, fingerspelling), the standalone suffixes, the
 ///    pronoun "I", and every literal `[word]` outline from `rules/briefs.toml`, fixed first;
@@ -391,7 +391,7 @@ pub fn priority(e: &Entry) -> (bool, usize, u32, &[Stroke]) {
 /// A standalone suffix's own entry (`rules/suffixes.toml`) never counts, even when its own
 /// display text happens to also be a real word (`less`, `age`, `some`, `ism`, and 17 others): its
 /// outline is a continuation-stroke fragment that is never a word by itself when struck alone
-/// (the join key it carries refuses that, by design — see [the join key](../docs/join-key.md)),
+/// (the join key it carries refuses that, by design — see [the join key](site/reference/join-key.json)),
 /// so it is never really "the outline" for that word even when it numerically looks cheapest. An
 /// `Origin::Alternate` entry (another pronunciation's outline) is excluded from winning against
 /// any other origin for the same word by [`best_entry_per_word`]'s own priority tier - see its
@@ -427,7 +427,7 @@ const fn is_primary_origin(origin: Origin) -> bool {
 /// a real word struck alone. An [`Origin::Phrase`] entry is excluded for the same reason as a
 /// suffix, for the opposite reason: its `word` field is two words' own text ("of the"), not a real
 /// single word a continuation stroke could sensibly follow at all (`"of the" + "-s"` would read
-/// back as "of thes", nonsense) — see `docs/phrases.md`. Collision-free by construction: `taken`
+/// back as "of thes", nonsense) — see `site/reference/phrases.json`. Collision-free by construction: `taken`
 /// already guarantees one word per outline text, so there is never more than one candidate for a
 /// given stroke here. Only a word's primary counts, not its short forms, backups, extras or
 /// alternates: the same word under four strokes made the deployed plugin's table twice the size
@@ -468,7 +468,7 @@ pub const CONTRACTION_TAILS: &[&str] = &["'s", "'d", "'ll", "'re", "'m", "'ve", 
 /// `compose_backup`'s own "found, not yet committed" boundary. `top_n` bounds the raw bigram list
 /// scanned, ranked by count, *before* the eligibility filter - not the number of phrase entries
 /// that end up committed, which is smaller once ineligible pairs, round-internal collisions, and
-/// `taken` are all accounted for. See `docs/phrases.md`'s threshold section for how the real
+/// `taken` are all accounted for. See `site/reference/phrases.json`'s threshold section for how the real
 /// eligible-set size was measured and why raw count (not a PMI/collocation ratio) is what ranks
 /// bigrams here.
 /// The pronoun's own entry is the capitalized "I" (see `generate`), while the bigram corpus and

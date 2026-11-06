@@ -5,23 +5,25 @@ IMPORTANT THING theory is good but the most important thing is a theory you can 
 100% exhaustive documentation of rules and things I can learn to actually be able to type my
 theory."*
 
+**The docs now live on the site, in one place.** The lessons (`site/lessons/*.json`) teach; the
+**Reference** (`site/reference/*.json`, route `#/ref`) holds every rule, table and mechanism,
+exhaustively and concisely (no history or justification prose). The old `docs/*.md` chapter files
+are gone; `docs/` keeps only `README.md` (a pointer and the old-path map), `decisions.md` (the
+maintainers' log of why) and `roadmap.md`.
+
 Any change to `rules/*.toml` or `src/*.rs` that changes what a word strokes as, what a brief does,
-or how the generator picks between candidates **must** land with the matching doc update in the
-*same commit* — not as a follow-up. The `docs/` chapter files (`briefs.md`, `phonetic-rules.md`,
-`spelling.md`, `prefixes.md`, `syllables.md`, `collisions.md`, `brevity.md`, `suffixes.md`, and the
-rest) have gone stale multiple times from exactly this gap: a rule changed in code before the docs
-caught up.
+or how the generator picks between candidates **must** land with the matching **Reference page
+edit in the same commit**, not as a follow-up. Pages that go stale are exactly the failure this
+project has had repeatedly: a rule changed in code before the docs caught up.
 
-`cargo run --release -- score --check-readme` only catches numeric drift in `README.md`'s tables.
-It does **not** catch prose drift — a rule described in one of the `docs/` chapter files that no
-longer matches what the code does. There's no automated check for that; it has to be done by hand,
-every time, as part of the same change.
+What checks what: `python3 tools/site_data.py` verifies every `[[word|OUTLINE]]` in a lesson or a
+Reference page against the built dictionary (`out/lyk`) and rewrites `site/data/`; `node site/check.mjs`
+and `node site/test.mjs` check structure, links and the engine; `cargo run --release -- score
+--check-readme` catches numeric drift in `README.md`'s tables. **None of them catch prose drift**
+(a rule described on a page that no longer matches the code): that has to be done by hand, every
+time, as part of the same change. Commit the regenerated `site/data/` with the change. How to
+write a page: [`site/README.md`](../site/README.md). The phrasing grammar (lessons 19 and 20) is
+checked against `tools/phrasing_prototype.py`, not the dictionary, until the generator builds it.
 
-**The lessons site is the docs' condensed form and must move with them.** `site/lessons/*.json`
-(the interactive lessons, deployed from `main`) state outlines as `[[word|OUTLINE]]` and in drills.
-A change to what a word strokes as is not finished until `python3 tools/site_data.py` passes (it
-checks every one against the built dictionary and rewrites `site/data/`) and `node site/check.mjs`
-is clean; commit the regenerated `site/data/` with the change. See [`site/README.md`](../site/README.md).
-
-Start at [`docs/README.md`](../docs/README.md) to learn the theory — read in the order it lays
-out, not at random.
+Learn the theory from the site (lessons in order, then the Reference), not from the repository
+files.

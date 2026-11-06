@@ -121,7 +121,7 @@ Keep a lesson short: one idea per heading, tables over paragraphs, and every out
 ## The engine
 
 A drill does not ask for one outline: it asks whether what you struck *types the word*. The engine
-reads a stroke stream the way the dictionary does (`docs/join-key.md`, `docs/fallback.md`):
+reads a stroke stream the way the dictionary does (`site/reference/join-key.json`, `site/reference/fallback.json`):
 
 1. A stroke without the join key opens a run; every `+` stroke continues the run before it. Runs
    are separated by a space; a reserved outline can span runs (`-FP/PHOEUFP`).

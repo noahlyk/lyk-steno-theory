@@ -16,7 +16,7 @@ mod resolve;
 
 
 const BUILT_IN: &str = include_str!("../../rules/plover.toml");
-/// Spelling-mode's letter table (see `docs/spelling-mode.md`): always this file, independent of
+/// Spelling-mode's letter table (see `site/reference/spelling-mode.json`): always this file, independent of
 /// whichever rules file `Rules::load` was given, the same way `rules/suffixes.toml` and
 /// `rules/briefs.toml` are always their own built-in file regardless of the theory in use —
 /// every letter gets one unambiguous chord no matter which phonetic theory is loaded.
@@ -288,7 +288,7 @@ pub struct Rules {
     coda_rev: Vec<(Stroke, Vec<String>)>,
     vowel_rev: HashMap<Stroke, String>,
     vowel_coda_rev: Vec<(Stroke, String, String)>,
-    /// Spelling-mode's chord -> letter table (see `docs/spelling-mode.md`), keyed by each
+    /// Spelling-mode's chord -> letter table (see `site/reference/spelling-mode.json`), keyed by each
     /// letter's bare chord (no join or spell bit).
     spelling: HashMap<Stroke, String>,
     /// `rules/suffixes.toml`'s own chord -> text table, keyed exactly as that file writes each
@@ -352,7 +352,7 @@ fn spelling_table(raw: &str) -> Result<HashMap<Stroke, String>> {
 /// `-logy`, `-ity`/`-ety`, `-cy`/`-sy`, `-ify`/`-fy`) don't parse as a single [`Stroke`] at all
 /// (their own chord has a `/` in it) and are skipped rather than erroring the whole table: a
 /// continuation stroke [`Rules::resolve`] reads is always exactly one stroke at a time, so a
-/// suffix that takes two has nothing here to match against yet (see `docs/suffixes.md`).
+/// suffix that takes two has nothing here to match against yet (see `site/reference/suffixes.json`).
 fn single_stroke_suffixes(raw: &str) -> Result<HashMap<Stroke, String>> {
     let table: HashMap<String, String> = toml::from_str(raw)?;
     Ok(table
@@ -1040,7 +1040,7 @@ impl Rules {
     }
 
     /// Every way to write a word one syllable per stroke, for the join paths every word of two
-    /// syllables or more gets beside its primary (see `docs/syllables.md`). First the word's own
+    /// syllables or more gets beside its primary (see `site/reference/syllables.json`). First the word's own
     /// folded outline ([`Self::outline`]); then, for both syllable splits (`lem-on`, `le-mon`) and
     /// with the fixed prefix both folded onto the first stroke and struck as a syllable of its own,
     /// two writings: `suffixed`, where a reduced *last* syllable is its continuation stroke with the

@@ -5,7 +5,7 @@
 //! `rules/suffixes.toml` that writes its ending. The generator uses links to give every family
 //! member a backup outline built from the stem's own outline plus that suffix stroke (see the
 //! backup pass in `generate`), and `family`/`build` use them to report how consistently each
-//! family's members are stroked. See `docs/syllables.md`.
+//! family's members are stroked. See `site/reference/syllables.json`.
 
 use crate::data::Pronunciations;
 use crate::stroke::{Stroke, parse_outline, render_outline};

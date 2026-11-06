@@ -1,6 +1,6 @@
 //! The fragment check: every key an outline presses must be explained by one of the word's own
 //! sounds on the stroke it is struck on, so a brief or a folded form never carries a stray
-//! consonant a learner could not account for. See `docs/briefs.md`.
+//! consonant a learner could not account for. See `site/reference/briefs.json`.
 
 use super::{Rules, Syllable};
 use crate::stroke::Stroke;
