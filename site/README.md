@@ -18,6 +18,8 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 18 lessons in 5 parts. The only place lesson text lives. |
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |
+| `data/engine.json`, `data/joins.json` | What the stroke engine reads: every outline of the dictionary (word -> outlines) plus the reserved strokes and suffixes, then the 12 cheapest join-built backups of each common word. About 1.2 MB gzipped, fetched when a drill starts. **Generated.** |
+| `js/engine.js`, `js/translate.js` | The stroke-to-text engine: `translate(strokes)` says what a stream types, `accepts(word, strokes)` whether it types that word by any route, `prefixOf` whether it still can. `translate.js` is the loaded-on-demand wrapper for pages that show the output. |
 | `js/steno.js` | Parses and writes strokes (`TKOG/+-Z`), and the QWERTY chord map (`Q` is the join key). |
 | `js/board.js`, `js/input.js` | The on-screen board and its key states (hint, held, wrong, missing) plus the legend; chord capture (keys down together, stroke on release; the newest listener gets the keys). |
 | `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
@@ -41,6 +43,26 @@ A lesson is JSON: `id`, `title`, `goal`, `blocks`, and an optional `drill`.
 
 Keep a lesson short: one idea per heading, tables over paragraphs, and every outline a real one.
 
+## The engine
+
+A drill does not ask for one outline: it asks whether what you struck *types the word*. The engine
+reads a stroke stream the way the dictionary does (`docs/join-key.md`, `docs/fallback.md`):
+
+1. A stroke without the join key opens a run; every `+` stroke continues the run before it. Runs
+   are separated by a space; a reserved outline can span runs (`-FP/PHOEUFP`).
+2. A run is looked up whole (`ED/+-D` is *ended*), as a dictionary entry or a reserved one
+   (punctuation attaches to the word before it and capitalises the next; commands show as `⟨Return⟩`).
+3. A run with no entry is read as the real fallback does: a single-stroke word as the stem, then each
+   continuation as a suffix (`rules/suffixes.toml`, two-stroke suffixes first) or as the sounds its
+   keys spell, dropping a silent final `e` before a vowel (`SR/+-G` is *having*).
+4. A stroke nothing reads is shown raw.
+
+So `EPBD/+-D`, `ED/+-D` and any join-built backup all pass as *ended*; a drill says
+"also fine: you wrote X; fastest is Y" when it was not the listed outline, and that is not a miss.
+Items whose listed outline does not type their word (the sound and key drills) stay exact.
+A multi-stroke stem is deliberately not used for the fallback, as in the Rust `resolve`.
+`node site/test.mjs` reads every outline in `words.json` back through the engine.
+
 ## Keeping it true
 
 Every `[[word|OUTLINE]]` and every drill item is a claim about the dictionary. After changing a
@@ -50,6 +72,7 @@ rule or the generator:
 cargo run --release -- build              # so out/lyk is current
 python3 tools/site_data.py                # checks every claim; rewrites site/data/*
 node site/check.mjs
+node site/test.mjs                        # the engine reads the regenerated data back
 ```
 
 `tools/site_data.py --check` only checks. It exits non-zero and names each lesson, word and outline

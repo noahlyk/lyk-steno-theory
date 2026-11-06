@@ -6,7 +6,7 @@ import { createBoard } from './board.js';
 import { el } from './dom.js';
 import { listen } from './input.js';
 import { formatStroke } from './steno.js';
-import { translate } from './translate.js';
+import { ready, translate } from './translate.js';
 
 export function initDock() {
   const host = el('div');
@@ -18,8 +18,9 @@ export function initDock() {
   let stop = null;
 
   const paint = async () => {
-    const words = await translate(strokes);
-    out.replaceChildren(...words.map((w) => el('span', { class: `dock__word${w.word ? '' : ' is-unknown'}`, title: w.outline }, w.word ?? w.outline)));
+    await ready;
+    const { parts } = translate(strokes);
+    out.replaceChildren(...parts.map((w) => el('span', { class: `dock__word${w.kind === 'raw' ? ' is-unknown' : ''}`, title: w.kind }, w.text || strokes.length ? (w.text || w.strokes.map((k) => formatStroke(k)).join('/')) : '')));
     tape.textContent = strokes.map((s) => formatStroke(s)).join('  ');
   };
   const panel = el('section', { class: 'dock__panel', hidden: true, 'aria-label': 'Try it' },

@@ -29,6 +29,8 @@ jobs:
           node-version: 22
       - name: Lessons parse, strokes are valid, words are in the data
         run: node site/check.mjs
+      - name: The stroke engine reads the dictionary back
+        run: node site/test.mjs
 
   deploy:
     needs: check

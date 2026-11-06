@@ -2,10 +2,12 @@
 """Writes the data the lessons site (`site/`) runs on, and checks every outline the lessons teach.
 
     cargo run --release -- build          # first, so out/lyk is current
-    python3 tools/site_data.py            # writes site/data/words.json and site/data/chart.json
+    python3 tools/site_data.py            # writes site/data/words.json, chart.json, engine.json, joins.json
     python3 tools/site_data.py --check    # only checks the lessons; non-zero exit on any wrong outline
 
-`words.json` has the commonest words with their fastest outline and a few more ways in (for the
+`engine.json` and `joins.json` are what `site/js/engine.js` translates strokes with (the whole
+dictionary less the join-built backups, then the 12 cheapest backups of each common word, both
+word -> outlines, plus the reserved strokes and `rules/suffixes.toml`). `words.json` has the commonest words with their fastest outline and a few more ways in (for the
 lookup page), plus every word a lesson names. `chart.json` is the key chart, read from
 `rules/plover.toml` so it cannot drift from the rules. The check reads every `[[word|OUTLINE]]`
 and every drill item of a lesson, and fails if the dictionary does not write that word that way.
@@ -19,6 +21,10 @@ from lyk_out import path, role_files, ranks  # noqa: E402
 SITE = path('site')
 LESSONS = sorted(glob.glob(os.path.join(SITE, 'lessons', '[0-9]*.json')))
 TOP = 12000  # words in the lookup
+JOINS_PER_WORD = 12  # backups kept per common word for the engine
+# in the order an outline's word is decided when two roles write the same outline
+ENGINE_ROLES = ['words', 'short', 'suffixes', 'phrases', 'extras', 'alternates']
+LETTER = re.compile(r'^(\{>\})?\{&.\}$')
 
 
 def cost(outline):
@@ -68,6 +74,45 @@ def lesson_claims(lesson):
     return claims
 
 
+def typable(outline):
+    """The site's board has no number bar or spelling marker, so outlines using them cannot be struck."""
+    return '#' not in outline and '~' not in outline
+
+
+def write_engine(files, pick, rank):
+    """site/data/engine.json and joins.json: what the stroke-to-text engine looks words up in."""
+    core = {}
+    seen = set()
+    for role in ENGINE_ROLES:
+        for outline, word in files.get(role, {}).items():
+            if outline in seen or not typable(outline):
+                continue
+            seen.add(outline)
+            core.setdefault(word, []).append(outline)
+    for word in core:
+        core[word].sort(key=cost)
+    reserved = {}
+    for name in ('punctuation', 'commands', 'emilys-modifiers'):
+        for outline, value in json.load(open(path('rules', 'reserved', f'{name}.json'))).items():
+            if not typable(outline):
+                continue
+            if name == 'emilys-modifiers' and not LETTER.match(value):
+                continue
+            reserved.setdefault(outline, value)
+    suffixes = tomllib.load(open(path('rules', 'suffixes.toml'), 'rb'))
+    joins = {}
+    for outline, word in files.get('backups', {}).items():
+        if word in pick and typable(outline) and outline not in seen:
+            joins.setdefault(word, []).append(outline)
+    joins = {w: sorted(o, key=cost)[:JOINS_PER_WORD]
+             for w, o in sorted(joins.items(), key=lambda kv: rank.get(kv[0], 10**9))}
+    out = os.path.join(SITE, 'data')
+    for name, data in (('engine.json', {'d': core, 'p': reserved, 's': suffixes}), ('joins.json', joins)):
+        with open(os.path.join(out, name), 'w') as f:
+            json.dump(data, f, separators=(',', ':'))
+        print(f'{name}: {os.path.getsize(os.path.join(out, name)):,} bytes')
+
+
 def main():
     check_only = '--check' in sys.argv
     files = role_files()
@@ -115,6 +160,7 @@ def main():
     with open(os.path.join(SITE, 'data', 'words.json'), 'w') as f:
         json.dump({'words': dict(sorted(words.items(), key=lambda kv: rank.get(kv[0], 10**9)))}, f, separators=(',', ':'))
     print(f'words.json: {len(words)} words')
+    write_engine(files, set(top) | {w for w in wanted if w in by_word}, rank)
 
     # chart.json
     rules = tomllib.load(open(path('rules', 'plover.toml'), 'rb'))

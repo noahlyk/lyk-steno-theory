@@ -2,6 +2,7 @@
 
 import { boardLegend, createBoard } from './board.js';
 import { el, shuffle } from './dom.js';
+import { loadEngine } from './engine.js';
 import { listen } from './input.js';
 import { formatStroke, parseOutline, sameKeys } from './steno.js';
 import { store } from './store.js';
@@ -11,8 +12,10 @@ import { store } from './store.js';
  * opts:  id (progress key, omit to not save), pass (percent), repeat, limit, onDone(result)
  */
 export function createDrill(host, rawItems, opts = {}) {
-  // an item is [prompt, outline, ...alternatives] or {p: prompt, o: [outlines], w: the word it must be}
-  const items = rawItems.map((it) => (Array.isArray(it) ? it : [it.p, ...it.o]));
+  // an item is [prompt, outline, ...alternatives] or {p: prompt, o: [outlines], w: the word it must be};
+  // `.word` is what the strokes must type
+  const items = rawItems.map((it) => (Array.isArray(it) ? Object.assign([...it], { word: it[0] })
+    : Object.assign([it.p, ...it.o], { word: it.w ?? it.p })));
   const { id = null, pass = 90, repeat = 1, limit = 0, onDone = () => {}, title = '', deferred = false } = opts;
   let stopListening = () => {};
   let queue = [];
@@ -26,6 +29,9 @@ export function createDrill(host, rawItems, opts = {}) {
   let misses = [];
   let held = new Set();
   let live = false;
+  let engine = null; // the stroke-to-text engine, once loaded: any way of typing the word passes
+  let typed = []; // the strokes struck so far for this word, when the engine is judging
+  let note = '';
 
   const board = el('div');
   const label = el('span', { class: 'boardlabel boardbox__label' });
@@ -89,6 +95,8 @@ export function createDrill(host, rawItems, opts = {}) {
     misses = [];
     started = 0;
     live = true;
+    note = '';
+    loadEngine().then((e) => { engine = e; }).catch(() => {}); // without it a drill wants the listed outlines
     for (const other of running) if (other !== api) other.stop();
     stopListening();
     stopListening = listen(submit, (keys) => {
@@ -109,10 +117,12 @@ export function createDrill(host, rawItems, opts = {}) {
     if (at >= queue.length) return finish();
     cands = itemOutlines();
     strokeAt = 0;
+    typed = [];
     itemMissed = false;
     prompt.replaceChildren(queue[at][0]);
-    answer.textContent = '';
-    answer.className = 'answer';
+    answer.textContent = note;
+    answer.className = note ? 'answer is-good' : 'answer';
+    note = '';
     setManual(new Set());
     label.textContent = '';
     hint.textContent = '';
@@ -152,6 +162,10 @@ export function createDrill(host, rawItems, opts = {}) {
     if (!started) started = Date.now();
     strokes += 1;
     const got = new Set(keys);
+    if (engineJudges()) {
+      setManual(new Set());
+      if (judgeWithEngine(got)) return;
+    }
     const matching = cands.filter((c) => c.strokes[strokeAt] && sameKeys(c.strokes[strokeAt], got));
     setManual(new Set());
     if (matching.length) {
@@ -183,6 +197,44 @@ export function createDrill(host, rawItems, opts = {}) {
     hint.textContent = 'try again';
     strokeAt = 0;
     cands = itemOutlines();
+  }
+
+  // The engine judges an item whose listed outline really types its word (a sound or key drill's
+  // "outline" does not, so those stay exact).
+  function engineJudges() {
+    if (!engine || !cands.length) return false;
+    const item = queue[at];
+    item.engine ??= engine.accepts(item.word, cands[0].strokes);
+    return item.engine;
+  }
+
+  // true when the stroke was right or is on the way; false is a miss, and falls to the miss code
+  function judgeWithEngine(got) {
+    const word = queue[at].word;
+    typed.push(got);
+    if (engine.accepts(word, typed)) {
+      const wrote = typed.map(formatStroke).join('/');
+      const listed = itemOutlines();
+      if (!listed.some((c) => c.strokes.map(formatStroke).join('/') === wrote)) {
+        note = `also fine: you wrote ${wrote}; fastest is ${listed[0].text}`;
+      }
+      if (!itemMissed) firstTry += 1;
+      else store.clearMiss(queue[at][0]);
+      nextItem();
+      return true;
+    }
+    if (typed.length < 8 && engine.prefixOf(word, typed)) {
+      const on = itemOutlines().filter((c) => typed.every((t, i) => c.strokes[i] && sameKeys(c.strokes[i], t)));
+      if (on.length) cands = [...on, ...cands.filter((c) => !on.includes(c))];
+      strokeAt = on.length ? typed.length : 0;
+      answer.textContent = `so far: ${engine.translate(typed).text}`;
+      answer.className = 'answer';
+      showTarget();
+      return true;
+    }
+    strokeAt = Math.min(typed.length - 1, cands[0].strokes.length - 1);
+    typed = [];
+    return false;
   }
 
   function finish() {

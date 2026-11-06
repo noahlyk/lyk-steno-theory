@@ -1,24 +1,20 @@
-// Strokes to words. The one place the site turns what was typed into text; `translate` reads the
-// dictionary's outlines (data/words.json). A word is a stroke plus every `+` stroke after it, so
-// strokes are grouped at each stroke without the join key and each group is looked up whole.
+// What a typed stroke stream reads as, for the "type and see the output" pages. The engine's data
+// loads on first use; until then `translate` returns an empty reading with `loading: true`, and
+// `ready` resolves once it is there.
 
-import { dictionary } from './data.js';
-import { formatStroke } from './steno.js';
+import { loadEngine } from './engine.js';
+import { parseOutline } from './steno.js';
+
+let engine = null;
+export const ready = loadEngine().then((e) => { engine = e; return e; });
 
 /**
- * strokes: an array of Sets of key ids, in the order they were struck.
- * Returns [{ outline, word }], one per word; `word` is null when the dictionary has no such outline.
+ * strokes: an array of key Sets (as steno.js makes them) or of stroke texts (`TKOG`, `+-Z`), or
+ * one outline text (`ED/+-D`). Returns { text, parts: [{ strokes, text, kind, how? }], loading? }.
  */
-export async function translate(strokes) {
-  const { reverse } = await dictionary();
-  const groups = [];
-  for (const s of strokes) {
-    const text = formatStroke(s);
-    if (s.has('+') && groups.length) groups.at(-1).push(text);
-    else groups.push([text]);
-  }
-  return groups.map((g) => {
-    const outline = g.join('/');
-    return { outline, word: reverse.get(outline)?.[0] ?? null };
-  });
+export function translate(strokes) {
+  const list = typeof strokes === 'string' ? parseOutline(strokes) ?? [] :
+    strokes.map((s) => (typeof s === 'string' ? parseOutline(s)?.[0] : s)).filter(Boolean);
+  if (!engine) return { text: '', parts: [], loading: true };
+  return engine.translate(list);
 }
