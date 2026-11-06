@@ -139,7 +139,12 @@ export function createDrill(host, rawItems, opts = {}) {
     const want = cands[0].strokes[strokeAt];
     if (showToggle.checked || itemMissed) {
       boardCtl.show(want);
-      label.textContent = cands[0].text.split('/').map((s, i) => (i === strokeAt ? `[${s}]` : s)).join(' / ');
+      // the stroke due keeps full strength; the rest of the outline is dimmed (no brackets)
+      const parts = cands[0].text.split('/');
+      label.replaceChildren(...parts.flatMap((p, i) => [
+        ...(i ? [el('span', { class: 'pop__sep' }, '/')] : []),
+        el('span', { class: `pop__stroke${parts.length > 1 && i !== strokeAt ? ' is-dim' : ''}` }, p),
+      ]));
       hint.textContent = cands[0].strokes.length > 1 ? `stroke ${strokeAt + 1} of ${cands[0].strokes.length}` : '';
     } else {
       boardCtl.clear();

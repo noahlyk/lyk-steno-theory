@@ -180,6 +180,9 @@ button.key { cursor: pointer; }
 }
 .pop[hidden] { display: none; }
 .pop__head { display: flex; gap: 0.8rem; align-items: baseline; margin-bottom: 0.45rem; min-height: 1.3rem; }
+.pop__stroke, .pop__sep { transition: opacity 0.15s; }
+.pop__sep { opacity: 0.35; }
+.pop__stroke.is-dim { opacity: 0.5; }
 .pop__label { font-family: var(--mono); color: var(--heading); font-size: 1.05rem; }
 .pop__note { color: var(--muted); font-size: 0.82rem; }
 

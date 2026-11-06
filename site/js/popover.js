@@ -37,9 +37,12 @@ function place(anchor) {
 
 function paint(strokes, outline, at) {
   ctl.show(strokes[at]);
-  label.textContent = strokes.length > 1
-    ? outline.split('/').map((s, i) => (i === at ? `[${s}]` : s)).join(' / ')
-    : outline;
+  // the stroke being shown keeps full strength; the rest of the outline is just dimmed (no brackets)
+  const parts = outline.split('/');
+  label.replaceChildren(...parts.flatMap((s, i) => [
+    ...(i ? [el('span', { class: 'pop__sep' }, '/')] : []),
+    el('span', { class: `pop__stroke${strokes.length > 1 && i !== at ? ' is-dim' : ''}` }, s),
+  ]));
   note.textContent = strokes.length > 1 ? `stroke ${at + 1} of ${strokes.length}` : '';
 }
 
