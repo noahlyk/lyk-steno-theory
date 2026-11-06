@@ -42,14 +42,18 @@ fire when the last key comes up, the same as with the keyboard. The decoder is u
 
 ## Learn the keys
 
+There is no Start button: the stream (and an inline lesson drill) begins when it scrolls into view
+and lets the keyboard go when it scrolls away.
+
 A word stream that teaches where every sound sits, before the theory. You start with six keys; one
 more unlocks whenever your newest words (20, at least 10) are fast and clean enough.
 
 - **Speed trades against accuracy.** Fast may be sloppy, slow must be clean: the accuracy needed
   slides from 97% at 17 wpm to 75% at 60 wpm, and under 17 wpm nothing passes. Individual chords are
   not held against you above 45 wpm.
-- **One adaptive guide, no levels.** It starts as the diagram and the QWERTY hints; as you get fast
-  and clean the hints go, then the diagram (greyed, "From your head now..."); a run of misses brings
+- **One adaptive guide, no levels.** It starts as the diagram *with the answer* (the keys to press
+  light up) and the QWERTY hints; as you get fast and clean the hints and the answer go (the diagram
+  stays, showing only what you are pressing), then the diagram itself (greyed, "From your head now..."); a run of misses brings
   one back. The stroke under each word is never hidden. Finishing needs every key unlocked and a
   passing run from memory, then confetti.
 - **Unlocks are earned from memory.** Only words typed with the diagram gone count towards the next

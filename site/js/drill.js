@@ -97,14 +97,18 @@ export function createDrill(host, rawItems, opts = {}) {
     live = true;
     note = '';
     loadEngine().then((e) => { engine = e; }).catch(() => {}); // without it a drill wants the listed outlines
-    for (const other of running) if (other !== api) other.stop();
+    for (const other of running) if (other !== api) other.halt();
+    attach();
+    root.querySelectorAll('.result').forEach((n) => n.remove());
+    nextItem(true);
+  }
+
+  function attach() {
     stopListening();
     stopListening = listen(submit, (keys) => {
       held = keys;
       boardCtl.press(keys);
     });
-    root.querySelectorAll('.result').forEach((n) => n.remove());
-    nextItem(true);
   }
 
   function itemOutlines() {
@@ -266,13 +270,22 @@ export function createDrill(host, rawItems, opts = {}) {
     onDone({ accuracy, wpm, passed });
   }
 
-  const api = { stop() { live = false; stopListening(); }, restart: begin };
+  let watch = null;
+  const api = {
+    halt() { live = false; stopListening(); },
+    stop() { api.halt(); watch?.disconnect(); },
+    restart: begin,
+  };
   running.add(api);
-  if (deferred) {
-    // wait for a click, so the keyboard is not captured while someone is just reading the page
-    const go = el('div', { class: 'row row--center', style: 'margin:.4rem 0' },
-      el('button', { class: 'btn btn--primary', type: 'button', onclick: () => { go.remove(); begin(); } }, 'Start drill'));
-    prompt.before(go);
+  if (deferred && typeof IntersectionObserver !== 'undefined') {
+    // no Start button: it begins when it is on screen (so the keyboard is not captured while the
+    // page is just being read) and lets the keys go again when it scrolls away
+    let begun = false;
+    watch = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) { stopListening(); return; }
+      if (!begun) { begun = true; begin(); } else if (queue.length && at < queue.length) { live = true; attach(); }
+    }, { threshold: 0.5 });
+    watch.observe(root);
   } else {
     begin();
   }

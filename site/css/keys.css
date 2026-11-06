@@ -36,11 +36,10 @@
 .kcell__word { font-size: 1.5rem; line-height: 1.2; color: var(--heading); }
 .kcell__strokes { display: flex; align-items: flex-start; min-height: 2.4rem; }
 /* the sounds under a word: one size for every word, current or not */
-.kgroup { display: flex; flex-direction: column; align-items: center; padding: 0 0.45rem; }
+.kgroup { display: flex; flex-direction: column; align-items: center; padding: 0 6px; }
 .kgroup + .kgroup { border-left: 2px solid var(--line); }
-.kst { display: inline-flex; font-family: var(--key-font); font-size: 1.45rem; font-weight: 700; line-height: 1.25; text-transform: uppercase; white-space: nowrap; }
-.ks { padding: 0 1px; border-radius: 3px; }
-.ks.is-gap { margin-left: 0.3em; }
+.kst { display: flex; gap: 1px; font-family: var(--key-font); font-size: 23px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+.ks { display: inline-block; }
 .ks--left { color: var(--ink-left); }
 .ks--vowel { color: var(--ink-vowel); }
 .ks--right { color: var(--ink-right); }
@@ -48,7 +47,7 @@
 /* keys one finger plays together are tied by an underline, like the other repo's word stream */
 .ks.pair-a, .ks.pair-b { box-shadow: inset 0 -5px 0 -3px currentColor; }
 .ks.pair-b { margin-left: -1px; }
-.ks.is-held { background: var(--raised); box-shadow: 0 0 0 2px currentColor; }
+.ks.is-held { color: var(--ok); }
 .kgroup.is-done .ks { opacity: 0.4; }
 .kcell.is-next { opacity: 0.85; }
 .kcell.is-next .kcell__word { font-size: 1.2rem; }

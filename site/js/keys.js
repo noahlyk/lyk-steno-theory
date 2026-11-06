@@ -15,7 +15,6 @@ const LOOKAHEAD = 4; // upcoming words shown
 const DONE_KEEP = 6; // finished words left in view
 const IDLE_MS = 3000; // a wait longer than this counts as this much
 const GROUP_OF = (k) => (k === '+' || k === '*' ? 'misc' : /^[AOEU]$/.test(k) ? 'vowel' : k.startsWith('-') ? 'right' : 'left');
-const BANK_OF = (k) => (k === '+' ? 0 : /^[AOEU*]$/.test(k) ? 2 : k.startsWith('-') ? 3 : 1);
 // keys one finger plays together (a column; the two keys of a thumb pair): underlined when both are in a stroke
 const PAIRS = [['+', 'S-'], ['T-', 'K-'], ['P-', 'W-'], ['H-', 'R-'], ['A', 'O'], ['E', 'U'],
   ['-F', '-R'], ['-P', '-B'], ['-L', '-G'], ['-T', '-S'], ['-D', '-Z']];
@@ -33,7 +32,7 @@ const GUIDES = [
 ];
 
 const hints = (mask) => P.keysOf(mask).map((k) => HINT[k]).join(' ');
-const sound = (id) => id.replace('-', '');
+const sound = (id) => id.replace('-', ''); // `+` stays `+`
 
 /**
  * One stroke as a row of letters, in steno order, one colour per hand, the keys one finger plays
@@ -42,14 +41,11 @@ const sound = (id) => id.replace('-', '');
 function strokeEl(mask, held = null) {
   const keys = new Set(P.keysOf(mask));
   const out = el('span', { class: 'kst' });
-  let bank = -1;
   for (const k of DISPLAY_ORDER) {
     if (!keys.has(k)) continue;
     const pair = PAIR_OF.get(k);
     const paired = pair && keys.has(pair.with) ? ` pair-${pair.pos}` : '';
-    const gap = bank !== -1 && BANK_OF(k) !== bank ? ' is-gap' : '';
-    bank = BANK_OF(k);
-    out.append(el('span', { class: `ks ks--${GROUP_OF(k)}${paired}${gap}${held?.has(k) ? ' is-held' : ''}` }, sound(k)));
+    out.append(el('span', { class: `ks ks--${GROUP_OF(k)}${paired}${held?.has(k) ? ' is-held' : ''}` }, sound(k)));
   }
   return out;
 }
@@ -98,14 +94,13 @@ export async function keysPage(app) {
   const blind = el('div', { class: 'kblind' }, el('span', {}, 'From your head now…'));
   const boardWrap = el('div', { class: 'boardbox kboard' }, el('div', { class: 'boardbox__scroll kboard__scroll' }, boardHost, blind));
   const board = createBoard(boardHost, { compact: true });
-  const start = el('button', { class: 'btn btn--primary', type: 'button', onclick: () => begin() }, 'Start');
   const skip = el('button', { class: 'btn', type: 'button', onclick: () => { p.skipped = true; save(); renderTop(); } }, 'I already know steno: skip this');
   const weakRow = el('div', { class: 'boardbox__hint kweak' });
 
   app.append(
     guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
-      el('div', { class: 'row' }, start, skip),
+      el('div', { class: 'row' }, skip),
       stream, status,
       el('div', { class: 'progressbar' }, progressBar), metrics, weakRow),
     boardWrap,
@@ -146,15 +141,12 @@ export async function keysPage(app) {
     startWord();
     stopListening();
     stopListening = listen(onStroke, onHeld);
-    start.hidden = true;
-    stream.focus();
     render();
   }
   function stop() {
     s.live = false;
     stopListening();
     stopListening = () => {};
-    start.hidden = false;
     board.clear();
   }
 
@@ -198,7 +190,7 @@ export async function keysPage(app) {
     w.wrongChords += 1;
     P.recordStroke(p, { target: P.keysOf(target()), used: P.keysOf(used), ms: hold, correct: false });
     say('Not that one. The stroke is under the word.', 'bad');
-    board.diff(new Set(P.keysOf(target())), new Set(P.keysOf(used)));
+    if (showAnswer()) board.diff(new Set(P.keysOf(target())), new Set(P.keysOf(used)));
     render(false);
     return undefined;
   }
@@ -247,12 +239,15 @@ export async function keysPage(app) {
   const revealed = () => Boolean(s.word && s.word.wrongChords >= P.LABEL_REVEAL_MISSES);
   const showDiagram = () => p.guide >= P.GUIDE.DIAGRAM || revealed();
   const showHints = () => p.guide === P.GUIDE.FULL;
+  // the diagram always shows what you press; it only shows what you SHOULD press with the full guide
+  const showAnswer = () => p.guide === P.GUIDE.FULL || revealed();
 
   function paintBoard() {
     boardWrap.classList.toggle('is-blind', !showDiagram());
     if (!s.live || !s.word || !showDiagram()) { board.clear(); return; }
-    // target keys light (the keys still to press for this stroke); held keys show on top
-    board.show(new Set(P.keysOf(target())));
+    // the target lights only when the answer is meant to be given away; held keys always show
+    if (showAnswer()) board.show(new Set(P.keysOf(target())));
+    else board.clear();
     board.press(s.held);
   }
 
@@ -264,7 +259,7 @@ export async function keysPage(app) {
     chips.replaceChildren(...P.KEY_ORDER.map((k, i) => el('span', {
       class: `kchip kchip--${GROUP_OF(k)}${i < p.unlocked ? '' : ' is-locked'}${i === p.unlocked - 1 && p.unlocked > P.START_KEYS ? ' is-new' : ''}`,
       title: i < p.unlocked ? `${sound(k)}: QWERTY ${HINT[k]}` : 'locked',
-    }, k === '+' ? 'join' : sound(k), showHints() && i < p.unlocked ? el('small', {}, HINT[k]) : null)));
+    }, sound(k), showHints() && i < p.unlocked ? el('small', {}, HINT[k]) : null)));
   }
 
   function renderStream() {
@@ -284,7 +279,7 @@ export async function keysPage(app) {
       if (i === 0 && s.word) rows.push(cell(q.text, 'is-current', s.word.candidates[0], true));
       else rows.push(cell(q.text, 'is-next', P.displayVariants(q, mask())[0] ?? [], false));
     });
-    stream.replaceChildren(...(s.live ? rows : [el('p', { class: 'boardbox__hint' }, 'Press Start, then type the first word.')]));
+    stream.replaceChildren(...(s.live ? rows : [el('p', { class: 'boardbox__hint' }, 'The words start as soon as this is on screen.')]));
     status.textContent = s.message || ' ';
     status.className = `kstatus${s.kind ? ` kstatus--${s.kind}` : ''}`;
   }
@@ -314,5 +309,14 @@ export async function keysPage(app) {
   }
 
   render();
-  return stop;
+  // no Start button: the words begin when this is on screen and the keys are let go when it is not
+  let began = false;
+  let listening = false;
+  const pause = () => { if (listening) { stopListening(); listening = false; s.held = new Set(); } };
+  const watch = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) { pause(); return; }
+    if (!began) { began = true; listening = true; begin(); } else if (s.live && !listening) { listening = true; stopListening = listen(onStroke, onHeld); }
+  }, { threshold: 0.4 });
+  watch.observe(stream.parentElement);
+  return () => { watch.disconnect(); stop(); };
 }
