@@ -1,0 +1,786 @@
+{
+ "id": "punctuation",
+ "title": "Punctuation and commands",
+ "goal": "Look up the stroke for any punctuation mark, symbol, capital, cursor move, editing key or shortcut, and what each does to the spacing around it.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "How punctuation strokes work"
+  },
+  {
+   "t": "p",
+   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **70 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
+  },
+  {
+   "t": "p",
+   "x": "Most marks have several strokes, one for each situation: plain, struck twice, with glue before or after so no unwanted space appears, after a quote, before a parenthesis. The **Plover code** column is what the stroke sends."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Code",
+    "Meaning"
+   ],
+   "rows": [
+    [
+     "`^` next to a mark",
+     "attach to the neighbouring word: no space on that side (`{^x}` attaches to the word before, `{x^}` to the word after, `{^x^}` both)"
+    ],
+    [
+     "`{-|}`",
+     "capitalize the next word"
+    ],
+    [
+     "`{~\\|x}`",
+     "carry a pending capital past the mark: the next word is still capitalized"
+    ],
+    [
+     "`{&x}`",
+     "glue: the text joins the previous glued text (used for fingerspelled letters)"
+    ],
+    [
+     "`{>}`",
+     "lowercase the next letter"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Sentence marks"
+  },
+  {
+   "t": "p",
+   "x": "Each mark attaches to the word before it. `.` `?` `!` also capitalize the next word; `,` `;` `:` do not."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Mark",
+    "Strokes",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "`.` (30 strokes)",
+     "[[-FP]] [[TP-P]] [[P-FP]] [[TPHR-FRPBLT]] [[*FPLT]] [[-FP/-RB]] [[-FP/PHOEUFP]] [[-FP/PHR-RB]] [[-FPL]] [[-FPLT]] [[-FPLT/-FPLT]] [[-FPLTD]] [[-FPT]] [[-FRLT]] [[-FRP]] [[-PLT]] [[-PT]] [[P-FP/PHOEUFP]] [[P-PL]] [[PR*RD]] [[T-PL]] [[TH-PL]] [[TP-F]] [[TP-FPL]] [[TP-L]] [[TP-LT]] [[TP-PL]] [[TP-PL/PHOEUFP]] [[TP-PLT]] [[TPH-PL]]",
+     "`{.}`: period, capitalizes the next word"
+    ],
+    [
+     "`,` (14 strokes)",
+     "[[-RB]] [[KW-BG]] [[W-BG]] [[-BGS]] [[-FRBGS]] [[-RBG]] [[-RBGS]] [[-RBS]] [[-RGS]] [[KW-B]] [[KWR-BG]] [[KWR-BGS]] [[TP-PL/-RBGS]] [[TP-PL/KW-BG]]",
+     "`{,}`"
+    ],
+    [
+     "`,` glued both sides (2)",
+     "[[*RBGS]] [[W-B]]",
+     "`{^,^}`: no space before or after"
+    ],
+    [
+     "`?` (11 strokes)",
+     "[[H-F]] [[STP]] [[STPH*]] [[H*F]] [[H-FPB]] [[KW-PL]] [[STH/PHOEUFP]] [[STKPH]] [[STPH]] [[STPHA]] [[TP-PL/STPH-RB]]",
+     "`{?}`"
+    ],
+    [
+     "`?` glued (1)",
+     "[[KW*EPB]]",
+     "`{&?}`: a question mark that joins glued text"
+    ],
+    [
+     "`!` (5 strokes)",
+     "[[TP-BG]] [[SKHAPL]] [[SKHRAPL]] [[SKPHRAPL]] [[STKPWHR-FPLT]]",
+     "`{!}`"
+    ],
+    [
+     "`!` then closing single quote",
+     "[[STKPWHR-FPLT/SKW-TS]]",
+     "`{!'}` (two strokes)"
+    ],
+    [
+     "`;` (4 strokes)",
+     "[[SP-PT]] [[SKWR*RBGS]] [[STPH*FPL]] [[STPH*FPLT]]",
+     "`{;}`"
+    ],
+    [
+     "`;` glued both sides",
+     "[[TH-FL]]",
+     "`{^;^}`"
+    ],
+    [
+     "`:` (3 strokes)",
+     "[[STP-FPLT]] [[STPH-FPLT]] [[-FRPLT]]",
+     "`{:}`"
+    ],
+    [
+     "`:` glued both sides",
+     "[[KHR-PB]]",
+     "`{^:^}`"
+    ],
+    [
+     "`.` glued both sides (a dot inside a word, as in `a.b`)",
+     "[[P-P]] [[P-PBT]] [[P-T]]",
+     "`{^.^}`"
+    ],
+    [
+     "`.` with no space after",
+     "[[PO*EUP]]",
+     "`{.^}`"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "Because the period has 30 strokes, the bare `-P` and `-PL` were freed for the briefs [[up|-P]] and [[am|-PL]]."
+  },
+  {
+   "t": "h",
+   "x": "Quotes and apostrophes"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Types",
+    "Plover code",
+    "Strokes"
+   ],
+   "rows": [
+    [
+     "apostrophe attached to the previous word",
+     "`{^'}`",
+     "[[-PBT]] [[SKW*T]] [[SKW*TS]]"
+    ],
+    [
+     "opening single quote, attached to the next word",
+     "`{'^}`",
+     "[[SKW-T]] [[SKW-TS]]"
+    ],
+    [
+     "closing single quote, carries the pending capital",
+     "`{^~\\|'}`",
+     "[[AE]]"
+    ],
+    [
+     "opening single quote, carries the pending capital",
+     "`{~\\|'^}`",
+     "[[A*E]]"
+    ],
+    [
+     "closing double quote",
+     "`{^\"}`",
+     "[[KR*GS]]"
+    ],
+    [
+     "closing double quote, carries the pending capital",
+     "`{^~\\|\"}`",
+     "[[KR-GS]]"
+    ],
+    [
+     "opening double quote, carries the pending capital",
+     "`{~\\|\"^}`",
+     "[[KW-GS]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Parentheses, brackets and braces"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Types",
+    "Plover code",
+    "Strokes"
+   ],
+   "rows": [
+    [
+     "`(` glued on both sides",
+     "`{^}({^}`",
+     "[[P*PB]]"
+    ],
+    [
+     "`)` glued on both sides",
+     "`{^}){^}`",
+     "[[P*PBT]]"
+    ],
+    [
+     "`(` attached to the next word",
+     "`{(^}`",
+     "[[STPH-FPLTS]]"
+    ],
+    [
+     "`)` attached to the previous word",
+     "`{^)}`",
+     "[[STPH*FPLTS]]"
+    ],
+    [
+     "`(` attached to the next word, carries the pending capital",
+     "`{~\\|(^}`",
+     "[[PREPB]]"
+    ],
+    [
+     "`)` attached to the previous word, carries the pending capital",
+     "`{^~\\|)}`",
+     "[[PR*EPB]]"
+    ],
+    [
+     "`[` glued on both sides",
+     "`{^[^}`",
+     "[[PWR*BGS]] [[PWR-BG]]"
+    ],
+    [
+     "`[` attached to the next word",
+     "`{[^}`",
+     "[[PWR-BGT]]"
+    ],
+    [
+     "`]` attached to the previous word",
+     "`{^]}`",
+     "[[PWR*BGT]]"
+    ],
+    [
+     "`]` glued on both sides",
+     "`{^]^}`",
+     "[[PWR-BGS]]"
+    ],
+    [
+     "`}` attached to the previous word",
+     "`{^}\\}`",
+     "[[TPR*BGT]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Hyphens, dashes and ellipsis"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Types",
+    "Plover code",
+    "Strokes",
+    "Example"
+   ],
+   "rows": [
+    [
+     "hyphen joining the words either side, no spaces",
+     "`{^-^}`",
+     "[[H-PB]] [[H-B]] [[H*FPB]] [[HA*EPB]]",
+     "[[well|WEL]] [[H-PB]] [[known|TPHOED]] types `well-known`"
+    ],
+    [
+     "hyphen with a space on each side",
+     "`-`",
+     "[[H*PB]]",
+     "`test - test`"
+    ],
+    [
+     "hyphen glued to the next word, space before kept",
+     "`{-^}`",
+     "[[H-PBS]] [[HAO*EPB]]",
+     "`ls` [[H-PBS]] `a` types `ls -a`"
+    ],
+    [
+     "two hyphens glued to the next word",
+     "`{--^}`",
+     "[[H-PBZ]]",
+     "`--verbose`"
+    ],
+    [
+     "hyphen glued to the previous word, capitalizes the next word",
+     "`{^-}{-|}`",
+     "[[PWHR-T]]",
+     ""
+    ],
+    [
+     "en dash glued both sides",
+     "`{^}–{^}`",
+     "[[TPH-RB]]",
+     "`2020–2024`"
+    ],
+    [
+     "en dash with a space on each side",
+     "`–`",
+     "[[TPH*RB]]",
+     "`a – b`"
+    ],
+    [
+     "em dash glued both sides",
+     "`{^}—{^}`",
+     "[[PH-RB]]",
+     ""
+    ],
+    [
+     "ellipsis `...` attached to the previous word",
+     "`{^...}`",
+     "[[HR-PS]] [[SW-BS]]",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Symbols with their own stroke"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Types",
+    "Plover code",
+    "Strokes"
+   ],
+   "rows": [
+    [
+     "`@` glued both sides",
+     "`{^@^}`",
+     "[[KWRAT]]"
+    ],
+    [
+     "`=` glued both sides",
+     "`{^=^}`",
+     "[[KWA*LS]]"
+    ],
+    [
+     "`%` attached to the previous word",
+     "`{^%}`",
+     "[[PHERS]]"
+    ],
+    [
+     "`%` glued",
+     "`{&%}`",
+     "[[P*ERS]]"
+    ],
+    [
+     "`+` attached to the previous word",
+     "`{^+}`",
+     "[[PHR*US]]"
+    ],
+    [
+     "`++` glued",
+     "`{&++}`",
+     "[[PHR*SZ]]"
+    ],
+    [
+     "`&` glued",
+     "`{&&}`",
+     "[[SKP*]]"
+    ],
+    [
+     "`*` glued both sides",
+     "`{^*^}`",
+     "[[STA*R]]"
+    ],
+    [
+     "`/` glued both sides",
+     "`{^/^}`",
+     "[[OEU]] [[-RBGS/OEU]]"
+    ],
+    [
+     "`\\` glued both sides",
+     "`{^\\^}`",
+     "[[SPWHRAERB]]"
+    ],
+    [
+     "`\\|` glued both sides",
+     "`{^\\|^}`",
+     "[[PAO*EUP]]"
+    ],
+    [
+     "`_` glued both sides",
+     "`{^_^}`",
+     "[[R*UPBD]] [[RUPBD]]"
+    ],
+    [
+     "`^` glued both sides",
+     "`{^}^{^}`",
+     "[[KA*RT]] [[KR-RT]]"
+    ],
+    [
+     "`~` attached to the previous word",
+     "`{^~}`",
+     "[[T*LD]]"
+    ],
+    [
+     "`>` glued both sides",
+     "`{^>^}`",
+     "[[A*EPBG]] [[A*EPBGT]]"
+    ],
+    [
+     "`<` glued both sides",
+     "`{^<^}`",
+     "[[AEPBG]] [[AEPBGT]]"
+    ],
+    [
+     "backtick attached to the previous word, carries the pending capital",
+     "`{^~\\|`}`",
+     "[[TR*RL]]"
+    ],
+    [
+     "backtick attached to the next word, carries the pending capital",
+     "`{~\\|`^}`",
+     "[[TR-RL]]"
+    ],
+    [
+     "trademark sign, attached",
+     "`{^™}`",
+     "[[TR*PL]]"
+    ],
+    [
+     "degree sign, glued",
+     "`{&°}`",
+     "[[TKPWRAO*E]]"
+    ],
+    [
+     "superscript three, glued",
+     "`{&³}`",
+     "[[KAO*UBD]]"
+    ],
+    [
+     "superscript two, attached",
+     "`{^²}`",
+     "[[SKWA*EURD]]"
+    ],
+    [
+     "a single space, glued both sides (no automatic spacing)",
+     "`{^ ^}`",
+     "[[SP]] [[S-P]] [[S-PS]] [[S*PS]] [[SP*S]]"
+    ],
+    [
+     "no space before the next word (deletes the automatic space)",
+     "`{^^}`",
+     "[[TK-LS]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Capitalizing the next word"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Sends",
+    "Effect"
+   ],
+   "rows": [
+    [
+     "[[KPA]]",
+     "`{}{-\\|}`",
+     "capitalize the next word, keep the space"
+    ],
+    [
+     "[[KPA*]]",
+     "`{^}{-\\|}`",
+     "the same, glued to the word before (no space)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Capitalizing a name is how proper nouns are written: lyk never makes a special outline for a name. The name types as its ordinary phonetic outline, capitalized by `KPA` before it. To capitalize or upper-case a word already written, or to write the next word in capitals, see [Commands](#/ref/punctuation/commands)."
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "To undo a capital struck by mistake (`KPA` or `KPA*`), strike `*` to undo the stroke, or [[HRO*ER]] to keep the stroke and lowercase the next word."
+  },
+  {
+   "t": "h",
+   "x": "Glued fingerspelled letters"
+  },
+  {
+   "t": "p",
+   "x": "The other 52 strokes in `punctuation.json` are the glued letters `A*` a, `A*P` A, and so on for the whole alphabet. They are listed in full, with the rule, on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)."
+  },
+  {
+   "t": "h",
+   "x": "Commands"
+  },
+  {
+   "t": "p",
+   "x": "70 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word."
+  },
+  {
+   "t": "h3",
+   "x": "Cursor and selection"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Group",
+    "Strokes",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "Cursor",
+     "`STPH-R` `-B` `-P` `-G`: [[STPH-R]] [[STPH-B]] [[STPH-P]] [[STPH-G]]",
+     "Left, Down, Up, Right"
+    ],
+    [
+     "Word at a time",
+     "[[STPH-RB]] [[STPH-BG]]",
+     "Ctrl+Left, Ctrl+Right"
+    ],
+    [
+     "Line and page",
+     "[[STPH-FR]] [[STPH-LG]] [[STPH-RPG]] [[STPH-FBL]]",
+     "Home, End, Page Up, Page Down"
+    ],
+    [
+     "Select: the same strokes with a star",
+     "[[STPH*R]] [[STPH*B]] [[STPH*P]] [[STPH*G]]",
+     "Shift+Left, Shift+Down, Shift+Up, Shift+Right"
+    ],
+    [
+     "Select by word",
+     "[[STPH*RB]] [[STPH*BG]]",
+     "Ctrl+Shift+Left, Ctrl+Shift+Right"
+    ],
+    [
+     "Select to line or page edge",
+     "[[STPH*FR]] [[STPH*LG]] [[STPH*RPG]] [[STPH*FBL]]",
+     "Shift+Home, Shift+End, Shift+Page Up, Shift+Page Down"
+    ],
+    [
+     "Start and end of the text",
+     "[[SH-FT]] [[SR-RS]]",
+     "Ctrl+Home, Ctrl+End"
+    ],
+    [
+     "Switch apps",
+     "[[TPW-R]] [[TPW-G]] [[TA*BT]]",
+     "Alt+Left, Alt+Right, Alt+Tab Tab"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Editing keys and line breaks"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Group",
+    "Strokes",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "Delete",
+     "[[TK*EL]]",
+     "Delete"
+    ],
+    [
+     "Backspace",
+     "[[PW*FP]] [[PW-FP]]",
+     "Backspace"
+    ],
+    [
+     "Tab",
+     "[[TA*B]]",
+     "Tab"
+    ],
+    [
+     "Return",
+     "[[SKW-BGS]] [[R*R]]",
+     "Return key"
+    ],
+    [
+     "Paragraph break",
+     "[[SKWRAEURBGS]] [[SKWRAURBGS]]",
+     "`{^\\n\\n^}{-\\|}`: a blank line, next word capitalized"
+    ],
+    [
+     "Line break in the text",
+     "[[R-R]]",
+     "`{^~\\|\\n^}`: a newline in the text itself, not the Return key"
+    ],
+    [
+     "Escape",
+     "[[TPEFBG]] [[EFBG]]",
+     "Escape"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Function keys"
+  },
+  {
+   "t": "p",
+   "x": "Lapwing's strokes: `TPW` is \"f\", then the number's own sound."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Key",
+    "Stroke",
+    "Key",
+    "Stroke",
+    "Key",
+    "Stroke"
+   ],
+   "rows": [
+    [
+     "F1",
+     "[[TPWUPB]]",
+     "F5",
+     "[[TPWAOEUF]]",
+     "F9",
+     "[[TPWAOEUPB]]"
+    ],
+    [
+     "F2",
+     "[[TPWO]]",
+     "F6",
+     "[[TPWEUBGS]]",
+     "F10",
+     "[[TPWEPB]]"
+    ],
+    [
+     "F3",
+     "[[TPWAOE]]",
+     "F7",
+     "[[TPWEFPB]]",
+     "F11",
+     "[[TPHREFPB]]"
+    ],
+    [
+     "F4",
+     "[[TPWOUR]]",
+     "F8",
+     "[[TPWAEUT]]",
+     "F12",
+     "[[TPWEFL]]"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Shortcuts"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Group",
+    "Strokes",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "Super shortcuts",
+     "[[KPH*F]] [[KPH*BG]] [[KPH*T]] [[KPH-BG]]",
+     "Super+V, Super+K, Super+W, Super+C"
+    ],
+    [
+     "Ctrl shortcuts",
+     "[[KHR*F]] [[KHR*BG]] [[KHR*T]] [[KHR-BG]]",
+     "Ctrl+V, Ctrl+K, Ctrl+W, Ctrl+C"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Any other Ctrl, Alt, Super or Shift chord is on [the fingerspelling page](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary)."
+  },
+  {
+   "t": "h3",
+   "x": "Case and spacing commands"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Group",
+    "Strokes",
+    "Sends",
+    "Example"
+   ],
+   "rows": [
+    [
+     "The next word in capitals",
+     "[[KPA*L]]",
+     "`{<}`",
+     "`KPA*L` [[pay|PAEU]] types `PAY`"
+    ],
+    [
+     "Capitalize the word just written",
+     "[[KPAD]] [[KA*PD]]",
+     "`{*-\\|}`",
+     "[[pay|PAEU]] `KPAD` types `Pay`"
+    ],
+    [
+     "The word just written in capitals",
+     "[[*UPD]]",
+     "`{*<}`",
+     "[[pay|PAEU]] `*UPD` types `PAY`"
+    ],
+    [
+     "The next word starts lowercase",
+     "[[HRO*ER]]",
+     "`{:case:lower_first_char}`",
+     "after `KPA` or a sentence end, cancels the capital"
+    ],
+    [
+     "The word just written starts lowercase",
+     "[[HRO*ERD]]",
+     "`{:retro_case:lower_first_char}`",
+     "`Pay` `HRO*ERD` types `pay`"
+    ],
+    [
+     "Put the space back",
+     "[[S-PD]]",
+     "`{*?}`",
+     "retroactively inserts a space into the word just written: `cornet` `S-PD` types `core net`"
+    ],
+    [
+     "No space before the next word",
+     "[[SP-S]] [[TK-LS]]",
+     "`{^^}`",
+     "[[how|HOU]] `SP-S` [[ever|-FR]] types `however`"
+    ],
+    [
+     "Remove the last space",
+     "[[SP-LS]]",
+     "`{*!}` (the file also lists the bare key `^` for it)",
+     "[[more|PHOR]] [[over|AUFR]] `SP-LS` types `moreover`"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Plover control"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Strokes",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "[[PHRO*F]]",
+     "Suspend Plover"
+    ],
+    [
+     "[[PHRO*PB]]",
+     "Resume Plover"
+    ],
+    [
+     "[[PHROLG]]",
+     "Toggle Plover"
+    ],
+    [
+     "[[TKUPT]]",
+     "Plover's add-translation dialog"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "These are reserved like any command: a word can never take a stroke the steno engine itself depends on."
+  }
+ ]
+}

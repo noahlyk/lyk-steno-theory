@@ -10,6 +10,7 @@ import * as P from './js/trainer.js';
 import { needsHyphen } from './js/steno.js';
 import { decodeReport, REPORT_ID } from './js/hid.js';
 import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
+import { auxChoices, phraseText } from './js/grammar.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
@@ -24,18 +25,23 @@ for (const s of ['KAT', 'TKOG', '-Z', '+-Z', '+AOE', 'STKPW', 'PWA*R', 'TPH-GS',
 for (const bad of ['KTA', 'ZZ', 'AA', '-']) if (parseStroke(bad) && bad !== '-') fail(`should not parse: ${bad}`);
 
 const words = read('data/words.json').words;
+const grammar = read('data/grammar.json');
 const index = read('lessons/index.json');
 const listed = index.parts.flatMap((p) => p.lessons.map((l) => l.id));
 const files = readdirSync(join(root, 'lessons')).filter((f) => /^\d.*\.json$/.test(f)).map((f) => f.replace('.json', ''));
 for (const id of files) if (!listed.includes(id)) fail(`lesson ${id} is not in the index`);
 for (const id of listed) if (!files.includes(id)) fail(`index lists ${id} but there is no file`);
 
-const KNOWN = new Set(['h', 'p', 'list', 'note', 'table', 'explore', 'try', 'quiz', 'join']);
+const KNOWN = new Set(['h', 'h3', 'p', 'list', 'note', 'table', 'explore', 'try', 'quiz', 'join', 'pre', 'grammar']);
 const TOKEN = /\[\[(.+?)\]\]/g;
 let strokes = 0;
 
 function claim(where, word, outline) {
   strokes += 1;
+  if (word?.startsWith('=')) { // a phrasing-grammar stroke: checked against grammar.json (tools/site_data.py checks that against the generator)
+    if (grammar.entries[word.slice(1)] !== outline) fail(`${where}: grammar phrase ${word.slice(1)} is not ${outline}`);
+    return;
+  }
   if (!parseOutline(outline)) fail(`${where}: not a valid outline: ${outline}`);
   if (word && words[word] && !words[word].includes(outline)) {
     // the lookup keeps the fastest few outlines; the full check is tools/site_data.py
@@ -71,6 +77,7 @@ for (const id of listed) {
 
 function drillItems(id, d) {
   if (!d.items?.length) fail(`${id}: empty drill`);
+  if (d.check === 'grammar') for (const [phrase, o] of d.items) if (grammar.entries[phrase] !== o) fail(`${id}: grammar drill: ${phrase} is not ${o}`);
   for (const item of d.items) {
     const outs = Array.isArray(item) ? item.slice(1) : item.o;
     if (!outs.length) fail(`${id}: drill item without an outline`);
@@ -79,6 +86,58 @@ function drillItems(id, d) {
       if (!parseOutline(o)) fail(`${id}: drill outline does not parse: ${o}`);
     }
   }
+}
+
+// the Reference area: every page in the index has a file and the other way round, and uses only known blocks
+const ref = read('reference/index.json');
+const refListed = ref.sections.flatMap((s) => s.pages.map((p) => p.id));
+const refFiles = readdirSync(join(root, 'reference')).filter((f) => f.endsWith('.json') && f !== 'index.json').map((f) => f.replace('.json', ''));
+for (const id of refFiles) if (!refListed.includes(id)) fail(`reference page ${id} is not in the index`);
+for (const id of refListed) if (!refFiles.includes(id)) fail(`reference index lists ${id} but there is no file`);
+if (new Set(refListed).size !== refListed.length) fail('reference index lists a page twice');
+const anchors = new Map(); // page -> heading anchors, so a link to #/ref/page/anchor can be checked
+const slug = (text) => text.toLowerCase().replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+for (const id of refListed.filter((i) => refFiles.includes(i))) {
+  const page = read(`reference/${id}.json`);
+  if (page.id !== id) fail(`reference/${id}: id says ${page.id}`);
+  if (!page.title || !page.blocks?.length) fail(`reference/${id}: needs a title and blocks`);
+  if (page.drill) fail(`reference/${id}: a reference page has no drill`);
+  const here = new Set();
+  for (const b of page.blocks) {
+    if (!KNOWN.has(b.t)) fail(`reference/${id}: unknown block ${b.t}`);
+    if (b.t === 'h' || b.t === 'h3') { if (here.has(slug(b.x))) fail(`reference/${id}: two headings make the anchor ${slug(b.x)}`); here.add(slug(b.x)); }
+    scan(`reference/${id}`, b);
+    if (b.t === 'try') drillItems(id, b);
+    if (b.t === 'quiz' && (b.a < 0 || b.a >= b.opts.length)) fail(`reference/${id}: quiz answer out of range`);
+  }
+  anchors.set(id, here);
+}
+// links between pages: (#/ref/page) and (#/ref/page/anchor), in lessons and in the reference
+{
+  const texts = [];
+  const gather = (where, v) => { if (typeof v === 'string') texts.push([where, v]); else if (Array.isArray(v)) v.forEach((x) => gather(where, x)); else if (v && typeof v === 'object') Object.values(v).forEach((x) => gather(where, x)); };
+  for (const id of listed) gather(id, read(`lessons/${id}.json`));
+  for (const id of refFiles) gather(`reference/${id}`, read(`reference/${id}.json`));
+  for (const [where, t] of texts) for (const m of t.matchAll(/#\/ref\/([\w-]+)(?:\/([\w-]+))?/g)) {
+    if (!anchors.has(m[1])) fail(`${where}: link to missing reference page ${m[1]}`);
+    else if (m[2] && !anchors.get(m[1]).has(m[2])) fail(`${where}: link to missing heading ${m[1]}/${m[2]}`);
+  }
+}
+
+// the phrasing grammar: the composer's text for every choice is a phrase the generator writes, and every phrase the
+// generator writes is reachable from the composer
+{
+  const reached = new Set();
+  const noneWithNo = [];
+  const verbs = [null, ...grammar.special.map((s) => s[0]), ...grammar.verbs.map((v) => v[0])];
+  for (const who of grammar.starters) for (const [keys, past] of auxChoices(grammar)) for (const neg of [false, true]) for (const verb of verbs) {
+    const text = phraseText(grammar, who, keys, past, neg, verb);
+    if (text === null) continue;
+    if (!(text in grammar.entries)) fail(`grammar: the composer writes "${text}" but the generator has no stroke for it`);
+    reached.add(text);
+  }
+  for (const text of Object.keys(grammar.entries)) if (!reached.has(text)) noneWithNo.push(text);
+  if (noneWithNo.length) fail(`grammar: ${noneWithNo.length} generator phrases the composer cannot make, e.g. ${noneWithNo.slice(0, 3).join(', ')}`);
 }
 
 // "Learn the keys": every key-unlock stage has enough words for a lesson, and a perfect typist
@@ -204,4 +263,4 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`ok: ${listed.length} lessons, ${strokes} strokes checked`);
+console.log(`ok: ${listed.length} lessons, ${refListed.length} reference pages, ${strokes} strokes checked`);

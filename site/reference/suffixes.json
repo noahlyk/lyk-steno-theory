@@ -1,0 +1,415 @@
+{
+ "id": "suffixes",
+ "title": "The suffix table",
+ "goal": "Every standalone ending stroke, what it means, how it is built, and how endings attach to a word you already know.",
+ "blocks": [
+  {
+   "t": "p",
+   "x": "Source of truth: `rules/suffixes.toml`. A **standalone suffix stroke** is a continuation stroke (join key held) that stands for an ending on its own. Strike any stem, then the ending's stroke with `+` held: [[looks|HRAOBG/+-S]] is *look* then [[+-S]]. For how to use the endings, see [lesson 10](#/lesson/10-endings) and [The join key](#/ref/join-key)."
+  },
+  {
+   "t": "h",
+   "x": "The rule"
+  },
+  {
+   "t": "p",
+   "x": "A suffix is a syllable like any other. It is written by running its own sounds through the same onset, vowel, coda, coda-cluster and vowel-coda tables every syllable uses (see [Phonetic rules](#/ref/phonetic-rules)); no key combination is invented for the suffix table. Then:"
+  },
+  {
+   "t": "list",
+   "ordered": true,
+   "items": [
+    "**Drop the vowel** when it is one of the reducible vowels (`AH`, `IH`, `ER`, the *-ly* spelling of `IY`, the *-ed* spelling of `OW`), **as long as the bare consonants still tell this suffix apart from every other suffix stroke.** Bare consonants read the same whether they came from a word's own ending or a suffix struck alone.",
+    "**Keep the vowel** when dropping it would land on a stroke another suffix already holds (the *kept* table below).",
+    "A vowel outside the reducible list (`AY`, `UH`, `AO`, plain `IY`, `EY`, `AA`) never had anything to drop, so it stays.",
+    "A suffix that is really two syllables is two continuation strokes, each built by the same rule."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Bare-consonant suffixes"
+  },
+  {
+   "t": "p",
+   "x": "The vowel is dropped; only consonant keys remain. 22 strokes."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Suffix",
+    "Built from",
+    "Example"
+   ],
+   "rows": [
+    [
+     "[[+-G]]",
+     "-ing",
+     "G",
+     "[[walking|WAUBG/+-G]]"
+    ],
+    [
+     "[[+-D]]",
+     "-ed",
+     "D",
+     "[[played|PHRAEU/+-D]]"
+    ],
+    [
+     "[[+-S]]",
+     "-s",
+     "S (unvoiced)",
+     "[[looks|HRAOBG/+-S]]"
+    ],
+    [
+     "[[+-Z]]",
+     "-s",
+     "Z (voiced; the same written suffix as `+-S`, a second stroke for whichever sound the word ends in)",
+     "[[dogs|TKOG/+-Z]]"
+    ],
+    [
+     "[[+-L]]",
+     "-ly",
+     "L",
+     "[[kindly|KAOEUPBD/+-L]]"
+    ],
+    [
+     "[[+-R]]",
+     "-er, -or",
+     "R",
+     "[[sailor|SAEUL/+-R]]"
+    ],
+    [
+     "[[+-PB]]",
+     "-en",
+     "N",
+     "[[golden|TKPWOELD/+-PB]]"
+    ],
+    [
+     "[[+-FT]]",
+     "-est",
+     "S T",
+     "[[fastest|TPAS/+T-FT]]"
+    ],
+    [
+     "[[+-PBS]]",
+     "-ness",
+     "N S",
+     "[[darkness|ARBG/+-PBS]]"
+    ],
+    [
+     "[[+-PLT]]",
+     "-ment",
+     "M T",
+     "[[payment|PAEU/+-PLT]]"
+    ],
+    [
+     "[[+-GS]]",
+     "-tion",
+     "SH N",
+     "[[nation|TPHAEU/+-GS]]"
+    ],
+    [
+     "[[+-BL]]",
+     "-able, -ible",
+     "B L",
+     "[[readable|RAOED/+-BL]]"
+    ],
+    [
+     "[[+-FL]]",
+     "-ful",
+     "F L",
+     "[[careful|KAEUR/+-FL]]"
+    ],
+    [
+     "[[+-LS]]",
+     "-less",
+     "L S",
+     "[[careless|KAEUR/+-LS]]"
+    ],
+    [
+     "[[+-PBT]]",
+     "-ent",
+     "N T (distinct from *-ment*'s `+-PLT`)",
+     "[[different|TKEUFR/+-PBT]], [[silent|SEUL/+-PBT]]"
+    ],
+    [
+     "[[+-LT]]",
+     "-let",
+     "L T",
+     "*booklet* [[PWAOBG/+-LT]], *piglet* [[PEUG/+-LT]]"
+    ],
+    [
+     "[[+-PBTS]]",
+     "-'s",
+     "`-PBT` (the apostrophe stroke) plus S, joined to any word: *temptation's*, *John's*, *it's*. A plural possessive (*dogs'*) is the plural, then `-PBT` alone. The same chord is also the plural of *-nt* words.",
+     "*presidents* [[PREFD/+-PBTS]]"
+    ],
+    [
+     "[[+*T]]",
+     "-th",
+     "the `*T` coda: *width*, *warmth*, *fourth*",
+     "[[warmth|W/+ARPL/+*T]]"
+    ],
+    [
+     "[[+-FPL]]",
+     "-some",
+     "S M as the `-FPL` cluster (the same one Plover's F-insertion uses, e.g. *lesson* `HR-FPB`): *awesome*, *lonesome*",
+     "[[awesome|AU/+-FPL]], [[handsome|HAPB/+-FPL]]"
+    ],
+    [
+     "[[+-BG]]",
+     "-ic",
+     "K; no onset of its own, the stem always keeps the consonant before it: *comic*, *tox-ic*",
+     "[[basic|PWAS/+-BG]], [[music|PHUZ/+-BG]]"
+    ],
+    [
+     "[[+T-F]]",
+     "-tive",
+     "T onset plus the reduced IH + V `-F` of *-ive*",
+     "[[positive|POZ/+T-F]]"
+    ],
+    [
+     "[[+-RB]]",
+     "-ish",
+     "IH + SH reduced to the `-RB` coda",
+     "[[childish|AOEULD/+-RB]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Suffixes that kept their vowel"
+  },
+  {
+   "t": "p",
+   "x": "Dropping the vowel would land on a stroke from the table above, so the vowel stays to tell them apart."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Suffix",
+    "Why the vowel stayed",
+    "Example"
+   ],
+   "rows": [
+    [
+     "[[+US]]",
+     "-ous",
+     "reduced it would be bare S, `+-S`'s stroke",
+     "[[famous|TPAEUPL/+US]]"
+    ],
+    [
+     "[[+EUFT]]",
+     "-ist",
+     "reduced it would be S T, `+-FT`'s stroke (*-est*)",
+     "[[artist|ART/+EUFT]]"
+    ],
+    [
+     "[[+UPBS]]",
+     "-ance, -ence",
+     "reduced it would be N S, `+-PBS`'s stroke (*-ness*); the same unstressed sound covers both spellings",
+     "[[presence|PREZ/+UPBS]]"
+    ],
+    [
+     "[[+UL]]",
+     "-al",
+     "reduced it would be bare L, `+-L`'s stroke (*-ly*). No onset of its own either: *national* is `TPH-GS/+UL`, after *-tion* has taken the N",
+     "[[emotional|E/+PHOEGS/+UL]], [[national|TPH-GS/+UL]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Suffixes with a vowel that was never reducible"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Suffix",
+    "Note",
+    "Example"
+   ],
+   "rows": [
+    [
+     "[[+-F]]",
+     "-ive",
+     "IH + V reduced to bare `-F`, unclaimed",
+     "[[active|ABGT/+-F]]"
+    ],
+    [
+     "[[+AOEUZ]]",
+     "-ize",
+     "AY is outside the reducible vowels",
+     "[[modernize|PHOD/+-RPB/+AOEUZ]]"
+    ],
+    [
+     "[[+AEUGS]]",
+     "-ation",
+     "EY is outside the reducible vowels, so it stays; SH N is *-tion*'s `-GS`",
+     "[[information|EUPB/+TPORPL/+AEUGS]], *relaxation* [[RAOE/+HRABGS/+AEUGS]]"
+    ],
+    [
+     "[[+SH-P]]",
+     "-ship",
+     "SH + IH + P reduced to bare `SH-P`, unclaimed",
+     "[[friendship|TPREPBD/+SH-P]]"
+    ],
+    [
+     "[[+HAOD]]",
+     "-hood",
+     "UH is outside the reducible vowels",
+     "[[childhood|AOEULD/+HAOD]]"
+    ],
+    [
+     "[[+WORD]]",
+     "-ward",
+     "AO is outside the reducible vowels; the chord happens to spell \"WORD\"",
+     "[[homeward|HOEPL/+WORD]]"
+    ],
+    [
+     "[[+AOE]]",
+     "-y",
+     "plain IY kept: only the *-ly* spelling of IY is reducible",
+     "[[rainy|RAEUPB/+AOE]]"
+    ],
+    [
+     "[[+-PBLG]]",
+     "-age",
+     "IH + JH reduced to bare `-PBLG`, the cluster *village* already ends in",
+     "[[package|PABG/+-PBLG]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Two-syllable suffixes"
+  },
+  {
+   "t": "p",
+   "x": "Two continuation strokes, struck one after the other. 7 suffixes."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Strokes",
+    "Suffix",
+    "Note",
+    "Example"
+   ],
+   "rows": [
+    [
+     "[[+EUZ/+-PL]]",
+     "-ism",
+     "IH + Z kept (reduced, bare Z is `+-Z`'s stroke), then AH + M reduced to bare `-PL`",
+     "[[tourism|TUR/+EUZ/+-PL]], *cubism* [[KUB/+EUZ/+-PL]]"
+    ],
+    [
+     "[[+-R/+AOE]]",
+     "-ary, -ery, -ory",
+     "exactly the *-er* stroke then the *-y* stroke",
+     "[[dictionary|TKEUBG/+-GS/+-R/+AOE]]"
+    ],
+    [
+     "[[+-BG/+UL]]",
+     "-ical",
+     "exactly *-ic* then *-al*",
+     "[[chemical|KHEPL/+-BG/+UL]]"
+    ],
+    [
+     "[[+OL/+SKWREU]]",
+     "-logy",
+     "a stressed syllable keeps its vowel (AA is never reducible; coda L stays) then *-gy* (JH + the plain IY of *-y*): *bi-ology*, *ge-ology*, *psych-ology*",
+     "[[biology|PWAOEU/+OL/+SKWREU]], [[psychology|SKOE/+OL/+SKWREU]]"
+    ],
+    [
+     "[[+U/+TEU]]",
+     "-ity, -ety",
+     "a bare AH with no consonants (keeps its vowel out of necessity), then T + the *-y* vowel kept. Plain *-ty* with no leading schwa is the second stroke `+TEU` alone",
+     "[[clarity|KHRA/+-R/+U/+TEU]], [[society|SO/+SAOEU/+U/+TEU]]"
+    ],
+    [
+     "[[+U/+SEU]]",
+     "-cy, -sy",
+     "the same bare-AH first stroke as *-ity* (two suffixes may share an opening stroke; the whole outline stays distinct), then S + the *-y* vowel kept",
+     "[[policy|PO/+-L/+U/+SEU]], [[legacy|HRE/+-G/+U/+SEU]]"
+    ],
+    [
+     "[[+U/+TPAOEU]]",
+     "-ify, -fy",
+     "the same bare-AH first stroke, then F + AY kept (AY never reduces, like *-ize*)",
+     "[[clarify|KHRA/+-R/+U/+TPAOEU]], [[notify|OT/+U/+TPAOEU]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Endings built from table strokes"
+  },
+  {
+   "t": "p",
+   "x": "Some common endings need no row of their own, because they are strokes from the tables above struck in sequence."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**-ious, -eous**: the extra vowel before *-ous* is the plain IY that *-y* uses, so the whole ending is [[+AOE/+US]] struck in sequence: [[serious|S/+AOER/+AOE/+US]], [[various|SR/+AEUR/+AOE/+US]]. With no extra vowel (*gorgeous*, *courageous*, *religious*) it is plain [[+US]]: [[courageous|K-R/+AEUPBLG/+US]].",
+    "**-or, -ible** are the same sounds as *-er* and *-able*, so they are the same strokes ([[+-R]], [[+-BL]]).",
+    "**-ence** shares [[+UPBS]] with *-ance*."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Not in the table: -graphy"
+  },
+  {
+   "t": "p",
+   "x": "**-graphy / -ography** (*biography*, *photography*, *geography*, *calligraphy*) has no standalone stroke. The schwa before *-graphy* takes a vowel key (`AH` or the spelled `AH.o` variant) that depends on incidental spelling elsewhere in the word, not on the suffix. A standalone stroke cannot know that, so these words stay per-word through the normal rules."
+  },
+  {
+   "t": "h",
+   "x": "A suffix stroke always reads right"
+  },
+  {
+   "t": "p",
+   "x": "Every single-stroke suffix chord above is known to the reading fallback unconditionally, whether or not the dictionary has an entry: a continuation stroke that misses the dictionary is looked up in this table before the generic onset/vowel/coda read-back runs. So `STKPW/+-D` (*z* has no dictionary entry) still reads as *zed*, not \"zd\"."
+  },
+  {
+   "t": "p",
+   "x": "The stem half gets the matching guarantee: a run's first stroke, if it is already a placed single-stroke word, reads as that word's real text. `SKP/+-R` is *and* plus *-er*, read as \"ander\", not raw consonants plus a suffix."
+  },
+  {
+   "t": "p",
+   "x": "The two-stroke suffixes are read the same way: a joined stroke and the one after it that together form one of them (`+EUZ/+-PL`) read as that suffix (*ism*) before either stroke is sounded out alone. So `KUB/+EUZ/+-PL` reads \"cubism\" with or without a dictionary entry. See [the fallback](#/ref/fallback)."
+  },
+  {
+   "t": "h",
+   "x": "Backup stem-plus-suffix entries"
+  },
+  {
+   "t": "p",
+   "x": "The table also feeds the dictionary's backup entries (full rules in [Syllables and folding](#/ref/syllables)). Wherever a word's trailing syllable can be struck as a standalone continuation stroke and the sounds before it exactly match another placed word, the word gets a second entry: the stem's outline plus the suffix. *build* plus [[+-G]] also reaches *building*, whether or not that is *building*'s cheapest outline."
+  },
+  {
+   "t": "list",
+   "items": [
+    "The pass is exhaustive and runs to a fixed point: every safe split is kept, and a backup can chain through another backup (*building* reaching *buildings* by adding [[+-S]] once *building* has an entry).",
+    "The two-syllable suffixes take part too, but are found by **spelling**, not by sound: a word ending in the suffix's spelling (*cubism* ending in \"ism\") has its stem looked up by spelling and the suffix's own two-stroke chord reused exactly. The reason is that the second syllable's onset sometimes migrates onto the first suffix stroke, which cannot be reproduced reliably from sound.",
+    "Results: *cubism* [[KUB/+EUZ/+-PL]], `trilogy` is `TRAOEU/+OL/+SKWREU`, [[chemical|KHEPL/+-BG/+UL]], `quantify` is `KWAPBT/+U/+TPAOEU`."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Which endings join a stem you already know"
+  },
+  {
+   "t": "p",
+   "x": "Every ending in this table that attaches to a whole word is also a **backup join**: a word that is a placed word's spelling plus the ending (a dropped *e*, a doubled consonant, *y* to *i* all allowed), and sounds like it, gets the stem's outline plus the ending's stroke as an extra entry. Examples: *fool* + [[+-RB]] for *foolish*, *art* + [[+EUFT]] for *artist*, *inform* + [[+AEUGS]] for *information*, *sail* + [[+-R]] for *sailor*, *sense* + [[+-BL]] for *sensible*."
+  },
+  {
+   "t": "p",
+   "x": "The endings that join this way: *-s*, *-ed*, *-ing*, *-er/-or*, *-est*, *-ly*, *-y*, *-en*, *-ness*, *-ment*, *-able/-ible*, *-ful*, *-less* (the first thirteen, which also shape a word family's one-stroke outline), then *-ship*, *-hood*, *-ward*, *-ation*, *-ism*, *-ist*, *-ity*, *-ize*, *-ous*, *-ish*, *-ive*, *-age*, *-ic*, *-al* (these only ever add a way in). See [Every way to join a word](#/ref/ways-to-join)."
+  }
+ ]
+}

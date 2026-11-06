@@ -15,7 +15,9 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 
 | | |
 |---|---|
-| `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 18 chapters in 5 parts (plus the optional chapter 0, Learn the keys). The only place lesson text lives. |
+| `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 20 chapters in 6 parts (plus the optional chapter 0, Learn the keys; chapters 19 and 20 are the phrasing grammar). The only place lesson text lives. |
+| `reference/index.json`, `reference/<id>.json` | The **Reference** area (`#/ref`): every rule, table and mechanism that is not a lesson, 23 pages in 6 sections (cheat sheet, how it works, the rules, briefs/phrases/suffixes, punctuation and letters, the project). The docs/ chapters and the Lyk Pipeline artifact live here now. Same blocks as a lesson, no drill; searchable (`js/reference.js`, also surfaced in Lookup); every heading is an anchor, `#/ref/<page>/<heading-slug>`. |
+| `data/grammar.json` | The phrasing grammar's parts and its 3,758 strokes, from `tools/phrasing_prototype.py`. **Generated.** `js/grammar.js` is the composer. |
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |
 | `data/engine.json`, `data/joins.json` | What the stroke engine reads: every outline of the dictionary (word -> outlines) plus the reserved strokes and suffixes, then the 12 cheapest join-built backups of each common word. About 1.2 MB gzipped, fetched when a drill starts. **Generated.** |
@@ -98,7 +100,7 @@ It is chapter 0 of the course and optional: it has an intro above the stream (`j
 
 A lesson is JSON: `id`, `title`, `goal`, `blocks`, and an optional `drill`.
 
-- Blocks: `h`, `p`, `list`, `note` (`kind`: `rule` or `warn`), `table`, `explore` (a free board),
+- Blocks: `h`, `h3`, `p`, `pre` (a formula or command kept as written), `grammar` (the phrasing composer), `list`, `note` (`kind`: `rule` or `warn`), `table`, `explore` (a free board),
   `try` (an inline drill), `quiz`, `join` (the stem-plus-ending builder).
 - Inline markup in any text: `[[word|OUTLINE]]` (a word and a stroke chip that lights the board),
   `[[OUTLINE]]` (a chip only), `` `code` ``, `**bold**`, `{{italic word}}`, `[text](https://...)`.
@@ -107,6 +109,12 @@ A lesson is JSON: `id`, `title`, `goal`, `blocks`, and an optional `drill`.
   dictionary's own text (punctuation, commands). `check: "none"` skips the dictionary check for
   sound and key drills. `notation: true` makes the prompt a stroke drawn as written (`PHAP`, in the coloured outline style) and
   reveals the word it makes (the item's `w`) on a hit.
+
+`[[=phrase|OUTLINE]]` (and a drill with `check: "grammar"`) marks a phrasing-grammar stroke: it is checked against the generator's prototype, not the dictionary, and drawn dashed. Internal links are `[text](#/ref/page/anchor)` and `[text](#/lesson/id)`; `check.mjs` verifies them.
+
+## Writing a reference page
+
+Same JSON and markup as a lesson (`id`, `title`, `goal`, `blocks`; no drill). It must be complete and concise: every rule, table row and exact outline, no history or justification. State a word's outline as `[[word|OUTLINE]]` so `tools/site_data.py` checks it against `out/lyk`; use `[[OUTLINE]]` for patterns and suffix strokes. A page must be listed in `reference/index.json`. **Docs outrank code**: a change to `rules/*.toml` or `src/*.rs` that changes what a word strokes as, what a brief does or how candidates are picked lands with the matching Reference page edit in the same commit.
 
 Keep a lesson short: one idea per heading, tables over paragraphs, and every outline a real one.
 

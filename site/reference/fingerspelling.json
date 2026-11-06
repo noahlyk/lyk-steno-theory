@@ -1,0 +1,926 @@
+{
+ "id": "fingerspelling",
+ "title": "Fingerspelling, numbers and modifiers",
+ "goal": "Spell any word letter by letter, press Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols, and know the rule that generates all 5,475 modifier strokes.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "Two systems"
+  },
+  {
+   "t": "p",
+   "x": "There are two fingerspelling systems, for two different jobs:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "System",
+    "For",
+    "Strokes",
+    "Where"
+   ],
+   "rows": [
+    [
+     "Glued letters",
+     "spelling a name, acronym or any word the dictionary lacks, in the text",
+     "a letter chord plus `*` (52 strokes)",
+     "`rules/reserved/punctuation.json`"
+    ],
+    [
+     "Modifier chords ('Emily's' dictionary)",
+     "OS key presses: Ctrl+C, Alt+Tab, Shift+B, F-keys, arrows, media keys",
+     "a chord plus modifier keys plus the ender `LGTS` (5,475 strokes)",
+     "`rules/reserved/emilys-modifiers.py` and `.json`"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Both are reserved ahead of every word ([reserved strokes](#/ref/reserved-strokes)). The modifier dictionary is forked from Lapwing's \"Emily's Modifier Dictionary\"; it is plain Plover fingerspelling plus a chorded Ctrl/Alt/Super/Shift ending, independent of the theory, and works the same under lyk."
+  },
+  {
+   "t": "h",
+   "x": "The alphabet"
+  },
+  {
+   "t": "p",
+   "x": "Each letter is one chord, the same chords as the starting sounds (`PW` is *b*, `TK` is *d*, `STKPW` is *z*). The table gives the bare chord, the glued form, the glued capital, the Shift+letter stroke, and any second chord."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Letter",
+    "Chord",
+    "Glued lowercase",
+    "Glued capital",
+    "Shift+letter",
+    "Second chord for the OS strokes"
+   ],
+   "rows": [
+    [
+     "a",
+     "[[A]]",
+     "[[A*]]",
+     "[[A*P]]",
+     "[[ARLGTS]]",
+     ""
+    ],
+    [
+     "b",
+     "[[PW]]",
+     "[[PW*]]",
+     "[[PW*P]]",
+     "[[PW-RLGTS]]",
+     ""
+    ],
+    [
+     "c",
+     "[[KR]]",
+     "[[KR*]]",
+     "[[KR*P]]",
+     "[[KR-RLGTS]]",
+     ""
+    ],
+    [
+     "d",
+     "[[TK]]",
+     "[[TK*]]",
+     "[[TK*P]]",
+     "[[TK-RLGTS]]",
+     ""
+    ],
+    [
+     "e",
+     "[[E]]",
+     "[[*E]]",
+     "[[*EP]]",
+     "[[ERLGTS]]",
+     ""
+    ],
+    [
+     "f",
+     "[[TP]]",
+     "[[TP*]]",
+     "[[TP*P]]",
+     "[[TP-RLGTS]]",
+     ""
+    ],
+    [
+     "g",
+     "[[TKPW]]",
+     "[[TKPW*]]",
+     "[[TKPW*P]]",
+     "[[TKPW-RLGTS]]",
+     ""
+    ],
+    [
+     "h",
+     "[[H]]",
+     "[[H*]]",
+     "[[H*P]]",
+     "[[H-RLGTS]]",
+     ""
+    ],
+    [
+     "i",
+     "[[EU]]",
+     "[[*EU]]",
+     "[[*EUP]]",
+     "[[EURLGTS]]",
+     "[[AOEU]]"
+    ],
+    [
+     "j",
+     "[[SKWR]]",
+     "[[SKWR*]]",
+     "[[SKWR*P]]",
+     "[[SKWR-RLGTS]]",
+     "[[SKWRAEU]]"
+    ],
+    [
+     "k",
+     "[[K]]",
+     "[[K*]]",
+     "[[K*P]]",
+     "[[K-RLGTS]]",
+     ""
+    ],
+    [
+     "l",
+     "[[HR]]",
+     "[[HR*]]",
+     "[[HR*P]]",
+     "[[HR-RLGTS]]",
+     ""
+    ],
+    [
+     "m",
+     "[[PH]]",
+     "[[PH*]]",
+     "[[PH*P]]",
+     "[[PH-RLGTS]]",
+     ""
+    ],
+    [
+     "n",
+     "[[TPH]]",
+     "[[TPH*]]",
+     "[[TPH*P]]",
+     "[[TPH-RLGTS]]",
+     ""
+    ],
+    [
+     "o",
+     "[[O]]",
+     "[[O*]]",
+     "[[O*P]]",
+     "[[ORLGTS]]",
+     ""
+    ],
+    [
+     "p",
+     "[[P]]",
+     "[[P*]]",
+     "[[P*P]]",
+     "[[P-RLGTS]]",
+     ""
+    ],
+    [
+     "q",
+     "[[KW]]",
+     "[[KW*]]",
+     "[[KW*P]]",
+     "[[KW-RLGTS]]",
+     ""
+    ],
+    [
+     "r",
+     "[[R]]",
+     "[[R*]]",
+     "[[R*P]]",
+     "[[R-RLGTS]]",
+     ""
+    ],
+    [
+     "s",
+     "[[S]]",
+     "[[S*]]",
+     "[[S*P]]",
+     "[[S-RLGTS]]",
+     ""
+    ],
+    [
+     "t",
+     "[[T]]",
+     "[[T*]]",
+     "[[T*P]]",
+     "[[T-RLGTS]]",
+     ""
+    ],
+    [
+     "u",
+     "[[U]]",
+     "[[*U]]",
+     "[[*UP]]",
+     "[[URLGTS]]",
+     ""
+    ],
+    [
+     "v",
+     "[[SR]]",
+     "[[SR*]]",
+     "[[SR*P]]",
+     "[[SR-RLGTS]]",
+     ""
+    ],
+    [
+     "w",
+     "[[W]]",
+     "[[W*]]",
+     "[[W*P]]",
+     "[[W-RLGTS]]",
+     ""
+    ],
+    [
+     "x",
+     "[[KP]]",
+     "[[KP*]]",
+     "[[KP*P]]",
+     "[[KP-RLGTS]]",
+     ""
+    ],
+    [
+     "y",
+     "[[KWH]]",
+     "[[KWR*]]",
+     "[[KWR*P]]",
+     "[[KWH-RLGTS]]",
+     ""
+    ],
+    [
+     "z",
+     "[[STKPW]]",
+     "[[STKPW*]]",
+     "[[STKPW*P]]",
+     "[[STKPW-RLGTS]]",
+     "[[STKPWHR]]"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "The letter *y* is `KWR*` when glued but `KWH` in the modifier dictionary and in [spelling mode](#/ref/spelling-mode). Every other letter has the same chord in all three."
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "`LGTS` strokes with a vowel-only chord have no hyphen: `A`, `E`, `U`, `EU` are written `AFLGTS`, `EFLGTS`, `UFLGTS`, `EUFLGTS`. Chords ending in a consonant key need the hyphen: `S-FLGTS`, `KR-FLGTS`."
+  },
+  {
+   "t": "h",
+   "x": "Fingerspelling in running text"
+  },
+  {
+   "t": "p",
+   "x": "To spell a word in the text, strike the letter's chord with the star. The star glues it to the letters beside it and to nothing else. Add `-P` for a capital."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Writes",
+    "Example"
+   ],
+   "rows": [
+    [
+     "a letter chord plus `*`",
+     "that letter, lowercase",
+     "[[A*]] [[PW*]] [[KR*]] [[TK*]] [[*E]] write a b c d e"
+    ],
+    [
+     "the same plus `-P`",
+     "that letter, capitalized",
+     "[[A*P]] [[PW*P]] [[KR*P]] write A B C"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Letters glue to each other: [[KR*P]] [[A*]] [[T*]] writes ` Cat` as one word (the first letter starts a new word, so the space comes before it)."
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "The 52 strokes (26 lowercase, 26 capital) are reserved ahead of every word, so a word that wanted one moves to its next-cheapest outline: [[captain|KAPT]] instead of `K*P`, [[eh|A*EU]] instead of `*E`."
+  },
+  {
+   "t": "p",
+   "x": "Not ported from Plover: the number-bar chords, the `-RBGS` forms, and the trailing-hyphen or trailing-period forms."
+  },
+  {
+   "t": "p",
+   "x": "A word with no outline of its own (see [briefs](#/ref/briefs)) is costed by the generator as exactly this: one stroke per letter."
+  },
+  {
+   "t": "p",
+   "x": "There is no physical key for [spelling mode](#/ref/spelling-mode) yet, so glued letters are how you spell a word out today."
+  },
+  {
+   "t": "h",
+   "x": "Modifier chords: the LGTS dictionary"
+  },
+  {
+   "t": "p",
+   "x": "Every lookup this dictionary answers is written as:"
+  },
+  {
+   "t": "pre",
+   "x": "[chord for the key] + [modifier keys on the right hand] + LGTS"
+  },
+  {
+   "t": "list",
+   "items": [
+    "The ender `LGTS` (the right hand's bottom four keys, `-LGTS`) is on every one of the 5,475 strokes. It exists only so that an ordinary word's outline never collides with a modifier chord.",
+    "At least one modifier key must be held. A bare letter or symbol with no modifier is not this dictionary's job.",
+    "The output is wrapped in `{^}` on both sides, so it attaches to nothing and adds no space."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "Modifier keys"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Key",
+    "Modifier"
+   ],
+   "rows": [
+    [
+     "`R`",
+     "Shift"
+    ],
+    [
+     "`B`",
+     "Alt"
+    ],
+    [
+     "`P`",
+     "Super"
+    ],
+    [
+     "`F`",
+     "Ctrl"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Any combination is allowed (15 non-empty combinations). Add them in steno order `F R P B` before `LGTS`. They wrap the key innermost-first as Shift, then Alt, then Super, then Ctrl outermost."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Modifiers held",
+    "Keys before `LGTS`",
+    "Example: with the letter s",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "Ctrl",
+     "`F`",
+     "[[S-FLGTS]]",
+     "`{^}{#control(s)}{^}`"
+    ],
+    [
+     "Shift",
+     "`R`",
+     "[[S-RLGTS]]",
+     "`{^}{#shift(s)}{^}`"
+    ],
+    [
+     "Super",
+     "`P`",
+     "[[S-PLGTS]]",
+     "`{^}{#super(s)}{^}`"
+    ],
+    [
+     "Alt",
+     "`B`",
+     "[[S-BLGTS]]",
+     "`{^}{#alt(s)}{^}`"
+    ],
+    [
+     "Ctrl+Shift",
+     "`FR`",
+     "[[S-FRLGTS]]",
+     "`{^}{#control(shift(s))}{^}`"
+    ],
+    [
+     "Ctrl+Super",
+     "`FP`",
+     "[[S-FPLGTS]]",
+     "`{^}{#control(super(s))}{^}`"
+    ],
+    [
+     "Ctrl+Alt",
+     "`FB`",
+     "[[S-FBLGTS]]",
+     "`{^}{#control(alt(s))}{^}`"
+    ],
+    [
+     "Shift+Super",
+     "`RP`",
+     "[[S-RPLGTS]]",
+     "`{^}{#super(shift(s))}{^}`"
+    ],
+    [
+     "Shift+Alt",
+     "`RB`",
+     "[[S-RBLGTS]]",
+     "`{^}{#alt(shift(s))}{^}`"
+    ],
+    [
+     "Super+Alt",
+     "`PB`",
+     "[[S-PBLGTS]]",
+     "`{^}{#super(alt(s))}{^}`"
+    ],
+    [
+     "Ctrl+Shift+Super",
+     "`FRP`",
+     "[[S-FRPLGTS]]",
+     "`{^}{#control(super(shift(s)))}{^}`"
+    ],
+    [
+     "Ctrl+Shift+Alt",
+     "`FRB`",
+     "[[S-FRBLGTS]]",
+     "`{^}{#control(alt(shift(s)))}{^}`"
+    ],
+    [
+     "Ctrl+Super+Alt",
+     "`FPB`",
+     "[[S-FPBLGTS]]",
+     "`{^}{#control(super(alt(s)))}{^}`"
+    ],
+    [
+     "Shift+Super+Alt",
+     "`RPB`",
+     "[[S-RPBLGTS]]",
+     "`{^}{#super(alt(shift(s)))}{^}`"
+    ],
+    [
+     "Ctrl+Shift+Super+Alt",
+     "`FRPB`",
+     "[[S-FRPBLGTS]]",
+     "`{^}{#control(super(alt(shift(s))))}{^}`"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Modifiers alone (no character) are strokes of their own: [[-FLGTS]] [[-RLGTS]] [[-BLGTS]] [[-PLGTS]] are Ctrl, Shift, Alt and Super pressed with nothing else; the other combinations work the same way."
+  },
+  {
+   "t": "h3",
+   "x": "The generating rule"
+  },
+  {
+   "t": "p",
+   "x": "A stroke is read in six parts, in this order: left-hand consonants, `A`/`O`, `*` or `-`, `E`/`U`, modifier keys `F R P B`, ender `LGTS`. The first three groups choose what is pressed:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "The stroke has",
+    "It means",
+    "Section"
+   ],
+   "rows": [
+    [
+     "`AO` and no `E`/`U`, no star",
+     "a digit or an F-key",
+     "[Numbers and function keys](#/ref/fingerspelling/numbers-and-function-keys)"
+    ],
+    [
+     "a star (`*`)",
+     "a symbol or special key",
+     "[Symbols and special keys](#/ref/fingerspelling/symbols-and-special-keys)"
+    ],
+    [
+     "neither",
+     "a letter, if the chord is in the alphabet table",
+     "[The alphabet](#/ref/fingerspelling/the-alphabet)"
+    ],
+    [
+     "no key at all before the modifiers",
+     "the modifiers alone",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Any chord that is not in the tables is not a stroke. Total: 365 base chords times 15 modifier combinations = 5,475 strokes."
+  },
+  {
+   "t": "h",
+   "x": "Numbers and function keys"
+  },
+  {
+   "t": "p",
+   "x": "Strike `AO` with no `E`, `U` or star. The left hand's bottom row counts in binary: **`R`=1, `W`=2, `K`=4, `S`=8**, added together. Digits are valid up to 9. Other left-hand keys (`T`, `H`, `P`) do not change the digit, so several chords give the same one."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Digit",
+    "With Ctrl",
+    "With Shift"
+   ],
+   "rows": [
+    [
+     "0",
+     "[[AOFLGTS]]",
+     "[[AORLGTS]]"
+    ],
+    [
+     "1",
+     "[[RAOFLGTS]]",
+     "[[RAORLGTS]]"
+    ],
+    [
+     "2",
+     "[[WAOFLGTS]]",
+     "[[WAORLGTS]]"
+    ],
+    [
+     "3",
+     "[[WRAOFLGTS]]",
+     "[[WRAORLGTS]]"
+    ],
+    [
+     "4",
+     "[[KAOFLGTS]]",
+     "[[KAORLGTS]]"
+    ],
+    [
+     "5",
+     "[[KRAOFLGTS]]",
+     "[[KRAORLGTS]]"
+    ],
+    [
+     "6",
+     "[[KWAOFLGTS]]",
+     "[[KWAORLGTS]]"
+    ],
+    [
+     "7",
+     "[[KWRAOFLGTS]]",
+     "[[KWRAORLGTS]]"
+    ],
+    [
+     "8",
+     "[[SAOFLGTS]]",
+     "[[SAORLGTS]]"
+    ],
+    [
+     "9",
+     "[[SRAOFLGTS]]",
+     "[[SRAORLGTS]]"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Holding `T` and `P` as well makes the same count a function key (zero-indexed, so `TPAO` is F0), up to F12:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Key",
+    "Stroke with Ctrl",
+    "Key",
+    "Stroke with Ctrl",
+    "Key",
+    "Stroke with Ctrl"
+   ],
+   "rows": [
+    [
+     "F0",
+     "[[TPAOFLGTS]]",
+     "F5",
+     "[[TKPRAOFLGTS]]",
+     "F10",
+     "[[STPWAOFLGTS]]"
+    ],
+    [
+     "F1",
+     "[[TPRAOFLGTS]]",
+     "F6",
+     "[[TKPWAOFLGTS]]",
+     "F11",
+     "[[STPWRAOFLGTS]]"
+    ],
+    [
+     "F2",
+     "[[TPWAOFLGTS]]",
+     "F7",
+     "[[TKPWRAOFLGTS]]",
+     "F12",
+     "[[STKPAOFLGTS]]"
+    ],
+    [
+     "F3",
+     "[[TPWRAOFLGTS]]",
+     "F8",
+     "[[STPAOFLGTS]]",
+     "",
+     ""
+    ],
+    [
+     "F4",
+     "[[TKPAOFLGTS]]",
+     "F9",
+     "[[STPRAOFLGTS]]",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "A count above 9 is not a digit; a function-key count above 12 is not a stroke."
+  },
+  {
+   "t": "h",
+   "x": "Symbols and special keys"
+  },
+  {
+   "t": "p",
+   "x": "A star in the stroke switches the chord from letters and digits to this table. The vowels `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. An `E`, `U` or `EU` struck as well is ignored (`T*EFLGTS` is the same as `T*FLGTS`). The strokes below are shown with Ctrl (`F`); use any other modifier combination in its place."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Chord",
+    "Plain",
+    "With `A`",
+    "With `O`",
+    "With `A`+`O`"
+   ],
+   "rows": [
+    [
+     "`TR`",
+     "`Tab` [[TR*FLGTS]]",
+     "`Backspace` [[TRA*FLGTS]]",
+     "`Delete` [[TRO*FLGTS]]",
+     "`Escape` [[TRAO*FLGTS]]"
+    ],
+    [
+     "`KPWR`",
+     "`Up` [[KPWR*FLGTS]]",
+     "`Left` [[KPWRA*FLGTS]]",
+     "`Right` [[KPWRO*FLGTS]]",
+     "`Down` [[KPWRAO*FLGTS]]"
+    ],
+    [
+     "`TKPWR`",
+     "`Page Up` [[TKPWR*FLGTS]]",
+     "`Home` [[TKPWRA*FLGTS]]",
+     "`End` [[TKPWRO*FLGTS]]",
+     "`Page Down` [[TKPWRAO*FLGTS]]"
+    ],
+    [
+     "`TKWR`",
+     "`Audio Play` [[TKWR*FLGTS]]",
+     "`Audio Prev` [[TKWRA*FLGTS]]",
+     "`Audio Next` [[TKWRO*FLGTS]]",
+     "`Audio Stop` [[TKWRAO*FLGTS]]"
+    ],
+    [
+     "`TKW`",
+     "`Audio Mute` [[TKW*FLGTS]]",
+     "`Audio Lower Volume` [[TKWA*FLGTS]]",
+     "`Audio Raise Volume` [[TKWO*FLGTS]]",
+     ""
+    ],
+    [
+     "`TK`",
+     "`!` [[TK*FLGTS]]",
+     "",
+     "`¬` [[TKO*FLGTS]]",
+     "`¡` [[TKAO*FLGTS]]"
+    ],
+    [
+     "`TP`",
+     "`\"` [[TP*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TKHR`",
+     "`#` [[TKHR*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`KPWH`",
+     "`$` [[KPWH*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TKPW`",
+     "`%` [[TKPW*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TWR`",
+     "`&` [[TWR*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`T`",
+     "`'` [[T*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TPH`",
+     "`(` [[TPH*FLGTS]]",
+     "`<` [[TPHA*FLGTS]]",
+     "`[` [[TPHO*FLGTS]]",
+     "`{` [[TPHAO*FLGTS]]"
+    ],
+    [
+     "`KWR`",
+     "`)` [[KWR*FLGTS]]",
+     "`>` [[KWRA*FLGTS]]",
+     "`]` [[KWRO*FLGTS]]",
+     "`}` [[KWRAO*FLGTS]]"
+    ],
+    [
+     "`H`",
+     "`*` [[H*FLGTS]]",
+     "",
+     "",
+     "`×` [[HAO*FLGTS]]"
+    ],
+    [
+     "`R`",
+     "`+` [[R*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`W`",
+     "`,` [[W*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`PH`",
+     "`-` [[PH*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`K`",
+     "`.` [[K*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`KP`",
+     "`/` [[KP*FLGTS]]",
+     "",
+     "",
+     "`÷` [[KPAO*FLGTS]]"
+    ],
+    [
+     "`HR`",
+     "`:` [[HR*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`KW`",
+     "`;` [[KW*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`PWHR`",
+     "`=` [[PWHR*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TPW`",
+     "`?` [[TPW*FLGTS]]",
+     "`¿` [[TPWA*FLGTS]]",
+     "",
+     ""
+    ],
+    [
+     "`TKPWHR`",
+     "`@` [[TKPWHR*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TW`",
+     "`\\` [[TW*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`KPR`",
+     "`^` [[KPR*FLGTS]]",
+     "`«` [[KPRA*FLGTS]]",
+     "`»` [[KPRO*FLGTS]]",
+     ""
+    ],
+    [
+     "`WR`",
+     "`_` [[WR*FLGTS]]",
+     "",
+     "",
+     "`µ` [[WRAO*FLGTS]]"
+    ],
+    [
+     "`P`",
+     "``` [[P*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`PW`",
+     "`|` [[PW*FLGTS]]",
+     "",
+     "",
+     ""
+    ],
+    [
+     "`TPWR`",
+     "`~` [[TPWR*FLGTS]]",
+     "",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "table",
+   "head": [
+    "Bare star chord",
+    "Sends"
+   ],
+   "rows": [
+    [
+     "[[A*FLGTS]]",
+     "Return"
+    ],
+    [
+     "[[O*FLGTS]]",
+     "Tab"
+    ],
+    [
+     "[[AO*FLGTS]]",
+     "Space"
+    ],
+    [
+     "[[*FLGTS]]",
+     "modifiers only (no key)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*EFPBLGTS]] is Ctrl+Super+Alt+Up (`{^}{#control(super(alt(up)))}{^}`)."
+  }
+ ]
+}

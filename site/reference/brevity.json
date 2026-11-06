@@ -1,0 +1,154 @@
+{
+ "id": "brevity",
+ "title": "How short",
+ "goal": "The brevity ladder: each step that shortens a long word, which words may take it, and the order words settle in.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "The brevity ladder"
+  },
+  {
+   "t": "p",
+   "x": "Each brevity step is a transformation of a word's full outline that you can do by hand. A step applies to a word only if the word is common enough (its place in the frequency list is below the step's rank), has enough syllables, and the result is typable and free. The steps are listed from `rules/plover.toml` (the `brevity` table), shortest idea last."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Step",
+    "What it does",
+    "Rank limit",
+    "Example"
+   ],
+   "rows": [
+    [
+     "`lead`",
+     "drops an unstressed first syllable that is only a vowel",
+     "every word (100,000)",
+     "[[alone|HRO*EPB]], [[alive|HRAO*EUF]], [[attack|TA*BG]]"
+    ],
+    [
+     "`lean`",
+     "puts the consonants of an unstressed first syllable on the left hand of the next stroke, when they come first in steno order",
+     "every word (100,000)",
+     "[[behave|PWHAEUF]], [[deliver|TKHREUFR]], [[compete|KPHAOEPT]]"
+    ],
+    [
+     "`fold`",
+     "the full outline with reduced syllables folded out of steno order where they would not fit in it, as Plover does",
+     "every word (100,000)",
+     "[[student|STAOUPBTD]]"
+    ],
+    [
+     "`skeleton`, with the stressed vowel",
+     "one stroke: the first consonants, the stressed vowel, then every consonant after the first vowel; the consonants may land out of steno order",
+     "every word (100,000)",
+     "[[profitable|PROFBLT]], [[chemist|KEFPLT]], [[machete|PHEFPT]]"
+    ],
+    [
+     "`skeleton`, no vowel",
+     "the same with no vowel at all; only for words of three or more syllables",
+     "8,000",
+     "[[community|KPH-T]]"
+    ],
+    [
+     "`shell`, with the stressed vowel",
+     "one stroke: the first consonants and those of the stressed and last syllables",
+     "8,000",
+     "-"
+    ],
+    [
+     "`shell`, no vowel",
+     "the same with no vowel; three or more syllables",
+     "8,000",
+     "-"
+    ],
+    [
+     "`ends`, with the stressed vowel",
+     "one stroke: the first consonants and those of the last syllable",
+     "8,000",
+     "-"
+    ],
+    [
+     "`ends`, no vowel",
+     "the same with no vowel; three or more syllables",
+     "8,000",
+     "-"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `shell`, `ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words."
+  },
+  {
+   "t": "p",
+   "x": "Words that take no step are written by the plain [prefix](#/ref/prefixes) and [syllable](#/ref/syllables) rules. An empty list of steps gives a Lapwing-like dictionary, one stroke per syllable. A huge rank on every step gives the shortest dictionary the rules allow."
+  },
+  {
+   "t": "h",
+   "x": "An unstressed first syllable"
+  },
+  {
+   "t": "p",
+   "x": "An unstressed first syllable gives a one-stroke form its left hand: *information* [[information|TPH-FGS]], *condition* [[condition|K-PB]]. The glide of `-ion` is not written."
+  },
+  {
+   "t": "h",
+   "x": "Short forms never take what a rule produces"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A short form never takes an outline that any word has by the rules, so the forms a learner can work out stay theirs.",
+    "When a short form is taken, a star on it is tried before giving up: a star costs a key, a longer form costs a stroke.",
+    "A one-syllable word's starred stroke is kept for the word that sounds like it. A short form pays half a stroke extra to take one, so it does only when its next form is a whole stroke longer and it is said far more often (*attack* keeps [[TA*BG]] over *tack*). See [when two words sound the same](#/ref/collisions)."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "The order words settle in"
+  },
+  {
+   "t": "list",
+   "items": [
+    "Settling runs its family passes with a word past rank 8,000 holding its skeleton back.",
+    "Then the 5,000 commonest words are locked to whatever they settled on, and one last pass runs with every skeleton in.",
+    "A locked word keeps its outline exactly, nobody else may take it, and no locked word may take another's.",
+    "Afterwards, any word left on a worse outline than one of its own candidates that nobody holds moves to it, so no word is stranded."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "So the commonest words never pay for rare words' skeletons."
+  },
+  {
+   "t": "h",
+   "x": "Bonus short forms and backups"
+  },
+  {
+   "t": "list",
+   "items": [
+    "Every word keeps every short form still free beside its rule outline, once its primary is settled. The dictionary holds both ends of the spectrum, and the cheapest counts toward `cheapest` regardless.",
+    "This pass runs strictly after every word's primary outline is final, so a common word's bonus short form can never take text a rarer word needed as its primary.",
+    "It also runs after the alternate-pronunciation and [backup](#/ref/syllables) passes, so a stem-plus-ending join ([[looks|HRAOBG/+-S]]) or another pronunciation's reading is never blocked by a one-off short form that wanted the same text. When the predictable form and the memorised one collide, the predictable one holds it.",
+    "A word pinned to a literal `[word]` override (see [briefs](#/ref/briefs)) is the one exception: its single entry is a human decision, not reopened by a bonus short form."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "A short form is never the only way in. Every word of two syllables or more also has its syllables joined one stroke each (see [syllables and folding](#/ref/syllables)), so a rare word can be terse and still be typed from its sound."
+  },
+  {
+   "t": "h",
+   "x": "Measuring it"
+  },
+  {
+   "t": "p",
+   "x": "`build` prints how many strokes and keys a word takes on average, weighted by how often it is said, next to Plover and Lapwing on the same words. See [build and files](#/ref/build-and-files)."
+  }
+ ]
+}

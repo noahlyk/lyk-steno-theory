@@ -1,0 +1,150 @@
+{
+  "id": "how-candidates-cost",
+  "title": "Candidates, cost and ergonomics",
+  "goal": "Know which words get a stroke, which strokes are reserved before any word, every source of candidate outlines, the one formula that ranks them, and how the ergonomic term scores finger shape.",
+  "blocks": [
+    { "t": "h", "x": "Who counts as a word" },
+    { "t": "p", "x": "`ranked_words` takes the frequency list's top 100,000 that have a pronunciation, in plain lowercase (letters and apostrophes only). Two kinds of token are dropped because they were frequency-list artifacts claiming short strokes they could never use." },
+    { "t": "list", "ordered": false, "items": [
+      "**The bare letter \"i\".** The list spells the pronoun lowercase, so the letter would inherit the pronoun's count. The pronoun keeps its own entry on [[I|EU]]; the letter is fingerspelled. `a` is the only single-letter word.",
+      "**Contraction tails** (`'s 'd 'll 're 'm 've 't 'n 'a`). The tokenizer splits \"I've\" into \"i\" + \"'ve\", so each tail would carry a whole contraction family's count. Struck alone it would type the tail with its space. The strokes they would have held go to real words: [[guess|ES]], [[you'll|UL]], [[um|UPL]], [[tour|TUR]]. Clipped words that are real on their own (`'cause`, `'em`, `'til`) stay."
+    ] },
+    { "t": "h", "x": "Strokes spoken for before any word" },
+    { "t": "p", "x": "These go into the `taken` map first, and no word can land on them." },
+    { "t": "table", "head": ["What", "Strokes", "Source"], "rows": [
+      ["Punctuation", "144", "`rules/reserved/punctuation.json`, forked from Plover"],
+      ["Fingerspelling", "52", "[[A*]] writes a, [[A*P]] writes A, through [[STKPW*]] and [[STKPW*P]]"],
+      ["Commands", "40", "cursor, word movement, newline, editing, Plover control"],
+      ["Lapwing commands", "26", "Home/End/PgUp/PgDn on `STPH-`, Shift-select with `*`, F1 to F12"],
+      ["Emily's modifiers", "5,475", "OS shortcuts, all ending in `-LGTS`"],
+      ["Standalone suffixes", "38", "`rules/suffixes.toml` ([[+-G]] is ing, [[+-D]] is ed)"],
+      ["Literal brief overrides", "no fixed count", "`[word]` outlines in `rules/briefs.toml`, for example [[eye|AOEU]], [[oh|OE]], [[working|WOG]]"]
+    ] },
+    { "t": "p", "x": "Details: [Reserved strokes](#/ref/reserved-strokes), [Punctuation](#/ref/punctuation), [Fingerspelling](#/ref/fingerspelling), [Briefs](#/ref/briefs), [Suffixes](#/ref/suffixes)." },
+    { "t": "note", "kind": "rule", "x": "The literal pins are the strokes actually reached for. `oh` is said far more often than `owe`, so it keeps `OE`; without the pin it was pushed to a 7-key stroke because `owe` held `OE`." },
+
+    { "t": "h", "x": "The candidate pool" },
+    { "t": "p", "x": "`enumerate_candidates` is a pure function: given a word it returns every legal outline, tagged with where it came from, and touches no shared state. The pool is built across every core (`enumerate_in_parallel`) with a byte-identical result. No candidate is preferred by construction; the solver settles that later, on cost. Candidates that land on the same rendered text are deduplicated, keeping the cheaper one." },
+    { "t": "table", "head": ["Source", "Origin tag", "What it does"], "rows": [
+      ["Gold brief", "`Origin::Brief`", "Every outline Plover and Lapwing list for the spelling, plus a repaired variant from `drop_fragments` if the brief holds only part of a multi-key chord."],
+      ["Rules-derived", "`Origin::Rules`", "lyk's own phonetic reading, built from the pronunciation against the onset, vowel and coda tables."],
+      ["Stem plus suffix", "`Origin::Rules`", "The same reading with the trailing reduced syllable struck as its own standalone continuation after the reading of the rest: [[pearly|PERL/+EU]], rabble's stem reading [[RAB/+-L]]. Up to two syllables are peeled. Never fewer strokes than the fold, so it is the predictable way down when every one-stroke form is taken."],
+      ["Spelling variant", "`Origin::Spelling`", "For a homophone group (their, there, they're), the members that need telling apart get a spelling-marked variant. See [Spelling](#/ref/spelling)."],
+      ["Brevity ladder", "`Origin::Short(_)`", "Shortenings that drop a sound outright, each a cheaper alternative to the full reading. The vowel-keeping `skeleton` (first consonants, stressed vowel, every later consonant) is offered at every rank. `shell`, `ends` and the vowel-less forms stop at rank 8,000, since which consonants they drop is not derivable. See [How short](#/ref/brevity)."],
+      ["Star ladder", "`Origin::Ladder(n)`", "The same outline with a star on the first stroke (1), the last stroke (2), or one or two extra `+*` strokes (3, 4). See [When two words sound the same](#/ref/collisions)."],
+      ["Family shape", "`Origin::Family`", "Added from the second settling pass: a family member's root outline written by the family rules, counted two keys cheaper than it is (`FAMILY_DISCOUNT` is 2,000). See [How the solver works](#/ref/how-solver)."],
+      ["S-for-Z coda", "`Origin::Voicing`", "Any candidate ending in a voiced `-Z`, offered again with `-S` when the word is spelled with a final s: girls."]
+    ] },
+    { "t": "h3", "x": "A short form never takes a stroke the plain rules already give" },
+    { "t": "list", "ordered": false, "items": [
+      "A brevity step (and its first two star rungs) is dropped if some word's plain rules already give that text. Every outline a learner could work out by the rules stays that word's.",
+      "A short form that lands on the starred stroke of a one-syllable rules stroke pays `STAR_SURCHARGE` (12,500, which is half a stroke) on top of its cost. A star on a one-syllable stroke means its sound-alike: [[dock|TKO*BG]] and [[sock|SO*BG]] carry the star, [[doc|TKOBG]] does not.",
+      "The surcharge is a price, not a ban. A short form that would otherwise cost a whole extra stroke, for a word much commoner than the sound-alike, still takes it: [[attack|TA*BG]] keeps its star."
+    ] },
+
+    { "t": "h", "x": "The cost formula" },
+    { "t": "p", "x": "`candidate_cost` is intrinsic to the outline alone. It knows nothing about the word, how often it is said, or any other word's candidates. Every candidate from every source is reduced to one number." },
+    { "t": "pre", "x": "// src/generate/candidates.rs and src/generate/mod.rs\nconst STROKE_WEIGHT: u32 = 25_000;\nconst KEY_WEIGHT:    u32 = 1_000;\n\nfn candidate_cost(outline) -> u32 {\n    STROKE_WEIGHT * strokes + KEY_WEIGHT * keys + ergonomics::weighted_outline(outline)\n}" },
+    { "t": "table", "head": ["Tier", "Weight", "Why it ranks there"], "rows": [
+      ["Strokes", "25,000 each", "A stroke costs 25 keys and one stroke holds at most 24, so a one-stroke outline always costs less than any two-stroke outline: no word prefers a longer outline for itself."],
+      ["Keys", "1,000 each", "Counts how many keys, not which."],
+      ["Ergonomics", "0 to 928", "Stays under 1,000 even for every key at once (`*` included, which scores 928), so it only breaks ties between candidates with the same strokes and keys. It is the only tier that knows which keys."]
+    ] },
+    { "t": "h3", "x": "Worked cost example" },
+    { "t": "p", "x": "Two one-stroke, four-key candidates, tied on strokes and keys, split by ergonomics:" },
+    { "t": "table", "head": ["Candidate", "Strokes", "Keys", "Ergonomics", "candidate_cost"], "rows": [
+      ["[[SKPH]]", "1", "4", "253", "25,000 + 4,000 + 253 = 29,253"],
+      ["[[STWH]]", "1", "4", "527", "25,000 + 4,000 + 527 = 29,527"]
+    ] },
+    { "t": "h3", "x": "Where frequency enters" },
+    { "t": "p", "x": "Frequency is not in the formula above. The solver multiplies a candidate's cost by how often the word is said (its count in the frequency corpus), one level up:" },
+    { "t": "pre", "x": "edge_cost(word, candidate) = weight(word) x candidate_cost(candidate.outline)" },
+    { "t": "p", "x": "Minimizing the sum of `edge_cost` over every word is the whole objective, and it is the same metric `build` reports as keys per word weighted by how often it is said. For one word, frequency changes nothing about which of its own candidates is best. It only decides who wins when two words want the same text." },
+    { "t": "h3", "x": "Why a stroke weighs 25 keys" },
+    { "t": "p", "x": "25 is the smallest round number above the 24 keys one stroke can hold, so the per-word order is fixed; only cross-word trades move. The weight is finite on purpose: once frequency is multiplied in, one extra stroke for a rare word is weighed against extra keys for a common one instead of always winning. An effectively infinite weight made trades like these:" },
+    { "t": "table", "head": ["Common word", "Pushed to", "So that a rarer word could keep one stroke"], "rows": [
+      ["[[you|U]]", "the 6-key `KWRAOU`", "`'ve`"],
+      ["[[eye|AOEU]]", "the 7-key `KWRAOEU`", "aye"],
+      ["[[oh|OE]]", "the 7-key `O*ERBGS`", "owe"]
+    ] },
+    { "t": "p", "x": "At 25 these trades no longer happen. Words that moved to a one-stroke form as a result, in the current build:" },
+    { "t": "table", "head": ["Word", "Outline"], "rows": [
+      ["[[like|HRAOEU]]", "one stroke"],
+      ["[[day|AEU]]", "one stroke"],
+      ["[[young|HUPBG]]", "one stroke"],
+      ["[[better|PWERT]]", "one stroke"]
+    ] },
+    { "t": "p", "x": "A cross-word trade can also go the other way: a rare word may be written with a longer form so that a commoner word holds the one-stroke form." },
+
+    { "t": "h", "x": "Ergonomics: what costly means at the finger level" },
+    { "t": "p", "x": "Two outlines can tie on strokes and keys and still feel different to type. [[TK]], one finger pressing both of its own rows, is effortless. [[STWH]], four fingers alternating top and bottom, is not, although it is also one stroke and four keys. `src/ergonomics.rs` tells those apart. Every number in it traces to the keyboard geometry keymux presses or to a finger-biomechanics measurement (Häger-Ross and Schieber, J Neurosci 2000)." },
+    { "t": "h3", "x": "Every key is a reach vector" },
+    { "t": "p", "x": "Each key is a `(vertical, lateral)` reach, each axis 0 (the finger's own row) or 1 (one key away), checked key by key against the QWERTY layout keymux presses." },
+    { "t": "table", "head": ["Position", "No lateral stretch", "With lateral stretch"], "rows": [
+      ["Home row", "`(0, 0)`", "`(0, 1)`"],
+      ["Top row", "`(1, 0)`", "`(1, 1)`"]
+    ] },
+    { "t": "list", "ordered": false, "items": [
+      "The right pinky's `D` and `Z` pair uses the stretch column.",
+      "The right index's `*` is struck via `H` (home, lateral) or `Y` (top, lateral). `*` folds into the right index's own column as a wildcard: it fills whichever of `F` or `R` is not in use, so `*` plus `F` costs no more than a same-finger double press.",
+      "These two are the only digits asked to reach a second position; that overload is priced by how far the reach is, through its vector, not by a flat tax."
+    ] },
+    { "t": "h3", "x": "The finger and key reach table" },
+    { "t": "table", "head": ["Hand", "Finger", "Top key", "Bottom key", "Notes"], "rows": [
+      ["Left", "Pinky", "`S` (one key only)", "", "Only one key"],
+      ["Left", "Ring", "`T`", "`K`", ""],
+      ["Left", "Middle", "`P`", "`W`", ""],
+      ["Left", "Index", "`H`", "`R`", ""],
+      ["Right", "Index", "`F`", "`R`", "Plus `*` (via `H` or `Y`), as a wildcard"],
+      ["Right", "Middle", "`P`", "`B`", ""],
+      ["Right", "Ring", "`L`", "`G`", ""],
+      ["Right", "Pinky", "`T`, `D`", "`S`, `Z`", "Two columns: the normal pair `T`/`S` and the stretch pair `D`/`Z`"]
+    ] },
+    { "t": "h3", "x": "Two measurements: the ring finger struggles most" },
+    { "t": "p", "x": "Häger-Ross and Schieber measured two indices per finger. **Individuation (II)** is how independently a finger moves to its own target while its neighbors move to theirs: the right quantity for two active fingers (a transition). **Stationarity (SI)** is how still a finger stays while its neighbors move: the right quantity for a finger held out of the way between two active ones (a gap). On both, the ring finger is the least independent, not the pinky." },
+    { "t": "table", "head": ["Digit", "`TRANS` (1 - II)", "`GAP` (1 - SI)"], "rows": [
+      ["Index", "22", "30"],
+      ["Middle", "64", "67"],
+      ["Ring", "98", "94"],
+      ["Little", "56", "57"]
+    ] },
+    { "t": "p", "x": "Self-paced, averaged across the paper's left and right hand columns, times 1000. The deficit from 1.0 is the meaningful quantity; ring's `TRANS` is about 4.5 times index's. On the left hand the digit order is reversed (little, ring, middle, index); on the right it is index, middle, ring, little." },
+    { "t": "h3", "x": "The four terms a stroke is scored on" },
+    { "t": "table", "head": ["Term", "What it measures", "Formula"], "rows": [
+      ["Transition", "Walking a hand's active fingers in order, charging for how far two neighbors' reach vectors differ.", "`(dv^2 + dl^2) x (TRANS[i] + TRANS[j])` for each pair of consecutively active fingers; zero when both reach the same way."],
+      ["Engagement", "With two or more fingers active on a hand, each one's distance from rest.", "`(v + l) x TRANS[finger]`; zero below two active fingers, so a same-finger double stays free."],
+      ["Gap", "A finger skipped between two active neighbors on the same hand.", "The skipped finger's `GAP` weight, flat."],
+      ["Pinky tax", "A small flat cost per pinky key press, for leverage.", "`PINKY_TAX` = 5 per press (`S-` on the left; `T`, `S`, `D`, `Z` on the right). Excludes the join key."]
+    ] },
+    { "t": "list", "ordered": false, "items": [
+      "A same-finger double press is charged +1 in total and nothing else.",
+      "Squaring the per-axis difference makes transitions convex: asking two poorly coupled fingers to each reach further costs much more than twice a small reach.",
+      "The join key is excluded from every term: it appears in nearly every continuation stroke, so costing it would penalize \"more than one stroke\", not any real word choice.",
+      "`PINKY_TAX` is a judgment call, not a measurement. It is small relative to every other term (smaller than the smallest nonzero engagement cost, 56), so it can only break a tie between candidates that differ in pinky presses."
+    ] },
+    { "t": "h3", "x": "Four strokes, scored in full" },
+    { "t": "p", "x": "These are the scores `cargo run -- ergonomics STROKE` prints, which lists transition, engagement, gap and pinky-tax terms one by one. All four are one stroke of 2 to 4 keys; the spread from 1 to 527 comes entirely from finger shape." },
+    { "t": "table", "head": ["Stroke", "Score", "Why"], "rows": [
+      ["[[TK]]", "1", "One finger, double press (ring, both rows)."],
+      ["[[SWR]]", "99", "The ring finger is skipped between two active neighbors: one gap."],
+      ["[[SKPH]]", "253", "Pinky and ring at home, middle and index reaching up: one transition (ring to middle, 162) plus engagement (middle 64, index 22) plus pinky tax 5."],
+      ["[[STWH]]", "527", "Every neighbor differs: three transitions."]
+    ] },
+    { "t": "h3", "x": "Same two fingers, increasingly stretched" },
+    { "t": "table", "head": ["Stroke", "Score", "Why"], "rows": [
+      ["[[-LT]]", "159", "Ring top next to the pinky's plain top: same reach vector."],
+      ["[[-LD]]", "369", "Ring top next to the pinky's stretch top `D`: different vectors."],
+      ["[[-RLD]]", "556", "Adds the index at home, plus the middle-finger gap."],
+      ["[[*LD]]", "698", "Swaps the index for `*`, a lateral reach against the ring's vertical one."]
+    ] },
+    { "t": "note", "kind": "rule", "x": "The worst stroke the keyboard allows, every key at once (`*` included), scores 928. That is why the ergonomic tier can never outweigh one key (1,000)." },
+    { "t": "h3", "x": "Ceilings on the real dictionary" },
+    { "t": "p", "x": "A regression test holds the generated dictionary's cheapest outlines to these ceilings by frequency band. A score of 550 or more counts as bad. Averages in the current build:" },
+    { "t": "table", "head": ["Frequency band", "Average", "Average ceiling", "Share at 550 or more", "Share ceiling"], "rows": [
+      ["Top 1,000 words", "138.95", "150", "1.23%", "5%"],
+      ["1,000 to 10,000", "240.19", "250", "6.05%", "12%"],
+      ["10,000 and up", "300.94", "320", "12.68%", "20%"]
+    ] },
+    { "t": "p", "x": "The 10,000-and-up band is higher because every word gets its one-stroke consonant skeleton, and a skeleton is a denser chord than two syllable strokes. That trade is deliberate." }
+  ]
+}

@@ -11,6 +11,7 @@ import { initDock } from './dock.js';
 import { initHid } from './hid.js';
 import { parseOutline } from './steno.js';
 import { initPopover } from './popover.js';
+import { hitRows, refHome, refPageView, searchRef } from './reference.js';
 import { store } from './store.js';
 
 const app = document.getElementById('app');
@@ -43,6 +44,7 @@ async function route() {
   try {
     if (page === 'keys') { setNav('keys'); teardown.push(await keysChapter(app, flat(await course())[0])); }
     else if (page === 'lesson') await lessonPage(arg);
+    else if (page === 'ref') { setNav('ref'); await (arg ? refPageView(app, arg, location.hash.replace(/^#/, '').split('/')[3]) : refHome(app)); }
     else if (page === 'practice') await practicePage();
     else if (page === 'lookup') await lookupPage();
     else if (page === 'chart') await chartPage();
@@ -148,7 +150,7 @@ async function practicePage() {
   const withDrills = [];
   for (const l of all) {
     const data = await lesson(l.id);
-    if (data.drill && data.drill.check !== 'none') withDrills.push({ ...l, items: data.drill.items });
+    if (data.drill && !['none', 'grammar'].includes(data.drill.check)) withDrills.push({ ...l, items: data.drill.items });
   }
   const missedKeys = Object.keys(store.missed);
   const upTo = el('select', { 'aria-label': 'words up to lesson' }, withDrills.map((l, i) => el('option', { value: i }, `Lessons 1 to ${l.num}`)));
@@ -214,6 +216,10 @@ async function lookupPage() {
         ...row('other single strokes', one.filter((o) => o !== primary)),
         ...row('joined with +', joins)));
     }
+    // the Reference too: a rule, a table or a mechanism that mentions the query
+    const refs = await searchRef(q, 5);
+    if (refs.length && input.value.trim() === q) out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, 'In the reference'), ...hitRows(refs, q),
+      el('a', { href: '#/ref' }, 'Search all of the reference')));
   };
   input.addEventListener('input', search);
   app.append(el('h1', {}, 'Lookup'),

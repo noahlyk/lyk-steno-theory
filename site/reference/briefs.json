@@ -1,0 +1,439 @@
+{
+ "id": "briefs",
+ "title": "Briefs",
+ "goal": "What a brief is, how a word's outline is picked from all its candidates, the hand-pinned overrides, and the rules that keep a brief honest.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What a brief is"
+  },
+  {
+   "t": "p",
+   "x": "A **brief** is a word's outline taken from Plover's or Lapwing's gold dictionary instead of derived fresh from lyk's phonetic rules: [[he|E]], not `HAOE`. A brief may be a pure memorized shortcut with no phonetic link to its word. A rules-derived outline is held to the same standard: a word's primary outline, from any source, only has to be the **cheapest** one available, not a guessable one."
+  },
+  {
+   "t": "p",
+   "x": "`rules/briefs.toml` sets the default source (`plover`), how many of the most common words get a brief (`count = 1500`), and the per-word overrides."
+  },
+  {
+   "t": "h",
+   "x": "How a word's outline is picked"
+  },
+  {
+   "t": "p",
+   "x": "Every word's primary outline is settled by **one global optimization**, not a sequence of passes. The generator lists every legal candidate for every word:"
+  },
+  {
+   "t": "list",
+   "items": [
+    "both gold dictionaries' listed outlines (the briefs),",
+    "lyk's own plain-rules reading,",
+    "a spelling-told-apart variant for a homophone group,",
+    "every [brevity](#/ref/brevity) shortening,",
+    "the full star ladder on top of all of that,",
+    "for a word spelled with a trailing `s`, a voiced `-Z` coda respelled `-S` on any of the above that carries one."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "It then solves for the assignment that minimizes the **whole dictionary's total cost, weighted by how often each word is said**. A brief, a rules-derived reading and a brevity-shortened form compete in the same pool for the same word; whichever is cheapest, weighed against every other word's stake in the same strokes, wins. A brief is not pinned the moment it is found."
+  },
+  {
+   "t": "p",
+   "x": "The solver and its inputs are described in [How the solver works](#/ref/how-solver) and [Candidates, cost and ergonomics](#/ref/how-candidates-cost)."
+  },
+  {
+   "t": "h",
+   "x": "Cost: strokes, then keys, then comfort"
+  },
+  {
+   "t": "p",
+   "x": "Candidates are ranked by one function applied everywhere:"
+  },
+  {
+   "t": "pre",
+   "x": "cost = 25 000 per stroke + 1 000 per key + ergonomics (always under 1 000)"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A stroke costs more than every key one stroke can hold (24), so for a single word **fewer strokes always wins outright**.",
+    "Among equal-stroke candidates, **fewer keys wins**.",
+    "Among candidates tied on both, the **physically more comfortable** outline wins. This can prefer a starred outline over a star-free one if the star form is genuinely easier to press (Plover lists both `PW*ES` and [[best|PWEFT]] for *best*; the cost model, not list order, settles it).",
+    "A **family-shaped** candidate (a word's root outline plus its ending's key, see [Syllables and folding](#/ref/syllables)) counts two keys cheaper than it is, so a family shares one shape unless that costs more than two extra keys."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "At 25 keys a stroke, [[like|HRAOEU]] beats `HRAOEUB`, [[day|AEU]] beats `TAEU`, and [[young|HUPBG]] beats `KWHUPBG`. A stroke used to weigh 1,000 keys, which let a rare word that saved one stroke beat any number of extra keys on a far commoner word (*you* was once pushed from [[U]] to the 7-key `KWRAOU`)."
+  },
+  {
+   "t": "h",
+   "x": "Frequency decides who gets a contested stroke"
+  },
+  {
+   "t": "p",
+   "x": "Frequency never changes a candidate's own cost. Two words considering the same outline agree on what it costs; what decides who gets it is how much each word's total result is worth, using the **raw usage count** of the word in the frequency corpus. The solver's objective is therefore exactly the headline number `build` and `score` report: average keys per word, weighted by how often the word is said."
+  },
+  {
+   "t": "h",
+   "x": "Losing a stroke is the normal mechanism"
+  },
+  {
+   "t": "p",
+   "x": "A word that loses a contested outline to a more valuable word is not a failure. Every word keeps its full ladder of fallbacks (the plain reading, a star on the first stroke, a star on the last, then one and two extra star strokes) as real, always-present candidates, so losing never means falling all the way back to a long phonetic spelling-out when a cheap ladder step is free. See [When two words sound the same](#/ref/collisions)."
+  },
+  {
+   "t": "p",
+   "x": "A guard counts words whose final outline costs more than their own plain-rules reading even though that reading is unclaimed (a family-shaped word is exempt). `build` prints it as \"words stranded on a worse outline than their own, unclaimed plain reading\", and a test holds it to zero. A true global optimum cannot leave a cheaper free outline unused, so zero is expected by construction."
+  },
+  {
+   "t": "h",
+   "x": "When a cluster has too few strokes"
+  },
+  {
+   "t": "p",
+   "x": "When more mutually exclusive words want a set of strokes than there are legal outlines (a tight homophone or near-homophone cluster, tighter than its star ladder), the solver **sacrifices the word with the least to lose**. Every word's pool includes a private \"no match\" option priced at what having no outline costs: the word gets **fingerspelled**, one stroke per letter, and never less than one stroke worse than the word's worst real candidate, scaled by its frequency weight."
+  },
+  {
+   "t": "p",
+   "x": "So a rare name losing its last slot is weighed honestly against a common word's extra stroke. Example: *early*, said about 85,000 times, keeps [[early|ERL]]; the rarest member of its cluster (*errol*, *earle*, *earl*) is the one that pays. Words left unplaced this way are counted by `build` as \"words the rules could not place\"; every one is rarer than rank 20,000."
+  },
+  {
+   "t": "h",
+   "x": "Extra one-stroke entries"
+  },
+  {
+   "t": "p",
+   "x": "After everything else is placed, each word's other one-stroke candidates that lost its primary slot take any stroke that is still unclaimed. The candidates are: its gold briefs from Plover and Lapwing, the plain rules reading, a spelling variant, an `-S` respelling and a family shape."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**At most three per word**, cheapest first, each **within three keys** of the word's own outline.",
+    "Star and `/+*` ladder markers are collision fallbacks and are left out.",
+    "They run strictly last, so they never take a stroke that any primary, backup or phrase wanted, and every lookup tool ranks them below the primary. *like* is [[like|HRAOEU]] with other one-stroke outlines as extras.",
+    "The current build has about 10,400 of them."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Hand-pinned overrides"
+  },
+  {
+   "t": "p",
+   "x": "In `[word]`, a source of `\"plover\"` or `\"lapwing\"` only narrows which gold dictionary supplies the word's brief candidates; the word still competes on cost. A **literal outline** is different: a human chose this outline for this word, and the decision is never reopened against the word's other candidates, let alone another word's."
+  },
+  {
+   "t": "list",
+   "items": [
+    "A literal override is resolved first, the same way a reserved outline or a standalone suffix is, so every other word's candidate pool sees the stroke as spoken for from the start.",
+    "A collision between a literal override and something already pinned (a reserved stroke, the suffix table, *I*, or another override) is a **hard build error** to fix in `rules/briefs.toml`, never silently resolved."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "The single-key words"
+  },
+  {
+   "t": "p",
+   "x": "The join key doubles every continuation shape into a separate outline (`+-G` is *ing*; a bare `-G` is not that stroke), so a single right-hand key is free to give to a whole word. Of the ten single right-hand keys these claim six; the others are [[of|-F]], [[be|-B]], [[the|-T]] and [[for|-R]]."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Word",
+    "Outline",
+    "Why"
+   ],
+   "rows": [
+    [
+     "[[up|-P]]",
+     "[[-P]]",
+     "AH reduces"
+    ],
+    [
+     "[[all|-L]]",
+     "[[-L]]",
+     "ends in the L sound"
+    ],
+    [
+     "[[go|-G]]",
+     "[[-G]]",
+     "first letter"
+    ],
+    [
+     "[[do|-D]]",
+     "[[-D]]",
+     "first letter"
+    ],
+    [
+     "[[was|-Z]]",
+     "[[-Z]]",
+     "AH reduces, ends in Z"
+    ],
+    [
+     "[[yes|-S]]",
+     "[[-S]]",
+     "ends in the S sound"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "*were* does not get [[-R]] because *for* is the commoner word and keeps it; *were* is [[were|WR]] (W, then the reduced vowel's R)."
+  },
+  {
+   "t": "h3",
+   "x": "Other pinned words"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Word",
+    "Outline",
+    "Note"
+   ],
+   "rows": [
+    [
+     "[[and|SKP]]",
+     "[[SKP]]",
+     "Lapwing's brief; Plover's bare `SP` looks like the space-insertion strokes"
+    ],
+    [
+     "[[one|WUPB]]",
+     "[[WUPB]]",
+     "same consonants as *won*, *one*'s own vowel; [[won|WOPB]] keeps `WOPB`"
+    ],
+    [
+     "[[want|W-T]]",
+     "[[W-T]]",
+     "a vowel-less consonant skeleton, otherwise unclaimed"
+    ],
+    [
+     "[[am|-PL]]",
+     "[[-PL]]",
+     ""
+    ],
+    [
+     "[[work|WORBG]]",
+     "[[WORBG]]",
+     "full `-BG` (K), like *worked*, *workable*; Plover's `WORB` holds half the pair"
+    ],
+    [
+     "[[working|WOG]]",
+     "[[WOG]]",
+     "Plover's one stroke beats family consistency for a top-400 word; `WORBG/+-G` still exists as a backup"
+    ],
+    [
+     "[[against|TKPWEPBS]]",
+     "[[TKPWEPBS]]",
+     "same keys as the generated form, a more comfortable onset"
+    ],
+    [
+     "[[protect|PHREBGT]]",
+     "[[PHREBGT]]",
+     "adds an H so one finger covers both rows"
+    ],
+    [
+     "[[perhaps|PRAPTS]]",
+     "[[PRAPTS]]",
+     "one extra key for a more comfortable ending"
+    ],
+    [
+     "*govern* [[TKPWOFRPB]]",
+     "[[TKPWOFRPB]]",
+     "keeps the R of *er*"
+    ],
+    [
+     "[[which|KH]]",
+     "[[KH]]",
+     "keeps the 2-key stroke instead of losing it to *charge*"
+    ],
+    [
+     "[[lead|HRAED]]",
+     "[[HRAED]]",
+     "the common verb sense (/L IY D/); [[led|HRED]] keeps `HRED`"
+    ],
+    [
+     "[[keep|KP]]",
+     "[[KP]]",
+     "a short brief; bumps *examine* off this stroke"
+    ],
+    [
+     "[[has|HA]]",
+     "[[HA]]",
+     "a short brief; bumps *ha* off this stroke"
+    ],
+    [
+     "[[eye|AOEU]]",
+     "[[AOEU]]",
+     "the stroke actually reached for; bumps *aye*"
+    ],
+    [
+     "[[oh|OE]]",
+     "[[OE]]",
+     "the stroke actually reached for; bumps *owe*"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Words pinned to the `plover` source (so only Plover's outline competes, the rules reading loses) include *contract*, *introduce*, *organization*, *individual*, *significant*, *underground*, *intelligence*, *ordinary*, *influence*, *unique*, *everyday*, *including*, *include*, *understanding*, *imagination*, *they're*, *shouldn't*, *easier*, *female*, *realized*, *subject*, *ideas*, *incredible*, *performance*, *perfectly*, *audience*, *obvious*, *neighborhood*, *suggest*, *gentleman*, *object*, *remind*, *confused*, *amount*, *agency*, *license*, *remain*, *nowhere*, *began*, *season*, *issue*, *unit*, *fortune*, *success*, *drinks*, *insurance*, *elevator*, *challenge*, *student*, *strength*, *argue*, *greatest*, *reasons*, *concentrate*, *breaking*, *noticed*, *deserves*, *airport*, *onto*, *research*, *mountain*, *urgent*, *agents*, *inform*, *program*, *changing*, *opened*, *mister*, *opens*, *opening*, *yourselves*, *disease*, *anytime* and a few more. Each saves several keys over the rules reading, for example [[contract|KR-T]] (one stroke) against `KOPB/+TRABGT`."
+  },
+  {
+   "t": "h3",
+   "x": "Short briefs for very common words"
+  },
+  {
+   "t": "p",
+   "x": "A deliberate exception to \"derivable from sound\": for a word common enough, one memorized stroke beats reconstructing five or seven keys. Each was checked against the candidate pool and the real collisions before being pinned."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Word",
+    "Outline"
+   ],
+   "rows": [
+    [
+     "[[knew|-PZ]]",
+     "[[-PZ]]"
+    ],
+    [
+     "[[liked|-FLD]]",
+     "[[-FLD]]"
+    ],
+    [
+     "[[found|-FBD]]",
+     "[[-FBD]]"
+    ],
+    [
+     "[[believed|-BLD]]",
+     "[[-BLD]]"
+    ],
+    [
+     "[[believe|-BL]]",
+     "[[-BL]]"
+    ],
+    [
+     "*can't* [[*BG]]",
+     "[[*BG]]"
+    ],
+    [
+     "[[find|-FPBD]]",
+     "[[-FPBD]]"
+    ],
+    [
+     "[[means|-PLS]]",
+     "[[-PLS]]"
+    ],
+    [
+     "[[bring|PWR]]",
+     "[[PWR]]"
+    ],
+    [
+     "[[thing|-FRLG]]",
+     "[[-FRLG]]"
+    ],
+    [
+     "[[thought|-LGT]]",
+     "[[-LGT]]"
+    ],
+    [
+     "*wasn't* [[-FSZ]]",
+     "[[-FSZ]]"
+    ],
+    [
+     "*weren't* [[*RP]]",
+     "[[*RP]]"
+    ],
+    [
+     "*wouldn't* [[*LD]]",
+     "[[*LD]]"
+    ],
+    [
+     "[[got|-GTD]]",
+     "[[-GTD]]"
+    ],
+    [
+     "*couldn't* [[*BGD]]",
+     "[[*BGD]]"
+    ],
+    [
+     "[[think|-PBG]]",
+     "[[-PBG]]"
+    ],
+    [
+     "*doesn't* [[*RBGZ]]",
+     "[[*RBGZ]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "The th family is pinned"
+  },
+  {
+   "t": "p",
+   "x": "Every word that begins with the \"th\" sound of *they* is written with `TH-`, the vowel telling them apart, so knowing one tells you the rest. They are pinned because left alone the solver chose the shortest chord for each (`-BLS` for *their*, `-FBL` for *those*, `-RPG` for *these*): a key saved, with nothing in the chord saying which word it is."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Word",
+    "Outline"
+   ],
+   "rows": [
+    [
+     "[[they|THE]]",
+     "[[THE]]"
+    ],
+    [
+     "[[their|THAER]]",
+     "[[THAER]]"
+    ],
+    [
+     "[[theirs|THAERS]]",
+     "[[THAERS]]"
+    ],
+    [
+     "*they're* [[THER]]",
+     "[[THER]]"
+    ],
+    [
+     "[[these|THEZ]]",
+     "[[THEZ]]"
+    ],
+    [
+     "[[those|THOZ]]",
+     "[[THOZ]]"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The same family, not pinned but following the pattern: [[this|TH]], [[them|THEP]], [[there|THR]]."
+  },
+  {
+   "t": "h",
+   "x": "No half-held key combinations"
+  },
+  {
+   "t": "p",
+   "x": "A candidate may never take only **part** of a key combination that the rules only use **together** for one sound. This check applies to every raw gold-dictionary candidate offered. Example: Plover's `KPWAOD` for *good* keeps the `P W` of `TKPW` (the rules' \"g\") but drops the `T`, which reads back as \"k\", not \"g\": a different, wrong sound. *good* is [[good|AOD]]."
+  },
+  {
+   "t": "p",
+   "x": "A raw candidate that fails the check is never offered. Instead, up to two **repairs** are generated from it and offered as separate candidates: completing the fragment into the whole correct cluster, or dropping it. A brief is free to skip a sound, so dropping is usually fewer keys and tends to win when both are legal. A repair exists only because the gold dictionary pointed at that sound."
+  },
+  {
+   "t": "p",
+   "x": "The check counts a sound as explaining a key only when that sound can sit on the stroke being checked: every syllable for a one-stroke brief, but for a multi-stroke outline only the first `syllables - strokes + 1` syllables for the first stroke and the last that many for the last (every other stroke holds at least one syllable). Without this, the second stroke's \"t\" of *dictate* explained away the first stroke's `TK` (\"d\") and the lone `K` was \"repaired\" into `TEUBG/+TAEUT`."
+  },
+  {
+   "t": "p",
+   "x": "A literal override is exempt from this check by definition (a human chose it), so a literal override should not be a half-held chord. Six old overrides (*on*, *from*, *no*, *then*, *day*, *which*) were exploits of an older, narrower version of the check and were removed; each word now takes its own full phonetic reading. (*which* was later pinned to [[KH]] for a different reason, listed above.)"
+  }
+ ]
+}

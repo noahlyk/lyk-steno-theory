@@ -1,0 +1,180 @@
+{
+ "id": "spelling-mode",
+ "title": "Spelling mode",
+ "goal": "Know how a word with no pronunciation on record is written letter by letter, and how a spelled run is read back.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "When spelling mode is used"
+  },
+  {
+   "t": "p",
+   "x": "A few words have no pronunciation on record anywhere (`aboveground` is not in CMUdict, MFA's dictionary or WikiPron), so there are no sounds to run the onset, vowel and coda tables against. Spelling mode writes such a word with **every letter struck explicitly**, one stroke per letter."
+  },
+  {
+   "t": "p",
+   "x": "Most of CMUdict's gaps never reach spelling mode: `src/ipa.rs` translates MFA's, then WikiPron's, IPA pronunciation into the ARPAbet CMUdict uses and fills it in before the rules see the word (see [a stroke, and the setup](#/ref/how-stroke-setup)). Neither source marks lexical stress, so a translated word's stress is a first-syllable-primary guess. Spelling mode is for what is left after that."
+  },
+  {
+   "t": "h",
+   "x": "The marker"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A spelling-mode run starts with `~` instead of `+`. `~` is a second virtual bit in the stroke (the 25th), next to [the join key](#/ref/join-key)'s 24th.",
+    "It means: read this stroke, and every following stroke that carries the ordinary join key, as a letter chord, not as sounds.",
+    "Only the first stroke carries `~`. The rest are ordinary continuations, `+` included."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "The letter table"
+  },
+  {
+   "t": "p",
+   "x": "`rules/spelling.toml` gives each letter exactly one bare chord, with no `-LGTS` ender: the `~`/`+` marker already says the run is spelled, so there is nothing to confuse it with. The chords are the primary ones from the [fingerspelling alphabet](#/ref/fingerspelling/the-alphabet); the second \"magnum\" chords (`AOEU` for *i*, `SKWRAEU` for *j*, `STKPWHR` for *z*) are not used here."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Letter",
+    "Chord",
+    "Letter",
+    "Chord",
+    "Letter",
+    "Chord"
+   ],
+   "rows": [
+    [
+     "a",
+     "[[A]]",
+     "b",
+     "[[PW]]",
+     "c",
+     "[[KR]]"
+    ],
+    [
+     "d",
+     "[[TK]]",
+     "e",
+     "[[E]]",
+     "f",
+     "[[TP]]"
+    ],
+    [
+     "g",
+     "[[TKPW]]",
+     "h",
+     "[[H]]",
+     "i",
+     "[[EU]]"
+    ],
+    [
+     "j",
+     "[[SKWR]]",
+     "k",
+     "[[K]]",
+     "l",
+     "[[HR]]"
+    ],
+    [
+     "m",
+     "[[PH]]",
+     "n",
+     "[[TPH]]",
+     "o",
+     "[[O]]"
+    ],
+    [
+     "p",
+     "[[P]]",
+     "q",
+     "[[KW]]",
+     "r",
+     "[[R]]"
+    ],
+    [
+     "s",
+     "[[S]]",
+     "t",
+     "[[T]]",
+     "u",
+     "[[U]]"
+    ],
+    [
+     "v",
+     "[[SR]]",
+     "w",
+     "[[W]]",
+     "x",
+     "[[KP]]"
+    ],
+    [
+     "y",
+     "[[KWH]]",
+     "z",
+     "[[STKPW]]",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "*y* is `KWH` here, not the `KWR*` of the glued letters."
+  },
+  {
+   "t": "h",
+   "x": "How a run is read"
+  },
+  {
+   "t": "list",
+   "items": [
+    "`Rules::resolve` checks the first stroke for the spell bit before anything else.",
+    "If it is set, the outline goes to `Rules::resolve_spelling`: it strips `~` from the first stroke and `+` from each stroke after it, looks each bare chord up in the letter table, and concatenates the letters in order.",
+    "There is nothing to disambiguate: no vowel-key collision, no ranking of sounds, because each letter was struck, not inferred."
+   ],
+   "ordered": true
+  },
+  {
+   "t": "p",
+   "x": "`aboveground`, eleven strokes, one letter each:"
+  },
+  {
+   "t": "pre",
+   "x": "~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK"
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- resolve -- \"~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK\"\n  ->  aboveground"
+  },
+  {
+   "t": "h",
+   "x": "Going the other way: spell_word"
+  },
+  {
+   "t": "p",
+   "x": "`Rules::spell_word(word)` is the exact inverse: it looks each letter up in the table and returns the outline with `~` on the first stroke and `+` on every one after it. It returns nothing for a word with a character outside plain a-z. `lookup`, `explain` and `quote` fall back to it once a word has no pronunciation, rather than calling the word untypeable."
+  },
+  {
+   "t": "h",
+   "x": "The plugin"
+  },
+  {
+   "t": "p",
+   "x": "`cargo run -- plugin` generates the same letter table and dispatch into the deployed WASM plugin, as it does for the phonetic tables (see [the fallback](#/ref/fallback/keeping-the-plugin-honest)). There is no second hand-kept copy."
+  },
+  {
+   "t": "h",
+   "x": "Not yet on a physical key"
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "`~` has no physical key in the live keymux config yet. Spelling mode works through `cargo run -- resolve` and the generated plugin, but you cannot strike it at a keyboard today. Until then, spell a word with the glued fingerspelling letters (`A*`, `PW*`, ...; see [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text))."
+  }
+ ]
+}

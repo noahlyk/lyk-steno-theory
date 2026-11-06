@@ -1,0 +1,93 @@
+{
+  "id": "how-backups-output",
+  "title": "Backups, phrases and output",
+  "goal": "How the generator adds a joined (+) way into every word beside its primary, merges two words into one stroke, and writes the dictionary files out.",
+  "blocks": [
+    { "t": "h", "x": "Backup composition: every + way into a word" },
+    { "t": "p", "x": "Once every primary is locked in, a fixed-point pass builds `+`-joined entries for every word it can. Each is reached by sounding a word out from pieces you already know: a placed stem, an ending, a prefix, or the word's own syllables. A rare word can keep a terse one-stroke primary ([[machete|PHEFPT]]) and still be typed from its sound ([[PHU/+SHE/+TAOE]])." },
+    { "t": "list", "items": [
+      "There are about 205,400 backups in the current build.",
+      "They are placed before the bonus short forms.",
+      "A phrase never takes a backup of more than one stroke.",
+      "No backup can change a primary.",
+      "A word may have several. When two words compose the same text in one round, the more frequently said word wins it."
+    ] },
+    { "t": "h3", "x": "What every direction builds on" },
+    { "t": "list", "items": [
+      "A placed word's **fastest outline**, and also its own plain reading when that is a longer form.",
+      "Any `+*` ladder marker on the stem is dropped, so no join has a star in the middle of it.",
+      "A join of three strokes or more whose last stroke fits on the one before (right-hand keys, all later in steno order) is offered folded too.",
+      "A word's \"best\" outline, which later rounds use as a stem, is picked by strokes, then keys, then ergonomics, then the outline text itself, so the choice never depends on entry order.",
+      "Joins through an ending build on the stem's plain reading, never its brief. The stem is three letters or more, the join must pass the fragment check, and a word in `-ly` never joins through `-y`.",
+      "Every round's compositions are collected on every core, up to five rounds."
+    ] },
+    { "t": "h3", "x": "The directions" },
+    { "t": "table", "head": ["Direction", "Mechanic"], "rows": [
+      ["(a) extend", "A placed stem's outline plus a reduced trailing syllable as one joined stroke (build + -ing)."],
+      ["(a2) two-stroke suffix", "A stem found by spelling plus a known two-stroke suffix (`-ism`, `-ary`, `-ical`, ...)."],
+      ["(b) fold", "OR a leading consonant cluster into a placed stem's first stroke, when the keys are disjoint. No stroke is added; the stem's later strokes are carried through untouched."],
+      ["(d) family", "A family member's stem outline, whatever it is, plus the ending's standalone stroke: call + -ed is [[KAUL/+-D]], look + -s is [[HRAOBG/+-S]]. Covers endings that are not a syllable of their own, which (a) cannot."],
+      ["(e) syllables", "The word itself, one syllable per stroke, from each pronunciation: its folded outline; a reduced last syllable struck like a suffix ([[TAEU/+-BL]]); every vowel written ([[TAEU/+PWUL]]); both syllable splits ([[HREPL/+UPB]], [[HRE/+PHUPB]]); a fixed prefix folded or alone. A kept schwa is always `U`. Needs no other word, so it runs in round 0 only."],
+      ["(f) prefix", "A prefix's own stroke, then the placed stem's whole outline joined: [[UPB/+KHRAOER]] (unclear), [[TKE/+KOED]] (decode), [[TPHOPB/+STOP]] (nonstop). The word's sound must end in the stem's."],
+      ["(c) compound", "Two placed words back to back, when the spelling really is the two words joined (myself = my + self)."]
+    ] },
+    { "t": "p", "x": "Direction (f) uses eighteen prefixes: un, dis, mis, re, pre, de, co, en, im, in, non, sub, trans, anti, inter, semi, over, under. See [prefixes](#/ref/prefixes)." },
+    { "t": "h3", "x": "Endings used by direction (d)" },
+    { "t": "table", "head": ["List", "Endings"], "rows": [
+      ["Family endings (also shape a family's primary)", "`-s -ed -ing -er -est -ly -ness -ment -able -ful -less -ship -hood`"],
+      ["Extra backup-only endings (never move a primary)", "`-ation -ist -ish -ism -ize -ous -ive -ic -al -age -ity -ward -en -y -or -ible`, e.g. art + -ist is [[ART/+EUFT]] and sail + -or is [[SAEUL/+-R]]"],
+      ["Same sound, same stroke", "`-or` is written with `-er`'s stroke and `-ible` with `-able`'s"]
+    ] },
+    { "t": "p", "x": "Longest ending first, so information is inform + -ation, never a non-word + -on. An ending that replaces part of the stem (`-tion`, `-ic`, `-ity`) is reached by the sound-based directions (a), (e), not by a spelling-based family link." },
+    { "t": "h3", "x": "How many joined ways in" },
+    { "t": "table", "head": ["Rank (words of 2+ syllables)", "Have a joined way in", "Have two or more", "Per word"], "rows": [
+      ["Top 1,000", "99.2%", "93.6%", "4.1"],
+      ["1,000 - 5,000", "99.2%", "92.5%", "4.6"],
+      ["5,000 - 10,000", "98.5%", "90.1%", "4.7"],
+      ["10,000 - 20,000", "98.8%", "89.4%", "4.7"],
+      ["20,000 - 50,000", "98.6%", "87.3%", "4.6"],
+      ["50,000+", "97.9%", "84.6%", "4.4"]
+    ] },
+    { "t": "note", "kind": "rule", "x": "Every word of two syllables or more has joined ways in, however terse its primary is. See [every way to join a word](#/ref/ways-to-join)." },
+
+    { "t": "h", "x": "Phrase-briefing: two words in one stroke" },
+    { "t": "p", "x": "When two words' primaries share no keys, their union is a stroke nobody has claimed. \"of\" is `-F` and \"the\" is `-T`; their OR is [[-FT]], a brand-new stroke that writes both. \"of the\" is the commonest bigram in the corpus (2,766,332,391 occurrences). Phrases are written on the page [phrase-briefing](#/ref/phrases); this section is the build mechanism." },
+    { "t": "table", "head": ["Step", "Rule"], "rows": [
+      ["Which pairs", "The 20,000 most frequent bigrams, ranked by raw bigram count (not a collocation score: \"of the\" and \"in the\" are the most worth briefing because both halves are independently common)."],
+      ["Merge", "Disjoint-OR of the two words' primaries."],
+      ["Multi-stroke host", "One side may be a multi-stroke word. The single-stroke side merges into the other's **first** stroke only, by the same disjoint-OR rule as backup direction (b), and the rest of the host is carried through untouched: a (`A`) + currency (`KURPB/+SEU`) is `KAURPB/+SEU`."],
+      ["The pronoun I", "A bigram's lowercase \"i\" is looked up as the \"I\" entry on [[EU]], so phrases build on the pronoun, not the letter. `EU` shares vowel keys with most verbs, so few \"I\" phrases qualify; \"I would\" is [[WOEU]]."]
+    ] },
+    { "t": "h3", "x": "Who gives up a stroke" },
+    { "t": "p", "x": "A pair whose merged stroke a word already holds competes for it on count. Three limits apply:" },
+    { "t": "table", "head": ["Limit", "Value"], "rows": [
+      ["Words that keep their primary", "the 5,000 most frequent (a phrase may still take one of their short forms or alternates)"],
+      ["Pairs allowed to take a held stroke at all", "only the 1,000 most frequent eligible pairs; a rarer pair is committed only into a free stroke"],
+      ["Multi-stroke backups", "never taken"]
+    ] },
+    { "t": "p", "x": "With these limits 134 words carry a star because a phrase took their stroke, 15 of them in the top 5,000. The build has 5,720 phrase entries." },
+
+    { "t": "h", "x": "The phrasing grammar" },
+    { "t": "p", "x": "The phrasing grammar writes a whole phrase in one stroke by rule: a starter (who) on the left bank, the auxiliary or tense on the vowels, the star for not, and a verb on the right bank. Learn it in [the lessons](#/lesson/19-phrasing-grammar) and drill the strokes in [the phrasing strokes lesson](#/lesson/20-phrasing-strokes)." },
+
+    { "t": "h", "x": "Output: writing the dictionary files" },
+    { "t": "p", "x": "Inside the generator every word is keyed lowercase. `write_json` applies one transform on the way out, `written()`: the pronoun \"i\", alone, leading a contraction, or as either half of a phrase, is capitalized." },
+    { "t": "table", "head": ["Stroke", "Written as"], "rows": [
+      ["[[EU]]", "I"],
+      ["[[AOEUPL]]", "I'm"],
+      ["[[AOEUL]]", "I'll"],
+      ["[[AOEU]]", "eye (the letter i is not given this stroke)"],
+      ["[[WOEU]]", "I would"]
+    ] },
+    { "t": "p", "x": "A full `build` takes about 8 seconds. `score --check-readme` takes about 4.6 seconds; `--write-readme` rewrites stale README tables." },
+    { "t": "h3", "x": "Checks that run on every build and test run" },
+    { "t": "list", "items": [
+      "No two raw entries share an outline. `write_json` keys by outline text, so a duplicate would silently lose an entry.",
+      "A word's cheapest outline does not depend on entry order.",
+      "The top 1,000 words are one stroke each, with no `/+*` ladder marker. Only american and lt, which have no one-stroke candidate at all, are exempt.",
+      "The solver matches brute force on 300 random over-subscribed graphs.",
+      "No word is stranded on a worse outline than one of its own unclaimed candidates, and every word in the top 2,000 has an outline.",
+      "A reduced \"-er\" keeps its R, and a sound may only explain a key on a stroke it can actually be on (each pinned by a test)."
+    ] }
+  ]
+}

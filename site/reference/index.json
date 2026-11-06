@@ -1,0 +1,62 @@
+{
+  "title": "Reference",
+  "summary": "Every rule, table and mechanism behind lyk, in one place and searchable. The lessons teach you to type it; this is where you look it up, and how the dictionary is built.",
+  "sections": [
+    {
+      "title": "Cheat sheet",
+      "summary": "The one-page version.",
+      "pages": [
+        { "id": "cheatsheet", "title": "Cheat sheet", "summary": "The key chart, the join key, endings, prefixes, phrases and punctuation on one page, with a link to where each is explained." }
+      ]
+    },
+    {
+      "title": "How lyk works",
+      "summary": "The pipeline that turns a word list into a stroke for every word, step by step.",
+      "pages": [
+        { "id": "how-stroke-setup", "title": "A stroke, and the setup", "summary": "A stroke is 24 bits; the six sources behind every pronunciation; the IPA fallback." },
+        { "id": "how-candidates-cost", "title": "Candidates, cost and ergonomics", "summary": "Every legal outline for a word, the one number that ranks them, and what makes a stroke comfortable." },
+        { "id": "how-solver", "title": "Peeling, the solver and families", "summary": "How the best outline for every word is chosen at once, and how word families settle together." },
+        { "id": "how-backups-output", "title": "Backups, phrases and output", "summary": "Joined backups, phrase merging, the phrasing grammar, and the files that come out." }
+      ]
+    },
+    {
+      "title": "The rules",
+      "summary": "How a word gets its stroke, in the order the generator applies the rules.",
+      "pages": [
+        { "id": "join-key", "title": "The join key", "summary": "Why word boundaries are explicit and what + buys." },
+        { "id": "phonetic-rules", "title": "Phonetic rules", "summary": "Onset, vowel and coda: how a plain syllable gets its stroke." },
+        { "id": "spelling", "title": "Spelling disambiguation", "summary": "Telling apart words that sound the same." },
+        { "id": "prefixes", "title": "Prefixes", "summary": "ex-, dis-, un-, mis-, over-, under-, inter- and how they attach." },
+        { "id": "syllables", "title": "Syllables and folding", "summary": "How an unstressed syllable joins a stroke or becomes its own." },
+        { "id": "ways-to-join", "title": "Every way to join a word", "summary": "All the + routes into a word, on one page." },
+        { "id": "brevity", "title": "How short", "summary": "The brevity ladder that shortens a long word." },
+        { "id": "collisions", "title": "When two words sound the same", "summary": "Briefs, spelling and the star ladder, settled together." },
+        { "id": "typable", "title": "Strokes you can type", "summary": "What the right pinky cannot press and what a word does instead." }
+      ]
+    },
+    {
+      "title": "Briefs, phrases and suffixes",
+      "pages": [
+        { "id": "briefs", "title": "Briefs", "summary": "Plover and Lapwing outlines kept, and the literal overrides." },
+        { "id": "phrases", "title": "Phrase-briefing", "summary": "Two words merged into one stroke." },
+        { "id": "suffixes", "title": "The suffix table", "summary": "Every standalone ending stroke and the rule behind them." }
+      ]
+    },
+    {
+      "title": "Punctuation, letters and commands",
+      "pages": [
+        { "id": "reserved-strokes", "title": "Reserved strokes", "summary": "What is pinned before any word." },
+        { "id": "punctuation", "title": "Punctuation and commands", "summary": "Every mark, capital, cursor and editing stroke." },
+        { "id": "fingerspelling", "title": "Fingerspelling, numbers and modifiers", "summary": "The alphabet, numbers, function keys, symbols and OS chords." },
+        { "id": "spelling-mode", "title": "Spelling mode", "summary": "Letter-exact typing for a word with no pronunciation." },
+        { "id": "fallback", "title": "The fallback", "summary": "What happens when a stroke misses the dictionary." }
+      ]
+    },
+    {
+      "title": "The project",
+      "pages": [
+        { "id": "build-and-files", "title": "Build, files and tools", "summary": "The commands, the data sources and what build writes." }
+      ]
+    }
+  ]
+}

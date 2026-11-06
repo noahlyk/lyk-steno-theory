@@ -1,0 +1,893 @@
+{
+ "id": "phonetic-rules",
+ "title": "Phonetic rules",
+ "goal": "Every table that turns sounds into keys: onsets, vowels, codas, vowel + R and the clusters that fold, each with an example word.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "How a plain syllable is built"
+  },
+  {
+   "t": "p",
+   "x": "A word's own stroke comes from running its sounds through four tables: the start of the syllable (onset), the vowel, the end of the syllable (coda), and the clusters that fold. This stroke is always computed and always competes for the word, brief or not. The spelling rules (see [spelling](#/ref/spelling)), prefixes, syllables and brevity are refinements of this base, not replacements."
+  },
+  {
+   "t": "list",
+   "items": [
+    "Keys are struck in steno order: left hand `STKPWHR`, then the vowel group `AO` `*` `EU`, then right hand `FRPBLGTSDZ`.",
+    "A `-` starts the right hand when there is no vowel in the stroke. A star counts with the vowels.",
+    "Sounds are the ARPAbet sounds of CMUdict (the names in the tables below). The vowel row comes from the sound, unless a spelling rule picks a variant: see [spelling](#/ref/spelling).",
+    "`NG` written `-ing` and `T` written `-ed` are special: see the coda table."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "The same tables are read backwards to turn a stroke back into sounds when a stroke is not in the dictionary: see [the fallback](#/ref/fallback)."
+  },
+  {
+   "t": "h",
+   "x": "Onsets: the start of a syllable"
+  },
+  {
+   "t": "p",
+   "x": "Two sounds can share a key because a word never needs to tell them apart on the left hand: **th** (thin) and **th** (this) are both [[TH]], and **zh** and **j** are both [[SKWR]]. The last three rows are chosen by the spelling, not the sound."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sound",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "p as in pat",
+     "[[P]]",
+     "[[pat|PAT]]"
+    ],
+    [
+     "b as in bat",
+     "[[PW]]",
+     "[[bat|PWAT]]"
+    ],
+    [
+     "t as in tap",
+     "[[T]]",
+     "[[tap|TAP]]"
+    ],
+    [
+     "d as in dad",
+     "[[TK]]",
+     "[[dad|TKAD]]"
+    ],
+    [
+     "k as in cat",
+     "[[K]]",
+     "[[cat|KAT]]"
+    ],
+    [
+     "g as in game",
+     "[[TKPW]]",
+     "[[game|TKPWAEPL]]"
+    ],
+    [
+     "m as in map",
+     "[[PH]]",
+     "[[map|PHAP]]"
+    ],
+    [
+     "n as in nap",
+     "[[TPH]]",
+     "[[nap|TPHAP]]"
+    ],
+    [
+     "f as in fan",
+     "[[TP]]",
+     "[[fan|TPAPB]]"
+    ],
+    [
+     "v as in van",
+     "[[SR]]",
+     "[[van|SRAPB]]"
+    ],
+    [
+     "th as in thin",
+     "[[TH]]",
+     "[[thin|THEUPB]]"
+    ],
+    [
+     "th as in these",
+     "[[TH]]",
+     "[[these|THEZ]]"
+    ],
+    [
+     "s as in sat",
+     "[[S]]",
+     "[[sat|SAT]]"
+    ],
+    [
+     "z as in zebra",
+     "[[STKPW]]",
+     "[[zebra|STKPWAOERB]]"
+    ],
+    [
+     "sh as in ship",
+     "[[SH]]",
+     "[[ship|SHEUP]]"
+    ],
+    [
+     "zh as in genre",
+     "[[SKWR]]",
+     "[[genre|SKWRORPB]]"
+    ],
+    [
+     "ch as in chip",
+     "[[KH]]",
+     "[[chip|KHEUP]]"
+    ],
+    [
+     "j as in jam",
+     "[[SKWR]]",
+     "[[jam|SKWRAPL]]"
+    ],
+    [
+     "h as in hat",
+     "[[H]]",
+     "[[hat|HAT]]"
+    ],
+    [
+     "l as in lap",
+     "[[HR]]",
+     "[[lap|HRAP]]"
+    ],
+    [
+     "r as in rat",
+     "[[R]]",
+     "[[rat|RAT]]"
+    ],
+    [
+     "w as in wet",
+     "[[W]]",
+     "[[wet|WET]]"
+    ],
+    [
+     "y as in yell",
+     "[[KWR]]",
+     "[[yell|KWREL]]"
+    ],
+    [
+     "w spelled `wh`",
+     "[[WH]]",
+     "[[whale|WHAEL]]"
+    ],
+    [
+     "r spelled `wr`",
+     "[[WR]]",
+     "[[write|WREU]], [[wrap|WRAP]]"
+    ],
+    [
+     "s spelled `sce`, `sci`, `scy`",
+     "[[SK]]",
+     "[[science|SKAOEUPBS]], [[scent|SKEPBT]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Consonant + y at the start"
+  },
+  {
+   "t": "p",
+   "x": "A consonant followed by the `y` of *view*, *music*, *million* is just the consonant's key: the y is part of the vowel after it (it is `AOU`, not `AO`). *g + w* of *penguin* is already in the `G` key."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sounds",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "p + y",
+     "[[P]]",
+     "[[pure|PAOUR]]"
+    ],
+    [
+     "b + y",
+     "[[PW]]",
+     "[[beauty|PWAOUT]]"
+    ],
+    [
+     "t + y",
+     "[[T]]",
+     "[[tune|TAOUPB]]"
+    ],
+    [
+     "d + y",
+     "[[TK]]",
+     "[[dune|TKAOUPB]]"
+    ],
+    [
+     "k + y",
+     "[[K]]",
+     "[[cue|KAOU]]"
+    ],
+    [
+     "g + y",
+     "[[TKPW]]",
+     "[[bugle|PWAOULG]]"
+    ],
+    [
+     "f + y",
+     "[[TP]]",
+     "[[fume|TPAOUPL]]"
+    ],
+    [
+     "v + y",
+     "[[SR]]",
+     "[[view|SRAOU]]"
+    ],
+    [
+     "m + y",
+     "[[PH]]",
+     "[[mute|PHAOUT]]"
+    ],
+    [
+     "n + y",
+     "[[TPH]]",
+     "[[menu|PHAOUPB]]"
+    ],
+    [
+     "l + y",
+     "[[HR]]",
+     "[[billion|PWOEUPB]]"
+    ],
+    [
+     "h + y",
+     "[[H]]",
+     "[[human|HAOUL]]"
+    ],
+    [
+     "th + y",
+     "[[TH]]",
+     "rare"
+    ],
+    [
+     "s + y",
+     "[[S]]",
+     "[[assume|SAOUPL]]"
+    ],
+    [
+     "z + y",
+     "[[STKPW]]",
+     "rare"
+    ],
+    [
+     "g + w",
+     "[[TKPW]]",
+     "[[penguin|PEPB/+WEUPB]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Vowels"
+  },
+  {
+   "t": "p",
+   "x": "Each vowel sound has fixed keys. A few take other keys when the word is spelled a certain way: those variants are all listed on [spelling](#/ref/spelling)."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sound",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "ee as in see",
+     "[[AOE]]",
+     "[[see|SAOE]]"
+    ],
+    [
+     "short i as in sit",
+     "[[EU]]",
+     "[[sit|SEUT]]"
+    ],
+    [
+     "ay as in say",
+     "[[AEU]]",
+     "[[say|SAEU]]"
+    ],
+    [
+     "short e as in bet",
+     "[[E]]",
+     "[[bet|PWET]]"
+    ],
+    [
+     "short a as in bat",
+     "[[A]]",
+     "[[bat|PWAT]]"
+    ],
+    [
+     "short o as in hot",
+     "[[O]]",
+     "[[hot|HOT]]"
+    ],
+    [
+     "short u as in sun",
+     "[[U]]",
+     "[[sun|SUPB]]"
+    ],
+    [
+     "aw as in saw",
+     "[[AU]]",
+     "[[saw|SAU]]"
+    ],
+    [
+     "oh as in boat",
+     "[[OE]]",
+     "[[boat|PWOET]]"
+    ],
+    [
+     "oo as in look",
+     "[[AO]]",
+     "[[look|HRAOBG]]"
+    ],
+    [
+     "ew as in tune",
+     "[[AOU]]",
+     "[[tune|TAOUPB]]"
+    ],
+    [
+     "eye as in shy",
+     "[[AOEU]]",
+     "[[shy|SHAOEU]]"
+    ],
+    [
+     "ow as in bout",
+     "[[OU]]",
+     "[[bout|PWOUT]]"
+    ],
+    [
+     "oy as in boy",
+     "[[OEU]]",
+     "[[boy|PWOEU]]"
+    ],
+    [
+     "ur as in hurt",
+     "[[UR]]",
+     "[[hurt|HURT]]"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "The short *i* is `EU` because `E` alone is the short *e*. `*` is not a vowel: it is the tiebreaker that tells two words apart (see [when two words sound the same](#/ref/collisions))."
+  },
+  {
+   "t": "h",
+   "x": "Codas: the end of a syllable"
+  },
+  {
+   "t": "p",
+   "x": "The right hand uses the same sounds in the same neighbour pairs as the left. *f* and *v* share [[-F]]; both *th* sounds share [[*T]]; *sh* and *zh* share [[-RB]]; `-S` is the s of *bus* and `-Z` the z of *buzz* (and the plural of *dogs*)."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sound",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "p",
+     "[[-P]]",
+     "[[cap|KAP]]"
+    ],
+    [
+     "b",
+     "[[-B]]",
+     "[[cab|KAB]]"
+    ],
+    [
+     "t",
+     "[[-T]]",
+     "[[cat|KAT]]"
+    ],
+    [
+     "d",
+     "[[-D]]",
+     "[[dad|TKAD]]"
+    ],
+    [
+     "k",
+     "[[-BG]]",
+     "[[back|PWABG]]"
+    ],
+    [
+     "g",
+     "[[-G]]",
+     "[[bag|PWAG]]"
+    ],
+    [
+     "m",
+     "[[-PL]]",
+     "[[ham|HAPL]]"
+    ],
+    [
+     "n",
+     "[[-PB]]",
+     "[[pen|PEPB]]"
+    ],
+    [
+     "ng (sing)",
+     "[[-PBG]]",
+     "[[sing|SEUPBG]]"
+    ],
+    [
+     "f",
+     "[[-F]]",
+     "[[off|O*F]]"
+    ],
+    [
+     "v",
+     "[[-F]]",
+     "[[five|TPEUF]]"
+    ],
+    [
+     "th (thin)",
+     "[[*T]]",
+     "[[path|PA*T]]"
+    ],
+    [
+     "th (this)",
+     "[[*T]]",
+     "as `th` ([[path|PA*T]])"
+    ],
+    [
+     "s",
+     "[[-S]]",
+     "[[bus|PWUS]]"
+    ],
+    [
+     "z",
+     "[[-Z]]",
+     "[[buzz|PWUZ]]"
+    ],
+    [
+     "sh",
+     "[[-RB]]",
+     "[[cash|KARB]]"
+    ],
+    [
+     "zh",
+     "[[-RB]]",
+     "[[beige|PWAERB]]"
+    ],
+    [
+     "ch",
+     "[[-FP]]",
+     "[[catch|KAFP]]"
+    ],
+    [
+     "j",
+     "[[-PBLG]]",
+     "[[bridge|PWREUPBLG]]"
+    ],
+    [
+     "l",
+     "[[-L]]",
+     "[[bell|PWEL]]"
+    ],
+    [
+     "r",
+     "[[-R]]",
+     "with a vowel it joins the vowel: see \"A vowel and its R\""
+    ],
+    [
+     "`ng` in a final `-ing` (two or more syllables)",
+     "[[-G]]",
+     "[[walking|WAUG]]"
+    ],
+    [
+     "t in a final `-ed`",
+     "[[-D]]",
+     "[[played|PHRAEUD]]"
+    ],
+    [
+     "v after a vowel with its own R",
+     "[[-FRB]]",
+     "[[starve|STAFRB]]"
+    ],
+    [
+     "ch after a vowel with its own R",
+     "[[-FRPB]]",
+     "[[lurch|HRUFRPB]]"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "`-ing` is always [[-G]], never [[-PBG]], and `-ed` is always [[-D]] even when it sounds like t."
+  },
+  {
+   "t": "h",
+   "x": "A vowel and its R"
+  },
+  {
+   "t": "p",
+   "x": "An r after a vowel is not struck as a separate `-R`: the vowel and the `R` are one chord. A few other vowel + consonant pairs share keys the same way (`long`, `song`). The last four rows tell sound-alike words apart by spelling: *dear* [[AER]] and *deer* [[AOER]], *stair* [[AEUR]] and *stare* [[AER]]."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sounds",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "air (e + r)",
+     "[[AEUR]]",
+     "[[care|KAEUR]]"
+    ],
+    [
+     "ear (i + r)",
+     "[[AOER]]",
+     "[[clear|KAOER]]"
+    ],
+    [
+     "ear (ee + r)",
+     "[[AOER]]",
+     "[[here|HAOER]]"
+    ],
+    [
+     "or (aw + r)",
+     "[[OR]]",
+     "[[more|PHOR]]"
+    ],
+    [
+     "ar (o + r)",
+     "[[AR]]",
+     "[[car|KAR]]"
+    ],
+    [
+     "ire (eye + r)",
+     "[[AOEUR]]",
+     "[[fire|TPAOEUR]]"
+    ],
+    [
+     "our (ow + r)",
+     "[[OUR]]",
+     "[[sour|SOUR]]"
+    ],
+    [
+     "ure (oo + r)",
+     "[[AOUR]]",
+     "[[pure|PAOUR]]"
+    ],
+    [
+     "oo + r spelled `ur` (not `ure`)",
+     "[[UR]]",
+     "[[sure|SHUR]]"
+    ],
+    [
+     "ew + r",
+     "[[AOUR]]",
+     "[[euro|KWRAO*UR]]"
+    ],
+    [
+     "aw + ng (`long`, `song`)",
+     "[[OPBG]]",
+     "[[long|HROPBG]]"
+    ],
+    [
+     "aw + r spelled `war`/`quar`",
+     "[[AR]]",
+     "[[war|WAR]]"
+    ],
+    [
+     "ee + r spelled `ea`",
+     "[[AER]]",
+     "[[hear|HAER]]"
+    ],
+    [
+     "i + r spelled `ea`",
+     "[[AER]]",
+     "[[dear|TKAER]]"
+    ],
+    [
+     "e + r when another word would take `air`",
+     "[[AER]]",
+     "[[their|THAER]]"
+    ],
+    [
+     "e + r spelled `er` before another vowel",
+     "[[ER]]",
+     "[[married|PHAERD]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Clusters at the end of a syllable that fold"
+  },
+  {
+   "t": "p",
+   "x": "When two or three sounds would not fit the keys one after the other, the table folds them. Plover folds some of these onto a star (*bank* [[*PBG]], *stamp* [[*PL]]). A run of consonants that is in steno order is simply struck key after key: [[tent|TEPBT]], [[hold|HOLD]], [[mind|PHOEUPBD]]."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sounds",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "ng + k",
+     "[[*PBG]]",
+     "[[bank|PWA*PBG]]"
+    ],
+    [
+     "m + p",
+     "[[*PL]]",
+     "[[stamp|STA*PL]]"
+    ],
+    [
+     "s + t",
+     "[[-FT]]",
+     "[[best|PWEFT]]"
+    ],
+    [
+     "s + k",
+     "[[-FBG]]",
+     "[[desk|TKEFBG]]"
+    ],
+    [
+     "s + p",
+     "[[-FP]]",
+     "[[crisp|KREUFP]]"
+    ],
+    [
+     "n + ch",
+     "[[-FRPB]]",
+     "[[french|TPREFRPB]]"
+    ],
+    [
+     "z + d",
+     "[[-FD]]",
+     "[[supposed|SPO*EFD]]"
+    ],
+    [
+     "th (this) + z",
+     "[[*TS]]",
+     "[[clothes|KHRO*ETS]]"
+    ],
+    [
+     "th (thin) + z",
+     "[[*TS]]",
+     "[[baths|PWA*TS]]"
+    ],
+    [
+     "n + j",
+     "[[-PBLG]]",
+     "[[range|RAEPBLG]]"
+    ],
+    [
+     "l + f",
+     "[[-FL]]",
+     "[[shelf|SHEFL]]"
+    ],
+    [
+     "l + v",
+     "[[-FL]]",
+     "[[twelve|TWEFL]]"
+    ],
+    [
+     "k + s + t",
+     "[[-BGT]]",
+     "[[text|T/+EBGT]]"
+    ],
+    [
+     "k + s + th",
+     "[[*BGTS]]",
+     "[[sixth|S/+*EUBGTS]]"
+    ],
+    [
+     "d + z",
+     "[[-DZ]]",
+     "[[kids|KEUDZ]]"
+    ],
+    [
+     "s + t in a final `-ed`",
+     "[[-FD]]",
+     "[[passed|PAFD]]"
+    ],
+    [
+     "k + s + t in a final `-ed`",
+     "[[-BGSD]]",
+     "no common word"
+    ],
+    [
+     "n + s + t in a final `-ed`",
+     "[[-PBSD]]",
+     "no common word"
+    ],
+    [
+     "p + s + t in a final `-ed`",
+     "[[-PSD]]",
+     "no common word"
+    ],
+    [
+     "n + s + t",
+     "[[-PBS]]",
+     "[[against|TKPWEPBS]]"
+    ],
+    [
+     "ng + s + t",
+     "[[-PBGS]]",
+     "[[amongst|PHOPBGS]]"
+    ],
+    [
+     "l + p (the l is dropped)",
+     "[[-P]]",
+     "[[help|HEP]]"
+    ],
+    [
+     "l + m (the l is inside the m)",
+     "[[-PL]]",
+     "[[film|TPEUPL]]"
+    ],
+    [
+     "l + k",
+     "[[-LG]]",
+     "[[silk|S*EULG]]"
+    ],
+    [
+     "l + b",
+     "[[-BL]]",
+     "[[bulb|*UBL]]"
+    ],
+    [
+     "sh + n (`-tion`, `-sion`, `-cian`, `-cean`)",
+     "[[-GS]]",
+     "[[nation|TPH-GS]]"
+    ],
+    [
+     "zh + n (`-sion`)",
+     "[[-GS]]",
+     "[[vision|SREUGS]]"
+    ],
+    [
+     "m + n + t (`-ment`)",
+     "[[-PLT]]",
+     "[[comment|KOPLT]]"
+    ],
+    [
+     "s + l",
+     "[[-FL]]",
+     "[[castle|KAFL]]"
+    ],
+    [
+     "s + n",
+     "[[-FPB]]",
+     "[[lesson|HR-FPB]]"
+    ],
+    [
+     "z + n",
+     "[[-FPB]]",
+     "[[prison|PREUFPB]]"
+    ],
+    [
+     "s + m",
+     "[[-FPL]]",
+     "[[chasm|KHAFPL]]"
+    ],
+    [
+     "z + m",
+     "[[-FPL]]",
+     "[[prism|PREUFPL]]"
+    ],
+    [
+     "z + z (`-zes`)",
+     "[[-SZ]]",
+     "[[sizes|SAOEUSZ]]"
+    ],
+    [
+     "t + `-ing`",
+     "[[-GT]]",
+     "[[sitting|SEUGT]]"
+    ],
+    [
+     "d + `-ing`",
+     "[[-GD]]",
+     "[[wedding|WEGD]]"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "These are the cluster keys the rules write first. A word can have a different form (a brief, a shorter form, a star) if another word needs this one's outline: the example is what the clusters give when nothing else is in the way."
+  },
+  {
+   "t": "h",
+   "x": "The vowel letter in joined strokes"
+  },
+  {
+   "t": "p",
+   "x": "A joined stroke (a backup built from several strokes) offers a vowel as the word spells it as well as as it sounds. A vowel letter gives these keys, for any sound written with that letter:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Letter",
+    "Keys"
+   ],
+   "rows": [
+    [
+     "`a`",
+     "[[A]]"
+    ],
+    [
+     "`e`",
+     "[[E]]"
+    ],
+    [
+     "`i`",
+     "[[EU]]"
+    ],
+    [
+     "`o`",
+     "[[O]]"
+    ],
+    [
+     "`u`",
+     "[[U]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Where a syllable ends in the middle of a word"
+  },
+  {
+   "t": "p",
+   "x": "Between two vowels, the longest run of consonants that English allows at the start of a syllable goes to the next syllable. These are the allowed starts (sounds):"
+  },
+  {
+   "t": "list",
+   "items": [
+    "One consonant: P B T D K G M N F V TH DH S Z SH ZH CH JH HH L R W Y",
+    "Two: P R, P L, P Y, B R, B L, B Y, T R, T W, T Y, D R, D W, D Y, K R, K L, K W, K Y, G R, G L, G W, G Y, F R, F L, F Y, V R, V Y, TH R, TH W, TH Y, SH R, SH W, SH L, S P, S T, S K, S M, S N, S L, S W, S F, S V, M Y, N Y, HH Y, L Y",
+    "Three: S P R, S P L, S P Y, S T R, S T Y, S K R, S K L, S K W, S K Y"
+   ],
+   "ordered": false
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "A stressed short vowel keeps the consonant after it: *bet-ter*, not *be-tter*. The short vowels are AE, EH, IH, AA, AH, UH."
+  },
+  {
+   "t": "p",
+   "x": "Every other break is also tried for the joined backups: see [syllables and folding](#/ref/syllables)."
+  },
+  {
+   "t": "h",
+   "x": "Reduced vowels"
+  },
+  {
+   "t": "p",
+   "x": "An unstressed syllable whose vowel is one of AH, IH, ER, the `-ly` of IY (`nearly`, `lately`) or the `-owed`/`-ows` of OW gets no vowel of its own: its consonants go on the stroke before. A final `a` (as in *china*) is still its own syllable. Consonants can land out of steno order only for `R` and `L` when folded alone (*better*, *lately*); `-ly` is folded only after a single consonant. The full folding rules are on [syllables and folding](#/ref/syllables)."
+  }
+ ]
+}

@@ -1,0 +1,175 @@
+{
+ "id": "fallback",
+ "title": "The orthographic fallback",
+ "goal": "Know what a stroke that misses the dictionary reads back as, and how that logic is built into keymux's WASM plugin.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What it is"
+  },
+  {
+   "t": "p",
+   "x": "`Rules::resolve` takes a stroke (or `+`-joined run) that missed the dictionary and reads its keys back into sounds, using the same onset, vowel and coda tables the generator writes with, in reverse. It spells the sounds plainly, because no word is on record to give a real spelling. Every key means something on its own and the vowel table covers all 15 non-empty vowel-key combinations, so almost every stroke reads back as something."
+  },
+  {
+   "t": "p",
+   "x": "A real steno engine uses it as its last resort: look the stroke up in the dictionary first, and only on a miss run `resolve` instead of echoing the keys. In Plover it is a `StenoDictionary` plugin loaded at the bottom of the stack. In keymux it is a WASM module asked only after every dictionary ahead of it has missed, and only for one stroke or a run the join key declared as one word."
+  },
+  {
+   "t": "h",
+   "x": "The rules of the read-back"
+  },
+  {
+   "t": "h3",
+   "x": "A vowelless stroke reads with no invented vowel"
+  },
+  {
+   "t": "p",
+   "x": "`-T` alone reads `t`, with no guessed vowel. A stroke with consonants and no vowel key is a bare continuation, valid as it is."
+  },
+  {
+   "t": "h3",
+   "x": "A suffix stroke always reads as that suffix"
+  },
+  {
+   "t": "p",
+   "x": "For any stroke after the first that carries the join key, `resolve` first checks `rules/suffixes.toml`'s chords, before the ordinary read-back. So `+-D` after a stroke with no entry reads `ed`, not the bare consonant `d`."
+  },
+  {
+   "t": "list",
+   "items": [
+    "A two-stroke suffix is checked first, as a pair: `-ism` `+EUZ/+-PL`, `-ity` `+U/+TEU`.",
+    "This is unconditional: a suffix does not need a particular composed outline to be a dictionary entry already.",
+    "A suffix struck alone, with no stroke before it, is already a literal dictionary entry; `resolve` is never reached for it."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "See the [suffix table](#/ref/suffixes)."
+  },
+  {
+   "t": "h3",
+   "x": "A placed single-stroke word as the stem reads as its own text"
+  },
+  {
+   "t": "p",
+   "x": "When the run's first stroke is already a single-stroke word, `resolve` uses that word's real text instead of decoding the keys. [[and|SKP]] is a brief with no phonetic link to its spelling, so `SKP/+-R` reads `ander`, not `sper`. Rules-derived words get the same treatment: [[build|PWHR]] plus `+-D` reads `builded`."
+  },
+  {
+   "t": "list",
+   "items": [
+    "Only the first stroke of a run longer than one stroke. A single stroke that matches a placed word is a normal dictionary hit.",
+    "Only a single-stroke stem. A multi-stroke placed word as the stem of an unmatched run is not covered yet."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "Silent e before a vowel ending"
+  },
+  {
+   "t": "p",
+   "x": "English spelling is not plain concatenation, so `resolve` looks at the first letter of the next piece before it commits the stem:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Case",
+    "Rule",
+    "Example"
+   ],
+   "rows": [
+    [
+     "stem ends in a silent `e`, next piece starts with a vowel",
+     "drop the `e`",
+     "[[have|SR]] + `+-G` reads `having`; `use` + `ing` reads `using`"
+    ],
+    [
+     "next piece starts with a consonant",
+     "keep the `e`",
+     "`entire` + `ly` reads `entirely`"
+    ],
+    [
+     "the `e` follows a vowel (not silent)",
+     "keep the `e`",
+     "`agree` + `ing` reads `agreeing`"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "Not covered: `dye` and `singe` keep their `e` before `-ing` to stay distinct from `die` and `sing`."
+  },
+  {
+   "t": "h3",
+   "x": "A true miss"
+  },
+  {
+   "t": "p",
+   "x": "The only stroke the rules give up on is one with nothing left once the star and join keys are set aside: no onset, no vowel, no coda. A star and a join key alone carry no sound."
+  },
+  {
+   "t": "h3",
+   "x": "Vowel keys and ties"
+  },
+  {
+   "t": "list",
+   "items": [
+    "Every vowel-key combination is a different vowel: `AO` and `AOU` read differently, so `-T/+AO` and `-T/+AOU` are different words.",
+    "Two sounds can share the same keys (`Z` and the silent-glide cluster `Z Y` are both `STKPW`; a plain vowel and a spelling variant can be the same keys). The read-back resolves such a tie **the same way every time**, so a given miss always reads the same. It is consistent, not necessarily what you meant."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "Bare `AO` is a three-way tie: `UH` (*book*, *put*), `UW.oo` (*too*, *moon*, *kangaroo*) and `OW.oa` (*boat*). A word's full pronunciation settles this when the dictionary is built; a miss has no word, so `resolve` picks **`UW.oo`**, because `UH` is rare as an unreduced vowel on a continuation stroke, where \"-oo\" endings are common. The tie-break is `vowel_rank` in `src/rules/mod.rs`."
+  },
+  {
+   "t": "h",
+   "x": "Try it"
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- resolve STKPW         # a stroke not in the dictionary, read back\ncargo run --release -- resolve -- \"-T/+-D\"     # a run, read back\ncargo run --release -- resolve -- \"-T/+AOU\"    # a continuation with the AOU vowel"
+  },
+  {
+   "t": "p",
+   "x": "`resolve` prints the reading and whether the outline is already in the dictionary. Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
+  },
+  {
+   "t": "h",
+   "x": "Keeping the plugin honest"
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- plugin [--out out/lyk-orthographic-fallback.rs]"
+  },
+  {
+   "t": "p",
+   "x": "`plugin` generates the WASM plugin's `.rs` source **directly from the rule tables**: the same onset/vowel/coda data and the same \"no vowel key means no vowel sound\" logic as `resolve`, ported to plain `u32`s, inside a fixed `alloc`/`fallback` ABI template. Nothing is hand-copied. Regenerate and redeploy the file after any change to the rule tables; never hand-edit the deployed plugin."
+  },
+  {
+   "t": "h3",
+   "x": "The joins export"
+  },
+  {
+   "t": "p",
+   "x": "The plugin also exports `joins(bits) -> bool`, true whenever `Stroke::JOIN` is set. keymux has no built-in idea of a join key (every key is just a bit), so without this export it would treat every stroke as its own word, although a lookup of an already-built multi-stroke entry such as `WORBG/+-G` would still work. Regenerate and redeploy the plugin whenever `Stroke::JOIN`'s bit position changes, not only when a rule table does."
+  },
+  {
+   "t": "h3",
+   "x": "The stem table"
+  },
+  {
+   "t": "p",
+   "x": "The plugin embeds a stem table: the **primary one-stroke outline of each of the 10,000 commonest words** (`PLUGIN_STEM_WORDS` in `src/main.rs`), sorted and searched by binary search (about 180 KB). A rarer word at the start of a run is not lost; it reads back from its sounds rather than its spelling."
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "Unlike the other tables, the stem table is a snapshot of which word is on which single stroke right now. `plugin` builds the dictionary to make it, so regenerate and redeploy when the **dictionary** changes too, not only when a rule table does."
+  }
+ ]
+}

@@ -1,0 +1,242 @@
+{
+ "id": "prefixes",
+ "title": "Prefixes",
+ "goal": "Every prefix: the seven with keys of their own, the eighteen prefix strokes, and exactly which words get a prefix join.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "Two kinds of prefix"
+  },
+  {
+   "t": "p",
+   "x": "A prefix is written one of two ways. Seven have keys of their own that fold onto the left hand of the next stroke, so the word stays one stroke. Every common prefix also has a stroke of its own, struck first, with the rest of the word joined after it. The folded form is in the dictionary when the keys fit; the prefix stroke always works."
+  },
+  {
+   "t": "h",
+   "x": "Prefixes with keys of their own"
+  },
+  {
+   "t": "p",
+   "x": "The prefix keys are struck together with the left-hand keys of the next stroke: *expect* is [[expect|KPEBGT]], *distance* is [[distance|STKUPBS]]. Each prefix is matched by its spelling and by its sounds; only a word that has both gets the folded form."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Prefix",
+    "Keys",
+    "Sounds it matches",
+    "Examples"
+   ],
+   "rows": [
+    [
+     "ex-",
+     "[[KP]]",
+     "`IH0 K S`, `EH0 K S`, `IH0 G Z`, `EH0 G Z`, `EH1 K S`, `EH2 K S`, `EH1 G Z`, `IH1 K S`, `IH1 G Z`",
+     "[[expect|KPEBGT]], [[excuse|KPAOUS]]"
+    ],
+    [
+     "dis-",
+     "[[STK]]",
+     "`D IH0 S`, `D IH1 S`, `D IH2 S`, `D IH0 Z`",
+     "[[distance|STKUPBS]], [[discovered|STKOFRD]]"
+    ],
+    [
+     "inter-",
+     "[[TPHR]]",
+     "`IH0 N T ER0`, `IH1 N T ER0`, `IH2 N T ER0`",
+     "[[interrupt|TPHRUPT]]"
+    ],
+    [
+     "under-",
+     "[[TKPHR]]",
+     "`AH0 N D ER0`, `AH1 N D ER0`, `AH2 N D ER0`",
+     "[[undercover|TKPHROFR]]"
+    ],
+    [
+     "over-",
+     "[[SR]]",
+     "`OW0 V ER0`, `OW1 V ER0`, `OW2 V ER0`",
+     "[[overseas|SRAES]]"
+    ],
+    [
+     "mis-",
+     "[[SPH]]",
+     "`M IH0 S`, `M IH1 S`, `M IH2 S`",
+     "[[missing|SPHEUG]], [[mistake|SPHAEUBG]]"
+    ],
+    [
+     "un-",
+     "[[TPH]]",
+     "`AH0 N`, `AH1 N`, `AH2 N`",
+     "[[unfair|TPHAEUR]], [[unlike|TPHRAOEUBG]]"
+    ]
+   ]
+  },
+  {
+   "t": "list",
+   "items": [
+    "The first row that matches the word's spelling and sounds wins, so a prefix that starts a longer one is checked after it: `inter`, `under`, `over` and `mis` come before `un`, or every `under-` word would be read as `un-` plus a leftover syllable.",
+    "`over-`, `under-` and `inter-` end in the r-coloured vowel, which their keys already include. `over-` reuses the onset of V ([[SR]]). `under-` and `inter-` use the onsets of their consonants (N + D is [[TPH]] + [[TK]]; N + T is [[TPH]] + [[T]]) plus a left-hand [[R]] for the vowel, which also keeps `inter-` distinct from `un-`.",
+    "`mis-` is written like `dis-`: M's onset [[PH]] plus a left-hand [[S]] for the coda.",
+    "`un-` is just the onset of N, [[TPH]], with no vowel kept, the same way a suffix drops its vowel."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "`re-` and `pre-` are not in this table. Their reduced vowel is kept as [[E]] by the spelling rules ([spelling](#/ref/spelling)), which a folded prefix would override. `non-` is not in it either: its sound is a vowel between two copies of N, so there is no second onset chord to combine with [[TPH]]."
+  },
+  {
+   "t": "h",
+   "x": "When the keys clash with the stem"
+  },
+  {
+   "t": "p",
+   "x": "If the prefix's keys clash with the first stroke of the stem's own, the prefix is struck as a stroke of its own and the stem's whole outline follows, joined. *unclear*: the prefix's [[TPH]] shares the `H` of *clear* [[KHR]], so it is [[unclear|UPB/+KHRAOER]]. *decode* is [[decode|TKE/+KOED]]."
+  },
+  {
+   "t": "h",
+   "x": "The prefix strokes"
+  },
+  {
+   "t": "p",
+   "x": "Every common prefix has a stroke of its own, whether or not a fold would also work. Struck first, then the stem (or the stem's own strokes) with the join key held. Where the prefix is a word (*un*, *dis*, *mis*, *over*, *under*), the stroke is that word's own outline."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Prefix",
+    "Stroke",
+    "Example"
+   ],
+   "rows": [
+    [
+     "under-",
+     "[[UPBD]]",
+     "[[undercover|UPBD/+KOFR]]"
+    ],
+    [
+     "inter-",
+     "[[EUPB/+TER]]",
+     "[[interstate|EUPB/+TER/+STAET]]"
+    ],
+    [
+     "trans-",
+     "[[TRAPBS]]",
+     "[[transplant|TRAPBS/+PHRAPBLT]]"
+    ],
+    [
+     "over-",
+     "[[AUFR]]",
+     "[[overcome|AUFR/+KUPL]]"
+    ],
+    [
+     "anti-",
+     "[[APB/+TEU]]",
+     "[[antibody|APB/+TEU/+PWA/+TKEU]]"
+    ],
+    [
+     "semi-",
+     "[[SEPL/+EU]]",
+     "[[semifinal|SEPL/+EU/+TPAOEUPBL]]"
+    ],
+    [
+     "pre-",
+     "[[PRE]]",
+     "[[prefix|PRE/+TPEUBGS]]"
+    ],
+    [
+     "dis-",
+     "[[TKEUS]]",
+     "[[dislike|TKEUS/+HRAOEUBG]]"
+    ],
+    [
+     "mis-",
+     "[[PHEUS]]",
+     "[[mistake|PHEUS/+TAEUBG]]"
+    ],
+    [
+     "non-",
+     "[[TPHOPB]]",
+     "[[nonstop|TPHOPB/+STOP]]"
+    ],
+    [
+     "sub-",
+     "[[SUB]]",
+     "[[subway|SUB/+WAEU]]"
+    ],
+    [
+     "re-",
+     "[[RE]]",
+     "[[rebuild|RE/+PWHR]]"
+    ],
+    [
+     "un-",
+     "[[UPB]]",
+     "[[unclear|UPB/+KHRAOER]]"
+    ],
+    [
+     "de-",
+     "[[TKE]]",
+     "[[decode|TKE/+KOED]]"
+    ],
+    [
+     "co-",
+     "[[KOE]]",
+     "[[coexist|KOE/+UG/+STKPWEUFT]]"
+    ],
+    [
+     "en-",
+     "[[EPB]]",
+     "[[enjoy|EPB/+SKWROEU]]"
+    ],
+    [
+     "im-",
+     "[[EUPL]]",
+     "[[impossible|EUPL/+POS/+-BL]]"
+    ],
+    [
+     "in-",
+     "[[EUPB]]",
+     "[[incorrect|EUPB/+KREBGT]]"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "You never need to know which form a word has. The prefix stroke followed by the stem always works. Two words that are one word (*myself*, *outside*) are done the same way: the second word joined."
+  },
+  {
+   "t": "h",
+   "x": "Which words get a prefix join"
+  },
+  {
+   "t": "list",
+   "items": [
+    "The stem is at least three letters and is a word in the vocabulary.",
+    "The word's pronunciation ends in the stem's.",
+    "The stem is said at least one fiftieth as often as the word.",
+    "Words that only look prefixed are skipped: *remorse*, *retreat*, *recite*, *reflex*, *reflexes*, *remark*, *research*, *reside*, *resign*, *resort*, *respite*, *resent*, *reserve*, *repose*, *repeal*, *relay*, *rebate*, *recede*, *uncle*, *under*, *overt*, *mistress*, *dismal*, *premise*, *presume*, *present*, *preserve*, *pretend*, *prevent*, *prefer*."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "A leading sound in front of a word"
+  },
+  {
+   "t": "p",
+   "x": "A separate backup covers a word whose leading sound sits in front of another word's exact pronunciation, whether or not that sound is one of the prefixes above: *never* is the extra sound N in front of *ever*'s sounds, [[never|TPH/+EFR]]. It can only land on the same stroke as the matched word's first one, the same way a fixed prefix folds onto the next stroke's left hand. See [syllables and folding](#/ref/syllables) and [every way to join a word](#/ref/ways-to-join)."
+  },
+  {
+   "t": "h",
+   "x": "Learn it by hand"
+  },
+  {
+   "t": "p",
+   "x": "[Lesson 11](#/lesson/11-prefixes) teaches the prefix strokes with a drill."
+  }
+ ]
+}

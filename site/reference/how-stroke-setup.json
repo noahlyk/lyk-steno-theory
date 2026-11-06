@@ -1,0 +1,65 @@
+{
+  "id": "how-stroke-setup",
+  "title": "A stroke, and the setup",
+  "goal": "Know exactly what a stroke is in the generator (24 bits plus one spelling bit), which data sources feed every pronunciation, and how the IPA fallback turns a pronunciation the main dictionary lacks into one the rules can read.",
+  "blocks": [
+    { "t": "h", "x": "A stroke is one u32" },
+    { "t": "p", "x": "The generator in `src/generate/` turns a word list into a stroke for every word. Everything it does (candidate generation, the cost function, the solver, phrase merges) works on a single bit pattern per stroke. There is no struct of \"which keys are down\": the bits are the keys." },
+    { "t": "h3", "x": "The bit layout" },
+    { "t": "table", "head": ["Bits", "Count", "Keys", "Region"], "rows": [
+      ["1 to 7", "7", "`S T K P W H R`", "Left bank (onset consonants)"],
+      ["8 to 9", "2", "`A O`", "Left vowels"],
+      ["10", "1", "`*`", "Star"],
+      ["11 to 12", "2", "`E U`", "Right vowels"],
+      ["13 to 22", "10", "`F R P B L G T S D Z`", "Right bank (coda consonants)"],
+      ["23", "1", "`+`", "Join key: this stroke continues the previous word"],
+      ["24", "1", "`~`", "Spelling mode: this stroke is a spelled letter"]
+    ] },
+    { "t": "pre", "x": "bit:  1 2 3 4 5 6 7 | 8 9 | 10 | 11 12 | 13 14 15 16 17 18 19 20 21 22 | 23 | 24\nkey:  S T K P W H R | A O |  * |  E  U |  F  R  P  B  L  G  T  S  D  Z |  + |  ~" },
+    { "t": "p", "x": "The first five regions are the 22 physical steno keys; `+` and `~` are lyk's own markers, checked the same way as every other bit. A stroke with only `+` or only `~` set is not a stroke." },
+    { "t": "note", "kind": "rule", "x": "Onset and coda consonants are different bits even when they are the same letter. The right bank's `T` (coda t) and the left bank's `T` (onset t) never collide." },
+    { "t": "h3", "x": "Worked bit example" },
+    { "t": "p", "x": "[[cat|KAT]] is K (left bank) + A (left vowel) + T (right bank): three bits set out of twenty-four, every other region zero." },
+    { "t": "h3", "x": "What the bit representation buys" },
+    { "t": "table", "head": ["Question", "Operation"], "rows": [
+      ["Do two strokes share no keys?", "`a.0 & b.0 == 0`"],
+      ["Merge two strokes into one", "`a.0 | b.0`"],
+      ["Does a candidate hold only part of a required chord?", "a masked, partial overlap"]
+    ] },
+
+    { "t": "h", "x": "Setup: six sources loaded in parallel" },
+    { "t": "p", "x": "`Setup::load` (in `src/analysis/mod.rs`) loads six independent sources on their own threads, then merges the pronunciation sources by strict priority, not as a union. The whole load takes about half a second." },
+    { "t": "table", "head": ["Source", "File under `data/`", "Role"], "rows": [
+      ["Frequency list", "`frequency/en_full.txt`", "Word counts and rank. Names are counted at a tenth (see below)."],
+      ["CMUdict", "`pronunciation/cmudict.dict`", "The primary pronunciations, in ARPAbet."],
+      ["MFA dictionary", "`pronunciation/english_us_mfa.dict`", "IPA pronunciations, fallback only."],
+      ["WikiPron", "`pronunciation/wikipron_us_broad.tsv`", "IPA pronunciations, fallback only."],
+      ["Gold dictionaries", "Plover and Lapwing", "The briefs kept as candidates, and which words are written only capitalized (names)."],
+      ["Bigrams", "`frequency/bigrams_en.txt`", "Word-pair counts for phrase merging, kept only for words that are ranked."]
+    ] },
+    { "t": "pre", "x": "// src/analysis/mod.rs, Setup::load\nlet mut pron = cmudict?;\nfor (word, variants) in fallback_pronunciations(&pron, &mfa?, &wikipron?) {\n    pron.entry(word).or_insert(variants);   // never overwrites a CMUdict entry\n}" },
+    { "t": "note", "kind": "rule", "x": "CMUdict first. Only where CMUdict has no entry at all does a translated MFA or WikiPron pronunciation get a chance; a CMUdict word is never touched." },
+    { "t": "h3", "x": "Contractions the frequency list spells without an apostrophe" },
+    { "t": "p", "x": "The frequency list counts some contractions under their apostrophe-stripped spelling (`dont`, `cant`, `didnt`). If CMUdict has a real pronunciation for the apostrophe form and the list does not carry it, the apostrophe form is inserted directly after the stripped one with the same count." },
+    { "t": "h3", "x": "Names count a tenth" },
+    { "t": "p", "x": "Subtitles say names constantly (435 of the 5,000 commonest words in the current build). A word that Plover and Lapwing only ever write capitalized is a name, and its count is divided by ten (rounded up, so a name said once is still said). The effect: a name never outranks the word it sounds like. [[mat|PHAT]] holds `PHAT`; the name Matt types as its sound-alike after the capitalize stroke `KPA` (see [Phrases and capitals](#/ref/punctuation))." },
+
+    { "t": "h", "x": "The IPA fallback in four steps" },
+    { "t": "p", "x": "MFA and WikiPron record pronunciation as IPA, not ARPAbet, and in two different IPA conventions. `src/ipa.rs` translates either into the 39-symbol ARPAbet alphabet CMUdict uses. Roughly 8,000 words with no CMUdict entry are rescued this way in the current build." },
+    { "t": "table", "head": ["Step", "What it does"], "rows": [
+      ["1. Clean", "Strip non-distinctive modifiers: aspiration `ʰ`, palatalization `ʲ`, length `ː`, tie bars. A syllabic-consonant mark is flagged separately so it can expand into an inserted schwa."],
+      ["2. Merge diphthongs", "WikiPron splits one diphthong across two vowel tokens (`b a ʊ t` for bout); MFA writes it as one (`aw`). Both collapse to a single phone before anything is looked up."],
+      ["3. Map or refuse", "Every remaining token goes through a consonant, vowel or diphthong table. One unrecognized symbol fails the whole pronunciation: no partial, guessed translation ever ships."],
+      ["4. Assign stress", "Neither source marks lexical stress. The first vowel becomes primary (`1`), every other vowel unstressed (`0`). This is often wrong for a later-stressed word such as began."]
+    ] },
+    { "t": "note", "kind": "warn", "x": "Step 4 is a known limitation: the fallback guesses stress from position, so a word whose stress falls later can be split into syllables the wrong way. The orthographic fallback for words with no pronunciation at all is a separate mechanism: see [The orthographic fallback](#/ref/fallback)." },
+    { "t": "h3", "x": "A real rescue, traced" },
+    { "t": "table", "head": ["Stage", "Value"], "rows": [
+      ["Word", "hobgoblin"],
+      ["MFA IPA", "`h ɑ b ɡ ɑ b l ɪ n`"],
+      ["Clean and map", "`HH AA B G AA B L IH N`"],
+      ["Stress (first vowel primary)", "`HH AA1 B G AA2 B L IH0 N`"],
+      ["Onset and coda tables", "[[hobgoblin|HOB/+TKPWOBL/+-PB]]"]
+    ] }
+  ]
+}

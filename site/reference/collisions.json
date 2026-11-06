@@ -1,0 +1,134 @@
+{
+ "id": "collisions",
+ "title": "When two words sound the same",
+ "goal": "How one global solve decides who keeps a stroke: spelling, the star ladder, the marker stroke and names.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "One primary stroke per word"
+  },
+  {
+   "t": "p",
+   "x": "A word gets exactly one primary single-stroke outline: never a choice between several to learn. This page covers only *which* word keeps a stroke when two or more want it. The extra one-stroke forms a word gets afterwards only take strokes this settling left free. Multi-stroke backups are separate and unlimited: see [syllables and folding](#/ref/syllables)."
+  },
+  {
+   "t": "h",
+   "x": "Everything is settled together"
+  },
+  {
+   "t": "p",
+   "x": "Briefs, spelling and the star ladder are not three passes. Every word's full set of legal candidates goes into one shared pool, and a single solve picks the assignment that minimizes the whole dictionary's total cost at once, weighted by how often each word is said. The candidates of a word are:"
+  },
+  {
+   "t": "list",
+   "items": [
+    "a gold brief of its own (see [briefs](#/ref/briefs));",
+    "lyk's plain rules reading;",
+    "the spelling-told-apart variant for its sound-alike group (see [spelling](#/ref/spelling));",
+    "every brevity-shortened form (see [how short](#/ref/brevity));",
+    "the full star ladder, below;",
+    "for a word spelled with a literal trailing `s`, the same candidate again with a voiced `-Z` coda respelled `-S`."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "The letter is decided by cost per word, not by a blanket rule: *girls* is [[girls|TKPWEURLS]] with its [[-Z]] reading [[girls|TKPWEURLZ]] kept as an extra, and *abhors* is [[abhors|PWHORS]]."
+  },
+  {
+   "t": "p",
+   "x": "A common word can lose an outline to another word if that makes the whole dictionary cheaper, and a rare word's situation can move a common word to its next-cheapest candidate."
+  },
+  {
+   "t": "h",
+   "x": "What spelling decides"
+  },
+  {
+   "t": "p",
+   "x": "Spelling answers \"who may even propose this word's plain, unstressed-vowel reading\", not \"who should win it\". *sail* (`ai`) and *sale* (silent e) sound identical but spell the stressed vowel differently, so the rules write two outlines: [[sail|SAEUL]] for the `ai` spelling and the shorter [[sale|SAEL]] for the silent e. Both are candidates for their words. Which gets the longer or the shorter form is decided by the same cost-and-frequency solve, which usually gives the commoner member of a pair the cheaper pick. See [spelling](#/ref/spelling) for how a sound becomes a spelling-told-apart variant."
+  },
+  {
+   "t": "h",
+   "x": "The star ladder"
+  },
+  {
+   "t": "p",
+   "x": "When two words with the same spelling pattern want one stroke, the commoner one keeps the plain stroke and the other falls down a ladder of its own. Every word always carries these four steps in its candidate pool alongside everything else, so a word that loses an outline falls to its next-cheapest option inside the same solve:"
+  },
+  {
+   "t": "list",
+   "items": [
+    "a star on the first stroke;",
+    "a star on the last stroke;",
+    "one extra star-marker stroke, [[+*]] after the outline;",
+    "two extra star-marker strokes."
+   ],
+   "ordered": true
+  },
+  {
+   "t": "p",
+   "x": "Examples: [[night|TPHAOEUT]] and [[knight|TPHAO*EUT]]; [[flower|TPHROUR]] and [[flour|TPHRO*UR]]; [[pearl|PERL]] and [[peril|P*ERL]]; [[sweet|SWAOET]] and [[sweetie|SWAO*ET]]."
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "A short form never takes an outline that any word's own rules produce. The forms a learner can work out stay theirs."
+  },
+  {
+   "t": "h",
+   "x": "A star on a one-syllable stroke means the sound-alike"
+  },
+  {
+   "t": "p",
+   "x": "*doc* is [[doc|TKOBG]], so *dock* is [[dock|TKO*BG]]. *sock* is [[sock|SO*BG]] (and [[sobbing|SOBG]] is *sob* plus `-G`). A longer word's short form pays half a stroke on top of its cost to take a one-syllable stroke's star. A short form with another one-stroke form a key or two dearer leaves the star to the sound-alike. One that would otherwise be two strokes and is said far more often keeps it: *attack* is [[attack|TA*BG]], so *tack* is [[tack|TABG/+*]]."
+  },
+  {
+   "t": "h",
+   "x": "What a word falls to, in order"
+  },
+  {
+   "t": "p",
+   "x": "Cost decides, so the order is strokes first, then keys:"
+  },
+  {
+   "t": "list",
+   "items": [
+    "its own one-stroke reading;",
+    "a star on it;",
+    "a gold brief of its own that is still one stroke;",
+    "among two-stroke forms, the cheapest of: its stem-plus-suffix reading (*pearly* [[pearly|PERL/+EU]], once [[PERL]] is *pearl* and [[P*ERL]] is *peril*), a two-stroke gold brief, and its reading with one bare [[+*]] marker stroke."
+   ],
+   "ordered": true
+  },
+  {
+   "t": "p",
+   "x": "The marker stroke is the last resort of a one-syllable word. It is a rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with [[+*]] after it. *suite* is [[suite|SWAOET/+*]] because [[SWAOET]] is *sweet* and [[SWAO*ET]] is *sweetie*. About 1,200 words end that way, almost all names and interjections (*argh* [[argh|ARG/+*]], *hah* [[hah|HA/+*]])."
+  },
+  {
+   "t": "h",
+   "x": "Names"
+  },
+  {
+   "t": "p",
+   "x": "A name never outranks the word it sounds like. lyk writes a name as the ordinary outline of how it sounds, after the capitalize stroke [[KPA]]: *Matt* is [[KPA]] then *mat*'s stroke. A name and its sound-alike word compete for one stroke, and the word should have it, since the name gets its capital from [[KPA]] either way."
+  },
+  {
+   "t": "list",
+   "items": [
+    "Each name's count is cut to a tenth before anything is ranked. A common name still outranks a rare word.",
+    "A name here is a word Plover and Lapwing only ever write capitalized (*Matt*, *Mike*, *Mary*, *America*, *Sunday*), never lowercase.",
+    "*mat* is [[mat|PHAT]] and *matt* is [[matt|PHAT/+*]].",
+    "Some names lose their one-stroke outline this way and are typed by their syllables like any two-syllable word: *mary* is [[mary|PHAER/+EU]], since *marry* has [[marry|PHAER]] and *merry* has [[merry|PH*ER]]."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Related pages"
+  },
+  {
+   "t": "p",
+   "x": "The next step after this is how a long word gets short: [how short](#/ref/brevity). Hand-written outlines are on [briefs](#/ref/briefs). The cost the solve minimizes is on [candidates, cost and ergonomics](#/ref/how-candidates-cost), and the solve itself on [peeling, the solver and families](#/ref/how-solver)."
+  }
+ ]
+}

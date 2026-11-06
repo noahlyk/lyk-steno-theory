@@ -1,0 +1,66 @@
+{
+ "id": "reserved-strokes",
+ "title": "Reserved strokes",
+ "goal": "Know what is pinned before any word is placed, so you know why no word ever takes a punctuation, command or letter stroke.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What reserved means"
+  },
+  {
+   "t": "p",
+   "x": "Every command, punctuation mark and fingerspelled letter in a real keymux config for lyk is pinned **before any word is placed**, ahead of even briefs. A word can never silently take over a stroke such as [[TP-BG]] (`!`)."
+  },
+  {
+   "t": "table",
+   "head": [
+    "File in `rules/reserved/`",
+    "Deployed as",
+    "Holds",
+    "Where it is listed"
+   ],
+   "rows": [
+    [
+     "`commands.json`",
+     "`01-lyk-commands.json`",
+     "70 strokes: cursor, editing, shortcuts, case and spacing commands, F-keys, Plover control",
+     "[Punctuation and commands](#/ref/punctuation/commands)"
+    ],
+    [
+     "`punctuation.json`",
+     "`03-lyk-punctuation.json`",
+     "200 strokes: marks, symbols, and the 52 glued fingerspelling letters",
+     "[Punctuation and commands](#/ref/punctuation), [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text)"
+    ],
+    [
+     "`emilys-modifiers.json` (generated from `emilys-modifiers.py` by `regenerate.py`)",
+     "`04-lyk-emilys-modifiers.json`",
+     "5,475 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key",
+     "[Fingerspelling](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary)"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "What it guarantees"
+  },
+  {
+   "t": "list",
+   "items": [
+    "Nothing generated competes with a reserved stroke: not a word's plain outline, not a brief, not a star form, not an alternate pronunciation, not a phrase, not a backup.",
+    "A word that wanted a reserved stroke moves to its next-cheapest outline. Examples: [[captain|KAPT]] would have been `K*P` (the glued capital K), and [[eh|A*EU]] would have been `*E` (the glued letter e).",
+    "A reserved stroke can be given back to words only by removing it from the reserved file. [[up|-P]] and [[am|-PL]] sit on `-P` and `-PL` for that reason: the period has 30 other strokes and does not need them."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "The build refuses to run if a brief named `[word]` in `rules/briefs.toml` has a literal outline that is reserved. Before that check, `up` silently lost `-P` and fell back to the two-key `UP`."
+  },
+  {
+   "t": "p",
+   "x": "The lists themselves are on the next pages: [punctuation and commands](#/ref/punctuation), [fingerspelling, numbers and modifiers](#/ref/fingerspelling)."
+  }
+ ]
+}

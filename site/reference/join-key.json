@@ -1,0 +1,120 @@
+{
+ "id": "join-key",
+ "title": "The join key",
+ "goal": "What `+` means, why one key can be both a word and an ending, and where it is used.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What the join key does"
+  },
+  {
+   "t": "p",
+   "x": "Every stroke after the first of a word carries the join key `+` (the `Q` key). A stroke without it always starts a new word. Word boundaries are written explicitly, never inferred."
+  },
+  {
+   "t": "h",
+   "x": "One key, a word and an ending"
+  },
+  {
+   "t": "p",
+   "x": "The right-hand `D` is both *do* and *-ed*. Only the join key decides which."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Strokes",
+    "Reads"
+   ],
+   "rows": [
+    [
+     "[[-D]]",
+     "*do* (a word: no join key)"
+    ],
+    [
+     "[[ended|ED/+-D]]",
+     "*ended* (the same `-D` with `+` is the ending *-ed*)"
+    ],
+    [
+     "[[end|ED]] [[do|-D]]",
+     "*end do* (without `+`, the same two keys are two words)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "A theory with no join key must give the suffix the bare key (Plover's `-D` is always `{^ed}`), so *do* cannot have it. Here a word and an ending share the key. They do for many:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Key",
+    "Alone",
+    "With +"
+   ],
+   "rows": [
+    [
+     "[[-D]]",
+     "[[do|-D]]",
+     "*-ed* ([[+-D]])"
+    ],
+    [
+     "[[-G]]",
+     "[[go|-G]]",
+     "*-ing* ([[+-G]])"
+    ],
+    [
+     "[[-Z]]",
+     "[[was|-Z]]",
+     "*-s* ([[+-Z]])"
+    ],
+    [
+     "[[-R]]",
+     "[[for|-R]]",
+     "*-er* ([[+-R]])"
+    ],
+    [
+     "[[-L]]",
+     "[[all|-L]]",
+     "*-ly* ([[+-L]])"
+    ],
+    [
+     "[[-PB]]",
+     "[[an|-PB]]",
+     "*-en* ([[+-PB]])"
+    ],
+    [
+     "[[-F]]",
+     "[[of|-F]]",
+     "*-ive* ([[+-F]])"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "An ending can be one key, and the commonest words keep the cheapest keys."
+  },
+  {
+   "t": "h",
+   "x": "What it buys"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A continuation stroke (a suffix struck on its own, or the consonants of a syllable that did not fit on the stroke before) is never a word of its own, so it can be as short as one key: [[+-G]] for *-ing*, [[+-D]] for *-ed*. It cannot collide with an unrelated one- or two-key word that has the same letters. See [the suffix table](#/ref/suffixes) and [syllables and folding](#/ref/syllables).",
+    "A suffix's own chord reads correctly after *any* stroke, dictionary entry or not. See [the fallback](#/ref/fallback).",
+    "A stem's own outline and a continuation stroke can have the same keys with no clash: only the join key tells them apart.",
+    "No vowel has to be dropped to mark a mid-word stroke, so *forget* and *forgot* style pairs never collide because of a boundary."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Where you meet it"
+  },
+  {
+   "t": "p",
+   "x": "Wherever another page says a stroke \"joins the one before it\", \"continues\" or is a \"continuation stroke\", this key is doing it. Every way to build a word with it is on [every way to join a word](#/ref/ways-to-join). Commands, punctuation and fingerspelling are pinned before any word gets an outline: see [reserved strokes](#/ref/reserved-strokes). [Lesson 10](#/lesson/10-endings) teaches endings by hand."
+  }
+ ]
+}

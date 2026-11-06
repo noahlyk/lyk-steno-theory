@@ -1,0 +1,46 @@
+{
+  "id": "cheatsheet",
+  "title": "Cheat sheet",
+  "goal": "The whole system on one page, with a link to the page that has the full table for each part.",
+  "blocks": [
+    { "t": "h", "x": "The board" },
+    { "t": "table", "head": ["Region", "Keys, in steno order", "Writes"], "rows": [
+      ["Left hand", "`S T K P W H R`", "the sounds a syllable starts with"],
+      ["Thumbs", "`A O` `*` `E U`", "the vowel (`*` is the star, a marker the rules use)"],
+      ["Right hand", "`F R P B L G T S D Z`", "the sounds a syllable ends with"],
+      ["Join key", "`+` (the top half of the left `S` key)", "this stroke continues the previous one: no space between"]
+    ] },
+    { "t": "p", "x": "Every sound and its keys: the [Key chart](#/chart). How a syllable is built from them: [Phonetic rules](#/ref/phonetic-rules). Which strokes a pinky cannot press: [Strokes you can type](#/ref/typable)." },
+    { "t": "h", "x": "A word is one stroke when it can be" },
+    { "t": "table", "head": ["Kind", "Examples", "Full rules"], "rows": [
+      ["Sounded out: start, vowel, end", "[[cat|KAT]] [[dog|TKOG]]", "[Phonetic rules](#/ref/phonetic-rules)"],
+      ["Brief: the commonest words", "[[the|-T]] [[of|-F]] [[and|SKP]] [[to|O]] [[a|A]] [[in|TPH]] [[is|S]] [[it|T]] [[for|-R]]", "[Briefs](#/ref/briefs)"],
+      ["Phrase: two words merged", "[[of the|-FT]] [[in the|TPH-T]] [[it is|ST]] [[you are|RU]]", "[Phrase-briefing](#/ref/phrases)"],
+      ["Phrasing grammar: starter, auxiliary, not, verb", "designed, not in the dictionary yet", "[Lesson 19](#/lesson/19-phrasing-grammar)"]
+    ] },
+    { "t": "h", "x": "Longer words: the join key" },
+    { "t": "table", "head": ["You want", "You strike", "Full rules"], "rows": [
+      ["a stem and an ending", "[[ended|ED/+-D]]: the stem, then the ending with `+`", "[Suffixes](#/ref/suffixes)"],
+      ["an ending on its own", "`+-G` for -ing, `+-D` for -ed", "[Suffixes](#/ref/suffixes)"],
+      ["a prefix and a stem", "the prefix stroke, then the stem with `+`", "[Prefixes](#/ref/prefixes)"],
+      ["any word, a syllable at a time", "each syllable a stroke, every one after the first with `+`", "[Syllables and folding](#/ref/syllables)"],
+      ["every way in, one sheet", "stem + ending, prefix + stem, two words, syllables", "[Every way to join a word](#/ref/ways-to-join)"],
+      ["a word that is not in the dictionary", "the fallback reads stem and endings; spelling mode types letters", "[The fallback](#/ref/fallback), [Spelling mode](#/ref/spelling-mode)"]
+    ] },
+    { "t": "h", "x": "When two words sound the same" },
+    { "t": "p", "x": "Spelling variants and the star ladder keep homophones apart: [When two words sound the same](#/ref/collisions) and [Spelling disambiguation](#/ref/spelling). A word has one primary one-stroke outline; everything else is a backup. How short a long word gets: [How short](#/ref/brevity)." },
+    { "t": "h", "x": "Punctuation, letters and keys" },
+    { "t": "table", "head": ["Need", "Page"], "rows": [
+      ["Marks, capitals, cursor and editing strokes", "[Punctuation and commands](#/ref/punctuation)"],
+      ["The alphabet, numbers, function keys, symbols, Ctrl and Alt chords", "[Fingerspelling, numbers and modifiers](#/ref/fingerspelling)"],
+      ["What is pinned before any word", "[Reserved strokes](#/ref/reserved-strokes)"]
+    ] },
+    { "t": "h", "x": "How it is built" },
+    { "t": "table", "head": ["Question", "Page"], "rows": [
+      ["How is a stroke stored, and where do pronunciations come from?", "[A stroke, and the setup](#/ref/how-stroke-setup)"],
+      ["How does a word's outline get chosen?", "[Candidates, cost and ergonomics](#/ref/how-candidates-cost), [Peeling, the solver and families](#/ref/how-solver)"],
+      ["Where do backups, phrases and output files come from?", "[Backups, phrases and output](#/ref/how-backups-output)"],
+      ["Which commands build and deploy it, and what files come out?", "[Build, files and tools](#/ref/build-and-files)"]
+    ] }
+  ]
+}

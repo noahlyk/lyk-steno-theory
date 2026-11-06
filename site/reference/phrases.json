@@ -1,0 +1,217 @@
+{
+ "id": "phrases",
+ "title": "Phrase-briefing",
+ "goal": "Two common words written as one stroke: what qualifies, how the stroke is built, which words may lose a stroke to a phrase, and the limits.",
+ "blocks": [
+  {
+   "t": "p",
+   "x": "Everything else in the reference settles what *one* word strokes as. A **phrase entry** is two already-settled words merged into one shorter outline that writes both: a real 2-strokes-to-1 saving for a common pair. Phrase entries are in the dictionary like any word: strike the chord, get the two words. The separate *phrasing grammar* (a single stroke built from pronoun, verb and tense keys) is not this page: see [lesson 19](#/lesson/19-phrasing-grammar) and [lesson 20](#/lesson/20-phrasing-strokes)."
+  },
+  {
+   "t": "h",
+   "x": "The idea"
+  },
+  {
+   "t": "p",
+   "x": "Take [[of|-F]] and [[the|-T]]. They share no key, not even the star, so their union `-FT` is a stroke nothing else uses. That stroke is the phrase [[of the|-FT]]: one stroke where two were needed. *of the* is the most frequent word pair in the corpus (2,766,332,391 occurrences)."
+  },
+  {
+   "t": "p",
+   "x": "A phrase stroke is always the **bitwise union of the two words' strokes**, with no join key. So the rule to learn is the same one every time: **strike the keys of both words together in one stroke.**"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Phrase",
+    "Stroke",
+    "Made of"
+   ],
+   "rows": [
+    [
+     "[[of the|-FT]]",
+     "[[-FT]]",
+     "[[-F]] (of) + [[-T]] (the)"
+    ],
+    [
+     "[[in the|TPH-T]]",
+     "[[TPH-T]]",
+     "[[TPH]] (in) + [[-T]] (the)"
+    ],
+    [
+     "[[for the|-RT]]",
+     "[[-RT]]",
+     "[[-R]] (for) + [[-T]] (the)"
+    ],
+    [
+     "[[and the|SKP-T]]",
+     "[[SKP-T]]",
+     "[[SKP]] (and) + [[-T]] (the)"
+    ],
+    [
+     "[[it is|ST]]",
+     "[[ST]]",
+     "[[T]] (it) + [[S]] (is)"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "Pressing both words' keys in one stroke is a different action from pressing them as two strokes, so a phrase stroke can never be hit by accident while writing the two words separately."
+  },
+  {
+   "t": "h",
+   "x": "What qualifies"
+  },
+  {
+   "t": "p",
+   "x": "A pair of words (a bigram) earns a phrase entry only when **all four** hold:"
+  },
+  {
+   "t": "list",
+   "ordered": true,
+   "items": [
+    "**Both words have a settled primary outline, and at least one is exactly one stroke.** \"Primary\" means the outline the generator chose for the word (a brief, the plain rules reading, a spelling variant or a star-ladder step). A bonus entry (a short form, an alternate, a backup) never counts, even when it is cheaper. The other word's primary may be any length.",
+    "**The one-stroke word's whole primary and the other word's first stroke share no key**, the star included. When both are one stroke, this is just: the two primaries are disjoint.",
+    "**The merged outline is free, or the pair is worth more than the word that holds it** (see [Phrases compete for strokes](#/ref/phrases/phrases-compete-for-strokes)). A reserved stroke, a suffix, a hand-written `[word]` outline in `rules/briefs.toml` and another phrase are never taken.",
+    "**The pair is among the top 20,000 bigrams by raw count** (`PHRASE_TOP_N`). The count is raw, not a collocation score: pairs of two very common function words (*of the*, *in the*) are exactly the ones worth briefing, and a collocation measure would rank them low."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "If two eligible pairs land on the same outline, the pair said more often in the corpus wins; the phrase text is the final deterministic tie-break."
+  },
+  {
+   "t": "h",
+   "x": "Primary outlines only"
+  },
+  {
+   "t": "p",
+   "x": "A phrase is built from each word's **primary** outline, never from a bonus entry. A word with a cheaper bonus entry (a backup, a short form) is still joined by its primary. The word's own primary never changes because a phrase exists; the \"one single-stroke outline per word\" rule is untouched."
+  },
+  {
+   "t": "p",
+   "x": "The one exception is competition for a stroke (below): a phrase may take a stroke that a word holds as a *short form or alternate*, because the word keeps its primary."
+  },
+  {
+   "t": "h",
+   "x": "A multi-stroke word in the phrase"
+  },
+  {
+   "t": "p",
+   "x": "When one word (the **filler**) has a one-stroke primary and the other (the **host**) has a primary of any length, the filler's stroke is merged into the host's **first stroke only**. Every later stroke of the host is carried over unchanged, join keys included."
+  },
+  {
+   "t": "list",
+   "items": [
+    "Outline = `[filler OR host's first stroke, host's remaining strokes...]`.",
+    "The merged first stroke has no join key, like any first stroke: the phrase starts a new word.",
+    "It works in both orders: a one-stroke word in front of a multi-stroke word, and a multi-stroke word followed by a one-stroke word.",
+    "*added by* [[PWAEUD/+-D]] is *added* (a two-stroke word) with *by* merged into its first stroke."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Other multi-stroke examples that are in the dictionary: `ABD/+-D` is *be added*, `ADZ/+-D` is *was added*, `AED/+-D` is *he added*, `ABGT/+SEU` is *the accuracy*, `ABT/+STRAT` is *the abstract*."
+  },
+  {
+   "t": "p",
+   "x": "About 250 phrase entries have more than one stroke; the rest are a single stroke."
+  },
+  {
+   "t": "h",
+   "x": "The pronoun I"
+  },
+  {
+   "t": "p",
+   "x": "The word list spells every word in lowercase, including the pronoun. The dictionary's *I* is capitalized, *I* [[EU]]; the bare letter is fingerspelled. A bigram containing *i* is looked up as *I*, and a phrase containing it is written capitalized: *I would* [[WOEU]], not \"i would\". The same applies to *I'm*, *I'd*, *I've* and *I'll*. Most pairs starting with *I* get no phrase entry, because [[EU]] shares its vowel keys with almost every verb."
+  },
+  {
+   "t": "h",
+   "x": "Phrases compete for strokes"
+  },
+  {
+   "t": "p",
+   "x": "A pair whose merged stroke is already held by a word can take it. `it is` is `T` + `S` = [[ST]]; it displaced a backup of *sit*. The pair takes the stroke when"
+  },
+  {
+   "t": "pre",
+   "x": "pair count / all pairs x 25 000  >  word count / all words x (cost of its next-best outline - cost of the stolen one)"
+  },
+  {
+   "t": "p",
+   "x": "The left side is one stroke saved (a phrase has the same keys as its two words and one stroke fewer; a stroke weighs 25 keys, see [How short](#/ref/brevity)). The right side is what the word loses by moving. Pair counts are from `bigrams_en.txt`, word counts from the subtitle frequency list."
+  },
+  {
+   "t": "h3",
+   "x": "What a phrase can never take"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A reserved stroke, a suffix stroke, a hand-written `[word]` outline in `briefs.toml`, another phrase.",
+    "An entry settled by the star ladder, or a family-shaped entry (a family member is defined by its stem).",
+    "A **backup** (a stem plus an ending you already know), since losing one costs the word nothing under the rule above, but backups are the predictable multi-stroke way in.",
+    "The **primary of a stem** (a word other words are built from). *object* keeps [[OBT]], so *on the* does not get it."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Protected words and the takeover limit"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**The 5,000 most frequent words keep their primary** (`PROTECTED_WORDS`). [[on|OB]], [[want|W-T]] and [[after|AF]] stay where they are. A phrase may still take a *short form* or an *alternate* from them, since the word keeps its own outline.",
+    "**Only the 1,000 most frequent eligible pairs may take a held stroke** (`TAKEOVER_TOP_N`). A rarer pair is committed only into a free stroke. Without this limit, 373 words ended up with a star because a pair nobody will learn had taken their plain stroke.",
+    "**A word that loses its only way of being written gets another**: its next-best outline, or its best own candidate of any length that nobody holds. *antonio* moves to `TPHOEPBT`. A pair is skipped if the word would end up with nothing. A word that loses its primary is no longer part of any later phrase.",
+    "A word that is part of a committed phrase is not taken from afterwards."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Size of the result"
+  },
+  {
+   "t": "p",
+   "x": "The current build has 5,720 phrase entries. In the measured build with these limits, 127 phrases took a stroke from a rarer word and 134 words carried a star because of a phrase, 15 of them in the top 5,000. Every phrase is still two strokes you already know, joined into one: *in the* is the stroke for *in* plus the stroke for *the*."
+  },
+  {
+   "t": "h",
+   "x": "Not covered"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Both words multi-stroke.** At least one side must be a one-stroke filler.",
+    "**Three or more words.** There is no chaining of phrases (unlike backups, which chain: *green* + *house* = *greenhouse*, then + `+-Z`).",
+    "**A backup or short form as a component.** Only primaries are used.",
+    "**Removing a join-key boundary inside an existing multi-stroke word.** A different mechanism."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Where it runs"
+  },
+  {
+   "t": "p",
+   "x": "Phrase placement is one pass, run once after the backup pass has settled and before the \"stranded\" diagnostic is computed. It sees the dictionary in its final state, backups included. Phrase entries have their own origin (`Phrase`), and the reading fallback never treats a phrase as a word: a continuation stroke after `-FT` is not read as *of the* plus an ending. See [the fallback](#/ref/fallback)."
+  },
+  {
+   "t": "h",
+   "x": "What it saves"
+  },
+  {
+   "t": "p",
+   "x": "The quote benchmark walks a passage left to right, taking a phrase entry whenever one covers the next two words. Phrases save **strokes**, not keys: a phrase's key count is exactly the sum of its two words' key counts, only the stroke count drops, by one per hit. Because a phrase is built from primaries while a word may be credited with a cheaper backup, the phrase-aware walk can occasionally spend a few more keys than word-by-word while always spending fewer strokes."
+  },
+  {
+   "t": "p",
+   "x": "On the quote benchmark with all the limits above, the phrase-aware walk uses 1,092 strokes on the 103 hand-picked passages and 5,756 on the 416 extracted ones: about 12% and 9% fewer than word by word."
+  },
+  {
+   "t": "p",
+   "x": "Raising the bigram limit to 40,000 would save about 1.6% more strokes but add around 13,500 phrases to learn; it is not worth it."
+  }
+ ]
+}

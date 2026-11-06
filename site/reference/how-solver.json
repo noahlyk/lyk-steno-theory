@@ -1,0 +1,95 @@
+{
+  "id": "how-solver",
+  "title": "Peeling, the solver and families",
+  "goal": "How the generator picks one primary outline per word across the whole vocabulary at once: peeling, the exact matching solver, the cost of leaving a word unplaced, and how word families settle on their root's stroke.",
+  "blocks": [
+    { "t": "h", "x": "Peeling: commit the uncontested words first" },
+    { "t": "p", "x": "Every word arrives with a cost-ordered list of candidate outlines (see [candidates and cost](#/ref/how-candidates-cost)). Two words may not share an outline, so the choices must be settled together. Peeling settles the easy majority before the solver runs." },
+    { "t": "list", "ordered": true, "items": [
+      "A word's cheapest remaining candidate is **committed** when its text appears in no other remaining word's list at all.",
+      "Committing it removes that text from every other word's list.",
+      "That can leave another word with a candidate that is now uniquely its own. Repeat until no word's cheapest text is uniquely its own (a fixed point)."
+    ] },
+    { "t": "note", "kind": "rule", "x": "Taking a text nobody else wants can never make the total worse, so peeling is exact: it never costs a word a better outline than the solver would have given it." },
+    { "t": "pre", "x": "pass : { PAS }            -> committed  pass -> PAS\n                           PAS removed from every other list\npast : { PAS, PAFT }  -> { PAFT }  -> committed in round 2  past -> PAFT" },
+    { "t": "p", "x": "Words with no candidate at all skip both peeling and the solver and are reported as unplaced. In the current build 16,984 words are still contested after peeling and go to the solver." },
+
+    { "t": "h", "x": "The solver: exact min-cost matching" },
+    { "t": "p", "x": "The contested remainder is an assignment problem: words on one side, candidate texts on the other, each text usable by at most one word. The solver finds the cheapest assignment **in total**, not word by word. It is hand-written (successive shortest augmenting paths), run on each independent connected component of the contested graph, and uses no graph library." },
+    { "t": "table", "head": ["Part", "What it is"], "rows": [
+      ["Graph", "source, then each word (capacity 1), then each candidate text (capacity 1, cost = that candidate's edge cost), then sink"],
+      ["Edge cost", "the candidate's cost (strokes, keys, ergonomics) times the word's frequency weight, so a common word's extra key outweighs a rare word's"],
+      ["Escape edge", "one private edge from every word straight to the sink, used only when a cluster has more words than texts; its cost is below"],
+      ["Algorithm", "Dijkstra with Johnson potentials, started from zero because every cost is non-negative; each search stops at the sink and every potential is capped at the sink's distance, which keeps reduced costs non-negative; each edge stores its reverse edge's index inline"],
+      ["Components", "solved independently, on every core; the largest has about 3,700 words and takes about 1.3 s"],
+      ["Check", "300 random over-subscribed graphs, escapes included, are compared with brute force on every test run"]
+    ] },
+    { "t": "h3", "x": "Worked example: one, won, wan" },
+    { "t": "p", "x": "Three words compete for the same phonetic texts. The cheapest matching in total gives each a different one, even though a word-by-word greedy pass would hand the best text to whichever word asked first." },
+    { "t": "table", "head": ["Word", "Outline", "Why"], "rows": [
+      ["one", "[[WUPB]]", "its own vowel is available"],
+      ["won", "[[WOPB]]", "the cheapest text for it; one also wanted it but has a free alternative"],
+      ["wan", "[[WAPB]]", "its only option left"]
+    ] },
+
+    { "t": "h", "x": "What it costs to leave a word unplaced" },
+    { "t": "p", "x": "A word with no outline is typed by fingerspelling, so the escape edge charges exactly that, and is always at least one stroke worse than the word's own worst candidate. A rare word losing its last slot is therefore weighed honestly against a common word's extra stroke, and is not a near-hard constraint." },
+    { "t": "pre", "x": "no_match_cost(word) = weight * max( letters(word) * STROKE_WEIGHT,\n                                    worst_candidate_cost + STROKE_WEIGHT )\nSTROKE_WEIGHT = 25,000   (one stroke = 25 keys; one key = 1,000)" },
+    { "t": "p", "x": "Consequence: a crowded cluster such as `ERL` (early, errol, earle, earl) has more members than the four-rung star ladder has texts, so someone is left out. Leaving a rare name unplaced costs less than making a very common word take an extra stroke, so the common word keeps its one stroke. Words that got their one-stroke outline this way:" },
+    { "t": "table", "head": ["Word", "Outline"], "rows": [
+      ["[[early|ERL]]", "one stroke"],
+      ["[[exactly|ELG]]", "one stroke"],
+      ["[[guys|AOEUS]]", "one stroke"],
+      ["[[mayor|PHAEUR]]", "one stroke"],
+      ["[[bath|PWA*T]]", "one stroke"]
+    ] },
+    { "t": "p", "x": "In the current build 443 words are left unplaced. Every one is rarer than rank 20,000, and each is still reachable by fingerspelling or a backup entry (see [backups](#/ref/how-backups-output))." },
+    { "t": "note", "kind": "warn", "x": "A common word's non-phonetic candidate can take a rarer word's only derivable stroke (Plover's misstroke `TARBG` for dark, repaired to `ARBG`, is also the plain reading of arc and ark). There is no surcharge for this. The displaced word's way in is the star ladder, then its stem-plus-suffix reading, then `/+*`. See [collisions](#/ref/collisions)." },
+
+    { "t": "h", "x": "Word families" },
+    { "t": "p", "x": "A family shares its root's stroke. Without this, build was Plover's `PWHR` while builds was the unrelated `PWEULDZ`. Words are linked into families by `src/family.rs`, and settling runs twice so members can follow their root." },
+    { "t": "h3", "x": "Who is family" },
+    { "t": "table", "head": ["Kind", "Rule"], "rows": [
+      ["Endings", "`-s -ed -ing -er -est -ly -ness -ment -able -ful -less -ship -hood`, matched by spelling (e-drop, consonant undoubling, i to y, -es/-ies) and confirmed by the exact sounds the ending adds. The most frequent valid stem wins: robber is rob + -er, not the name robb"],
+      ["Prefixes", "`re- pre- un- dis- mis- over- under-` in front of another word whose pronunciation the word ends with"],
+      ["Irregular forms", "about 150 past tenses and participles and 7 plurals listed in `rules/families.toml` (built from build, men from man)"],
+      ["Not family", "coincidences that pass every check (better is not bet + -er, moment is not mo + -ment), also listed in `rules/families.toml`"]
+    ] },
+    { "t": "p", "x": "A join through an ending needs the stem to be three letters or more, and a word in `-ly` never joins through `-y`." },
+    { "t": "h3", "x": "The family rules" },
+    { "t": "p", "x": "After the first settling pass every family root is locked to the outline it won on cost alone. Nothing else may take it, and it moves only to something strictly cheaper. Every member is then offered its root's outline, written by these rules, on the root's **last stroke**:" },
+    { "t": "table", "head": ["Rule", "Example"], "rows": [
+      ["Add the ending's key", "[[build|PWHR]] gives [[builds|PWHR-Z]], [[building|PWHR-G]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]]"],
+      ["Key already there: add the star", "`TPHAED` becomes `TPHA*ED` (needed); `-D` becomes `*D` (did)"],
+      ["K chord plus -ing: bare `-G`", "`TAUBG` becomes `TAUG` (talking); `HRAOBG` becomes `HRAOG` (looking)"],
+      ["Irregular past: stem plus `D`", "[[built|PWHR-D]], said `SAEUD`, left `HREFD`, came `KUPLD`"],
+      ["Prefix: its stroke, then the stem", "[[rebuild|RE/+PWHR]], [[RE/+PWHR-G]] (rebuilding), remake `RE/+AEUBG`"]
+    ] },
+    { "t": "note", "kind": "rule", "x": "An offer counts **two keys cheaper** than it is (`FAMILY_DISCOUNT` = 2,000), so a member takes its family's shape unless that costs more than two extra keys. It never buys a stroke, because a stroke weighs 25 keys. Words with a one-stroke brief that beats the family shape by more than two keys keep the brief (guys stays [[guys|AOEUS]])." },
+    { "t": "h3", "x": "The final pass: lock the top 5,000, then every skeleton" },
+    { "t": "list", "ordered": true, "items": [
+      "A word ranked past 8,000 holds its one-stroke consonant skeleton out of the family passes.",
+      "Settling repeats until the offers stop changing, or for at most four passes.",
+      "The 5,000 commonest words are locked to exactly what they settled on. Nobody else may take one of those texts and no locked word may take another's.",
+      "One last pass runs with every skeleton in.",
+      "Any word left on a worse outline than one of its own candidates that nobody holds (a text a root reserved and then walked away from) moves to it. No word is left stranded.",
+      "Everything is then settled again from scratch."
+    ] },
+    { "t": "h3", "x": "One family, every member" },
+    { "t": "table", "head": ["Member", "Outline", "Member", "Outline"], "rows": [
+      ["[[build|PWHR]]", "root", "[[builds|PWHR-Z]]", "ending key"],
+      ["[[building|PWHR-G]]", "ending key", "[[buildings|PWHR-GZ]]", "two ending keys"],
+      ["[[built|PWHR-D]]", "irregular past", "[[builder|PWHR-R]]", "ending key"],
+      ["[[PWHR-RZ]] (builders)", "two ending keys", "[[rebuild|RE/+PWHR]]", "prefix then stem"],
+      ["[[RE/+PWHR-G]] (rebuilding)", "prefix then family shape", "", ""]
+    ] },
+    { "t": "h3", "x": "How closely families follow their root" },
+    { "t": "table", "head": ["Top 10,000, by ending", "Members", "Outline follows the family", "Reachable as stem + ending"], "rows": [
+      ["-s", "1,370", "92%", "99%"],
+      ["-ed (irregulars included)", "761", "83%", "94%"],
+      ["-ing", "603", "83%", "99%"],
+      ["-er", "152", "90%", "96%"]
+    ] },
+    { "t": "p", "x": "`cargo run --release -- family build` prints any family. `cargo run --release -- family` alone prints these numbers and the commonest members that still go their own way." }
+  ]
+}

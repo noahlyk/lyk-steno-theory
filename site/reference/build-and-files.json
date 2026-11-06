@@ -1,0 +1,284 @@
+{
+ "id": "build-and-files",
+ "title": "Build, files and tools",
+ "goal": "Run the program, know what each command and option does, where the data comes from, what each dictionary file holds, and how to measure a change.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What lyk is"
+  },
+  {
+   "t": "p",
+   "x": "lyk is steno with explicit word boundaries: every stroke after the first of a word carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover and Lapwing already do and measured against them. It is written in Rust with the rules as data. American English only. Inspired by [Froj](https://github.com/StenoHarri/Froj). See [the join key](#/ref/join-key)."
+  },
+  {
+   "t": "h",
+   "x": "Main features"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Optimized for speed, not for being guessable.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs the least to type. Nothing has to be derivable from the word's sound or spelling.",
+    "**One primary outline per word, extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed, so they cost no other word anything.",
+    "**An explicit join key.** Continuation strokes are never mistaken for words, which is what lets a suffix be one key.",
+    "**Measured, not asserted.** `build` and `score` print cost and match-rate against Plover and Lapwing on the same words every time. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
+    "**A miss always resolves.** A stroke the dictionary lacks still reads back as something sensible, as a real engine's last resort: see [the fallback](#/ref/fallback)."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Commands"
+  },
+  {
+   "t": "p",
+   "x": "Run each as `cargo run --release -- COMMAND`."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Command",
+    "What it does"
+   ],
+   "rows": [
+    [
+     "`fetch`",
+     "Download the data into `data/` (safe to re-run)."
+    ],
+    [
+     "`report`",
+     "Show what was loaded."
+    ],
+    [
+     "`score`",
+     "How often the rules match Plover or Lapwing."
+    ],
+    [
+     "`score --check-readme`",
+     "Check that the README's benchmark tables still match."
+    ],
+    [
+     "`score --write-readme`",
+     "Rewrite any stale README table in place."
+    ],
+    [
+     "`build`",
+     "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)), and print the cost."
+    ],
+    [
+     "`plugin [--out FILE]`",
+     "Generate keymux's WASM fallback plugin from the rules (default `out/lyk-orthographic-fallback.rs`). See [the fallback](#/ref/fallback/keeping-the-plugin-honest)."
+    ],
+    [
+     "`deploy`",
+     "`build` plus `plugin`, copied straight into keymux's live config. Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
+    ],
+    [
+     "`explain WORD`",
+     "Which rules wrote a word, next to Plover and Lapwing. Example: `explain moon`."
+    ],
+    [
+     "`family WORD`",
+     "A word's family (`build`, `builds`, `building`...): each one's outline and its stem-plus-ending entry."
+    ],
+    [
+     "`paths WORD`",
+     "Every way to write a word as joined strokes, and what became of each. Example: `paths complete`."
+    ],
+    [
+     "`mismatches --syllables N --after R`",
+     "Where the rules differ from Plover or Lapwing, for words of N syllables ranked after R. Example: `mismatches --syllables 2 --after 500`."
+    ],
+    [
+     "`learn`",
+     "Which keys Plover and Lapwing use for each sound group. This is how most rules were found: it counts the keys they use where they agree."
+    ],
+    [
+     "`build --against FILE`",
+     "Add a third dictionary to the cost tables. Example: `build --against magnum.rtf`."
+    ],
+    [
+     "`quote`",
+     "A random quote, stroked in lyk next to Plover and Lapwing."
+    ],
+    [
+     "`resolve STROKES`",
+     "Read a stroke or `+`-joined run back as a word, as [the fallback](#/ref/fallback) does. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`."
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "`--rules FILE` and `--briefs FILE` make a command use your own rules and briefs."
+  },
+  {
+   "t": "h",
+   "x": "Data sources"
+  },
+  {
+   "t": "table",
+   "head": [
+    "What",
+    "Source"
+   ],
+   "rows": [
+    [
+     "Pronunciations",
+     "CMUdict (primary). For the words CMUdict has no entry for, the MFA US dictionary, then WikiPron US broad, translated from IPA (`src/ipa.rs`). Words with none of these use [spelling mode](#/ref/spelling-mode)."
+    ],
+    [
+     "Word frequency",
+     "hermitdave/FrequencyWords (OpenSubtitles 2018). Each name's count is cut to a tenth so a name never outranks the word it sounds like (see [names](#/ref/collisions))."
+    ],
+    [
+     "Bigram frequency",
+     "Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](#/ref/phrases)."
+    ],
+    [
+     "Dictionaries to match",
+     "Plover `main.json` and `commands.json`, and the Lapwing dictionaries."
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "The dictionary files"
+  },
+  {
+   "t": "p",
+   "x": "`build` does not write one big dictionary. It writes several small Plover JSON files, one for each **way an entry came about**, and `deploy` puts them in keymux's folder next to the reserved-stroke files. What a stroke means does not depend on the split."
+  },
+  {
+   "t": "table",
+   "head": [
+    "File",
+    "What is in it",
+    "Entries (current build)"
+   ],
+   "rows": [
+    [
+     "`02-lyk-words.json`",
+     "each word's own outline: gold briefs, the plain rules reading, spelling and voicing variants, ladder-settled clashes, family members' shapes",
+     "about 47,000"
+    ],
+    [
+     "`02-lyk-short.json`",
+     "long words written shorter by the brevity steps (`lead`, `fold`, `lean`, `ends`, `shell`, `skeleton`; see [how short](#/ref/brevity))",
+     "about 58,000"
+    ],
+    [
+     "`02-lyk-backups.json`",
+     "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join))",
+     "about 3.9 million"
+    ],
+    [
+     "`02-lyk-extras.json`",
+     "extra one-stroke ways to write a word, filling strokes nothing else needed (see [briefs](#/ref/briefs))",
+     "about 10,000"
+    ],
+    [
+     "`02-lyk-alternates.json`",
+     "another pronunciation's outline for a word",
+     "about 3,400"
+    ],
+    [
+     "`02-lyk-phrases.json`",
+     "two common words in one stroke (see [phrases](#/ref/phrases))",
+     "about 5,700"
+    ],
+    [
+     "`02-lyk-suffixes.json`",
+     "the standalone suffix strokes (see [suffixes](#/ref/suffixes))",
+     "41"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`) and `05-lyk-orthographic-fallback.rs` (the [fallback](#/ref/fallback) plugin)."
+  },
+  {
+   "t": "list",
+   "items": [
+    "The generator keeps exactly one word per outline, so **no outline appears in two files** and the load order never changes what a stroke types. `build` checks this.",
+    "Which file an entry goes in is decided in one place, `Role::of` in `src/output.rs`, from the entry's `Origin`.",
+    "The file name tells you what kind of outline you are looking at: a `+` outline in `backups` is a fallback, and the same word's primary is in `words`.",
+    "keymux caches and reloads per file. A change that moves only some entries rewrites only those files, and `build` compares bytes first, so a file whose content did not change is not rewritten and keymux sees nothing to do for it."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "Building and deploying"
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- deploy    # build + plugin, copied into ~/.config/keymux/steno/lyk"
+  },
+  {
+   "t": "p",
+   "x": "`deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed the same way every time, so the same dictionary always gives the same bytes."
+  },
+  {
+   "t": "h",
+   "x": "Analysis tools"
+  },
+  {
+   "t": "p",
+   "x": "Python 3, no dependencies, in `tools/`. Every tool reads the built dictionary in `out/lyk/` (run `cargo run --release -- build` first) and the data in `data/`, from wherever it is run. `lyk_out.py` is the shared loader, not a tool."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Tool",
+    "What it answers"
+   ],
+   "rows": [
+    [
+     "`holders.py OUTLINE @word ...`",
+     "Who holds an outline (`TKO*BG` is *dock*, in `words`), or every outline a word has, fastest first. Quote outlines that contain a star."
+    ],
+    [
+     "`diff_builds.py BEFORE [AFTER] [N]`",
+     "What a change did: per-file entry and word counts, the words only one build has, and every word whose fastest outline changed, commonest first, with counts for the top 1,000 / 5,000 / 20,000."
+    ],
+    [
+     "`coverage.py [word ...]`",
+     "How many words of two syllables or more can be joined in, by frequency band: one-stroke share, joined share, stem-plus-ending share, joined ways in per word (see [ways to join](#/ref/ways-to-join))."
+    ],
+    [
+     "`markers.py [N]`",
+     "Words still on a bare `/+*` marker, by band, real words against names, and who holds the plain and starred stroke each real word wanted (see [collisions](#/ref/collisions))."
+    ],
+    [
+     "`phrasing_prototype.py [OUT_DIR]`",
+     "The phrasing grammar ([lesson 19](#/lesson/19-phrasing-grammar), [lesson 20](#/lesson/20-phrasing-strokes)) as a trial folder to deploy and type: displaced entries, strokes saved on the corpora, a practice list."
+    ],
+    [
+     "`site_data.py [--check]`",
+     "Writes the data the lessons site runs on, and checks every outline the lessons and reference pages teach against the built dictionary. Exits non-zero on any wrong one."
+    ],
+    [
+     "`phrase_sim.py [protect_rank] [show]`",
+     "Simulates letting phrases take strokes from words."
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Measuring a change"
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- build && cp -r out/lyk /tmp/before\n# ...change the rules or the generator...\ncargo run --release -- build && python3 tools/diff_builds.py /tmp/before"
+  },
+  {
+   "t": "list",
+   "items": [
+    "`cargo run --release -- score --check-readme` checks the README's tables.",
+    "To check that a change moved no word at all, compare a hash of the output: `sha256sum out/lyk/*.json`."
+   ],
+   "ordered": false
+  }
+ ]
+}

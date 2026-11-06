@@ -1,0 +1,376 @@
+{
+ "id": "spelling",
+ "title": "Spelling disambiguation",
+ "goal": "Every spelling rule: when a sound takes different keys because of how the word is written, with the keys and an example word for each.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "What spelling does"
+  },
+  {
+   "t": "p",
+   "x": "Spelling picks between ways to write a sound. A spelling rule looks at the whole word, its start, its end, the sound before, or a prefix on an unstressed first vowel. When one fits, the sound becomes a named variant (`UW.oo`) with its own keys. Every choice is one line in `rules/plover.toml`, and `explain` shows which fired."
+  },
+  {
+   "t": "p",
+   "x": "Examples: `UW` is [[AO]] in *moon* but [[AOU]] in *tune*; `T` is [[-D]] in *walked*; `ou` is the plain [[U]] in *rough* where `o` is [[O]] in *love*; `be-` is [[E]] in *believe*, `a-` is [[A]] in *about*."
+  },
+  {
+   "t": "h",
+   "x": "How a rule applies"
+  },
+  {
+   "t": "list",
+   "items": [
+    "The first rule for a sound whose condition fits wins. The tables below are in that order for each sound.",
+    "**the word contains / starts / ends**: the letters are in the spelling. \"Starts\" and \"ends\" also require the sound to be the first or last sound of the word.",
+    "**prefix**: the sound is the word's first vowel, it is unstressed, and the word starts with those letters (`be-` in *believe*, not in *bee*).",
+    "**after / before**: the sound before, or the final sound after.",
+    "**not**: none of the listed letters may be in the word.",
+    "**two or more syllables**: a one-syllable word never uses the rule.",
+    "**only when another word would take the same stroke**: used only to tell sound-alike words apart. The word is written this way when another word would otherwise have the same outline. Which of the two words gets the shorter form falls out of the solve described in [when two words sound the same](#/ref/collisions)."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Spelling rules for consonants"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sound",
+    "When",
+    "Variant",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "w",
+     "the word starts `wh`",
+     "W.wh",
+     "[[WH]]",
+     "[[whale|WHAEL]]"
+    ],
+    [
+     "r",
+     "the word starts `wr`",
+     "R.wr",
+     "[[WR]]",
+     "[[write|WREU]], [[wrap|WRAP]]"
+    ],
+    [
+     "s",
+     "the word starts `sce`, `sci` or `scy` (a soft c is still written K)",
+     "S.sc",
+     "[[SK]]",
+     "[[scent|SKEPBT]], [[science|SKAOEUPBS]]"
+    ],
+    [
+     "v",
+     "after a vowel that has its own R",
+     "V.rv",
+     "[[-FRB]]",
+     "[[starve|STAFRB]]"
+    ],
+    [
+     "ch",
+     "after a vowel that has its own R",
+     "CH.rch",
+     "[[-FRPB]]",
+     "[[lurch|HRUFRPB]], [[birch|PWEUFRPB]]"
+    ],
+    [
+     "t",
+     "the word ends `ed` and this is its last sound",
+     "T.ed",
+     "[[-D]]",
+     "[[walked|WAUBGD]], [[helped|HEPD]]"
+    ],
+    [
+     "ng",
+     "the word ends `ing`, has two or more syllables, and this is its last sound",
+     "NG.ing",
+     "[[-G]]",
+     "[[walking|WAUG]]"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Spelling rules for vowels"
+  },
+  {
+   "t": "p",
+   "x": "Listed in the order the rules are tried. The sound is the plain vowel of [phonetic rules](#/ref/phonetic-rules); the variant keys replace its keys."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Sound",
+    "When",
+    "Variant",
+    "Keys",
+    "Example"
+   ],
+   "rows": [
+    [
+     "ew (UW)",
+     "the word contains `oo`",
+     "UW.oo",
+     "[[AO]]",
+     "[[moon|PHAOPB]], [[food|TPAOD]] (plain: [[tune|TAOUPB]])"
+    ],
+    [
+     "ur (ER)",
+     "contains `ir`",
+     "ER.ir",
+     "[[EUR]]",
+     "[[bird|PWEURD]], [[first|TPEURS]]"
+    ],
+    [
+     "ur (ER)",
+     "contains `er`",
+     "ER.er",
+     "[[ER]]",
+     "[[her|HER]], [[term|TERPL]]"
+    ],
+    [
+     "ur (ER)",
+     "contains `wor`",
+     "ER.or",
+     "[[OR]]",
+     "[[word|WORD]]"
+    ],
+    [
+     "ur (ER)",
+     "contains `ear`",
+     "ER.ear",
+     "[[ER]]",
+     "[[learn|HRERPB]]"
+    ],
+    [
+     "aw (AO)",
+     "contains `war` or `quar`",
+     "AO.a",
+     "[[AU]] ([[AR]] before R)",
+     "[[war|WAR]], [[quart|KWART]]"
+    ],
+    [
+     "aw (AO)",
+     "contains `aw`, `au`, `al` or `ough`",
+     "AO",
+     "[[AU]]",
+     "[[saw|SAU]], [[call|KAUL]], [[ought|AUT]]"
+    ],
+    [
+     "aw (AO)",
+     "contains `o`",
+     "AO.o",
+     "[[O]]",
+     "[[long|HROPBG]], [[off|O*F]]"
+    ],
+    [
+     "oo (UH)",
+     "contains `oo`",
+     "UH",
+     "[[AO]]",
+     "[[look|HRAOBG]], [[good|AOD]]"
+    ],
+    [
+     "oo (UH)",
+     "contains `ur` and not `ure`",
+     "UH.ur",
+     "[[U]]",
+     "[[jury|SKWRUR]], [[during|TKURG]]"
+    ],
+    [
+     "oo (UH)",
+     "contains `u`",
+     "UH.u",
+     "[[U]]",
+     "[[put|PUT]], [[full|TPUL]]"
+    ],
+    [
+     "oo (UH)",
+     "contains `o`",
+     "UH.o",
+     "[[O]]",
+     "[[would|WO]], [[wolf|WOF]]"
+    ],
+    [
+     "ee (IY)",
+     "the word ends `lly` and has two or more syllables: the ending is a syllable of its own",
+     "IY.lly",
+     "[[EU]]",
+     "[[silly|SEUL/+HREU]]"
+    ],
+    [
+     "ee (IY)",
+     "ends `ly`, two or more syllables: not a syllable, its L goes on the stroke before",
+     "IY.ly",
+     "no vowel",
+     "[[nearly|TPHAERL]], [[lately|HRAELT]]"
+    ],
+    [
+     "ee (IY)",
+     "ends `y` or `ie`, two or more syllables",
+     "IY.y",
+     "[[EU]]",
+     "[[money|PHOPB/+EU]]"
+    ],
+    [
+     "ee (IY)",
+     "contains `ies` and the sound is followed by the final Z, two or more syllables",
+     "IY.y",
+     "[[EU]]",
+     "[[babies|PWAB/+EUZ]]"
+    ],
+    [
+     "u (AH)",
+     "a final `a`, two or more syllables: its own stroke",
+     "AH.a",
+     "[[A]]",
+     "[[china|KHAOEUPB/+A]]"
+    ],
+    [
+     "ee (IY)",
+     "contains `ea`, only when another word would take the same stroke",
+     "IY.ea",
+     "[[AE]]",
+     "[[sea|SAE]] ([[see|SAOE]])"
+    ],
+    [
+     "i (IH)",
+     "contains `ea`, only when another word would take the same stroke (with R: [[AER]])",
+     "IH.ea",
+     "[[AE]]",
+     "[[dear|TKAER]] ([[deer|TKAOER]])"
+    ],
+    [
+     "i (IH)",
+     "unstressed first vowel, word starts `be`, `de`, `re`, `pre`, `se` or `e`",
+     "IH.e",
+     "[[E]]",
+     "[[believe|PWE/+HRAOEF]], [[delay|TKE/+HRAEU]], [[return|RE/+TUPB]], [[predict|PRE/+TKEUBGT]], [[select|SE/+HREBGT]], [[event|E/+SREPBT]]"
+    ],
+    [
+     "ee (IY)",
+     "unstressed first vowel, word starts `re`, `pre`, `de`, `be` or `se`",
+     "IY.e",
+     "[[E]]",
+     "[[react|RE/+AFT]], [[deny|TKE/+TPHU]]"
+    ],
+    [
+     "u (AH)",
+     "unstressed first vowel, word starts `a`",
+     "AH.a",
+     "[[A]]",
+     "[[about|A/+PWOUT]]"
+    ],
+    [
+     "u (AH)",
+     "unstressed first vowel, word starts `u`",
+     "AH",
+     "[[U]]",
+     "[[until|UPB/+TEUL]]"
+    ],
+    [
+     "o (AA)",
+     "contains `aw` or `au`",
+     "AA.aw",
+     "[[AU]]",
+     "[[raw|RAU]], [[cause|KAUZ]]"
+    ],
+    [
+     "o (AA)",
+     "contains `al`",
+     "AA.al",
+     "[[AU]]",
+     "[[calm|KAUPL]]"
+    ],
+    [
+     "o (AA)",
+     "contains `a`",
+     "AA.a",
+     "[[A]]",
+     "[[car|KAR]], [[hard|HARD]]"
+    ],
+    [
+     "u (AH)",
+     "contains `ou`",
+     "AH",
+     "[[U]]",
+     "[[rough|RUF]], [[touch|TUFP]]"
+    ],
+    [
+     "u (AH)",
+     "contains `o`",
+     "AH.o",
+     "[[O]]",
+     "[[son|SOPB]], [[won|WOPB]]"
+    ],
+    [
+     "e (EH)",
+     "contains `er` and none of `ere`, `ear`, `eir`: `er` before another vowel",
+     "EH.er",
+     "[[ER]] (with R)",
+     "[[berry|PW*ER]]"
+    ],
+    [
+     "e (EH)",
+     "contains no `ai` or `ay`, only when another word would take the same stroke (with R: [[AER]])",
+     "EH.alt",
+     "[[E]]",
+     "[[stare|STAER]], [[their|THAER]] ([[stair|STAEUR]])"
+    ],
+    [
+     "ay (EY)",
+     "contains no `ai` or `ay`, only when another word would take the same stroke",
+     "EY.alt",
+     "[[AE]]",
+     "[[sale|SAEL]], [[weight|WAET]] ([[sail|SAEUL]])"
+    ],
+    [
+     "oh (OW)",
+     "the word ends `owed` or `ows`, two or more syllables: the ending folds",
+     "OW.ed",
+     "[[OE]]",
+     "[[followed|TPOD]], [[follows|TPOZ]]"
+    ],
+    [
+     "oh (OW)",
+     "contains `oa`, only when another word would take the same stroke",
+     "OW.oa",
+     "[[AO]]",
+     "[[loan|HRAOPB]] ([[lone|HROPB]])"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Vowel and R pairs the spelling changes"
+  },
+  {
+   "t": "p",
+   "x": "These variants combine with a following R (or `ng`) in [vowel + R](#/ref/phonetic-rules): [[AR]] for `war`, [[UR]] for `sure`, [[AER]] for `dear`, `hear`, `stare`, `their`, and [[ER]] for `berry`."
+  },
+  {
+   "t": "h",
+   "x": "Joined strokes spell the long vowel plainly"
+  },
+  {
+   "t": "p",
+   "x": "In joined strokes only (never in a primary outline) a long `o` written with the plain letter also gets the plain keys: `control` is [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]. The rule: sound `OW`, word contains `o` and none of `oa`, `ow`, `oe`, `ou`, `oo`, `oi`, `ough`."
+  },
+  {
+   "t": "h",
+   "x": "Telling sound-alikes apart"
+  },
+  {
+   "t": "p",
+   "x": "Words that sound the same are told apart by this: [[sail|SAEUL]] and [[sale|SAEL]], [[dear|TKAER]] and [[deer|TKAOER]], [[stair|STAEUR]] and [[stare|STAER]], [[load|HROD]] and [[lode|HROED]], [[write|WREU]] and [[right|ROEUT]]. Pairs that spell the same pattern get a star instead: see [when two words sound the same](#/ref/collisions)."
+  }
+ ]
+}

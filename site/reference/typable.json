@@ -1,0 +1,132 @@
+{
+ "id": "typable",
+ "title": "Strokes you can type",
+ "goal": "Which right-pinky chords cannot be pressed, and how a word that needed one is swapped or split.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "The rule"
+  },
+  {
+   "t": "p",
+   "x": "Some chords cannot be pressed at all. The generator never writes one. The right pinky has four keys in a 2x2 block:"
+  },
+  {
+   "t": "pre",
+   "x": " -T  -D        top row\n -S  -Z        bottom row"
+  },
+  {
+   "t": "table",
+   "head": [
+    "The pinky can press",
+    "Examples"
+   ],
+   "rows": [
+    [
+     "one key",
+     "[[-T]], [[-D]], [[-S]], [[-Z]]"
+    ],
+    [
+     "two in a line",
+     "[[-TS]], [[-DZ]], [[-TD]], [[-SZ]]"
+    ],
+    [
+     "all four, flat",
+     "[[-TSDZ]]"
+    ]
+   ]
+  },
+  {
+   "t": "table",
+   "head": [
+    "The pinky cannot press",
+    "Examples"
+   ],
+   "rows": [
+    [
+     "a diagonal pair",
+     "[[-TZ]], [[-SD]]"
+    ],
+    [
+     "exactly three",
+     "[[-TDZ]], [[-TSD]], and the other triples"
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "A stroke that needs a diagonal pair or exactly three of the four keys is not a stroke. This is a physical limit of the hand, so it is a hard filter and not a cost. Nothing about the left hand or the other fingers is limited (the left pinky has one key, `S-`)."
+  },
+  {
+   "t": "h",
+   "x": "What happens to a word that needed one"
+  },
+  {
+   "t": "p",
+   "x": "Wherever a stroke is produced, an untypable one is dropped or repaired before it can compete. Candidates (gold briefs, the rules' reading, spelling variants, ladder steps, short forms, `-S` respellings) get two kinds of repair, and the solver picks between them by cost like any other candidates. **A one-stroke form always beats a split when one is free.**"
+  },
+  {
+   "t": "h3",
+   "x": "Swap: still one stroke"
+  },
+  {
+   "t": "p",
+   "x": "One or two pinky keys are swapped for their voiced or unvoiced partner ([[-T]]/[[-D]], [[-S]]/[[-Z]]) whenever the result is typable. [[-TZ]] becomes [[-TS]] or [[-DZ]]; [[-SD]] becomes `-ZD` or `-ST`. These cost what the original did (the same number of keys), and a swapped stroke held by a more common word simply loses it, like any collision."
+  },
+  {
+   "t": "p",
+   "x": "Examples: *cadence* is [[cadence|KAEUPBTS]], *utters* is [[utters|URTS]], *silenced* is [[silenced|SAOEUPBLTS]]."
+  },
+  {
+   "t": "h3",
+   "x": "Split: two strokes"
+  },
+  {
+   "t": "p",
+   "x": "If no swap is free, the pinky keys are kept in order for as long as they can be pressed together and the rest moves to a joined continuation stroke. [[-SD]] becomes [[-S]] then [[+-D]]; [[-TDZ]] becomes [[-TD]] then [[+-Z]]."
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "Only a word whose outline has exactly one untypable stroke gets swaps. A word with more than one is split."
+  },
+  {
+   "t": "h",
+   "x": "Which outlines are checked"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Kind of outline",
+    "What happens"
+   ],
+   "rows": [
+    [
+     "Candidates (gold briefs, rules reading, spelling variants, ladder steps, short forms, `-S` respellings)",
+     "Swapped or split as above."
+    ],
+    [
+     "Backups, family members, phrases and alternates",
+     "An untypable result is not offered. A phrase whose OR'd strokes would make a diagonal does not exist."
+    ],
+    [
+     "Hand-written outlines in `rules/briefs.toml`",
+     "Refused loudly: `build` stops with an error naming the word."
+    ],
+    [
+     "The stranded-word check",
+     "Ignores a plain reading that is untypable."
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Words with no outline"
+  },
+  {
+   "t": "p",
+   "x": "Four rare words have no outline because their only repair fails the consonant check on the voiced `-D`: *cleansed*, *pulsed*, *blitzed*, *repulsed*. They are still typable from their syllables, e.g. [[cleansed|KEPBS/+-D]], and [the fallback](#/ref/fallback) reads their strokes back."
+  }
+ ]
+}

@@ -1,0 +1,269 @@
+{
+  "id": "syllables",
+  "title": "Syllables and folding",
+  "goal": "How a word of several syllables is stroked: which syllables fold onto the stroke before them, which become a continuation stroke, and every extra way into a word the generator adds (stem plus ending, prefix plus stem, syllable by syllable, the lattice, word families).",
+  "blocks": [
+    { "t": "h", "x": "Folding a reduced syllable" },
+    { "t": "p", "x": "An unstressed syllable with a reduced vowel is not written. Its consonants join the stroke before it, in steno order: [[living|HREUFG]], [[special|SPERBL]]. A lone `-er` or `-ly` may land out of order, as in Plover: [[better|PWERT]], [[lately|HRAEULT]]." },
+    { "t": "p", "x": "When the consonants do not fit, the stem keeps the consonant it owns and the rest is a **continuation stroke** of right-hand consonants only, struck with the [join key](#/ref/join-key):" },
+    { "t": "table", "head": ["Word", "Outline", "What happens"], "rows": [
+      ["[[ended|EPBD/+-D]]", "[[EPBD/+-D]]", "stem EPBD, then `-D` on its own"],
+      ["[[breaking|PWRAEUBG/+-G]]", "[[PWRAEUBG/+-G]]", "keeps *break*'s own outline, `-G` is the ending"],
+      ["[[goodness|TKPWAOD/+-PBS]]", "[[TKPWAOD/+-PBS]]", "`-PBS` is the *-ness* stroke"],
+      ["[[harder|HARD/+-R]]", "[[HARD/+-R]]", "a reduced *-er* is always its `R`"],
+      ["[[confidence|KOPB/+-FD/+-PBS]]", "[[KOPB/+-FD/+-PBS]]", "two continuation strokes"]
+    ] },
+    { "t": "p", "x": "When the reduced syllable's own onset consonant cannot go on the right hand either, it goes on the **left** of that same continuation stroke and the rest stays on the right:" },
+    { "t": "table", "head": ["Word", "Outline", "Continuation stroke"], "rows": [
+      ["[[amber|APL/+PW-R]]", "[[APL/+PW-R]]", "[[+PW-R]]: `PW` on the left, `R` on the right"]
+    ] },
+    { "t": "p", "x": "The same shape applies to any reduced syllable whose onset cannot go on the right: `TPH` on the left and the rest on the right, as in [[+TPH-R]] or *-nial* [[+TPH-L]]." },
+    { "t": "note", "kind": "rule", "x": "A reduced `-er` is always `R`, in either shape. The endings words fold onto are a fixed set; each also has a stroke of its own that can be added to any stem. The full list is on [the suffix table](#/ref/suffixes)." },
+    { "t": "h", "x": "Final y, ly and a" },
+    { "t": "list", "items": [
+      "Final `-ly` is [[+PHREU]] after a consonant cluster. After a double `l` the `l` is already in the stem, so only [[+EU]] is added: [[silly|SEUL/+EU]].",
+      "Any other final `y` is [[+EU]].",
+      "A final `a` is a syllable of its own: [[china|KHAOEU/+TPHA]]."
+    ] },
+    { "t": "h", "x": "Suffix clusters both dictionaries use" },
+    { "t": "table", "head": ["Ending", "Keys", "Example"], "rows": [
+      ["-ment", "[[-PLT]]", "[[payment|PAEU/+-PLT]]"],
+      ["-tion", "[[-GS]]", "[[nation|TPHAEU/+-GS]]"],
+      ["-ting", "[[-GT]]", "*-ting* on a stem"],
+      ["-ding", "[[-GD]]", "*-ding* on a stem"],
+      ["F for an S before another consonant (Plover)", "[[F]]", "[[castle|KAFL]], [[lesson|HR-FPB]]"]
+    ] },
+    { "t": "h", "x": "The stem-plus-suffix reading is a candidate for the primary" },
+    { "t": "p", "x": "A word whose last syllable is reduced has two readings from the rules: the folded one ([[rabble|RABL]]; *pearly* would fold to `PERL`, but that is *pearl*) and the same word with that syllable struck as its own continuation stroke after the reading of what is left ([[pearly|PERL/+EU]], [[rabble|RAB/+-L]]). A second syllable can be peeled the same way: [[needlessly|TPHAOED/+-LS/+-L]]." },
+    { "t": "list", "items": [
+      "The unfolded form never has fewer strokes than the folded one, so it never wins for a word that can fold.",
+      "It is the predictable way down when every one-stroke form is taken: `PERL` is *pearl*, `P*ERL` is *peril*.",
+      "It ranks ahead of a Plover two-stroke brief or a bare `+*` marker stroke. The order is on [collisions](#/ref/collisions).",
+      "It is built from the word's own sounds, so it exists from the start. The backup entries below need the stem to be a placed word first."
+    ] },
+    { "t": "h", "x": "Backup entries: the idea" },
+    { "t": "p", "x": "The theory keeps one single-stroke outline per word, but allows unlimited multi-stroke ones, judged on predictability rather than brevity. The backup entries are those multi-stroke ones. A word's primary (shown by `explain`) does not change; backups only add extra ways in, so you can always reach the word from parts you know." },
+    { "t": "p", "x": "Folding alone is not consistent. [[breaking|PWRAEUBG/+-G]] keeps *break*'s [[break|PWRAEUBG]] only because a second `k` has nowhere to go, while *building* has no such excuse and its own cheapest outline is the fused [[building|PW-LG]], unrelated to [[build|PWHR]]. A later pass in `generate()` fixes this on purpose: it adds *build*'s own outline plus a continuation stroke as a second entry, so [[build|PWHR]] plus [[+-G]] also reaches [[building|PWHR/+-G]]." },
+    { "t": "p", "x": "A collision with an outline something else already has is skipped and counted (in `build`'s report line), never a hard failure." },
+    { "t": "h", "x": "Exhaustive and repeated to a fixed point" },
+    { "t": "list", "items": [
+      "Every word tries every split of its own sounds against every direction below, not just the first that works. Every safe, non-colliding composed outline is added, so a word often has several backup entries.",
+      "The index of already-placed words is rebuilt after each pass, now including what the last pass added. The passes repeat until one adds nothing new (capped at a handful of rounds).",
+      "That lets a backup chain through another backup: *green* plus *house* reaches *greenhouse*; then *greenhouse* is itself a placed word, so *greenhouses* is [[greenhouses|RAOEPB/+HOUS/+-Z]] without needing a primary of that shape.",
+      "*in* plus *still* reaching *instill*, then *instill* plus `+-G` reaching *instilling*, is the same mechanism one level deeper."
+    ] },
+    { "t": "h", "x": "Direction 1: a stem plus a reduced ending" },
+    { "t": "p", "x": "For every word whose last syllable is reduced and could be struck as a standalone continuation stroke, if the sounds left over exactly match another placed word's pronunciation, that word's own outline plus the continuation stroke is added. Examples: [[building|PWHR/+-G]], and the *-er* of *doctor*, whose sounds happen to be *docked* plus *-er*." },
+    { "t": "h", "x": "Direction 2: a leading sound before a shorter word" },
+    { "t": "p", "x": "The same pass runs the other way for a leading sound in front of a shorter word's exact pronunciation: *never* is an extra sound `N` in front of *ever*'s own sounds. Because the join key only continues a stroke forward, this direction must land on the same stroke as the matched word's first one: the leading sound's keys fold onto it, the way a prefix with fixed keys does (see [prefixes](#/ref/prefixes))." },
+    { "t": "note", "kind": "warn", "x": "When the leading sound's keys collide with keys the matched word's first stroke already uses, this direction is skipped, not forced. *unclear* needs `un-`'s own `TPH`, which shares an `H` with *clear*'s `KHR` onset. Such a word is reached the other way round, as a prefix stroke plus the stem: [[unclear|UPB/+KHRAOER]] (see \"Prefixes struck before their stem\" below)." },
+    { "t": "h", "x": "Direction 3: two whole words back to back" },
+    { "t": "p", "x": "A word like *myself* fits neither direction above: *self* is not a reduced syllable, and no leading sound is left over. It is two placed whole words, each keeping its full outline, every stroke of the second marked as a join continuation: [[myself|PHEU/+SEFL]]." },
+    { "t": "list", "items": [
+      "The pass tries every split of the word's sounds and keeps those where a placed word exactly accounts for each half. Stress is ignored (*myself* is `M AY2 S EH1 L F` but *my* alone is `M AY1`).",
+      "Sound alone finds too many candidates (*myself* also sounds like *mice* plus *elf*), so **spelling is the filter**: only a split where the word's spelling is the literal concatenation of both halves' spelling is kept. *my* + *self* passes; *mice* + *elf* does not.",
+      "More than one split can pass. *outside* is both *out* + *side* and *outs* + *ide*; both are kept as separate entries.",
+      "A word that is a prefix word of its own (*out*, *up*, *self*) needs no prefix entry: two whole words back to back already covers it."
+    ] },
+    { "t": "note", "kind": "warn", "x": "This direction misses compounds whose boundary speech reshapes beyond a stress shift: *cannot* (the two `N`s collapse), *yourself* (*your* reduces to a single `ER0`), *anybody* (*body* loses its stressed vowel), *everyone*. These are left alone, not guessed at; use the other ways to join them." },
+    { "t": "h", "x": "Sound matches need not mean anything" },
+    { "t": "p", "x": "None of the sound-based directions requires the match to make sense. *doctor* is exactly *docked* plus *-er*, and *crash* is a `k` in front of *rash*: coincidences, reused anyway. When more than one placed word ties on sound alone (*build* and *billed* are exact homophones), the word's own spelling breaks the tie if it can (*building* starts with *build*, not *billed*; see [spelling](#/ref/spelling)). If spelling does not settle it, the word is left alone." },
+    { "t": "h", "x": "Direction 4: word families" },
+    { "t": "p", "x": "The directions above find a stem by sound. A word like *called* (*call* plus a bare `d`) or *looks* (*look* plus a bare `s`) has no syllable for the ending, so it needs another link. Word families link words by **spelling**, confirmed by **sound**: a word is a stem plus one of the endings `-s`, `-ed`, `-ing`, `-er`, `-est`, `-ly`, `-ness`, `-ment`, `-able`, `-ful`, `-less`, `-ship`, `-hood`." },
+    { "t": "h3", "x": "When a word counts as stem plus ending" },
+    { "t": "list", "items": [
+      "The stem's spelling is the word minus the ending, allowing a dropped e (*making* / *make*), an undoubled consonant (*running* / *run*), i back to y (*happiness* / *happy*), and the *-es* / *-ies* plurals (*boxes*, *cities*).",
+      "Some pronunciation of the word is some pronunciation of the stem followed by exactly the sounds that ending adds (`-ed`: D, T or IH D; `-s`: S, Z or IH Z; `-ing`: IH NG; and so on). So *used* is *use* + *-ed*, never *us* + *-ed*.",
+      "The stem is said at least 1/50th as often as the word, so *need* is not *ne* + *-ed*.",
+      "When several stems pass, the most frequent is kept: *robber* is *rob* + *-er* (not the name *robb*), *lived* is *live* + *-d* (not *liv*).",
+      "The word is not listed in `not_family` in `rules/families.toml`. That list holds words that pass every check by coincidence: an ending that is part of the word (*better*, *letter*, *moment*, *forest*, *feed*) or a name (*walter*, *peter*). Add a word there if `family` shows it linked to something it is not built from."
+    ] },
+    { "t": "h3", "x": "What a family member gets" },
+    { "t": "p", "x": "Every linked word gets its stem's own outline (a brief, a rules reading or a star form) plus the ending's standalone stroke from [the suffix table](#/ref/suffixes). The ending is `+-S` when the word really ends in an s sound, `+-Z` otherwise." },
+    { "t": "table", "head": ["Word", "Outline", "Stem + ending"], "rows": [
+      ["[[called|KAUL/+-D]]", "[[KAUL/+-D]]", "*call* + `-D`"],
+      ["[[looks|HRAOBG/+-S]]", "[[HRAOBG/+-S]]", "*look* + `-S`"],
+      ["[[fighting|TPAOEUT/+-G]]", "[[TPAOEUT/+-G]]", "*fight* + `-G`"],
+      ["[[happiness|HAEP/+-PBS]]", "[[HAEP/+-PBS]]", "*happy* + `-PBS`"]
+    ] },
+    { "t": "p", "x": "These skip the fragment check the other directions run, since both halves are already real outlines. They chain like every backup: *needlessly* is *needless* + `+-L`, which is *need* + `+-LS` + `+-L`. The rare words that miss are texts a primary already holds (*needed*'s `TPHAED/+-D` is the primary of *kneaded*)." },
+    { "t": "h3", "x": "The longer ending list for backup joins" },
+    { "t": "p", "x": "The list above also shapes a family's one-stroke outline, so it stays short. The backup joins use a longer list that never touches a primary. On top of the endings above it adds:" },
+    { "t": "table", "head": ["Ending", "Stroke", "Example"], "rows": [
+      ["-ation", "[[+AEUGS]]", "*inform* + `+AEUGS`"],
+      ["-ible", "[[+-BL]]", "*sense* + `+-BL` (same sound and stroke as *-able*)"],
+      ["-ist", "[[+EUFT]]", "*art* + `+EUFT`"],
+      ["-ish", "[[+-RB]]", "*fool* + `+-RB`"],
+      ["-or", "[[+-R]]", "*sail* + `+-R` (same sound and stroke as *-er*)"],
+      ["-ward, -ism, -ity, -ize, -ous, -ive, -age, -ic, -al, -en, -y", "see [the suffix table](#/ref/suffixes)", "each with the sounds it adds"]
+    ] },
+    { "t": "p", "x": "A word gets a join for **every** ending it matches, not just the first: *artistic* is *artist* + `-ic`, and any other split that checks out is kept beside it." },
+    { "t": "p", "x": "These endings match by coincidence far more often (*final* sounds and spells like *fine* + `-al`, *mayor* like *may* + `-or`, *andy* like *and* + `-y`), so a join through one is held to three rules:" },
+    { "t": "list", "ordered": true, "items": [
+      "It builds on the stem's plain rules reading, never its brief, so it always types the word's sounds. *andy* is `APBD/+AOE`, never *and*'s brief `SKP` plus `+AOE`; *information* is *inform*'s `EUPB/+TPORPL` plus `+AEUGS`.",
+      "It passes the fragment check like any other composition.",
+      "The stem is three letters or more, and a word in *-ly* never splits as a stem in `l` plus `-y` (*really* is *real* + `-ly`)."
+    ] },
+    { "t": "p", "x": "A word listed in `not_family` gets no stem-plus-ending join at all, by any direction, and no two-word join either (*wither* is not *with* + `-er`)." },
+    { "t": "h", "x": "Prefixes struck before their stem" },
+    { "t": "p", "x": "A prefix cannot fold onto a stem's first stroke when they share a key, but it can always be a stroke of its own with the stem's whole outline joined after it: [[unclear|UPB/+KHRAOER]], [[decode|TKE/+KOED]], [[rebuild|RE/+PWHR]]." },
+    { "t": "list", "items": [
+      "The word is the prefix's spelling plus a placed word, and its pronunciation ends in the stem's.",
+      "The stem is at least three letters and said at least 1/50th as often (*reason* is not *re* + *ason*).",
+      "A prefix that is a word of its own (*out*, *up*, *self*) needs no entry: two whole words back to back already cover it."
+    ] },
+    { "t": "table", "head": ["Prefix", "Stroke"], "rows": [
+      ["un-", "the word [[un|UPB]]"],
+      ["dis-", "the word *dis*"],
+      ["mis-", "the word *mis*"],
+      ["re-", "[[RE]]"],
+      ["pre-", "[[PRE]]"],
+      ["de-", "[[TKE]]"],
+      ["co-", "[[KOE]]"],
+      ["en-", "[[EPB]]"],
+      ["im-", "[[EUPL]]"],
+      ["in-", "[[EUPB]]"],
+      ["non-", "[[TPHOPB]]"],
+      ["sub-", "[[SUB]]"],
+      ["trans-", "[[TRAPBS]]"],
+      ["anti-", "[[APB/+TEU]]"],
+      ["inter-", "[[EUPB/+TER]]"],
+      ["semi-", "[[SEPL/+EU]]"],
+      ["over-", "the word *over*"],
+      ["under-", "the word *under*"]
+    ] },
+    { "t": "p", "x": "Where a prefix is a syllable by the ordinary rules, that is its stroke; where it is a word, that word's outline. Prefixes folded onto a stem in one stroke are on [prefixes](#/ref/prefixes)." },
+    { "t": "h", "x": "Every word, syllable by syllable" },
+    { "t": "p", "x": "All the directions above need another word to build on. This one needs nothing: every word of two syllables or more also gets itself written one syllable per stroke, joined, from each of its pronunciations. However short its primary (*profitable* [[profitable|PROFBLT]], *machete* [[machete|PHEFPT]]) there is always a way in you can work out from the sound alone." },
+    { "t": "list", "items": [
+      "Its own folded outline, when that is more than one stroke: [[profitable|PROFT/+-BL]].",
+      "Every syllable a stroke, a reduced **last** syllable struck as its continuation with the vowel dropped, as a suffix is: [[table|TAEU/+-BL]], [[information|EUPB/+TPOR/+PHAEU/+-GS]].",
+      "Every syllable a stroke with its vowel written: [[table|TAEU/+PWUL]], [[machete|PHU/+SHE/+TAOE]].",
+      "Each of those with **every** way of breaking the syllables (below).",
+      "For a word with a fixed prefix (*ex-* `KP`, *dis-* `STK`), each of those with the prefix folded onto the first stroke and with it struck as a syllable of its own."
+    ] },
+    { "t": "h3", "x": "Where the syllable breaks go" },
+    { "t": "p", "x": "There is no one right place to break a word; the join key means none has to be the only one. The rule gives a stressed short vowel the consonant after it ([[lemon|HREPL/+UPB]], *lem-on*), and the other split is offered too ([[lemon|HRE/+PHUPB]], *le-mon*). Between two vowels, any run of consonants that can start a syllable may go to the next syllable, or none of them:" },
+    { "t": "table", "head": ["Split", "Outline"], "rows": [
+      ["com-pro-mise", "[[compromise|KOPL/+PRO/+PHAOEUZ]]"],
+      ["comp-ro-mise", "[[compromise|KOPL/+PR/+PHAOEUZ]]"],
+      ["compro-mise", "[[compromise|KOPL/+PROPL/+AOEUZ]]"]
+    ] },
+    { "t": "p", "x": "One boundary is moved at a time, so a long word has a handful of splits, not hundreds." },
+    { "t": "h3", "x": "Weak vowels you do strike" },
+    { "t": "p", "x": "In a syllable that keeps its vowel, an unstressed schwa is written two ways, and both are offered:" },
+    { "t": "list", "items": [
+      "As you **hear** it: `U`, or `EU` for an unstressed short i, whatever letter spells it: [[profitable|PRAF/+U/+TU/+-BL]].",
+      "As the spelling gives it, as you **read** the word: [[profitable|PRAF/+O/+TO/+-BL]], [[compromise|KOPL/+PRO/+PHAOEUZ]]."
+    ] },
+    { "t": "note", "kind": "rule", "x": "A middle reduced syllable keeps its vowel rather than becoming a bare consonant stroke: `PRAF/+U/+TU/+-BL` reads as the word, `PRA/+-F/+-T/+-BL` does not." },
+    { "t": "p", "x": "These candidates go through the same round as every other backup: the same fragment check, and the commoner word keeps a text two words want." },
+    { "t": "h", "x": "Every way to write a word: the lattice" },
+    { "t": "p", "x": "The syllable paths are the common cases of one general idea, the lattice (`src/rules/lattice.rs`). A word's sounds are positions; a **stroke** is any run of them with at most one vowel; a way to type the word is any path from the first sound to the last, two strokes or more, each stroke after the first with the join key." },
+    { "t": "p", "x": "*complete* (`K AH M P L IY T`) has [[complete|KUPL/+PHRAOET]], [[complete|KO/+PHRAOET]], [[complete|K-PL/+PHRAOET]], then [[complete|KU/+PH/+HRAOET]], [[complete|K/+UPL/+PHRAOET]], down to one sound per stroke: 687 paths in all. *control*, with its plain-letter vowel, has 774." },
+    { "t": "h3", "x": "A stroke writes any run of sounds it can" },
+    { "t": "list", "items": [
+      "Consonants may share keys: *m-p-r* is [[PHR]], the *p* already inside the `PH`.",
+      "A vowel is **heard** (`U`), **spelled** (`O`), or, for a long vowel, written as the letter it is spelled with.",
+      "Letter vowels: the word's vowel letters are lined up with its vowel sounds in order. When the counts agree, each sound that meets a single letter may be struck as that letter's key (`[letter_vowel]` in `rules/plover.toml`).",
+      "A reduced syllable is dropped to its consonants (`-BL`).",
+      "A run of consonants alone goes on the right hand after the last vowel, the left hand before the first, either between."
+    ] },
+    { "t": "table", "head": ["Letter", "Key"], "rows": [
+      ["a", "[[A]]"], ["e", "[[E]]"], ["i", "[[EU]]"], ["o", "[[O]]"], ["u", "[[U]]"]
+    ] },
+    { "t": "p", "x": "Examples: [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]; *contemplation* is [[contemplation|KOPB/+TEPL/+PHRAEUGS]] and [[contemplation|KOPB/+TEPL/+PHRAGS]] (*con* is an o, *tem* an e, *-ation* the heard `AEU` or the letter a). The joined syllable paths also try the version where only the short vowels take their letter and the long ones stay heard, so both `PHRAGS` and `PHRAEUGS` are held." },
+    { "t": "note", "kind": "warn", "x": "A silent final e is not counted (*table*). A pair of vowel letters (*ea*, *io*) or a count that disagrees (*every*) lines up with nothing; then only the heard and spelled vowels are offered." },
+    { "t": "h3", "x": "The word's spelling has a lattice of its own" },
+    { "t": "p", "x": "The dictionary's sounds are not always what you read: *contemplation* has an \"ah\" where you see the o of *con*. So the letters are read as a pseudo-pronunciation (`src/rules/orthography.rs`) and the same lattice runs over it." },
+    { "t": "list", "items": [
+      "Each letter or pair is a sound: *ch*, *sh*, *th*, *ph*, *ck*, *ng*, *qu*, *-tion*, doubled consonants once, and *ea ee ai ay oa ow oo ou oi au* and the like as one vowel.",
+      "Each vowel letter is offered short (*a* [[A]]), long ([[AEU]]) and weak ([[U]], droppable as in `-BL`).",
+      "A letter with two readings gets both: *c* as k or s, *g*, *s*, a silent e at the end or before a consonant (*move-ment*), *ch*, *gh*.",
+      "Up to 6 / 6 / 4 / 2 / 1 paths of two to six strokes (`SPELLING_QUOTAS`) join the sound-based ones."
+    ] },
+    { "t": "p", "x": "So a word is held both as you say it and as you spell it: [[contemplation|KOPB/+TEPL/+PHRAEU/+SHUPB]], [[hour|H/+O/+UR]]." },
+    { "t": "h3", "x": "A stem struck as a word, then the rest spelled" },
+    { "t": "p", "x": "For every start of a word (three letters or more) that is a placed word with a one-stroke outline, that outline is followed by the cheapest ways to spell the rest, from one stroke up (`stemmed` in `src/generate/backup.rs`): [[movement|PHOF/+PHEPBT]] (*move* + *ment*). This is how a typist reads *particular* as *part-ic-ul-ar*, which the sound lattice cuts as *par-ti-cu-lar* and never offers." },
+    { "t": "h3", "x": "Nothing is forbidden, everything is priced" },
+    { "t": "table", "head": ["Thing", "Cost"], "rows": [
+      ["A stroke", "8"],
+      ["A cut at an ordinary syllable break", "0"],
+      ["A cut inside the consonants between syllables", "2"],
+      ["A cut through a syllable", "3 to 5"],
+      ["A spelled or dropped vowel, the wrong hand, a star", "a little"],
+      ["A sound out of steno order (up to two per stroke)", "3 each"],
+      ["Keys that clash", "not allowed (the only hard no)"]
+    ] },
+    { "t": "h3", "x": "The cheapest paths of each length are listed" },
+    { "t": "p", "x": "Each stroke count has its own quota (`LATTICE_QUOTAS`). Each count is its own best-first search with an exact lower bound, so a five-stroke path is found as cheaply as a two-stroke one. The paths join the other backups, the same fragment check applies, and a text two words want goes to the commoner word." },
+    { "t": "table", "head": ["Strokes", "2", "3", "4", "5", "6"], "rows": [
+      ["Paths kept", "24", "24", "12", "6", "3"]
+    ] },
+    { "t": "p", "x": "*complete* ends up with 56 lattice joins, 11 of two strokes and 3 of six." },
+    { "t": "pre", "x": "lyk paths WORD" },
+    { "t": "p", "x": "`lyk paths WORD` lists a word's lattice paths with their cost and what became of each (in the dictionary, taken by another word, rejected, or past the cap), then everything the dictionary holds for the word." },
+    { "t": "h", "x": "What a stem joins through" },
+    { "t": "p", "x": "Every direction above builds on a placed word's outline. Each stem offers two:" },
+    { "t": "list", "items": [
+      "its fastest outline;",
+      "its own plain rules reading, when that is a different form of two strokes or more. *profitable* joins as [[profitable|PROFBLT]] and as [[profitable|PROFT/+-BL]], so *profitably* is reachable from either."
+    ] },
+    { "t": "list", "items": [
+      "A star-ladder marker stroke (`+*`, which only tells a word from one that sounds the same) is dropped from a stem before joining: *sorting* is [[sorting|SORT/+-G]], never `SOR/+*/+TEUG`.",
+      "A join of three strokes or more whose last stroke fits on the stroke before it (right-hand keys only, none already down, all later in steno order) is offered folded too, as a reduced syllable joins: [[sensible|SEPB/+SU/+-BL]] and [[sensible|SEPB/+SUBL]].",
+      "A join never folds down to one stroke: one-stroke outlines are the primaries' business."
+    ] },
+    { "t": "h", "x": "Families share one shape in their one-stroke outlines" },
+    { "t": "p", "x": "Backups make every member reachable as stem plus ending. The members' own fastest outlines follow their family too, so *build* is [[build|PWHR]] and *builds* is [[builds|PWHR-Z]], not an unrelated shape. Settling primaries runs twice:" },
+    { "t": "list", "ordered": true, "items": [
+      "The first pass settles every word on cost alone.",
+      "Every family root (a word with family members) is locked to the outline it won, and every member is offered its root's outline written by the **family rules**, applied to the root's last stroke (`shapes` in `src/family.rs`).",
+      "Every word is settled again from scratch with those offers in its pool."
+    ] },
+    { "t": "h3", "x": "The three family rules" },
+    { "t": "list", "ordered": true, "items": [
+      "**Add the ending's key.** [[build|PWHR]] gives [[builds|PWHR-Z]], [[building|PWHR-G]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]], [[builders|PWHR-RZ]]; [[day|AEU]] gives [[days|AEUZ]], [[daily|TKAEUL]]; [[start|SART]] gives [[started|SARTD]], [[starting|SARGT]].",
+      "**If the root already holds that key, add the star too.** [[need|TPHAED]] gives [[needed|TPHA*ED]]; [[think|-PBG]] gives [[thinking|*PBG]].",
+      "**\"-ing\" on a root ending in the K chord `-BG` swaps it for a bare `-G`** (Plover's convention): [[talk|TAUBG]] gives [[talking|TAUG]], [[look|HRAOBG]] gives [[looking|HRAOG]], [[speak|SPAEBG]] gives [[speaking|SPAEG]]. Rule 2 offers the star form as well, and cost picks."
+    ] },
+    { "t": "p", "x": "Only one-stroke, right-hand-only endings take part: `-S`, `-Z`, `-D`, `-G`, `-R`, `-L`, `-FT`, `-PBS` and so on." },
+    { "t": "h3", "x": "Irregular forms follow the same rules" },
+    { "t": "p", "x": "The `[past]` table in `rules/families.toml` ties about 150 irregular past tenses and participles to their stem as if they ended in *-ed*; `[plural]` ties irregular plurals to theirs as if they ended in *-s*. So a past tense is always its stem plus `D`, however it is spelled. Irregular plurals work the same way, as their stem plus `Z`. The examples:" },
+    { "t": "table", "head": ["Word", "Stem", "Rule"], "rows": [
+      ["[[built|PWHR-D]]", "[[build|PWHR]]", "stem + `D`"],
+      ["[[said|SAEUD]]", "[[say|SAEU]]", "stem + `D`"],
+      ["[[told|TELD]]", "*tell*", "stem + `D`"],
+      ["[[made|AEUBGD]]", "*make*", "stem + `D`"],
+      ["[[left|HREFD]]", "[[leave|HREF]]", "stem + `D`"],
+      ["[[came|KUPLD]]", "*come*", "stem + `D`"],
+      ["[[given|EUFD]]", "*give*", "stem + `D`"],
+      ["[[did|*D]]", "[[do|-D]]", "*do* already holds the `D`, so rule 2 adds the star"]
+    ] },
+    { "t": "p", "x": "A literal pin in `rules/briefs.toml` still wins ([[knew|-PZ]], [[thought|-LGT]], [[got|-GTD]]). Each irregular form also gets its stem plus `+-D` / `+-Z` as a backup." },
+    { "t": "h3", "x": "Prefixed words follow their stem" },
+    { "t": "p", "x": "A word that is `re-`, `pre-`, `un-`, `dis-`, `mis-`, `over-` or `under-` plus another word is offered the prefix's stroke followed by its stem's settled outline. The condition: by spelling, its pronunciation ends in the stem's, the stem is at least three letters and not far rarer, and the word is not in `not_family` (which lists coincidences like *remorse* and *present*). `re-` and `pre-` write `RE` and `PRE`; the rest write the prefix word's own outline (`un` [[UPB]], `dis` [[TKEUS]], `over` [[AUFR]])." },
+    { "t": "table", "head": ["Word", "Outline"], "rows": [
+      ["[[rebuild|RE/+PWHR]]", "[[RE/+PWHR]]"],
+      ["[[rebuilt|RE/+PWHR-D]]", "[[RE/+PWHR-D]]"],
+      ["[[rebuilding|RE/+PW-LG]]", "[[RE/+PW-LG]]"],
+      ["[[remake|RE/+AEUBG]]", "[[RE/+AEUBG]]"]
+    ] },
+    { "t": "p", "x": "A one-stroke brief still wins where there is one ([[unlock|TPHROBG]]), since the prefix shape is always two strokes. `family build` lists prefixed members under their stem's family." },
+    { "t": "h3", "x": "Roots are locked, and settle in a few solves" },
+    { "t": "p", "x": "Locking the roots matters: without it a root could trade its outline away in the second pass (*come* gave `KUPL` to *cum* for the equally long `KOPL`) after its members were offered shapes built on the old one. A locked root may still move to a strictly cheaper outline of its own if the re-solve frees one up; its family is then re-offered shapes on the new outline in the next pass. Roots only get cheaper, so this settles, usually within two or three solves." },
+    { "t": "h3", "x": "The two-key family preference" },
+    { "t": "p", "x": "A family offer counts **two keys cheaper** than its raw cost (`FAMILY_DISCOUNT`). Without it, cost alone kept a shorter unrelated brief (*building* stayed Plover's 4-key `PW-LG` over the 5-key `PWHR-G`). With it, a member takes its family's shape unless that costs more than two extra keys." },
+    { "t": "note", "kind": "rule", "x": "The discount never buys a stroke: a stroke weighs 25 keys. The same two-key preference applies when choosing which of a word's entries to call its outline (`cheapest`, used by `lookup`, `quote` and phrases), so a family shape is not shadowed by a bonus short form that only ties it: [[talked|TAUBGD]], not the bonus `TO*BGT`." },
+    { "t": "h3", "x": "Checking a family" },
+    { "t": "pre", "x": "cargo run --release -- family build\ncargo run --release -- family" },
+    { "t": "list", "items": [
+      "`family WORD` prints one family: every member, its stem and ending, its own outline, its stem-plus-ending entry, and whether its own outline follows the family (one of the rule shapes above, or keeping every key of its stem's outline).",
+      "`family` with no word prints the numbers for the whole dictionary by ending, and the commonest members that do not follow the family: one-stroke briefs that beat the family shape by more than two keys, such as [[guys|AOEUS]] against [[guy|TKPAOEU]] and [[needs|AOEDZ]] against [[need|TPHAED]]. The stem-plus-ending entry is always there for them as the predictable way in."
+    ] },
+    { "t": "h", "x": "Collisions within one backup pass" },
+    { "t": "p", "x": "Two different words (or one word by two different directions) can compose the exact same text in the same pass. The pass does not keep whichever it visits first. It first collects every direction's every candidate for every word, then, text by text, keeps only the one minimizing `weight(word) * cost(outline)`, the same formula and frequency weighting the solver uses for every primary (see [collisions](#/ref/collisions)). Only then are the pass's winners committed." },
+    { "t": "note", "kind": "warn", "x": "A collision with a text an **earlier** pass already settled works the old way: the first pass to settle it keeps it, because a later pass's compositions depend on what earlier passes committed." },
+    { "t": "p", "x": "All the ways into a word are summarised for practice on [every way to join a word](#/ref/ways-to-join). Phrases are on [phrase-briefing](#/ref/phrases)." }
+  ]
+}
