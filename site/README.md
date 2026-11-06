@@ -25,28 +25,28 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
 | `js/dock.js`, `js/translate.js` | The "Try it" pad (button, or `?`): type with Plover QWERTY, the board glows the held keys, and `translate(strokes)` turns the strokes into words. All stroke-to-text lives behind that one function. |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
-| `js/prestige.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, unlock and prestige rules. |
-| `js/keys.js`, `css/keys.css` | The `#/keys` page: the word stream, prestige cards, key chips; progress in its own `localStorage` key. |
+| `js/trainer.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, the speed/accuracy unlock trade, the fading guide. |
+| `js/keys.js`, `css/keys.css` | The `#/keys` page: the word stream, guide, key chips; `js/confetti.js` for the finish. Progress in its own `localStorage` key. |
 | `js/lesson.js` | Renders a lesson's blocks; every `[[word|OUTLINE]]` becomes a hover-board chip. |
 | `js/main.js`, `js/data.js`, `js/store.js` | The router and pages (lessons, practice, lookup, key chart, progress); data loading; progress in `localStorage`. |
 
-## Learn the keys (Prestige 1 and 2)
+## Learn the keys
 
-The first step of the course, before lesson 1, ported from the steno-lessons project. You start with
-six keys (`E A T- S- K- -T`) and type a stream of real words, each written in one stroke (or with the
-join key once it is unlocked) from the dictionary's own outlines. Every 30 words are judged
-together: at 28 wpm or better, 95% of words with no miss, and every chord you have tried at 80% or
-better over its last 30 tries, the next key unlocks (`S R- -R H- O P- W- U -L -D -P -B -G -F * -Z`,
-and the join key `+` last). Accuracy is kept per chord (the exact keys held together in one hand
-or the vowels), a miss blames only the chords that came out wrong, and the word picker boosts words
-containing the weakest or newest chord, so weak spots get the reps. With every key unlocked, a fresh
-clean lesson finishes the level and later ones can set a personal best.
+A word stream that teaches where every sound sits, before the theory. You start with six keys; one
+more unlocks whenever your newest words (20, at least 10) are fast and clean enough.
 
-- **Prestige 1**: the board shows the keys to press, the stroke and its QWERTY letters are under the word.
-- **Prestige 2**: starts again at six keys with the board hidden; the stroke letters can be switched
-  off; three wrong chords on one word bring the board back for that word.
+- **Speed trades against accuracy.** Fast may be sloppy, slow must be clean: the accuracy needed
+  slides from 97% at 17 wpm to 75% at 60 wpm, and under 17 wpm nothing passes. Individual chords are
+  not held against you above 45 wpm.
+- **One adaptive guide, no levels.** It starts as the diagram and the QWERTY hints; as you get fast
+  and clean the hints go, then the diagram (greyed, "From your head now..."); a run of misses brings
+  one back. The stroke under each word is never hidden. Finishing needs every key unlocked and a
+  passing run from memory, then confetti.
+- **Words** come from `site/data/words.json`, using the dictionary's real outlines, so words of
+  more than one stroke appear once the join key unlocks (last).
+- Weak chords get more of the stream (weakness-weighted picking, ported from steno-lessons).
 
-Lessons show a soft gate until Prestige 2 is done, with a skip. Everything saves in this browser.
+Lessons show a soft gate until it is done, with a skip. Everything saves in this browser.
 
 ## Writing a lesson
 

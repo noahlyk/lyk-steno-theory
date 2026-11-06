@@ -1,19 +1,15 @@
 /* "Learn the keys" (#/keys): the prestige word stream. Colour means the key's hand, as on the board. */
-.klevels { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; margin: 1rem 0; }
-.klevel {
-  display: flex; flex-direction: column; gap: 0.15rem; text-align: left; cursor: pointer;
-  padding: 0.7rem 0.9rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-}
-.klevel:hover { border-color: var(--link); }
-.klevel.is-active { border-color: var(--join); box-shadow: 0 0 0 1px var(--join); }
-.klevel.is-done { border-left: 4px solid var(--ok); }
-.klevel__name { font-weight: 650; color: var(--heading); }
-.klevel__what, .klevel__n { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kguide { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 1rem 0 0.4rem; font-size: 0.88rem; }
+.kguide__label { color: var(--muted); margin-right: 0.2rem; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; }
+.kguide__step { padding: 0.15rem 0.7rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); }
+.kguide__step.is-on { border-color: var(--join); color: var(--heading); font-weight: 650; box-shadow: 0 0 0 1px var(--join); }
+.kguide__step.is-gone { text-decoration: line-through; opacity: 0.55; }
+.kguide__done { color: var(--ok); font-weight: 650; margin-left: 0.4rem; }
 
 .kchips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.5rem 0 1rem; }
 .kchip {
   display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 0.15rem 0.55rem; border-radius: 999px;
-  font-family: var(--mono); font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--heading);
+  font-family: var(--key-font); font-weight: 700; font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--heading);
 }
 .kchip small { color: var(--muted); font-size: 0.72rem; }
 .kchip--left { background: var(--left-bg); border-color: var(--c-left); }
@@ -31,24 +27,49 @@
 .kstream:focus-visible { box-shadow: 0 0 0 2px var(--link); }
 .kcell { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 3rem; }
 .kcell__word { font-size: 1.5rem; line-height: 1.2; color: var(--heading); }
-.kcell__stroke { display: flex; flex-direction: column; align-items: center; min-height: 2.6rem; font-family: var(--mono); font-size: 0.9rem; color: var(--muted); }
-.kcell.is-next { opacity: 0.75; }
+.kcell__strokes { display: flex; align-items: flex-start; min-height: 2.4rem; }
+/* the sounds under a word: one size for every word, current or not */
+.kgroup { display: flex; flex-direction: column; align-items: center; padding: 0 0.45rem; }
+.kgroup + .kgroup { border-left: 2px solid var(--line); }
+.kst { display: inline-flex; font-family: var(--key-font); font-size: 1.45rem; font-weight: 700; line-height: 1.25; text-transform: uppercase; white-space: nowrap; }
+.ks { padding: 0 1px; border-radius: 3px; }
+.ks.is-gap { margin-left: 0.3em; }
+.ks--left { color: var(--left); }
+.ks--vowel { color: var(--vowel); }
+.ks--right { color: var(--right); }
+.ks--misc { color: var(--join); }
+/* keys one finger plays together are tied by an underline, like the other repo's word stream */
+.ks.pair-a, .ks.pair-b { box-shadow: inset 0 -5px 0 -3px currentColor; }
+.ks.pair-b { margin-left: -1px; }
+.ks.is-held { background: var(--raised); box-shadow: 0 0 0 2px currentColor; }
+.kgroup.is-done .ks { opacity: 0.4; }
+.kcell.is-next { opacity: 0.85; }
 .kcell.is-next .kcell__word { font-size: 1.2rem; }
-.kcell.is-done { opacity: 0.4; }
+.kcell.is-done { opacity: 0.55; }
 .kcell.is-done.is-missed .kcell__word { text-decoration: underline wavy var(--bad); }
 .kcell.is-current { padding: 0.2rem 0.7rem; border-radius: 8px; background: var(--panel); border: 1px solid var(--join); }
 .kcell.is-current .kcell__word { font-size: 2.1rem; }
-.kst.is-now { color: var(--heading); font-weight: 700; font-size: 1.05rem; }
-.kst.is-done { color: var(--ok); }
-.kcell__hint { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.15em; }
+.kcell__hint { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.15em; font-family: var(--key-font); }
 .kstatus { min-height: 1.6rem; font-size: 0.92rem; color: var(--muted); text-align: center; }
 .kstatus--bad { color: var(--bad); }
 .kstatus--good { color: var(--ok); font-weight: 600; }
 .kmetrics .is-good { color: var(--ok); font-weight: 600; }
 .kweak { text-align: center; min-height: 1.3rem; }
 .kboard { display: flex; justify-content: center; }
+.kboard__scroll { position: relative; }
+/* the diagram when it is no longer a crutch: greyed, its letters gone, a note across it */
+.kboard.is-blind .board { filter: grayscale(1); opacity: 0.35; }
+.kboard.is-blind .key { color: transparent; }
+.kblind { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
+.kboard.is-blind .kblind { display: flex; }
+.kblind span { padding: 0.35rem 1rem; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--heading); font-weight: 650; font-size: 1.05rem; }
 .kgate { margin: 0 0 1rem; max-width: 68ch; }
 .kgate .row { margin-top: 0.4rem; }
 
 /* the display rules above would otherwise beat the hidden attribute */
-.klevels [hidden], .kstreambox [hidden], .kboard[hidden], .kchips [hidden] { display: none !important; }
+.kstreambox [hidden] { display: none !important; }
+
+/* confetti */
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+.confetti i { position: absolute; top: -1rem; width: 0.55rem; height: 0.9rem; border-radius: 2px; animation: confetti-fall 3s ease-in forwards; }
+@keyframes confetti-fall { to { transform: translate(var(--drift), 105vh) rotate(var(--spin)); opacity: 0.9; } }

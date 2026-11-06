@@ -74,8 +74,8 @@ async function homePage() {
     el('a', { class: `card card--${keys.done ? 'done' : keys.skipped ? 'read' : ''} ${keysDone ? '' : 'card--next'}`, href: '#/keys' },
       el('span', { class: 'card__num' }, 'Before lesson 1'),
       el('span', { class: 'card__title' }, 'Learn the keys'),
-      el('span', { class: 'card__sum' }, 'Prestige 1 and 2: a word stream that unlocks one key at a time, until you know where every sound lives.'),
-      el('span', { class: 'card__state' }, keys.done ? 'Both prestige levels done' : keys.skipped ? 'Skipped' : keys.unlocked > 6 ? `${keys.unlocked} of 23 keys unlocked (prestige ${keys.level})` : 'Up next')));
+      el('span', { class: 'card__sum' }, 'A word stream that unlocks one key at a time, until you know where every sound lives.'),
+      el('span', { class: 'card__state' }, keys.done ? 'Done' : keys.skipped ? 'Skipped' : keys.unlocked > 6 ? `${keys.unlocked} of 23 keys unlocked` : 'Up next')));
   for (const part of c.parts) {
     map.append(el('h2', { class: 'part' }, part.title));
     for (const l of part.lessons) {
@@ -106,7 +106,7 @@ async function lessonPage(id) {
   const keys = keysStatus();
   if (!keys.done && !keys.skipped) {
     const gate = el('div', { class: 'note note--warn kgate' },
-      el('p', {}, 'Finish ', el('a', { href: '#/keys' }, 'Learn the keys'), ' (Prestige 1 and 2) before the theory: these lessons assume you know where every sound sits.'),
+      el('p', {}, 'Finish ', el('a', { href: '#/keys' }, 'Learn the keys'), ' before the theory: these lessons assume you know where every sound sits.'),
       el('div', { class: 'row' },
         el('a', { class: 'btn btn--primary', href: '#/keys' }, 'Learn the keys'),
         el('button', { class: 'btn', type: 'button', onclick: () => { markKeysSkipped(); gate.remove(); } }, 'I already know steno: skip')));

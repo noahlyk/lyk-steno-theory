@@ -1,44 +1,76 @@
 // The "Learn the keys" page (#/keys): a stream of words made only of the keys you have unlocked,
-// one more key each time a lesson is fast and accurate enough. The engine is prestige.js.
+// one more key whenever your recent words are fast and clean enough. The engine is trainer.js.
+// The guide (diagram + hints, then diagram, then nothing) fades as you get good and comes back if
+// you struggle; the stroke under each word is always there.
 
 import { createBoard } from './board.js';
+import { confetti } from './confetti.js';
 import { el } from './dom.js';
 import { listen } from './input.js';
-import * as P from './prestige.js';
-import { formatStroke } from './steno.js';
+import { KEYS } from './steno.js';
 import { store } from './store.js';
+import * as P from './trainer.js';
 
 const LOOKAHEAD = 4; // upcoming words shown
 const DONE_KEEP = 6; // finished words left in view
 const IDLE_MS = 3000; // a wait longer than this counts as this much
-const GROUP_OF = (k) => (k === '+' || k === '*' ? 'misc' : /^(A|O|E|U)$/.test(k) ? 'vowel' : k.startsWith('-') ? 'right' : 'left');
+const GROUP_OF = (k) => (k === '+' || k === '*' ? 'misc' : /^[AOEU]$/.test(k) ? 'vowel' : k.startsWith('-') ? 'right' : 'left');
+const BANK_OF = (k) => (k === '+' ? 0 : /^[AOEU*]$/.test(k) ? 2 : k.startsWith('-') ? 3 : 1);
+// keys one finger plays together (a column; the two keys of a thumb pair): underlined when both are in a stroke
+const PAIRS = [['+', 'S-'], ['T-', 'K-'], ['P-', 'W-'], ['H-', 'R-'], ['A', 'O'], ['E', 'U'],
+  ['-F', '-R'], ['-P', '-B'], ['-L', '-G'], ['-T', '-S'], ['-D', '-Z']];
+const PAIR_OF = new Map(PAIRS.flatMap(([a, b]) => [[a, { pos: 'a', with: b }], [b, { pos: 'b', with: a }]]));
+const DISPLAY_ORDER = ['+', ...KEYS.filter((k) => k !== '+')];
 // The Plover QWERTY key each steno key sits under (input.js has the same map by key code).
 const HINT = {
   'S-': 'A', 'T-': 'W', 'K-': 'S', 'P-': 'E', 'W-': 'D', 'H-': 'R', 'R-': 'F', A: 'C', O: 'V', '*': 'T', E: 'N', U: 'M',
   '-F': 'U', '-R': 'J', '-P': 'I', '-B': 'K', '-L': 'O', '-G': 'L', '-T': 'P', '-S': ';', '-D': '[', '-Z': "'", '+': 'Q',
 };
+const GUIDES = [
+  [P.GUIDE.FULL, 'Diagram and hints'],
+  [P.GUIDE.DIAGRAM, 'Diagram'],
+  [P.GUIDE.MEMORY, 'From memory'],
+];
 
-const text = (mask) => formatStroke(new Set(P.keysOf(mask)));
 const hints = (mask) => P.keysOf(mask).map((k) => HINT[k]).join(' ');
 const sound = (id) => id.replace('-', '');
 
+/**
+ * One stroke as a row of letters, in steno order, one colour per hand, the keys one finger plays
+ * together underlined. `held` (a Set of key ids) lights the keys being pressed.
+ */
+function strokeEl(mask, held = null) {
+  const keys = new Set(P.keysOf(mask));
+  const out = el('span', { class: 'kst' });
+  let bank = -1;
+  for (const k of DISPLAY_ORDER) {
+    if (!keys.has(k)) continue;
+    const pair = PAIR_OF.get(k);
+    const paired = pair && keys.has(pair.with) ? ` pair-${pair.pos}` : '';
+    const gap = bank !== -1 && BANK_OF(k) !== bank ? ' is-gap' : '';
+    bank = BANK_OF(k);
+    out.append(el('span', { class: `ks ks--${GROUP_OF(k)}${paired}${gap}${held?.has(k) ? ' is-held' : ''}` }, sound(k)));
+  }
+  return out;
+}
+
 /** What the other pages need: has this learner finished (or skipped) the key learning? */
 export function keysStatus() {
-  const p = P.normalize(store.loadPrestige());
-  return { done: Boolean(p.completed[2]), skipped: p.skipped, unlocked: p.unlocked, level: p.level };
+  const p = P.normalize(store.loadKeys());
+  return { done: p.done, skipped: p.skipped, unlocked: p.unlocked };
 }
 
 export function markKeysSkipped(on = true) {
-  const p = P.normalize(store.loadPrestige());
+  const p = P.normalize(store.loadKeys());
   p.skipped = on;
-  store.savePrestige(p);
+  store.saveKeys(p);
 }
 
 /** Renders the page into `app`; returns a stop function (call it when the route changes). */
 export async function keysPage(app) {
   const { words: dict } = await fetch('data/words.json').then((r) => r.json());
   const words = P.buildWords(dict);
-  const p = P.normalize(store.loadPrestige());
+  const p = P.normalize(store.loadKeys());
 
   const s = {
     live: false,
@@ -49,7 +81,6 @@ export async function keysPage(app) {
     held: new Set(),
     heldSince: 0,
     partial: 0,
-    typed: 0,
     message: '',
     kind: '',
     sinceLesson: 0,
@@ -57,28 +88,26 @@ export async function keysPage(app) {
   let stopListening = () => {};
 
   // ---- layout ----
-  const levels = el('div', { class: 'klevels' });
+  const guideRow = el('div', { class: 'kguide', 'aria-label': 'guide' });
   const chips = el('div', { class: 'kchips' });
   const stream = el('div', { class: 'kstream', tabindex: '0', 'aria-label': 'word stream' });
   const status = el('div', { class: 'kstatus', 'aria-live': 'polite' });
   const metrics = el('div', { class: 'stats kmetrics' });
   const progressBar = el('span');
   const boardHost = el('div');
-  const boardWrap = el('div', { class: 'boardbox kboard' }, el('div', { class: 'boardbox__scroll' }, boardHost));
+  const blind = el('div', { class: 'kblind' }, el('span', {}, 'From your head now…'));
+  const boardWrap = el('div', { class: 'boardbox kboard' }, el('div', { class: 'boardbox__scroll kboard__scroll' }, boardHost, blind));
   const board = createBoard(boardHost, { compact: true });
-  const labelsBox = el('input', { type: 'checkbox', id: 'k-labels' });
-  labelsBox.addEventListener('change', () => { p.labels = labelsBox.checked; save(); render(); });
-  const labelsRow = el('label', { class: 'boardbox__hint' }, labelsBox, ' show the stroke letters under each word');
   const start = el('button', { class: 'btn btn--primary', type: 'button', onclick: () => begin() }, 'Start');
   const skip = el('button', { class: 'btn', type: 'button', onclick: () => { p.skipped = true; save(); renderTop(); } }, 'I already know steno: skip this');
   const weakRow = el('div', { class: 'boardbox__hint kweak' });
 
   app.append(
     el('h1', {}, 'Learn the keys'),
-    el('p', { class: 'lede' }, 'Before the theory, learn where every sound lives. Type the words as they come: you start with six keys, and each time a lesson of 30 words is fast and clean enough, one more key unlocks. Do Prestige 1 with the board in view, then Prestige 2 with it hidden.'),
-    levels, chips,
+    el('p', { class: 'lede' }, 'Before the theory, learn where every sound lives. Type the words as they come. You start with six keys, and another unlocks whenever your last words are fast and clean enough: the faster you go, the less perfect you need to be. As you get good, the diagram and hints fade out; if you struggle they come back.'),
+    guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
-      el('div', { class: 'row' }, start, skip, labelsRow),
+      el('div', { class: 'row' }, start, skip),
       stream, status,
       el('div', { class: 'progressbar' }, progressBar), metrics, weakRow),
     boardWrap,
@@ -87,7 +116,7 @@ export async function keysPage(app) {
       el('code', {}, 'C V'), ' and ', el('code', {}, 'N M'), ' thumbs, ', el('code', {}, 'T'), ' star, ', el('code', {}, 'UIOP JKL;'),
       ' right hand, ', el('code', {}, 'Q'), ' join key), then let go. Typing a longer word needs the join key, so it unlocks last.'));
 
-  const save = () => store.savePrestige(p);
+  const save = () => store.saveKeys(p);
   const mask = () => P.unlockedMask(p);
 
   // ---- the word in play ----
@@ -128,7 +157,6 @@ export async function keysPage(app) {
     stopListening();
     stopListening = () => {};
     start.hidden = false;
-    start.textContent = p.totalTyped ? 'Continue' : 'Start';
     board.clear();
   }
 
@@ -155,7 +183,7 @@ export async function keysPage(app) {
     s.partial = 0;
     if (fitted?.type === 'partial') {
       s.partial = used;
-      say(`Keep going: ${text(used)} is part of ${text(target())}.`, '');
+      say('', '');
       return render();
     }
     if (fitted) {
@@ -171,8 +199,7 @@ export async function keysPage(app) {
     w.misses = 1;
     w.wrongChords += 1;
     P.recordStroke(p, { target: P.keysOf(target()), used: P.keysOf(used), ms: hold, correct: false });
-    const spellings = [...new Set(w.all.map((v) => v.map(text).join('/')))];
-    say(`You pressed ${text(used)}; this word needs ${spellings.join(' or ')}.`, 'bad');
+    say('Not that one. The stroke is under the word.', 'bad');
     board.diff(new Set(P.keysOf(target())), new Set(P.keysOf(used)));
     render(false);
     return undefined;
@@ -181,30 +208,34 @@ export async function keysPage(app) {
   function wordDone() {
     const w = s.word;
     P.recordWord(p, { ms: w.ms, strokes: w.strokeIdx, misses: w.misses });
-    s.typed += 1;
     s.done.push({ text: w.text, strokes: w.doneStrokes, missed: w.misses > 0 });
     s.done.splice(0, Math.max(0, s.done.length - DONE_KEEP));
     s.queue.shift();
-    // the lesson's own numbers, taken before an unlock clears the judging window
-    const lesson = P.windowStats(p);
+    // the numbers behind this word, taken before an unlock clears the judging window
+    const stats = P.windowStats(p);
     let toast = false;
+    const was = p.guide;
     if (P.unlockIfReady(p)) {
       toast = true;
       const name = P.KEY_ORDER[p.unlocked - 1];
-      const all = p.unlocked >= P.KEY_ORDER.length;
-      say(all ? 'All keys unlocked. One more clean lesson finishes this level.' : `Unlocked ${sound(name)}${name === '+' ? ' (the join key)' : ''}.`, 'good');
+      say(p.unlocked >= P.KEY_ORDER.length ? 'Every key is unlocked. Now show it from memory.' : `Unlocked ${sound(name)}${name === '+' ? ' (the join key)' : ''}.`, 'good');
       s.queue = [];
     } else if (P.completeIfReady(p)) {
       toast = true;
-      say(`Prestige ${p.level} complete!`, 'good');
+      say('You know every key. That is the whole keyboard.', 'good');
+      confetti();
+    }
+    const change = P.adaptGuide(p);
+    if (change && !toast) {
+      if (change === 'fade') say(was === P.GUIDE.FULL ? 'Hints off. The diagram stays for now.' : 'Diagram off: from your head now.', 'good');
+      else say(was === P.GUIDE.MEMORY ? 'The diagram is back for a bit.' : 'Hints are back for a bit.', '');
     }
     s.sinceLesson += 1;
-    if (s.sinceLesson >= P.LESSON_SIZE) {
+    if (s.sinceLesson >= P.WINDOW) {
       s.sinceLesson = 0;
-      P.recordLesson(p, lesson);
-      const best = toast ? null : P.recordBestIfFaster(p, lesson);
-      if (best) say(`New prestige ${p.level} best: ${best} wpm!`, 'good');
-      else if (!toast) say(`Lesson done: ${Math.round(lesson.wpm)} wpm, ${Math.round(lesson.accuracy * 100)}% clean. Keep going.`, 'good');
+      P.recordLesson(p, stats);
+      const best = toast ? null : P.recordBestIfFaster(p, stats);
+      if (best) say(`New best: ${best} wpm!`, 'good');
     }
     save();
     refill();
@@ -215,76 +246,63 @@ export async function keysPage(app) {
   const say = (m, kind) => { s.message = m; s.kind = kind; };
 
   // ---- drawing ----
-  function showBoard() {
-    return p.level === 1 || Boolean(s.word && s.word.wrongChords >= P.LABEL_REVEAL_MISSES);
-  }
-  function showLabels() {
-    return p.level === 1 || p.labels || Boolean(s.word && s.word.wrongChords >= P.LABEL_REVEAL_MISSES);
-  }
+  const revealed = () => Boolean(s.word && s.word.wrongChords >= P.LABEL_REVEAL_MISSES);
+  const showDiagram = () => p.guide >= P.GUIDE.DIAGRAM || revealed();
+  const showHints = () => p.guide === P.GUIDE.FULL;
 
   function paintBoard() {
-    boardWrap.hidden = !showBoard();
-    if (!s.live || !s.word) { board.clear(); return; }
+    boardWrap.classList.toggle('is-blind', !showDiagram());
+    if (!s.live || !s.word || !showDiagram()) { board.clear(); return; }
     // target keys light (the keys still to press for this stroke); held keys show on top
     board.show(new Set(P.keysOf(target())));
     board.press(s.held);
   }
 
   function renderTop() {
-    const { done, skipped } = { done: Boolean(p.completed[2]), skipped: p.skipped };
-    skip.hidden = done || skipped;
-    levels.replaceChildren(...P.levelSummary(p).map((l) => el('button', {
-      class: `klevel${l.active ? ' is-active' : ''}${l.done ? ' is-done' : ''}`, type: 'button',
-      'aria-pressed': String(l.active),
-      onclick: () => { if (!l.active) { stop(); P.switchLevel(p, l.level); save(); renderAll(); } },
-    },
-    el('span', { class: 'klevel__name' }, `Prestige ${l.level}`, l.done ? ' ✓' : ''),
-    el('span', { class: 'klevel__what' }, l.level === 1 ? 'board and key hints on' : 'board hidden, letters only'),
-    el('span', { class: 'klevel__n' }, `${l.unlocked} / ${l.total} keys · ${l.wpm} wpm to unlock`, l.best ? ` · best ${l.best} wpm` : ''))));
-    labelsRow.hidden = p.level === 1;
-    labelsBox.checked = p.labels;
-    const names = P.unlockedKeys(p);
+    skip.hidden = p.done || p.skipped;
+    guideRow.replaceChildren(el('span', { class: 'kguide__label' }, 'Guide'), ...GUIDES.map(([g, name]) => el('span', {
+      class: `kguide__step${p.guide === g ? ' is-on' : ''}${p.guide < g ? ' is-gone' : ''}`,
+    }, name)), ...(p.done ? [el('span', { class: 'kguide__done' }, 'All keys learned ✓')] : []));
     chips.replaceChildren(...P.KEY_ORDER.map((k, i) => el('span', {
-      class: `kchip kchip--${GROUP_OF(k)}${i < p.unlocked ? '' : ' is-locked'}${i === p.unlocked - 1 ? ' is-new' : ''}`,
+      class: `kchip kchip--${GROUP_OF(k)}${i < p.unlocked ? '' : ' is-locked'}${i === p.unlocked - 1 && p.unlocked > P.START_KEYS ? ' is-new' : ''}`,
       title: i < p.unlocked ? `${sound(k)}: QWERTY ${HINT[k]}` : 'locked',
-    }, k === '+' ? 'join' : sound(k), p.level === 1 && i < names.length ? el('small', {}, HINT[k]) : null)));
+    }, k === '+' ? 'join' : sound(k), showHints() && i < p.unlocked ? el('small', {}, HINT[k]) : null)));
   }
 
   function renderStream() {
     const rows = [];
-    const cell = (w, cls, strokes, current) => {
-      const c = el('div', { class: `kcell ${cls}` }, el('span', { class: 'kcell__word' }, w));
-      const label = el('span', { class: 'kcell__stroke' });
-      if (strokes && (showLabels() || !current)) {
-        strokes.forEach((m, i) => {
-          const st = el('span', { class: `kst${current && i === s.word.strokeIdx ? ' is-now' : ''}${current && i < s.word.strokeIdx ? ' is-done' : ''}` }, text(m));
-          label.append(st);
-          if (current && p.level === 1 && i === s.word.strokeIdx) label.append(el('small', { class: 'kcell__hint' }, hints(m)));
-        });
-      }
-      c.append(label);
-      return c;
+    const cell = (word, cls, strokes, current) => {
+      const label = el('span', { class: 'kcell__strokes' });
+      strokes.forEach((m, i) => {
+        const now = current && i === s.word.strokeIdx;
+        const group = el('span', { class: `kgroup${now ? ' is-now' : ''}${current && i < s.word.strokeIdx ? ' is-done' : ''}` }, strokeEl(m, now ? s.held : null));
+        if (now && showHints()) group.append(el('small', { class: 'kcell__hint' }, hints(m)));
+        label.append(group);
+      });
+      return el('div', { class: `kcell ${cls}` }, el('span', { class: 'kcell__word' }, word), label);
     };
-    for (const d of s.done) rows.push(el('div', { class: `kcell is-done${d.missed ? ' is-missed' : ''}` }, el('span', { class: 'kcell__word' }, d.text), el('span', { class: 'kcell__stroke' })));
+    for (const d of s.done) rows.push(cell(d.text, `is-done${d.missed ? ' is-missed' : ''}`, d.strokes, false));
     s.queue.forEach((q, i) => {
       if (i === 0 && s.word) rows.push(cell(q.text, 'is-current', s.word.candidates[0], true));
-      else rows.push(cell(q.text, 'is-next', p.level === 1 ? P.displayVariants(q, mask())[0] : null, false));
+      else rows.push(cell(q.text, 'is-next', P.displayVariants(q, mask())[0] ?? [], false));
     });
     stream.replaceChildren(...(s.live ? rows : [el('p', { class: 'boardbox__hint' }, 'Press Start, then type the first word.')]));
-    const held = s.held.size ? `holding ${formatStroke(s.held)}` : '';
-    status.textContent = s.message || held || ' ';
+    status.textContent = s.message || ' ';
     status.className = `kstatus${s.kind ? ` kstatus--${s.kind}` : ''}`;
   }
 
   function renderMetrics() {
     const st = P.windowStats(p);
-    const want = P.wpmTarget(p.level);
+    const need = P.requiredAccuracy(st.wpm);
+    const wpmOk = st.count && st.wpm >= P.MIN_WPM;
+    const accOk = st.count >= P.MIN_WORDS && st.accuracy >= need;
     metrics.replaceChildren(
-      el('span', {}, `${st.count} / ${P.LESSON_SIZE} words`),
-      el('span', { class: st.count && st.wpm >= want ? 'is-good' : '' }, `${Math.round(st.wpm)} / ${want} wpm`),
-      el('span', { class: st.count && st.accuracy >= P.ACCURACY_TARGET ? 'is-good' : '' }, `${Math.round(st.accuracy * 100)}% clean (95% needed)`),
-      el('span', {}, `${p.totalTyped} words typed in all`));
-    progressBar.style.width = `${(st.count / P.LESSON_SIZE) * 100}%`;
+      el('span', {}, `${Math.min(st.count, P.WINDOW)} words judged`),
+      el('span', { class: wpmOk ? 'is-good' : '' }, `${Math.round(st.wpm)} wpm (${P.MIN_WPM}+ to unlock)`),
+      el('span', { class: accOk ? 'is-good' : '' }, Number.isFinite(need) ? `${Math.round(st.accuracy * 100)}% clean (${Math.ceil(need * 100)}% needed at this speed)` : `${Math.round(st.accuracy * 100)}% clean`),
+      el('span', {}, `${p.totalTyped} words typed in all`),
+      ...(p.best ? [el('span', {}, `best ${p.best} wpm`)] : []));
+    progressBar.style.width = `${Math.min(1, st.count / P.MIN_WORDS) * 100}%`;
     const weak = P.weakChords(p, 3).filter((c) => c.accuracy < 0.95);
     weakRow.textContent = weak.length ? `Needs work: ${weak.map((c) => `${c.id.split('|').map(sound).join('')} (${Math.round(c.accuracy * 100)}%)`).join(', ')}` : '';
   }
@@ -294,18 +312,9 @@ export async function keysPage(app) {
     renderStream();
     renderMetrics();
     if (rePaint) paintBoard();
-    else boardWrap.hidden = !showBoard();
-  }
-  function renderAll() {
-    s.queue = [];
-    s.done = [];
-    s.word = null;
-    s.message = '';
-    render();
-    start.hidden = false;
-    start.textContent = p.totalTyped ? 'Continue' : 'Start';
+    else boardWrap.classList.toggle('is-blind', !showDiagram());
   }
 
-  renderAll();
+  render();
   return stop;
 }

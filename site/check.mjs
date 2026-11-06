@@ -6,7 +6,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as P from './js/prestige.js';
+import * as P from './js/trainer.js';
 import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -80,7 +80,8 @@ function drillItems(id, d) {
 }
 
 // "Learn the keys": every key-unlock stage has enough words for a lesson, and a perfect typist
-// climbs from six keys to all 23 and finishes the level
+// climbs from six keys to all 23, the guide fades, and the run finishes; the speed/accuracy trade
+// behaves (fast may be sloppy, slow must be clean, too slow never passes)
 {
   const pool = P.buildWords(words);
   const p = P.emptyProgress();
@@ -88,19 +89,30 @@ function drillItems(id, d) {
     p.unlocked = n;
     const mask = P.unlockedMask(p);
     const have = pool.filter((w) => P.displayVariants(w, mask).length).length;
-    if (have < P.LESSON_SIZE) fail(`keys: only ${have} words with the first ${n} keys (${P.KEY_ORDER[n - 1]} just unlocked)`);
+    if (have < P.WINDOW) fail(`keys: only ${have} words with the first ${n} keys (${P.KEY_ORDER[n - 1]} just unlocked)`);
   }
   const sim = P.emptyProgress();
   let steps = 0;
-  while (!sim.completed[1] && steps < 3000) {
+  while (!sim.done && steps < 3000) {
     const w = P.nextWord(pool, sim, { avoid: [] });
     if (!w) { fail(`keys: no word to pick with ${sim.unlocked} keys`); break; }
     for (const v of P.displayVariants(w, P.unlockedMask(sim))[0]) P.recordStroke(sim, { used: P.keysOf(v), ms: 300, correct: true });
     P.recordWord(sim, { ms: 600, strokes: 1, misses: 0 });
     if (!P.unlockIfReady(sim)) P.completeIfReady(sim);
+    P.adaptGuide(sim);
     steps += 1;
   }
-  if (!sim.completed[1]) fail(`keys: a perfect run did not finish Prestige 1 (${sim.unlocked} keys after ${steps} words)`);
+  if (!sim.done) fail(`keys: a perfect run did not finish (${sim.unlocked} keys, guide ${sim.guide} after ${steps} words)`);
+  if (sim.guide !== P.GUIDE.MEMORY) fail('keys: a perfect run finished with the guide still on');
+  if (!(P.requiredAccuracy(60) < P.requiredAccuracy(40) && P.requiredAccuracy(40) < P.requiredAccuracy(20))) fail('keys: faster must need less accuracy');
+  if (P.requiredAccuracy(P.MIN_WPM - 1) !== Infinity) fail('keys: under the minimum speed nothing may pass');
+  if (!P.passes({ count: P.MIN_WORDS, wpm: 60, accuracy: 0.76 })) fail('keys: 60 wpm at 76% should pass');
+  if (P.passes({ count: P.MIN_WORDS, wpm: 20, accuracy: 0.76 })) fail('keys: 20 wpm at 76% should not pass');
+  // a struggling typist gets the guide back
+  const weak = P.emptyProgress();
+  weak.guide = P.GUIDE.MEMORY;
+  for (let i = 0; i < 8; i += 1) { P.recordWord(weak, { ms: 9000, strokes: 1, misses: 2 }); P.adaptGuide(weak); }
+  if (weak.guide === P.GUIDE.MEMORY) fail('keys: struggling typist did not get the guide back');
 }
 
 if (errors.length) {

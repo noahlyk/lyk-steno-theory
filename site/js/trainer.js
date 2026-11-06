@@ -1,13 +1,16 @@
-// "Learn the keys": the lesson engine behind #/keys. Pure functions, no DOM, so it can be tested
-// in node. Ported from the steno-lessons project's Prestige levels: start with a few keys, type
-// words made only of the keys you have, and unlock one more key each time a whole lesson (30
-// words) is fast and accurate enough. Accuracy is judged per chord (the exact keys held together
-// in one hand or the vowels), and the word picker leans hard toward whichever chord you are
-// missing or have not met yet, so the weak spot always gets the reps.
+// "Learn the keys": the engine behind #/keys. Pure functions, no DOM, so it can be tested in
+// node. Start with a few keys, type words made only of the keys you have, and unlock one more key
+// whenever your recent words are good enough. Accuracy is judged per chord (the exact keys held
+// together in one hand or the vowels), and the word picker leans hard toward whichever chord you
+// are missing or have not met yet, so the weak spot always gets the reps.
 //
-// Prestige 1: the board shows the keys to press. Prestige 2: the board is hidden (it comes back
-// for one word after repeated misses); only the stroke's letters may be shown. Each level
-// starts again from six keys, so the second pass proves you know where every sound lives.
+// "Good enough" is a trade between speed and accuracy, not two fixed bars: the faster you are,
+// the less accurate you need to be (someone at 60 wpm obviously knows the keys), and the slower
+// you are, the cleaner you must be, with a floor under the speed.
+//
+// One adaptive guide replaces fixed levels. It starts as the diagram plus the QWERTY hints, then
+// the hints fade, then the diagram, as you get fast and clean, and each comes back if you start to
+// struggle. The stroke under each word is never hidden.
 
 import { parseOutline } from './steno.js';
 
@@ -19,12 +22,24 @@ export const KEY_ORDER = [
   'W-', 'U', '-L', '-D', '-P', '-B', '-G', '-F', '*', '-Z', '+',
 ];
 export const START_KEYS = 6;
-export const LESSON_SIZE = 30; // words per lesson: the same window judges speed and accuracy
-export const ACCURACY_TARGET = 0.95; // share of words with no miss
-export const CHORD_ACCURACY_TARGET = 0.8; // per chord, over its last CHORD_WINDOW tries
-export const LEVEL_WPM = { 1: 28, 2: 28 };
-export const MAX_LEVEL = 2;
-export const LABEL_REVEAL_MISSES = 3; // level 2: the board reappears for a word after this many wrong chords
+export const WINDOW = 20; // the newest words that judge an unlock
+export const MIN_WORDS = 10; // fewest words before an unlock can be judged
+export const MIN_WPM = 17; // below this nothing passes, however clean
+export const FAST_WPM = 60; // at and above this the loosest accuracy applies
+export const ACC_SLOW = 0.97; // accuracy needed at MIN_WPM
+export const ACC_FAST = 0.75; // accuracy needed at FAST_WPM
+export const CHORD_ACCURACY_TARGET = 0.8; // what a chord's confidence is measured against
+export const CHORD_SKIP_WPM = 45; // this fast, individual chords are not held against you
+export const LABEL_REVEAL_MISSES = 3; // the diagram comes back for one word after this many wrong chords
+export const GUIDE = { FULL: 2, DIAGRAM: 1, MEMORY: 0 }; // diagram + hints, diagram only, strokes only
+const ASSIST_WORDS = 12; // words judged for a change of guide
+const ASSIST_WORDS_FAST = 6;
+const ASSIST_ACCURACY = 0.9;
+const FADE_WPM = { [GUIDE.FULL]: 18, [GUIDE.DIAGRAM]: 24 }; // speed that removes the next piece of guide
+const FAST_FADE_WPM = 40; // this fast, the guide fades after ASSIST_WORDS_FAST words
+const RESTORE_WORDS = 8;
+const RESTORE_ACCURACY = 0.8;
+const RESTORE_WPM = 10;
 
 const MAX_WORD_LENGTH = 9;
 const HISTORY_LIMIT = 100;
@@ -80,23 +95,23 @@ function unitsOfMask(mask) {
 }
 
 // ---- progress ----
-const LEVEL_FIELDS = ['unlocked', 'chords', 'words', 'lessonHistory'];
 const blankStat = () => ({ samples: 0, ewmaMs: null, misses: 0, recent: [] });
 const freshLevel = () => ({ unlocked: START_KEYS, chords: {}, words: [], lessonHistory: [] });
-const pickLevel = (p) => Object.fromEntries(LEVEL_FIELDS.map((f) => [f, p[f]]));
 
 export function emptyProgress() {
   return {
     ...freshLevel(),
-    level: 1,
+    guide: GUIDE.FULL,
+    recent: [], // the newest words, kept across unlocks: what the guide adapts to
+    sinceGuide: 0, // words since the guide last changed
     totalTyped: 0, // every word ever finished, never reset
-    completed: {}, // level -> true
-    bests: {}, // level -> fastest whole-lesson wpm, set only with every key unlocked
-    stash: {}, // level -> saved fields of a level you are not on
-    labels: true, // level 2: show the stroke's letters under the word
+    done: false, // every key unlocked and a clean run from memory
+    best: null, // fastest whole-window wpm with every key unlocked
     skipped: false, // "I already know steno": lessons stop nagging
   };
 }
+
+const validWord = (w) => w && Number.isFinite(w.ms) && Number.isFinite(w.strokes) && Number.isFinite(w.misses);
 
 /** Keep only what the engine understands, so an old or damaged save still loads. */
 export function normalize(saved) {
@@ -104,19 +119,14 @@ export function normalize(saved) {
   if (!saved || typeof saved !== 'object') return p;
   Object.assign(p, normalizeLevel(saved));
   if (Number.isFinite(saved.totalTyped)) p.totalTyped = Math.max(0, Math.floor(saved.totalTyped));
-  for (const l of Object.keys(LEVEL_WPM)) {
-    if (saved.completed?.[l] === true) p.completed[l] = true;
-    const best = Number(saved.bests?.[l]);
-    if (Number.isFinite(best) && best > 0) p.bests[l] = best;
-  }
-  if (Number.isInteger(saved.level) && LEVEL_WPM[saved.level]) p.level = saved.level;
-  if (typeof saved.labels === 'boolean') p.labels = saved.labels;
+  // saves from the two-level version: finishing the second level was finishing the course
+  if (saved.done === true || saved.completed?.[2] === true) p.done = true;
+  const best = Number(saved.best ?? saved.bests?.[saved.level] ?? 0);
+  if (Number.isFinite(best) && best > 0) p.best = best;
+  if (Object.values(GUIDE).includes(saved.guide)) p.guide = saved.guide;
+  if (Array.isArray(saved.recent)) p.recent = saved.recent.filter(validWord).slice(-ASSIST_WORDS);
+  if (Number.isFinite(saved.sinceGuide)) p.sinceGuide = Math.max(0, Math.floor(saved.sinceGuide));
   if (typeof saved.skipped === 'boolean') p.skipped = saved.skipped;
-  if (saved.stash && typeof saved.stash === 'object') {
-    for (const l of Object.keys(LEVEL_WPM)) {
-      if (Number(l) !== p.level && saved.stash[l] && typeof saved.stash[l] === 'object') p.stash[l] = normalizeLevel(saved.stash[l]);
-    }
-  }
   return p;
 }
 
@@ -135,7 +145,7 @@ function normalizeLevel(s) {
     }
   }
   if (Array.isArray(s.words)) {
-    out.words = s.words.filter((w) => w && Number.isFinite(w.ms) && Number.isFinite(w.strokes) && Number.isFinite(w.misses)).slice(-HISTORY_LIMIT);
+    out.words = s.words.filter(validWord).slice(-HISTORY_LIMIT);
   }
   if (Array.isArray(s.lessonHistory)) {
     out.lessonHistory = s.lessonHistory.filter((e) => e && Number.isFinite(e.accuracy) && Number.isFinite(e.wpm)).slice(-LESSON_HISTORY_LIMIT);
@@ -145,30 +155,15 @@ function normalizeLevel(s) {
 
 export const unlockedKeys = (p) => KEY_ORDER.slice(0, p.unlocked);
 export const unlockedMask = (p) => maskOf(unlockedKeys(p));
-export const wpmTarget = (level = 1) => LEVEL_WPM[level] ?? LEVEL_WPM[1];
-
-/** Switch prestige level: the current level's progress is set aside; a new level starts fresh. */
-export function switchLevel(p, level) {
-  if (!LEVEL_WPM[level] || p.level === level) return false;
-  p.stash[p.level] = pickLevel(p);
-  Object.assign(p, p.stash[level] ?? freshLevel());
-  delete p.stash[level];
-  p.level = level;
-  return true;
+/** The accuracy a given speed must reach: strict when slow, loose when fast; impossible under MIN_WPM. */
+export function requiredAccuracy(wpm) {
+  if (wpm < MIN_WPM) return Infinity;
+  const t = Math.min(1, (wpm - MIN_WPM) / (FAST_WPM - MIN_WPM));
+  return ACC_SLOW + (ACC_FAST - ACC_SLOW) * t;
 }
 
-/** One row per level for the header: keys unlocked, done, best. */
-export function levelSummary(p) {
-  return [1, 2].map((level) => {
-    const active = level === p.level;
-    const slice = active ? p : p.stash[level];
-    return {
-      level, active, wpm: LEVEL_WPM[level],
-      unlocked: slice ? slice.unlocked : START_KEYS, total: KEY_ORDER.length,
-      done: Boolean(p.completed[level]), best: p.bests[level] ?? null,
-    };
-  });
-}
+/** Do these stats (from windowStats) clear the speed/accuracy trade? */
+export const passes = (s) => s.count >= MIN_WORDS && s.accuracy >= requiredAccuracy(s.wpm);
 
 // ---- recording ----
 function recordChord(p, ids, ms, correct) {
@@ -195,12 +190,14 @@ export function recordStroke(p, { target = [], used, ms, correct }) {
 export function recordWord(p, { ms, strokes, misses }) {
   p.words.push({ ms, strokes, misses });
   if (p.words.length > HISTORY_LIMIT) p.words.splice(0, p.words.length - HISTORY_LIMIT);
+  p.recent.push({ ms, strokes, misses });
+  if (p.recent.length > ASSIST_WORDS) p.recent.splice(0, p.recent.length - ASSIST_WORDS);
   p.totalTyped += 1;
 }
 
-/** Speed and accuracy over the newest LESSON_SIZE words since the last unlock. */
-export function windowStats(p) {
-  const recent = p.words.slice(-LESSON_SIZE);
+/** Speed and accuracy over the newest `size` words (default: since the last unlock, up to WINDOW). */
+export function windowStats(p, words = p.words, size = WINDOW) {
+  const recent = words.slice(-size);
   const count = recent.length;
   const ms = recent.reduce((s, w) => s + w.ms, 0);
   const strokes = recent.reduce((s, w) => s + w.strokes, 0);
@@ -213,14 +210,20 @@ export function chordAccuracy(p, id) {
   if (!st || st.recent.length < CHORD_MIN_SAMPLES) return 1;
   return st.recent.reduce((s, h) => s + h, 0) / st.recent.length;
 }
-const chordsAccurate = (p) => Object.keys(p.chords).every((id) => chordAccuracy(p, id) >= CHORD_ACCURACY_TARGET);
+
+// individual chords: a slow typist must have every chord sound, a fast one is not held to them
+function chordsOk(p, s) {
+  if (s.wpm >= CHORD_SKIP_WPM) return true;
+  const floor = Math.max(0.5, requiredAccuracy(s.wpm) - 0.25);
+  return Object.keys(p.chords).every((id) => chordAccuracy(p, id) >= floor);
+}
 
 export function meetsTargets(p) {
   const s = windowStats(p);
-  return s.count >= LESSON_SIZE && s.wpm >= wpmTarget(p.level) && s.accuracy >= ACCURACY_TARGET && chordsAccurate(p);
+  return passes(s) && chordsOk(p, s);
 }
 
-/** Unlock the next key if the newest lesson clears the bars. The window restarts. */
+/** Unlock the next key if the newest words clear the bar. The window restarts. */
 export function unlockIfReady(p) {
   if (p.unlocked >= KEY_ORDER.length || !meetsTargets(p)) return false;
   p.unlocked += 1;
@@ -228,12 +231,11 @@ export function unlockIfReady(p) {
   return true;
 }
 
-/** A level is complete once every key is unlocked AND a fresh lesson clears speed and accuracy. */
+/** Done: every key unlocked, and the newest words clear the bar with the diagram gone. */
 export function completeIfReady(p) {
-  if (p.completed[p.level] || p.unlocked < KEY_ORDER.length) return false;
-  const s = windowStats(p);
-  if (s.count < LESSON_SIZE || s.wpm < wpmTarget(p.level) || s.accuracy < ACCURACY_TARGET) return false;
-  p.completed[p.level] = true;
+  if (p.done || p.unlocked < KEY_ORDER.length || p.guide !== GUIDE.MEMORY) return false;
+  if (!passes(windowStats(p))) return false;
+  p.done = true;
   return true;
 }
 
@@ -242,13 +244,40 @@ export function recordLesson(p, stats) {
   if (p.lessonHistory.length > LESSON_HISTORY_LIMIT) p.lessonHistory.splice(0, p.lessonHistory.length - LESSON_HISTORY_LIMIT);
 }
 
-/** A personal best counts only with every key unlocked and a whole accurate lesson. Whole wpm. */
+/** A personal best counts only with every key unlocked and a whole passing window. Whole wpm. */
 export function recordBestIfFaster(p, stats) {
-  if (p.unlocked < KEY_ORDER.length || stats.count < LESSON_SIZE || stats.accuracy < ACCURACY_TARGET) return null;
+  if (p.unlocked < KEY_ORDER.length || stats.count < WINDOW || !passes(stats)) return null;
   const wpm = Math.floor(stats.wpm);
-  if (wpm <= (p.bests[p.level] ?? 0)) return null;
-  p.bests[p.level] = wpm;
+  if (wpm <= (p.best ?? 0)) return null;
+  p.best = wpm;
   return wpm;
+}
+
+/**
+ * Adapt the guide to how the last words went. Fast and clean removes the next piece (hints, then
+ * the diagram); a run of misses or a crawl puts one back. Returns 'fade', 'restore' or null.
+ */
+export function adaptGuide(p) {
+  p.sinceGuide += 1;
+  const fastNow = windowStats(p, p.recent, ASSIST_WORDS_FAST);
+  const need = fastNow.wpm >= FAST_FADE_WPM ? ASSIST_WORDS_FAST : ASSIST_WORDS;
+  if (p.guide > GUIDE.MEMORY && p.sinceGuide >= need) {
+    const s = windowStats(p, p.recent, need);
+    if (s.count >= need && s.accuracy >= ASSIST_ACCURACY && (s.wpm >= FADE_WPM[p.guide] || s.wpm >= FAST_FADE_WPM)) {
+      p.guide -= 1;
+      p.sinceGuide = 0;
+      return 'fade';
+    }
+  }
+  if (p.guide < GUIDE.FULL && p.sinceGuide >= RESTORE_WORDS) {
+    const s = windowStats(p, p.recent, RESTORE_WORDS);
+    if (s.accuracy < RESTORE_ACCURACY || s.wpm < RESTORE_WPM) {
+      p.guide += 1;
+      p.sinceGuide = 0;
+      return 'restore';
+    }
+  }
+  return null;
 }
 
 /** 0..1: how well a chord is known (reps, speed and accuracy together). */

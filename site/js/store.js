@@ -1,7 +1,8 @@
 // Progress and settings, kept in this browser only (localStorage). Everything works without it.
 
 const KEY = 'lyk-lessons-v1';
-const PRESTIGE_KEY = 'lyk-prestige-v1'; // "Learn the keys" progress, kept apart from lesson progress
+const KEYS_KEY = 'lyk-keys-v2'; // "Learn the keys" progress, kept apart from lesson progress
+const OLD_KEYS_KEY = 'lyk-prestige-v1'; // the two-level version's save, still read so nobody loses their keys
 let mem = null;
 
 function load() {
@@ -69,17 +70,17 @@ export const store = {
   get missed() {
     return load().missed;
   },
-  /** The raw saved "Learn the keys" progress (prestige.js normalises it), or null. */
-  loadPrestige() {
+  /** The raw saved "Learn the keys" progress (trainer.js normalises it), or null. */
+  loadKeys() {
     try {
-      return JSON.parse(localStorage.getItem(PRESTIGE_KEY) ?? 'null');
+      return JSON.parse(localStorage.getItem(KEYS_KEY) ?? localStorage.getItem(OLD_KEYS_KEY) ?? 'null');
     } catch {
       return null;
     }
   },
-  savePrestige(progress) {
+  saveKeys(progress) {
     try {
-      localStorage.setItem(PRESTIGE_KEY, JSON.stringify(progress));
+      localStorage.setItem(KEYS_KEY, JSON.stringify(progress));
     } catch {
       // private window or blocked storage: keep going in memory
     }
@@ -88,7 +89,8 @@ export const store = {
     mem = { read: {}, drills: {}, settings: load().settings, missed: {} };
     save();
     try {
-      localStorage.removeItem(PRESTIGE_KEY);
+      localStorage.removeItem(KEYS_KEY);
+      localStorage.removeItem(OLD_KEYS_KEY);
     } catch {
       // nothing to clear
     }
