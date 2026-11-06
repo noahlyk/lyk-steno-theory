@@ -1,0 +1,54 @@
+/* "Learn the keys" (#/keys): the prestige word stream. Colour means the key's hand, as on the board. */
+.klevels { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; margin: 1rem 0; }
+.klevel {
+  display: flex; flex-direction: column; gap: 0.15rem; text-align: left; cursor: pointer;
+  padding: 0.7rem 0.9rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+}
+.klevel:hover { border-color: var(--link); }
+.klevel.is-active { border-color: var(--join); box-shadow: 0 0 0 1px var(--join); }
+.klevel.is-done { border-left: 4px solid var(--ok); }
+.klevel__name { font-weight: 650; color: var(--heading); }
+.klevel__what, .klevel__n { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.kchips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.5rem 0 1rem; }
+.kchip {
+  display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 0.15rem 0.55rem; border-radius: 999px;
+  font-family: var(--mono); font-size: 0.9rem; border: 1px solid var(--line); background: var(--panel); color: var(--heading);
+}
+.kchip small { color: var(--muted); font-size: 0.72rem; }
+.kchip--left { background: var(--left-bg); border-color: var(--c-left); }
+.kchip--vowel { background: var(--vowel-bg); border-color: var(--c-vowel); }
+.kchip--right { background: var(--right-bg); border-color: var(--c-right); }
+.kchip--misc { background: var(--join-bg); border-color: var(--c-misc); }
+.kchip.is-locked { background: transparent; border-style: dashed; border-color: var(--line); color: var(--muted); opacity: 0.6; }
+.kchip.is-new { box-shadow: 0 0 0 2px var(--join); }
+
+.kstreambox { outline: none; }
+.kstream {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.5rem 1.1rem; min-height: 6.2rem;
+  margin: 0.8rem 0 0.3rem; padding: 0.6rem; border-radius: 8px; background: var(--raised); outline: none;
+}
+.kstream:focus-visible { box-shadow: 0 0 0 2px var(--link); }
+.kcell { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 3rem; }
+.kcell__word { font-size: 1.5rem; line-height: 1.2; color: var(--heading); }
+.kcell__stroke { display: flex; flex-direction: column; align-items: center; min-height: 2.6rem; font-family: var(--mono); font-size: 0.9rem; color: var(--muted); }
+.kcell.is-next { opacity: 0.75; }
+.kcell.is-next .kcell__word { font-size: 1.2rem; }
+.kcell.is-done { opacity: 0.4; }
+.kcell.is-done.is-missed .kcell__word { text-decoration: underline wavy var(--bad); }
+.kcell.is-current { padding: 0.2rem 0.7rem; border-radius: 8px; background: var(--panel); border: 1px solid var(--join); }
+.kcell.is-current .kcell__word { font-size: 2.1rem; }
+.kst.is-now { color: var(--heading); font-weight: 700; font-size: 1.05rem; }
+.kst.is-done { color: var(--ok); }
+.kcell__hint { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.15em; }
+.kstatus { min-height: 1.6rem; font-size: 0.92rem; color: var(--muted); text-align: center; }
+.kstatus--bad { color: var(--bad); }
+.kstatus--good { color: var(--ok); font-weight: 600; }
+.kmetrics .is-good { color: var(--ok); font-weight: 600; }
+.kweak { text-align: center; min-height: 1.3rem; }
+.kboard { display: flex; justify-content: center; }
+.kgate { margin: 0 0 1rem; max-width: 68ch; }
+.kgate .row { margin-top: 0.4rem; }
+
+/* the display rules above would otherwise beat the hidden attribute */
+.klevels [hidden], .kstreambox [hidden], .kboard[hidden], .kchips [hidden] { display: none !important; }

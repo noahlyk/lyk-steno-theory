@@ -6,6 +6,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as P from './js/prestige.js';
 import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -76,6 +77,30 @@ function drillItems(id, d) {
       if (!parseOutline(o)) fail(`${id}: drill outline does not parse: ${o}`);
     }
   }
+}
+
+// "Learn the keys": every key-unlock stage has enough words for a lesson, and a perfect typist
+// climbs from six keys to all 23 and finishes the level
+{
+  const pool = P.buildWords(words);
+  const p = P.emptyProgress();
+  for (let n = P.START_KEYS; n <= P.KEY_ORDER.length; n += 1) {
+    p.unlocked = n;
+    const mask = P.unlockedMask(p);
+    const have = pool.filter((w) => P.displayVariants(w, mask).length).length;
+    if (have < P.LESSON_SIZE) fail(`keys: only ${have} words with the first ${n} keys (${P.KEY_ORDER[n - 1]} just unlocked)`);
+  }
+  const sim = P.emptyProgress();
+  let steps = 0;
+  while (!sim.completed[1] && steps < 3000) {
+    const w = P.nextWord(pool, sim, { avoid: [] });
+    if (!w) { fail(`keys: no word to pick with ${sim.unlocked} keys`); break; }
+    for (const v of P.displayVariants(w, P.unlockedMask(sim))[0]) P.recordStroke(sim, { used: P.keysOf(v), ms: 300, correct: true });
+    P.recordWord(sim, { ms: 600, strokes: 1, misses: 0 });
+    if (!P.unlockIfReady(sim)) P.completeIfReady(sim);
+    steps += 1;
+  }
+  if (!sim.completed[1]) fail(`keys: a perfect run did not finish Prestige 1 (${sim.unlocked} keys after ${steps} words)`);
 }
 
 if (errors.length) {

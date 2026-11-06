@@ -1,6 +1,7 @@
 // Progress and settings, kept in this browser only (localStorage). Everything works without it.
 
 const KEY = 'lyk-lessons-v1';
+const PRESTIGE_KEY = 'lyk-prestige-v1'; // "Learn the keys" progress, kept apart from lesson progress
 let mem = null;
 
 function load() {
@@ -68,8 +69,28 @@ export const store = {
   get missed() {
     return load().missed;
   },
+  /** The raw saved "Learn the keys" progress (prestige.js normalises it), or null. */
+  loadPrestige() {
+    try {
+      return JSON.parse(localStorage.getItem(PRESTIGE_KEY) ?? 'null');
+    } catch {
+      return null;
+    }
+  },
+  savePrestige(progress) {
+    try {
+      localStorage.setItem(PRESTIGE_KEY, JSON.stringify(progress));
+    } catch {
+      // private window or blocked storage: keep going in memory
+    }
+  },
   reset() {
     mem = { read: {}, drills: {}, settings: load().settings, missed: {} };
     save();
+    try {
+      localStorage.removeItem(PRESTIGE_KEY);
+    } catch {
+      // nothing to clear
+    }
   },
 };
