@@ -1,0 +1,46 @@
+{
+  "id": "06-clusters",
+  "title": "Folded endings",
+  "goal": "Most clusters are just the keys one after another. A few fold into a shorter chord, and a vowel often shares keys with its R.",
+  "blocks": [
+    { "t": "h", "x": "Clusters in order" },
+    { "t": "p", "x": "When the sounds come in steno order, press them all: [[tent|TEPBT]], [[hunt|HUPBT]], [[bend|PWEPBD]], [[sand|SAPBD]], [[hold|HOLD]], [[cold|KOELD]], [[mind|PHOEUPBD]]." },
+    { "t": "h", "x": "Clusters that fold" },
+    { "t": "p", "x": "Where two sounds would not fit the keys in order, the theory folds them. These are the ones to know:" },
+    { "t": "table", "head": ["Sounds", "Keys", "Example"], "rows": [
+      ["s + t", "[[-FT]]", "[[best|PWEFT]]"],
+      ["s + l, l + f", "[[-FL]]", "[[castle|KAFL]]"],
+      ["s + n, s + m", "[[-FPB]] / [[-FPL]]", "[[lesson|HR-FPB]]"],
+      ["n + k (bank)", "[[*PBG]]", "[[bank|PWA*PBG]]"],
+      ["l + k", "[[-LG]]", "[[silk|S*EULG]]"],
+      ["l + b", "[[-BL]]", "[[bulb|*UBL]]"],
+      ["l + p (the l is dropped)", "[[-P]]", "[[help|HEP]]"],
+      ["l + m (the l is in the m)", "[[-PL]]", "[[film|TPEUPL]]"],
+      ["-tion, -sion, -cian", "[[-GS]]", "[[nation|TPH-GS]]"]
+    ] },
+    { "t": "p", "x": "`-GS` is the *shun* of *nation*, *pension*, *mention*. It is so common it is also a suffix on its own in lesson 10." },
+    { "t": "h", "x": "A vowel and its R" },
+    { "t": "p", "x": "An *r* after a vowel is not struck separately. The vowel and the `R` form one chord:" },
+    { "t": "table", "head": ["Sound", "Keys", "Example"], "rows": [
+      ["ar as in {{car}}", "[[AR]]", "[[car|KAR]], [[far|TPAR]]"],
+      ["or as in {{more}}", "[[OR]]", "[[more|PHOR]]"],
+      ["air as in {{hair}}", "[[AEUR]]", "[[hair|HAEUR]], [[care|KAEUR]]"],
+      ["ear as in {{beer}}", "[[AOER]]", "[[beer|PWAOER]]"],
+      ["ire as in {{fire}}", "[[AOEUR]]", "[[fire|TPAOEUR]]"],
+      ["ur as in {{hurt}}", "[[UR]]", "[[hurt|HURT]]"],
+      ["ir as in {{girl}}", "[[EUR]]", "[[girl|TKPWEURL]], [[bird|PWEURD]]"]
+    ] },
+    { "t": "note", "kind": "warn", "x": "The same shapes also keep spellings apart: [[dear|TKAER]] and [[deer|TKAOER]], [[stair|STAEUR]] and [[stare|STAER]]. Lesson 9 covers that." }
+  ],
+  "drill": {
+    "title": "Clusters and R",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["tent", "TEPBT"], ["hunt", "HUPBT"], ["bend", "PWEPBD"], ["sand", "SAPBD"], ["hold", "HOLD"], ["cold", "KOELD"],
+      ["mind", "PHOEUPBD"], ["best", "PWEFT"], ["castle", "KAFL"], ["lesson", "HR-FPB"], ["bank", "PWA*PBG"], ["silk", "S*EULG"],
+      ["help", "HEP"], ["nation", "TPH-GS"], ["car", "KAR"], ["far", "TPAR"], ["more", "PHOR"], ["hair", "HAEUR"],
+      ["care", "KAEUR"], ["beer", "PWAOER"], ["fire", "TPAOEUR"], ["hurt", "HURT"], ["girl", "TKPWEURL"], ["bird", "PWEURD"]
+    ]
+  }
+}

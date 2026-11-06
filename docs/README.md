@@ -2,6 +2,10 @@
 
 [← back to the main README](../README.md) for the pitch, the CLI commands, and the data sources.
 
+**Want to learn it by doing?** [The interactive lessons](https://noahlyk.github.io/lyk-steno-theory/)
+condense these chapters into 18 short lessons with an on-screen board and chord drills (source in
+[`site/`](../site/README.md)). These chapters are the reference behind them.
+
 This isn't a lookup table — it's a sequential read. Each chapter builds on the one before it, and
 each one ends with a link to the next. Start at the top and read straight through if you want to
 learn the whole theory; come back here to jump to a specific chapter once you know your way around.

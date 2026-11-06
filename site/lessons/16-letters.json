@@ -1,0 +1,56 @@
+{
+  "id": "16-letters",
+  "title": "Letters and modifiers",
+  "goal": "For a name, an acronym or a shortcut key: spell it letter by letter, or chord Ctrl, Alt and friends.",
+  "blocks": [
+    { "t": "h", "x": "Fingerspelling in running text" },
+    { "t": "p", "x": "Each letter is a chord, plus the star to glue it to the letters beside it. Add `-P` for a capital." },
+    { "t": "table", "head": ["Letter", "Stroke", "Letter", "Stroke", "Letter", "Stroke"], "rows": [
+      ["a", "[[A*]]", "j", "[[SKWR*]]", "s", "[[S*]]"],
+      ["b", "[[PW*]]", "k", "[[K*]]", "t", "[[T*]]"],
+      ["c", "[[KR*]]", "l", "[[HR*]]", "u", "[[*U]]"],
+      ["d", "[[TK*]]", "m", "[[PH*]]", "v", "[[SR*]]"],
+      ["e", "[[*E]]", "n", "[[TPH*]]", "w", "[[W*]]"],
+      ["f", "[[TP*]]", "o", "[[O*]]", "x", "[[KP*]]"],
+      ["g", "[[TKPW*]]", "p", "[[P*]]", "y", "[[KWR*]]"],
+      ["h", "[[H*]]", "q", "[[KW*]]", "z", "[[STKPW*]]"],
+      ["i", "[[*EU]]", "r", "[[R*]]", "capital A", "[[A*P]]"]
+    ] },
+    { "t": "p", "x": "The letter chords are the same ones you used for starting sounds: `PW` is *b*, `TK` is *d*, `STKPW` is *z*. Letters glue to each other and to nothing else, so `KR*P` `A*` `T*` types *Cat*." },
+    { "t": "explore", "x": "Strike a letter with the star to see it." },
+    { "t": "h", "x": "Modifiers: Ctrl, Alt, Super, Shift" },
+    { "t": "p", "x": "A shortcut is a letter chord, then right-hand keys for the modifiers, then the ender `LGTS`. The ender stops a word from firing it by accident." },
+    { "t": "table", "head": ["Right-hand key", "Modifier"], "rows": [["`R`", "Shift"], ["`B`", "Alt"], ["`P`", "Super"], ["`F`", "Ctrl"]] },
+    { "t": "table", "head": ["Shortcut", "Stroke"], "rows": [
+      ["Ctrl+S", "[[S-FLGTS]]"],
+      ["Ctrl+C", "[[KR-FLGTS]]"],
+      ["Alt+D", "[[TK-BLGTS]]"],
+      ["Super+V", "[[SR-PLGTS]]"],
+      ["Shift+B", "[[PW-RLGTS]]"]
+    ] },
+    { "t": "p", "x": "Modifiers combine: `KPWR*EFPBLGTS` is Ctrl+Super+Alt+Up. Digits work the same way: `AO` plus the bottom-row left keys as binary, `R`=1, `W`=2, `K`=4, `S`=8, added together." },
+    { "t": "h", "x": "Spelling mode" },
+    { "t": "p", "x": "A few words have no pronunciation on record anywhere, so there is no sound to derive them from. Spelling mode is the deliberate way in: a run starts with the `~` marker instead of `+`, and then **every stroke is one letter chord** (`A` is *a*, `PW` is *b*, ...). Every stroke after the first still carries the join key." },
+    { "t": "note", "kind": "warn", "x": "`~` has no physical key bound to it in the live config yet. Today it is a rule the generator and fallback know, not something you can type." }
+  ],
+  "drill": {
+    "title": "Fingerspelling",
+    "check": "dict",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      { "p": "a", "o": ["A*"], "w": "{>}{&a}" }, { "p": "b", "o": ["PW*"], "w": "{>}{&b}" }, { "p": "c", "o": ["KR*"], "w": "{>}{&c}" },
+      { "p": "d", "o": ["TK*"], "w": "{>}{&d}" }, { "p": "e", "o": ["*E"], "w": "{>}{&e}" }, { "p": "f", "o": ["TP*"], "w": "{>}{&f}" },
+      { "p": "g", "o": ["TKPW*"], "w": "{>}{&g}" }, { "p": "h", "o": ["H*"], "w": "{>}{&h}" }, { "p": "i", "o": ["*EU"], "w": "{>}{&i}" },
+      { "p": "j", "o": ["SKWR*"], "w": "{>}{&j}" }, { "p": "k", "o": ["K*"], "w": "{>}{&k}" }, { "p": "l", "o": ["HR*"], "w": "{>}{&l}" },
+      { "p": "m", "o": ["PH*"], "w": "{>}{&m}" }, { "p": "n", "o": ["TPH*"], "w": "{>}{&n}" }, { "p": "o", "o": ["O*"], "w": "{>}{&o}" },
+      { "p": "p", "o": ["P*"], "w": "{>}{&p}" }, { "p": "q", "o": ["KW*"], "w": "{>}{&q}" }, { "p": "r", "o": ["R*"], "w": "{>}{&r}" },
+      { "p": "s", "o": ["S*"], "w": "{>}{&s}" }, { "p": "t", "o": ["T*"], "w": "{>}{&t}" }, { "p": "u", "o": ["*U"], "w": "{>}{&u}" },
+      { "p": "v", "o": ["SR*"], "w": "{>}{&v}" }, { "p": "w", "o": ["W*"], "w": "{>}{&w}" }, { "p": "x", "o": ["KP*"], "w": "{>}{&x}" },
+      { "p": "y", "o": ["KWR*"], "w": "{>}{&y}" }, { "p": "z", "o": ["STKPW*"], "w": "{>}{&z}" },
+      { "p": "capital A", "o": ["A*P"], "w": "{&A}" }, { "p": "capital B", "o": ["PW*P"], "w": "{&B}" }, { "p": "capital C", "o": ["KR*P"], "w": "{&C}" },
+      { "p": "Ctrl+S", "o": ["S-FLGTS"], "w": "{^}{#control(s)}{^}" }, { "p": "Ctrl+C", "o": ["KR-FLGTS"], "w": "{^}{#control(c)}{^}" },
+      { "p": "Alt+D", "o": ["TK-BLGTS"], "w": "{^}{#alt(d)}{^}" }
+    ]
+  }
+}

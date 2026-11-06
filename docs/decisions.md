@@ -2301,3 +2301,32 @@ strokes) adds them; a silent *e* before a consonant is optional in the spelling 
 (*move-ment*), and the rest may be a single stroke. The cost is the backups file 110.9 → 131.4 MB
 (quotas of 3/5/5/3 were 137 MB, no more useful). 51 rare words whose primary was a join moved to another join.
 Not done: the tape cannot show `+`, so a missing join key still looks like a missing outline.
+
+## Interactive lessons, in this repository (2026-11-06)
+
+Lapwing has [Lapwing Lab](https://github.com/CRAZECRAZE/lapwing-lab): its book made interactive,
+with a board that lights up for any stroke, drills on a real keyboard, a lookup and saved progress.
+`site/` is that for lyk, in the same repository as the theory so the two cannot drift apart.
+
+- **Static and dependency-free.** Plain HTML, CSS and ES modules, no build, deployed to GitHub
+  Pages from `main` by `.github/workflows/pages.yml`. Lapwing Lab is a local Node app that needs a
+  Uni keyboard over WebHID; a page anyone can open has to read an ordinary keyboard instead
+  (Plover's QWERTY chord map, Space as the join key), with clickable keys as the fallback.
+- **18 lessons in five parts**, ordered as the theory is learned rather than as the docs are
+  written: the board, starting sounds, vowels, ending sounds, folds, first words; the common words
+  and sound-alikes; then the join key (endings, prefixes, syllables, every other way in); then
+  phrases, punctuation, letters; then the pinky rule, fallback and a practice plan. Each is a
+  condensed form of the matching `docs/` chapters, tables over paragraphs.
+- **Every outline a lesson teaches is checked against the built dictionary.**
+  `tools/site_data.py --check` reads every `[[word|OUTLINE]]` and every drill item and fails if the
+  dictionary does not write that word that way. Writing the lessons found real mismatches
+  (`careless`, and `lem-on` is not a word), so this is not a formality. CI cannot build the
+  dictionary (the corpus is not in the repository), so it runs `node site/check.mjs` (valid
+  strokes, valid lessons, words in the committed `site/data/words.json`), and the regenerated data
+  is committed with the rule change. `.claude/CLAUDE.md` says so.
+- **The key chart is read from `rules/plover.toml`**, not typed, so it is always what the rules use.
+- **Progress is per browser** (`localStorage`); nothing is sent anywhere. Chapters are never
+  locked, only suggested in order, as in Lapwing Lab.
+- Not copied from Lapwing Lab: fix-up drills against a stored history, ghost runs, routines,
+  month-end reports. They need a server and a database; the Practice page's "drill my misses" is
+  the small version of the first.

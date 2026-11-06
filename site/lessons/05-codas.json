@@ -1,0 +1,38 @@
+{
+  "id": "05-codas",
+  "title": "Ending sounds",
+  "goal": "The right hand mirrors the left: the consonants a syllable ends with. The hyphen is back.",
+  "blocks": [
+    { "t": "h", "x": "The ending consonants" },
+    { "t": "table", "head": ["Sound", "Keys", "Example", "Sound", "Keys", "Example"], "rows": [
+      ["p", "[[-P]]", "[[cap|KAP]]", "m", "[[-PL]]", "[[ham|HAPL]]"],
+      ["b", "[[-B]]", "[[cab|KAB]]", "n", "[[-PB]]", "[[pen|PEPB]]"],
+      ["t", "[[-T]]", "[[cat|KAT]]", "ng (sing)", "[[-PBG]]", "[[sing|SEUPBG]]"],
+      ["d", "[[-D]]", "[[dad|TKAD]]", "f, v", "[[-F]]", "[[five|TPEUF]]"],
+      ["k", "[[-BG]]", "[[back|PWABG]]", "th", "[[*T]]", "[[path|PA*T]]"],
+      ["g", "[[-G]]", "[[bag|PWAG]]", "s", "[[-S]]", "[[bus|PWUS]]"],
+      ["l", "[[-L]]", "[[bell|PWEL]]", "z", "[[-Z]]", "[[buzz|PWUZ]]"],
+      ["sh", "[[-RB]]", "[[cash|KARB]]", "ch", "[[-FP]]", "[[catch|KAFP]]"],
+      ["j", "[[-PBLG]]", "[[bridge|PWREUPBLG]]", "r", "[[-R]]", "see lesson 6"]
+    ] },
+    { "t": "p", "x": "Two sounds share a key, because a word never needs both: **f and v** are `-F`, and the two *th* sounds are `*T`. `-S` is the *s* of *bus*; `-Z` is the *z* of *buzz*, also the plural in *dogs*." },
+    { "t": "explore" },
+    { "t": "h", "x": "Spelling beats sound for two endings" },
+    { "t": "table", "head": ["Ending", "Keys", "Example"], "rows": [
+      ["-ing is always G, not ng", "[[-G]]", "[[walking|WAUG]]"],
+      ["-ed is always D, even when it sounds like t", "[[-D]]", "[[played|PHRAEUD]]"]
+    ] },
+    { "t": "note", "x": "You do not need to learn the right hand separately from the left: it is the same sounds, in the same neighbour pairs, on the other side. The hyphen keeps them apart on paper only." }
+  ],
+  "drill": {
+    "title": "Words by their ending",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["cap", "KAP"], ["cab", "KAB"], ["cat", "KAT"], ["dad", "TKAD"], ["back", "PWABG"], ["bag", "PWAG"],
+      ["ham", "HAPL"], ["pen", "PEPB"], ["sing", "SEUPBG"], ["five", "TPEUF"], ["path", "PA*T"], ["bus", "PWUS"],
+      ["buzz", "PWUZ"], ["cash", "KARB"], ["catch", "KAFP"], ["bridge", "PWREUPBLG"], ["bell", "PWEL"],
+      ["walking", "WAUG"], ["played", "PHRAEUD"]
+    ]
+  }
+}

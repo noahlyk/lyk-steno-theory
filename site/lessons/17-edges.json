@@ -1,0 +1,37 @@
+{
+  "id": "17-edges",
+  "title": "Strokes you can type",
+  "goal": "Some chords are physically impossible. The dictionary never writes one, and a stroke that misses is still read back sensibly.",
+  "blocks": [
+    { "t": "h", "x": "What the right pinky can't do" },
+    { "t": "p", "x": "The right pinky has four keys in a block:" },
+    { "t": "table", "rows": [["`-T`", "`-D`"], ["`-S`", "`-Z`"]] },
+    { "t": "list", "items": [
+      "It can press **one** key, **two in a line** ([[-TS]], [[-DZ]], [[-TD]], [[-SZ]]), or **all four**.",
+      "It cannot press a **diagonal pair** (`-TZ`, `-SD`) or **exactly three**.",
+      "This is a limit of the hand, found by typing *cadence* as `KAEUPBSD`. So no outline contains such a chord."
+    ] },
+    { "t": "h", "x": "What a word does instead" },
+    { "t": "list", "items": [
+      "**Swap**, still one stroke: the voiced and unvoiced partner trade places. [[cadence|KAEUPBTS]], [[utters|URTS]], [[silenced|SAOEUPBLTS]].",
+      "**Split**, two strokes, if no swap is free: the pinky keys that fit stay, the rest go to a joined stroke. `-SD` becomes `-S` then `+-D`.",
+      "A few rare words have no outline at all because their only repair would change a sound. The fallback reads their strokes."
+    ] },
+    { "t": "p", "x": "You never decide this. If a word's outline looks different from the sounds, this is usually why." },
+    { "t": "h", "x": "When a stroke misses" },
+    { "t": "p", "x": "A stroke the dictionary does not have is read back into sounds, as a last resort, by the same tables you learned in lessons 3 to 6." },
+    { "t": "list", "items": [
+      "**A stroke with no vowel invents none.** `-T` alone reads as *t*.",
+      "**A suffix chord always reads as the suffix.** `STKPW/+-D` is *zed*, not *zd*.",
+      "**A first stroke that is already a word reads as that word.** `SKP` is a brief for *and*; `SKP/+-R` reads *ander*, not gibberish."
+    ] },
+    { "t": "note", "kind": "rule", "x": "So an almost-right outline still lands near the word you meant. Your typing never produces a hole." },
+    { "t": "quiz", "q": "Which of these can the right pinky press?", "opts": ["[[-TZ]]", "[[-DZ]]", "[[-SD]]"], "a": 1, "why": "`-D` over `-Z` are in the same column, a line. The other two are diagonals." }
+  ],
+  "drill": {
+    "title": "Swapped endings",
+    "pass": 90,
+    "repeat": 2,
+    "items": [["cadence", "KAEUPBTS"], ["utters", "URTS"], ["silenced", "SAOEUPBLTS"]]
+  }
+}

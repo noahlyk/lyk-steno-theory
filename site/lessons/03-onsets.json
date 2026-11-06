@@ -1,0 +1,42 @@
+{
+  "id": "03-onsets",
+  "title": "Starting sounds",
+  "goal": "Twenty-two consonant sounds start a syllable. Seven are one key; the rest are neighbours pressed together.",
+  "blocks": [
+    { "t": "h", "x": "Seven that are just themselves" },
+    { "t": "p", "x": "Say the sound, strike the letter." },
+    { "t": "table", "head": ["Sound", "Keys", "Sound", "Keys"], "rows": [
+      ["p as in {{pat}}", "[[P]]", "s as in {{sat}}", "[[S]]"],
+      ["t as in {{tap}}", "[[T]]", "h as in {{hat}}", "[[H]]"],
+      ["k as in {{cat}}", "[[K]]", "w as in {{wet}}", "[[W]]"],
+      ["r as in {{rat}}", "[[R]]", "", ""]
+    ] },
+    { "t": "h", "x": "Pairs and trios: neighbouring keys" },
+    { "t": "p", "x": "The rest are built from keys that sit next to each other. `P`+`W` is *b*, `T`+`K` is *d*, `P`+`H` is *m*." },
+    { "t": "table", "head": ["Sound", "Keys", "Sound", "Keys"], "rows": [
+      ["b as in {{bat}}", "[[PW]]", "l as in {{lap}}", "[[HR]]"],
+      ["d as in {{dad}}", "[[TK]]", "y as in {{yes}}", "[[KWR]]"],
+      ["m as in {{map}}", "[[PH]]", "g as in {{go}}", "[[TKPW]]"],
+      ["n as in {{nap}}", "[[TPH]]", "j as in {{jam}}, zh as in {{vision}}", "[[SKWR]]"],
+      ["f as in {{fan}}", "[[TP]]", "z as in {{zoo}}", "[[STKPW]]"],
+      ["v as in {{van}}", "[[SR]]", "ch as in {{chip}}", "[[KH]]"],
+      ["th as in {{thin}}, {{this}}", "[[TH]]", "sh as in {{ship}}", "[[SH]]"]
+    ] },
+    { "t": "explore", "x": "Strike any of these and watch the board label." },
+    { "t": "h", "x": "Spelling picks a few more" },
+    { "t": "p", "x": "Three starts are chosen by the spelling, not the sound, so words that sound alike can differ: `wh` is [[WH]] (*when*), `wr` is [[WR]] (*write*), and `sc` as in *scan* is [[SK]]. Lesson 9 shows why." },
+    { "t": "note", "kind": "rule", "x": "No sound is left off. If a word begins with a sound, its key is there; the dictionary may drop a sound only in a brief you memorise, never by accident." },
+    { "t": "try", "title": "Warm up", "items": [["p", "P"], ["b", "PW"], ["m", "PH"], ["n", "TPH"], ["f", "TP"], ["l", "HR"]], "check": "none", "x": "Six to type. Say the sound out loud first." }
+  ],
+  "drill": {
+    "title": "Starting sounds",
+    "check": "none",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["p", "P"], ["b", "PW"], ["t", "T"], ["d", "TK"], ["k", "K"], ["g", "TKPW"], ["m", "PH"], ["n", "TPH"],
+      ["f", "TP"], ["v", "SR"], ["th", "TH"], ["s", "S"], ["z", "STKPW"], ["sh", "SH"], ["j", "SKWR"],
+      ["ch", "KH"], ["h", "H"], ["l", "HR"], ["r", "R"], ["w", "W"], ["y", "KWR"], ["wh", "WH"], ["wr", "WR"]
+    ]
+  }
+}

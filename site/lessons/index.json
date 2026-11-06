@@ -1,0 +1,49 @@
+{
+  "title": "Learn lyk",
+  "summary": "Steno with explicit word boundaries, taught in 18 short lessons. Read a little, point at any stroke to see its keys, then drill it on your own keyboard.",
+  "parts": [
+    {
+      "title": "Foundations",
+      "lessons": [
+        { "id": "01-start", "num": 1, "title": "Start here", "summary": "The one idea, how outlines read, and how to learn the rest." },
+        { "id": "02-board", "num": 2, "title": "The board", "summary": "Keys, hands and steno order. Strike your first strokes." },
+        { "id": "03-onsets", "num": 3, "title": "Starting sounds", "summary": "The left hand: every consonant a word can begin with." },
+        { "id": "04-vowels", "num": 4, "title": "Vowels", "summary": "The thumbs: each vowel sound and the star." },
+        { "id": "05-codas", "num": 5, "title": "Ending sounds", "summary": "The right hand: every consonant a syllable can end with." },
+        { "id": "06-clusters", "num": 6, "title": "Folded endings", "summary": "Clusters that share keys, and a vowel with its R." },
+        { "id": "07-first-words", "num": 7, "title": "Your first words", "summary": "Sound a word out and strike it: start, vowel, end." }
+      ]
+    },
+    {
+      "title": "Everyday words",
+      "lessons": [
+        { "id": "08-common-words", "num": 8, "title": "The common words", "summary": "The briefs: the short words you type all day." },
+        { "id": "09-sound-alikes", "num": 9, "title": "Words that sound alike", "summary": "Spelling and the star keep their and there apart." }
+      ]
+    },
+    {
+      "title": "The join key",
+      "lessons": [
+        { "id": "10-endings", "num": 10, "title": "Endings", "summary": "-ing, -ed, -s and every other suffix, one stroke each." },
+        { "id": "11-prefixes", "num": 11, "title": "Prefixes and two words", "summary": "Start with a prefix, or build a word from two you know." },
+        { "id": "12-syllables", "num": 12, "title": "Long words, syllable by syllable", "summary": "Any word, one syllable per stroke, split where you hear it." },
+        { "id": "13-more-ways", "num": 13, "title": "Every other way in", "summary": "Spell it as it looks, a stem then the rest, and short forms." }
+      ]
+    },
+    {
+      "title": "Beyond single words",
+      "lessons": [
+        { "id": "14-phrases", "num": 14, "title": "Phrases", "summary": "Two common words in one stroke." },
+        { "id": "15-punctuation", "num": 15, "title": "Punctuation and commands", "summary": "Marks, capitals, cursor keys and editing." },
+        { "id": "16-letters", "num": 16, "title": "Letters and modifiers", "summary": "Fingerspelling, Ctrl and Alt chords, and spelling mode." }
+      ]
+    },
+    {
+      "title": "Good to know",
+      "lessons": [
+        { "id": "17-edges", "num": 17, "title": "Strokes you can type", "summary": "What the pinky cannot press, and what happens on a miss." },
+        { "id": "18-practice", "num": 18, "title": "A practice plan", "summary": "How to turn all of this into speed." }
+      ]
+    }
+  ]
+}

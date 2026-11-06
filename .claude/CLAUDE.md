@@ -17,5 +17,11 @@ It does **not** catch prose drift — a rule described in one of the `docs/` cha
 longer matches what the code does. There's no automated check for that; it has to be done by hand,
 every time, as part of the same change.
 
+**The lessons site is the docs' condensed form and must move with them.** `site/lessons/*.json`
+(the interactive lessons, deployed from `main`) state outlines as `[[word|OUTLINE]]` and in drills.
+A change to what a word strokes as is not finished until `python3 tools/site_data.py` passes (it
+checks every one against the built dictionary and rewrites `site/data/`) and `node site/check.mjs`
+is clean; commit the regenerated `site/data/` with the change. See [`site/README.md`](../site/README.md).
+
 Start at [`docs/README.md`](../docs/README.md) to learn the theory — read in the order it lays
 out, not at random.

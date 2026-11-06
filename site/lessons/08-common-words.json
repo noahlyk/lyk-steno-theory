@@ -1,0 +1,68 @@
+{
+  "id": "08-common-words",
+  "title": "The common words",
+  "goal": "The words you type most are briefs: short, memorised, often one or two keys. Learn them by frequency, ten at a time.",
+  "blocks": [
+    { "t": "h", "x": "Why briefs" },
+    { "t": "p", "x": "A **brief** is a word's outline taken from Plover or Lapwing, or the cheapest one lyk's rules can find. It is free to be a pure shortcut with no phonetic link to its word. [[it|T]] is just `T`, [[the|-T]] is the right-hand `T`, [[a|A]] is `A`." },
+    { "t": "note", "kind": "rule", "x": "Every word has one primary outline. Speed is measured on the fastest outline of each word. Extra outlines never take a stroke another word needs, so what you learn here is never overwritten." },
+    { "t": "h", "x": "The smallest words" },
+    { "t": "table", "head": ["Word", "Stroke", "Word", "Stroke", "Word", "Stroke"], "rows": [
+      ["{{a}}", "[[a|A]]", "{{he}}", "[[he|E]]", "{{to}}", "[[to|O]]"],
+      ["{{it}}", "[[it|T]]", "{{is}}", "[[is|S]]", "{{in}}", "[[in|TPH]]"],
+      ["{{the}}", "[[the|-T]]", "{{of}}", "[[of|-F]]", "{{and}}", "[[and|SKP]]"],
+      ["{{be}}", "[[be|-B]]", "{{for}}", "[[for|-R]]", "{{are}}", "[[are|R]]"],
+      ["{{was}}", "[[was|-Z]]", "{{you}}", "[[you|U]]", "{{with}}", "[[with|W]]"],
+      ["{{all}}", "[[all|-L]]", "{{an}}", "[[an|-PB]]", "{{up}}", "[[up|-P]]"],
+      ["{{do}}", "[[do|-D]]", "{{go}}", "[[go|-G]]", "{{can}}", "[[can|K]]"],
+      ["{{had}}", "[[had|H]]", "{{if}}", "[[if|TP]]", "{{about}}", "[[about|P]]"]
+    ] },
+    { "t": "h", "x": "Short words with a vowel" },
+    { "t": "table", "head": ["Word", "Stroke", "Word", "Stroke", "Word", "Stroke"], "rows": [
+      ["{{that}}", "[[that|TA]]", "{{this}}", "[[this|TH]]", "{{have}}", "[[have|SR]]"],
+      ["{{she}}", "[[she|SHE]]", "{{we}}", "[[we|WE]]", "{{they}}", "[[they|THE]]"],
+      ["{{at}}", "[[at|AT]]", "{{as}}", "[[as|AZ]]", "{{or}}", "[[or|OR]]"],
+      ["{{on}}", "[[on|OB]]", "{{from}}", "[[from|PR]]", "{{by}}", "[[by|PWEU]]"],
+      ["{{but}}", "[[but|UT]]", "{{not}}", "[[not|OT]]", "{{what}}", "[[what|WHA]]"],
+      ["{{so}}", "[[so|SO]]", "{{no}}", "[[no|PHO]]", "{{my}}", "[[my|PHEU]]"],
+      ["{{when}}", "[[when|WH]]", "{{which}}", "[[which|KH]]", "{{who}}", "[[who|HO]]"],
+      ["{{her}}", "[[her|HER]]", "{{him}}", "[[him|HEUPL]]", "{{his}}", "[[his|HEUZ]]"]
+    ] },
+    { "t": "h", "x": "More every day" },
+    { "t": "table", "head": ["Word", "Stroke", "Word", "Stroke", "Word", "Stroke"], "rows": [
+      ["{{there}}", "[[there|THR]]", "{{their}}", "[[their|THAER]]", "{{then}}", "[[then|THEB]]"],
+      ["{{them}}", "[[them|THEP]]", "{{these}}", "[[these|THEZ]]", "{{some}}", "[[some|SPH]]"],
+      ["{{would}}", "[[would|WO]]", "{{could}}", "[[could|KO]]", "{{said}}", "[[said|SAEUD]]"],
+      ["{{one}}", "[[one|WUPB]]", "{{two}}", "[[two|TWO]]", "{{your}}", "[[your|HUR]]"],
+      ["{{like}}", "[[like|HRAOEU]]", "{{look}}", "[[look|HRAOBG]]", "{{make}}", "[[make|AEUBG]]"],
+      ["{{time}}", "[[time|TAOEUPL]]", "{{people}}", "[[people|PEPL]]", "{{water}}", "[[water|WAUR]]"],
+      ["{{get}}", "[[get|ET]]", "{{come}}", "[[come|KUPL]]", "{{day}}", "[[day|AEU]]"],
+      ["{{just}}", "[[just|UFT]]", "{{very}}", "[[very|SRE]]", "{{because}}", "[[because|AUS]]"]
+    ] },
+    { "t": "h", "x": "How to learn them" },
+    { "t": "list", "items": [
+      "Ten at a time. Drill, then move on; the **Practice** tab mixes in everything you have done.",
+      "Rows that look odd (*the* on a bare `-T`) are on purpose: the commonest words get the cheapest keys.",
+      "Stuck on a word? **Lookup** shows its fastest outline and the other ways in.",
+      "Each of these also has joins and extras. You will never need them for a word you have memorised."
+    ] },
+    { "t": "try", "title": "The smallest words", "items": [["a", "A"], ["the", "-T"], ["of", "-F"], ["and", "SKP"], ["to", "O"], ["in", "TPH"], ["it", "T"], ["is", "S"]], "x": "Eight of the commonest words in English." }
+  ],
+  "drill": {
+    "title": "Common words",
+    "pass": 90,
+    "repeat": 1,
+    "items": [
+      ["a", "A"], ["he", "E"], ["to", "O"], ["it", "T"], ["is", "S"], ["in", "TPH"], ["the", "-T"], ["of", "-F"], ["and", "SKP"],
+      ["be", "-B"], ["for", "-R"], ["are", "R"], ["was", "-Z"], ["you", "U"], ["with", "W"], ["all", "-L"], ["an", "-PB"],
+      ["up", "-P"], ["do", "-D"], ["go", "-G"], ["can", "K"], ["had", "H"], ["if", "TP"], ["about", "P"], ["that", "TA"],
+      ["this", "TH"], ["have", "SR"], ["she", "SHE"], ["we", "WE"], ["they", "THE"], ["at", "AT"], ["as", "AZ"], ["or", "OR"],
+      ["on", "OB"], ["from", "PR"], ["by", "PWEU"], ["but", "UT"], ["not", "OT"], ["what", "WHA"], ["so", "SO"], ["no", "PHO"],
+      ["my", "PHEU"], ["when", "WH"], ["which", "KH"], ["who", "HO"], ["her", "HER"], ["him", "HEUPL"], ["his", "HEUZ"],
+      ["there", "THR"], ["their", "THAER"], ["then", "THEB"], ["them", "THEP"], ["these", "THEZ"], ["some", "SPH"],
+      ["would", "WO"], ["could", "KO"], ["said", "SAEUD"], ["one", "WUPB"], ["two", "TWO"], ["your", "HUR"], ["like", "HRAOEU"],
+      ["look", "HRAOBG"], ["make", "AEUBG"], ["time", "TAOEUPL"], ["people", "PEPL"], ["water", "WAUR"], ["get", "ET"],
+      ["come", "KUPL"], ["day", "AEU"], ["just", "UFT"], ["very", "SRE"], ["because", "AUS"]
+    ]
+  }
+}

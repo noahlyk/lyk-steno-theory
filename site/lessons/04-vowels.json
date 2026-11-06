@@ -1,0 +1,48 @@
+{
+  "id": "04-vowels",
+  "title": "Vowels",
+  "goal": "Four thumb keys make every English vowel: A and O on the left, E and U on the right. Together they make the long ones.",
+  "blocks": [
+    { "t": "h", "x": "Short vowels: one key" },
+    { "t": "table", "head": ["Sound", "Keys", "Example"], "rows": [
+      ["a as in {{bat}}", "[[A]]", "[[bat|PWAT]]"],
+      ["e as in {{bet}}", "[[E]]", "[[bet|PWET]]"],
+      ["i as in {{sit}}", "[[EU]]", "[[sit|SEUT]]"],
+      ["o as in {{hot}}", "[[O]]", "[[hot|HOT]]"],
+      ["u as in {{sun}}", "[[U]]", "[[sun|SUPB]]"]
+    ] },
+    { "t": "p", "x": "Notice the short *i* is two keys, `EU`, because `E` alone is already the short *e*." },
+    { "t": "h", "x": "Long vowels and diphthongs: more keys" },
+    { "t": "table", "head": ["Sound", "Keys", "Example"], "rows": [
+      ["ay as in {{say}}", "[[AEU]]", "[[say|SAEU]]"],
+      ["ee as in {{see}}", "[[AOE]]", "[[see|SAOE]]"],
+      ["eye as in {{shy}}", "[[AOEU]]", "[[shy|SHAOEU]]"],
+      ["oh as in {{boat}}", "[[OE]]", "[[boat|PWOET]]"],
+      ["oo as in {{moon}}", "[[AO]]", "[[moon|PHAOPB]]"],
+      ["ew as in {{tune}}", "[[AOU]]", "[[tune|TAOUPB]]"],
+      ["aw as in {{saw}}", "[[AU]]", "[[saw|SAU]]"],
+      ["ow as in {{bout}}", "[[OU]]", "[[bout|PWOUT]]"],
+      ["oy as in {{boy}}", "[[OEU]]", "[[boy|PWOEU]]"],
+      ["ur as in {{hurt}}", "[[UR]]", "[[hurt|HURT]]"]
+    ] },
+    { "t": "p", "x": "The vowel and its `R` often share keys (`UR`, `AR`, `OR`); lesson 6 covers those." },
+    { "t": "explore" },
+    { "t": "h", "x": "The star" },
+    { "t": "p", "x": "`*` sits in the vowel group but is not a vowel. It is a **tiebreaker**: when two words would take the same stroke, one gets the star. You will see it in lesson 9." },
+    { "t": "h", "x": "Two spellings of the same sound" },
+    { "t": "p", "x": "A few vowel sounds take different keys depending on how the word is spelled. {{moon}} has `oo` and uses `AO`; {{tune}} has `u` and uses `AOU`. The rules read the spelling to pick, so you can too: spell it, then strike what you see." },
+    { "t": "quiz", "q": "Which keys make the vowel in {{bet}}?", "opts": ["[[E]]", "[[EU]]", "[[AEU]]"], "a": 0, "why": "Short e is the bare E key." }
+  ],
+  "drill": {
+    "title": "Vowel sounds",
+    "check": "none",
+    "pass": 90,
+    "repeat": 3,
+    "items": [
+      ["a as in bat", "A"], ["e as in bet", "E"], ["i as in sit", "EU"], ["o as in hot", "O"], ["u as in sun", "U"],
+      ["ay as in say", "AEU"], ["ee as in see", "AOE"], ["eye as in shy", "AOEU"], ["oh as in boat", "OE"],
+      ["oo as in moon", "AO"], ["ew as in tune", "AOU"], ["aw as in saw", "AU"], ["ow as in bout", "OU"],
+      ["oy as in boy", "OEU"], ["ur as in hurt", "UR"]
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "02-board",
+  "title": "The board",
+  "goal": "A stroke is a chord: several keys down at once, then released together.",
+  "blocks": [
+    { "t": "h", "x": "Three zones" },
+    { "t": "table", "head": ["Zone", "Keys", "Job"], "rows": [
+      ["Left hand (amber)", "`S T K P W H R`", "The sounds a syllable **starts** with."],
+      ["Thumbs (blue)", "`A O * E U`", "The **vowel**, and the star."],
+      ["Right hand (violet)", "`F R P B L G T S D Z`", "The sounds a syllable **ends** with."],
+      ["Join key (green)", "`+`", "Struck with a stroke to continue a word."]
+    ] },
+    { "t": "p", "x": "`S` on the left is one tall key; so is the `*`. Everything else is a top and bottom pair. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
+    { "t": "explore", "x": "Strike or click keys. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
+    { "t": "h", "x": "Steno order" },
+    { "t": "p", "x": "However you press them, keys are always written left to right in the same order:" },
+    { "t": "table", "rows": [["`S T K P W H R`", "`A O * E U`", "`F R P B L G T S D Z`"]] },
+    { "t": "p", "x": "That is why [[PHAP]] is *map* and not *pam*. The same letter can sit on both sides (`R`, `P`, `T`, `S`), so a stroke with no vowel and only right-hand keys is written with a hyphen: [[-T]] is T on the right, [[T]] is T on the left." },
+    { "t": "note", "x": "Hands only move one way: left hand starts the sound, right hand ends it. If a word's sounds come in that order, it fits in one stroke." },
+    { "t": "h", "x": "Strike, then release" },
+    { "t": "list", "items": [
+      "Press all the keys of a stroke at roughly the same time. Order does not matter.",
+      "The stroke is sent when **every** key is up again.",
+      "Hold Space with a stroke for the join key. [[+-G]] is Space and `L` together: `L` is the right-hand `-G` key."
+    ] },
+    { "t": "quiz", "q": "How is T on the right hand written alone?", "opts": ["[[T]]", "[[-T]]", "[[T-]]"], "a": 1, "why": "The hyphen says: right-hand keys only." }
+  ],
+  "drill": {
+    "title": "Key by key",
+    "x": "Each prompt is one key or a short chord. The keys light up after a miss. 90% first try passes.",
+    "check": "none",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["left S", "S"], ["left T", "T"], ["left K", "K"], ["left P", "P"], ["left W", "W"], ["left H", "H"], ["left R", "R"],
+      ["vowel A", "A"], ["vowel O", "O"], ["star", "*"], ["vowel E", "E"], ["vowel U", "U"],
+      ["right F", "-F"], ["right R", "-R"], ["right P", "-P"], ["right B", "-B"], ["right L", "-L"],
+      ["right G", "-G"], ["right T", "-T"], ["right S", "-S"], ["right D", "-D"], ["right Z", "-Z"],
+      ["join key alone", "+"],
+      ["T and K together", "TK"], ["P and H together", "PH"], ["A and O together", "AO"], ["E and U together", "EU"],
+      ["right P and B", "-PB"], ["right T and S", "-TS"], ["T, A, T", "TAT"], ["K, O, P", "KOP"]
+    ]
+  }
+}

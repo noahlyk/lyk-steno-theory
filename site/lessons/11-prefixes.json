@@ -1,0 +1,42 @@
+{
+  "id": "11-prefixes",
+  "title": "Prefixes and two words",
+  "goal": "Strike the beginning on its own, then the word you know with the join key held. Or join two whole words.",
+  "blocks": [
+    { "t": "h", "x": "A prefix, then a word" },
+    { "t": "table", "head": ["Prefix", "Stroke", "Example"], "rows": [
+      ["un-", "[[UPB]]", "[[unclear|UPB/+KAOER]]"],
+      ["re-", "[[RE]]", "[[rebuild|RE/+PWHR]]"],
+      ["de-", "[[TKE]]", "[[decode|TKE/+KOED]]"],
+      ["pre-", "[[PRE]]", "[[prefix|PRE/+TPEUBGS]]"],
+      ["in-", "[[EUPB]]", "[[incorrect|EUPB/+KREBGT]]"],
+      ["im-", "[[EUPL]]", "[[impossible|EUPL/+POS/+-BL]]"],
+      ["en-", "[[EPB]]", "[[enjoy|EPB/+SKWROEU]]"],
+      ["co-", "[[KOE]]", "[[coexist|KOE/+UG/+STKPWEUFT]]"],
+      ["non-", "[[TPHOPB]]", "[[nonstop|TPHOPB/+STOP]]"],
+      ["sub-", "[[SUB]]", "[[subway|SUB/+WAEU]]"],
+      ["trans-", "[[TRAPBS]]", "[[transplant|TRAPBS/+PHRAPBLT]]"],
+      ["inter-", "[[EUPB/+TER]]", "[[interstate|EUPB/+TER/+STAET]]"],
+      ["anti-", "[[APB/+TEU]]", "[[antibody|APB/+TEU/+PWA/+TKEU]]"],
+      ["semi-", "[[SEPL/+EU]]", "[[semifinal|SEPL/+EU/+TPAOEUPBL]]"]
+    ] },
+    { "t": "p", "x": "*over-* and *under-* are the words themselves: [[overcome|AUFR/+KUPL]]. *dis-* and *mis-* are words too." },
+    { "t": "h", "x": "Folded prefixes" },
+    { "t": "p", "x": "`ex-` and `dis-` have keys of their own that join the next stroke's left hand, so the word stays one stroke: [[expect|KPEBGT]], [[distance|STKUPBS]]. `un-`, `mis-`, `over-`, `under-` and `inter-` fold the same way when their keys fit. When they clash with the stem's own keys, the prefix is a stroke of its own, as above." },
+    { "t": "note", "x": "You do not need to know which. Both are in the dictionary; the prefix stroke always works." },
+    { "t": "h", "x": "Two words in one" },
+    { "t": "p", "x": "A word that is two words is the two words, second one joined: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]. This works for any compound you can split: *sun* + *light*." },
+    { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold Space with the second stroke." }
+  ],
+  "drill": {
+    "title": "Prefixes and compounds",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["prefix", "PRE/+TPEUBGS"], ["incorrect", "EUPB/+KREBGT"],
+      ["impossible", "EUPL/+POS/+-BL"], ["enjoy", "EPB/+SKWROEU"], ["coexist", "KOE/+UG/+STKPWEUFT"], ["nonstop", "TPHOPB/+STOP"],
+      ["subway", "SUB/+WAEU"], ["transplant", "TRAPBS/+PHRAPBLT"], ["interstate", "EUPB/+TER/+STAET"], ["antibody", "APB/+TEU/+PWA/+TKEU"],
+      ["semifinal", "SEPL/+EU/+TPAOEUPBL"], ["overcome", "AUFR/+KUPL"], ["myself", "PHAOEU/+SEFL"], ["outside", "OUT/+SAOEUD"]
+    ]
+  }
+}

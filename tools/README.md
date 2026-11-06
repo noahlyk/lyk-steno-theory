@@ -11,6 +11,7 @@ Python 3, no dependencies. Every one reads the built dictionary in `out/lyk/` (r
 | `coverage.py [word ...]` | How many words of two syllables or more can be joined in, by frequency band: one-stroke share, joined share, stem-plus-ending share, joined ways in per word ([joins](../docs/joins.md)). |
 | `markers.py [N]` | Words still on a bare `/+*` marker, by band, real words against names, and who holds the plain and starred stroke each real word wanted ([collisions](../docs/collisions.md)). |
 | `phrasing_prototype.py [OUT_DIR]` | The phrasing grammar ([plans/08](../plans/08-phrasing-grammar.md)) as a trial folder to deploy and type: displaced entries, strokes saved on the corpora, a practice list. |
+| `site_data.py [--check]` | Writes the data the [lessons site](../site/README.md) runs on, and checks every outline the lessons teach against the built dictionary. Exits non-zero on any wrong one. |
 | `phrase_sim.py [protect_rank] [show]` | Simulates letting phrases take strokes from words ([plans/06](../plans/06-phrase-briefs.md)). |
 
 Measuring a change:

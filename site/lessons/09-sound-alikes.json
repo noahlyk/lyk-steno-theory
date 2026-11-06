@@ -1,0 +1,38 @@
+{
+  "id": "09-sound-alikes",
+  "title": "Words that sound alike",
+  "goal": "Two words cannot share a stroke. Spelling picks different vowels first; if they still collide, the star breaks the tie.",
+  "blocks": [
+    { "t": "h", "x": "Rule 1: the spelling picks the vowel" },
+    { "t": "p", "x": "Many sound-alikes differ in how they are spelled, and the dictionary writes that difference into the vowel. If you can see the word, you can pick the stroke." },
+    { "t": "table", "head": ["Pair", "How they differ", "Strokes"], "rows": [
+      ["{{sail}} / {{sale}}", "`ai` vs silent e", "[[sail|SAEUL]]  [[sale|SAEL]]"],
+      ["{{mail}} / {{male}}", "`ai` vs silent e", "[[mail|PHAEUL]]  [[male|PHAEL]]"],
+      ["{{plain}} / {{plane}}", "`ai` vs silent e", "[[plain|PHRAEUPB]]  [[plane|PHRAEPB]]"],
+      ["{{dear}} / {{deer}}", "`ea` vs `ee`", "[[dear|TKAER]]  [[deer|TKAOER]]"],
+      ["{{stair}} / {{stare}}", "`ai` vs silent e", "[[stair|STAEUR]]  [[stare|STAER]]"],
+      ["{{sea}} / {{see}}", "`ea` vs `ee`", "[[sea|SAE]]  [[see|SAOE]]"],
+      ["{{to}} / {{too}} / {{two}}", "three spellings", "[[to|O]]  [[too|TAO]]  [[two|TWO]]"]
+    ] },
+    { "t": "h", "x": "Rule 2: the star breaks the tie" },
+    { "t": "p", "x": "Some pairs have the same spelling pattern, so the vowel cannot help. Usually the commoner word keeps the plain stroke. The other gets a star, in a fixed ladder: plain, star on the first stroke, star on the last stroke, then extra star strokes." },
+    { "t": "table", "head": ["Pair", "Plain", "Starred"], "rows": [
+      ["{{night}} / {{knight}}", "[[night|TPHAOEUT]]", "[[knight|TPHAO*EUT]]"],
+      ["{{flower}} / {{flour}}", "[[flower|TPHROUR]]", "[[flour|TPHRO*UR]]"]
+    ] },
+    { "t": "p", "x": "The spelling also matters at the start of a word. `wr` takes [[WR]] and `wh` takes [[WH]], so [[right|ROEUT]] and [[write|WREU]] and [[rite|RAOEUT]] are three different strokes." },
+    { "t": "note", "kind": "rule", "x": "You never choose between two strokes for one word. The word has one primary. When a sound-alike pair exists, **read the word's spelling** and the right stroke follows." },
+    { "t": "quiz", "q": "Which is *sail*, as in a boat?", "opts": ["[[SAEL]]", "[[SAEUL]]"], "a": 1, "why": "`ai` is the long vowel `AEU`; the silent-e spelling is the shorter `AE`." }
+  ],
+  "drill": {
+    "title": "Sound-alikes",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["sail", "SAEUL"], ["sale", "SAEL"], ["mail", "PHAEUL"], ["male", "PHAEL"], ["plain", "PHRAEUPB"], ["plane", "PHRAEPB"],
+      ["dear", "TKAER"], ["deer", "TKAOER"], ["stair", "STAEUR"], ["stare", "STAER"], ["sea", "SAE"], ["see", "SAOE"],
+      ["night", "TPHAOEUT"], ["knight", "TPHAO*EUT"], ["flower", "TPHROUR"], ["flour", "TPHRO*UR"],
+      ["to", "O"], ["too", "TAO"], ["two", "TWO"], ["right", "ROEUT"], ["write", "WREU"], ["rite", "RAOEUT"]
+    ]
+  }
+}

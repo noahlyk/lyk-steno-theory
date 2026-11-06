@@ -1,4 +1,9 @@
-# lyk-steno-theory
+# lyk-steno-theory · [Learn lyk: interactive lessons →](https://noahlyk.github.io/lyk-steno-theory/)
+
+[Lessons](https://noahlyk.github.io/lyk-steno-theory/) ·
+[Lookup](https://noahlyk.github.io/lyk-steno-theory/#/lookup) ·
+[Key chart](https://noahlyk.github.io/lyk-steno-theory/#/chart) ·
+[Full docs](docs/README.md)
 
 **lyk is steno with explicit word boundaries.** Every stroke after the first of a word carries a
 join key (`+`), so a stroke without it always starts a word. Continuation strokes live apart from
@@ -40,6 +45,10 @@ wrong consonant) — a fragment like that is confusing in a way neither a whole 
 nor a cleanly dropped sound ever is. See [the briefs chapter](docs/briefs.md) for the rule.
 
 ## Documentation
+
+**To learn lyk, use [the interactive lessons](https://noahlyk.github.io/lyk-steno-theory/)**: 18
+short lessons with an on-screen board, chord drills on your own keyboard, a dictionary lookup and
+saved progress (source in [`site/`](site/README.md), deployed from `main`).
 
 The full literature lives in [`docs/`](docs/README.md), written to be read start to finish, not
 looked up — **start there for the full table of contents and reading order.** A few waypoints:

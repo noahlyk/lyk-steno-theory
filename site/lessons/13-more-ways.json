@@ -1,0 +1,52 @@
+{
+  "id": "13-more-ways",
+  "title": "Every other way in",
+  "goal": "Besides the sound, you can type a word the way it looks, from a shorter word inside it, or in one short-form stroke.",
+  "blocks": [
+    { "t": "h", "x": "As it looks" },
+    { "t": "p", "x": "Every word is also held the way its letters read, a syllable at a time, even where the dictionary hears something else. If you can read the word's syllables, you can type them." },
+    { "t": "table", "head": ["Word", "Outline", "What it shows"], "rows": [
+      ["{{contemplation}}", "[[contemplation|KOPB/+TEPL/+PHRAEU/+SHUPB]]", "*con* with an o, *tem* with an e"],
+      ["{{hour}}", "[[hour|H/+O/+UR]]", "an *h*, then *o*, then *ur*"]
+    ] },
+    { "t": "list", "items": [
+      "Each vowel letter may be short (`A`), long (`AEU`) or weak (`U`).",
+      "*c*, *g* and *s* may be hard or soft.",
+      "A silent *e* is optional: at the end (*table*) and before a consonant (*move* + *ment*)."
+    ] },
+    { "t": "h", "x": "A shorter word, then the rest" },
+    { "t": "p", "x": "If the start of a word is a word with its own one-stroke outline, strike that word, then spell the rest from one stroke up." },
+    { "t": "table", "head": ["Word", "Outline", "Pieces"], "rows": [
+      ["{{movement}}", "[[movement|PHOF/+PHEPBT]]", "*move* + *ment*"],
+      ["{{particular}}", "[[particular|PART/+EUBG/+UL/+AR]]", "*part* + *ic* + *ul* + *ar*"]
+    ] },
+    { "t": "h", "x": "A sound-alike with a star" },
+    { "t": "p", "x": "A word that sounds like a commoner one, and has no joins of its own, takes that word's path plus a star stroke after it: [[ok|O/+KAEU/+*]] follows *okay*; a name follows its sound-alike the same way ([[matt|PHAT/+*]])." },
+    { "t": "h", "x": "Short forms" },
+    { "t": "p", "x": "Most long words also have a one-stroke short form. The one you can work out: the **skeleton**. Keep the first consonants, the stressed vowel, and every consonant after it; drop the rest." },
+    { "t": "table", "head": ["Word", "Short form"], "rows": [
+      ["{{profitable}}", "[[profitable|PROFBLT]]"],
+      ["{{machete}}", "[[machete|PHEFPT]]"],
+      ["{{chemist}}", "[[chemist|KEFPLT]]"]
+    ] },
+    { "t": "p", "x": "Every word gets its skeleton. Other short forms (dropping an unstressed first syllable, shelling) are limited to the commonest 8,000 words, so they are not guessable. Learn the short forms for the long words you type often; use the joins for everything else." },
+    { "t": "h", "x": "Which way, when" },
+    { "t": "list", "ordered": true, "items": [
+      "Know a one-stroke form? Use it. (Lookup if you are not sure.)",
+      "A stem you know plus an ending? Join them (lesson 10).",
+      "A prefix or two words? Join those (lesson 11).",
+      "Otherwise sound it out, syllable by syllable (lesson 12).",
+      "Or spell it out as it looks, if that is how you see the word."
+    ] }
+  ],
+  "drill": {
+    "title": "Other ways in",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["contemplation", "KOPB/+TEPL/+PHRAEU/+SHUPB"], ["hour", "H/+O/+UR"], ["movement", "PHOF/+PHEPBT"],
+      ["particular", "PART/+EUBG/+UL/+AR"], ["ok", "O/+KAEU/+*"], ["matt", "PHAT/+*"],
+      ["profitable", "PROFBLT"], ["machete", "PHEFPT"], ["chemist", "KEFPLT"]
+    ]
+  }
+}

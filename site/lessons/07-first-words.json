@@ -1,0 +1,43 @@
+{
+  "id": "07-first-words",
+  "title": "Your first words",
+  "goal": "A one-syllable word is one stroke: the sounds it starts with, its vowel, the sounds it ends with. Say it, split it, strike it.",
+  "blocks": [
+    { "t": "h", "x": "Say it, split it, strike it" },
+    { "t": "list", "ordered": true, "items": [
+      "Say the word slowly. Find the **vowel sound**.",
+      "What comes before it? Those are left-hand keys (lesson 3).",
+      "What comes after? Those are right-hand keys (lessons 5 and 6).",
+      "Strike all of it at once."
+    ] },
+    { "t": "table", "head": ["Word", "Start", "Vowel", "End", "Stroke"], "rows": [
+      ["{{cat}}", "K", "A", "T", "[[cat|KAT]]"],
+      ["{{dog}}", "TK", "O", "G", "[[dog|TKOG]]"],
+      ["{{map}}", "PH", "A", "P", "[[map|PHAP]]"],
+      ["{{ship}}", "SH", "EU", "P", "[[ship|SHEUP]]"],
+      ["{{sun}}", "S", "U", "PB", "[[sun|SUPB]]"],
+      ["{{boat}}", "PW", "OE", "T", "[[boat|PWOET]]"],
+      ["{{moon}}", "PH", "AO", "PB", "[[moon|PHAOPB]]"],
+      ["{{sing}}", "S", "EU", "PBG", "[[sing|SEUPBG]]"],
+      ["{{hand}}", "H", "A", "PBD", "[[hand|HAPBD]]"],
+      ["{{best}}", "PW", "E", "FT", "[[best|PWEFT]]"]
+    ] },
+    { "t": "p", "x": "No vowel in your head? Say the word and **feel** where it opens your mouth: that is the vowel. A word with no start or no end just leaves that hand off ([[at|AT]], [[out|OUT]])." },
+    { "t": "try", "title": "Say it, split it, strike it", "items": [["cat", "KAT"], ["dog", "TKOG"], ["map", "PHAP"], ["ship", "SHEUP"], ["sun", "SUPB"]], "x": "Five to start with. The keys light up after a miss." },
+    { "t": "note", "kind": "rule", "x": "You are not memorising a word list here. You are learning to **derive** a stroke from a sound. That skill is what you fall back on for any word you have not memorised." },
+    { "t": "h", "x": "One stroke or more?" },
+    { "t": "p", "x": "If everything fits in steno order, it is one stroke. A word with two or more syllables usually needs more: you will build those with the join key from lesson 10. Many common ones already have a memorised one-stroke form, which is next." }
+  ],
+  "drill": {
+    "title": "First words",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["cat", "KAT"], ["dog", "TKOG"], ["map", "PHAP"], ["ship", "SHEUP"], ["sun", "SUPB"], ["wet", "WET"], ["hot", "HOT"],
+      ["boat", "PWOET"], ["moon", "PHAOPB"], ["sing", "SEUPBG"], ["hand", "HAPBD"], ["best", "PWEFT"], ["top", "TOP"],
+      ["sit", "SEUT"], ["set", "SET"], ["sat", "SAT"], ["hit", "HEUT"], ["hat", "HAT"], ["hut", "HUT"], ["hope", "HOEP"],
+      ["hide", "HAOEUD"], ["chip", "KHEUP"], ["check", "KHEBG"], ["fish", "TPEURB"], ["wash", "WARB"], ["tap", "TAP"],
+      ["nap", "TPHAP"], ["bit", "PWEUT"], ["bet", "PWET"], ["bat", "PWAT"], ["bite", "PWAOEUT"]
+    ]
+  }
+}

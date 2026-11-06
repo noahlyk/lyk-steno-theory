@@ -1,0 +1,66 @@
+{
+  "id": "10-endings",
+  "title": "Endings",
+  "goal": "A word you know, then one more stroke for its ending, with the join key held. Most endings are a single stroke.",
+  "blocks": [
+    { "t": "h", "x": "The rule" },
+    { "t": "p", "x": "Strike the stem the way you always do, then the ending's stroke **with `+`**. An ending is a syllable with its vowel dropped when that is still unique, so the chords are the same consonant keys you already know." },
+    { "t": "join", "stems": [["walk", "WAUBG"], ["play", "PHRAEU"], ["look", "HRAOBG"], ["dog", "TKOG"], ["rain", "RAEUPB"], ["pay", "PAEU"]],
+      "ends": [["-ing", "+-G"], ["-ed", "+-D"], ["-s", "+-S"], ["-z (dogs)", "+-Z"], ["-er", "+-R"], ["-ly", "+-L"], ["-y", "+AOE"], ["-ment", "+-PLT"], ["-ness", "+-PBS"]] },
+    { "t": "h", "x": "The common endings" },
+    { "t": "table", "head": ["Ending", "Stroke", "Example"], "rows": [
+      ["-s", "[[+-S]] / [[+-Z]]", "[[looks|HRAOBG/+-S]], [[dogs|TKOG/+-Z]]  (`-Z` when it sounds like z)"],
+      ["-ed", "[[+-D]]", "[[played|PHRAEU/+-D]]"],
+      ["-ing", "[[+-G]]", "[[walking|WAUBG/+-G]]"],
+      ["-er, -or", "[[+-R]]", "[[sailor|SAEUL/+-R]]"],
+      ["-est", "[[+-FT]]", "[[fastest|TPAS/+T-FT]]"],
+      ["-ly", "[[+-L]]", "[[kindly|KAOEUPBD/+-L]]"],
+      ["-y", "[[+AOE]]", "[[rainy|RAEUPB/+AOE]]"],
+      ["-en", "[[+-PB]]", "[[golden|TKPWOELD/+-PB]]"],
+      ["-ness", "[[+-PBS]]", "[[darkness|ARBG/+-PBS]]"],
+      ["-ment", "[[+-PLT]]", "[[payment|PAEU/+-PLT]]"],
+      ["-able, -ible", "[[+-BL]]", "[[readable|RAOED/+-BL]]"],
+      ["-ful", "[[+-FL]]", "[[careful|KAEUR/+-FL]]"],
+      ["-less", "[[+-LS]]", "[[careless|KAEUR/+-LS]]"],
+      ["-tion", "[[+-GS]]", "[[nation|TPHAEU/+-GS]]"]
+    ] },
+    { "t": "h", "x": "Endings that keep a vowel" },
+    { "t": "p", "x": "When dropping the vowel would land on another ending's stroke, it stays, so the two can be told apart." },
+    { "t": "table", "head": ["Ending", "Stroke", "Example"], "rows": [
+      ["-ish", "[[+-RB]]", "[[childish|AOEULD/+-RB]]"],
+      ["-ist", "[[+EUFT]]", "[[artist|ART/+EUFT]]"],
+      ["-ous", "[[+US]]", "[[famous|TPAEUPL/+US]]"],
+      ["-al", "[[+UL]]", "[[emotional|E/+PHOEGS/+UL]]"],
+      ["-ive", "[[+-F]]", "[[active|ABGT/+-F]]"],
+      ["-ic", "[[+-BG]]", "[[heroic|HEU/+ROE/+-BG]]"],
+      ["-age", "[[+-PBLG]]", "[[package|PABG/+-PBLG]]"],
+      ["-ance, -ence", "[[+UPBS]]", "[[presence|PREZ/+UPBS]]"],
+      ["-ize", "[[+AOEUZ]]", "[[modernize|PHOD/+-RPB/+AOEUZ]]"],
+      ["-ation", "[[+AEUGS]]", "[[information|EUPB/+TPORPL/+AEUGS]]"],
+      ["-ship", "[[+SH-P]]", "[[friendship|TPREPBD/+SH-P]]"],
+      ["-hood", "[[+HAOD]]", "[[childhood|AOEULD/+HAOD]]"],
+      ["-ward", "[[+WORD]]", "[[homeward|HOEPL/+WORD]]"]
+    ] },
+    { "t": "h", "x": "Two-stroke endings and stacking" },
+    { "t": "table", "head": ["Ending", "Strokes", "Example"], "rows": [
+      ["-ism", "[[+EUZ/+-PL]]", "[[tourism|TUR/+EUZ/+-PL]]"],
+      ["-ity", "[[+U/+TEU]]", "[[humidity|HAOUPLD/+U/+TEU]]"],
+      ["-ical", "[[+-BG/+UL]]", "[[chemical|KHEPL/+-BG/+UL]]"],
+      ["-ary, -ery, -ory", "[[+-R/+AOE]]", "[[dictionary|TKEUBG/+-GS/+-R/+AOE]]"]
+    ] },
+    { "t": "p", "x": "Endings stack: *needless* + `+-L`; *myself* is two words. A suffix stroke is read correctly even where the dictionary has no entry: `STKPW/+-D` still reads as *zed*, never *zd*." },
+    { "t": "note", "kind": "rule", "x": "If a word has its own one-stroke outline, use that. The join is the way in for the words you have not memorised: any stem you know, plus an ending." }
+  ],
+  "drill": {
+    "title": "Stem and ending",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      ["looks", "HRAOBG/+-S"], ["dogs", "TKOG/+-Z"], ["played", "PHRAEU/+-D"], ["walking", "WAUBG/+-G"], ["sailor", "SAEUL/+-R"],
+      ["fastest", "TPAS/+T-FT"], ["kindly", "KAOEUPBD/+-L"], ["rainy", "RAEUPB/+AOE"], ["golden", "TKPWOELD/+-PB"],
+      ["darkness", "ARBG/+-PBS"], ["payment", "PAEU/+-PLT"], ["readable", "RAOED/+-BL"], ["careful", "KAEUR/+-FL"],
+      ["careless", "KAEUR/+-LS"], ["nation", "TPHAEU/+-GS"], ["childish", "AOEULD/+-RB"], ["artist", "ART/+EUFT"], ["famous", "TPAEUPL/+US"],
+      ["active", "ABGT/+-F"], ["package", "PABG/+-PBLG"], ["presence", "PREZ/+UPBS"], ["childhood", "AOEULD/+HAOD"], ["tourism", "TUR/+EUZ/+-PL"]
+    ]
+  }
+}

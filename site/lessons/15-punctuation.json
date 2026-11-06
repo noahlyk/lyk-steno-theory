@@ -1,0 +1,62 @@
+{
+  "id": "15-punctuation",
+  "title": "Punctuation and commands",
+  "goal": "Marks, capitals and editing keys are pinned before any word is, so a word can never take their strokes.",
+  "blocks": [
+    { "t": "h", "x": "Why they come first" },
+    { "t": "p", "x": "Punctuation, commands and fingerspelling are reserved ahead of every word. A word that wanted a reserved stroke moves to its next-cheapest outline. The upside: these strokes are the same wherever you are." },
+    { "t": "h", "x": "Marks" },
+    { "t": "table", "head": ["Mark", "Stroke", "Others"], "rows": [
+      ["period `.`", "[[TP-PL]]", "[[-FP]] and many more"],
+      ["comma `,`", "[[KW-BG]]", "[[W-BG]], [[-RB]]"],
+      ["question `?`", "[[STPH]]", "[[H-F]]"],
+      ["exclamation `!`", "[[TP-BG]]", "[[SKHAPL]]"],
+      ["semicolon `;`", "[[SP-PT]]", ""],
+      ["colon `:`", "[[STP-FPLT]]", "[[STPH-FPLT]]"],
+      ["apostrophe", "[[-PBT]]", "glues to the word before"],
+      ["hyphen", "[[H-PB]]", "joins the words either side"],
+      ["en dash", "[[TPH-RB]]", "*2020* `TPH-RB` *2024*"],
+      ["open paren `(`", "[[P*PB]]", ""],
+      ["close paren `)`", "[[P*PBT]]", ""]
+    ] },
+    { "t": "p", "x": "Most marks have several strokes, for several contexts: plain, doubled, glued, or after a quote. Learn one per mark; the rest are there when you reach for them." },
+    { "t": "h", "x": "Capitals" },
+    { "t": "p", "x": "[[KPA]] capitalises the next word and keeps the space; [[KPA*]] does the same glued to the word before. That is how names are handled: lyk has no special outline for a name. A name types as its ordinary sound-alike outline, capitalised by this stroke first." },
+    { "t": "h", "x": "Commands" },
+    { "t": "table", "head": ["Does", "Stroke", "Does", "Stroke"], "rows": [
+      ["Return", "[[SKW-BGS]]", "Backspace", "[[PW*FP]]"],
+      ["Delete", "[[TK*EL]]", "Tab", "[[TA*B]]"],
+      ["Escape", "[[TPEFBG]]", "Home", "[[STPH-FR]]"],
+      ["Left", "[[STPH-R]]", "Right", "[[STPH-G]]"],
+      ["Up", "[[STPH-P]]", "Down", "[[STPH-B]]"],
+      ["Word left", "[[STPH-RB]]", "Word right", "[[STPH-BG]]"]
+    ] },
+    { "t": "p", "x": "Add the star to a movement stroke to **select** while you move: [[STPH*R]] is Shift+Left. `STPH` is the family; the right-hand keys say which direction." },
+    { "t": "note", "x": "F1 to F12 are `TPW` plus the number's own sound: [[TPWUPB]] is F1, [[TPWO]] is F2." }
+  ],
+  "drill": {
+    "title": "Punctuation and commands",
+    "check": "dict",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      { "p": "period", "o": ["TP-PL", "-FP"], "w": "{.}" },
+      { "p": "comma", "o": ["KW-BG", "W-BG"], "w": "{,}" },
+      { "p": "question mark", "o": ["STPH", "H-F"], "w": "{?}" },
+      { "p": "exclamation mark", "o": ["TP-BG"], "w": "{!}" },
+      { "p": "semicolon", "o": ["SP-PT"], "w": "{;}" },
+      { "p": "colon", "o": ["STP-FPLT"], "w": "{:}" },
+      { "p": "hyphen between words", "o": ["H-PB"], "w": "{^-^}" },
+      { "p": "capitalise next word", "o": ["KPA"], "w": "{}{-|}" },
+      { "p": "Return", "o": ["SKW-BGS"], "w": "{#Return}{^}" },
+      { "p": "Backspace", "o": ["PW*FP"], "w": "{#BackSpace}" },
+      { "p": "Delete", "o": ["TK*EL"], "w": "{#Delete}" },
+      { "p": "Tab", "o": ["TA*B"], "w": "{#Tab}{^}" },
+      { "p": "Escape", "o": ["TPEFBG"], "w": "{#Escape}" },
+      { "p": "cursor left", "o": ["STPH-R"], "w": "{#Left}{^}" },
+      { "p": "cursor right", "o": ["STPH-G"], "w": "{#Right}{^}" },
+      { "p": "cursor up", "o": ["STPH-P"], "w": "{#Up}{^}" },
+      { "p": "cursor down", "o": ["STPH-B"], "w": "{#Down}{^}" }
+    ]
+  }
+}

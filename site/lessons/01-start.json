@@ -1,0 +1,42 @@
+{
+  "id": "01-start",
+  "title": "Start here",
+  "goal": "One idea runs through all of lyk. Learn it, and the rest is vocabulary.",
+  "blocks": [
+    { "t": "h", "x": "The one idea" },
+    { "t": "p", "x": "lyk is steno where **every stroke after the first of a word carries a join key (`+`)**. A stroke without it always starts a new word. Nothing has to be guessed from the keys." },
+    { "t": "table", "head": ["You strike", "It reads", "Why"], "rows": [
+      ["[[walk|WAUBG]]", "walk", "No `+`, so it starts a word."],
+      ["[[WAUBG/+-G]]", "walking", "The second stroke has `+`, so it continues the word: -ing."],
+      ["[[+-G]]", "-ing", "Alone, a join-key stroke attaches to whatever came before."]
+    ] },
+    { "t": "p", "x": "Because a continuation can never be mistaken for a word, it can be one key: `-G` for -ing, `-D` for -ed, `-Z` for -s. Other theories patch word edges with extra keys or dropped vowels." },
+    { "t": "h", "x": "Reading an outline" },
+    { "t": "list", "items": [
+      "`/` separates the strokes of one word: [[WAUBG/+-G]].",
+      "`+` in front of a stroke is the join key, struck together with that stroke's other keys.",
+      "Keys always appear in **steno order**: `S T K P W H R`, then `A O * E U`, then `F R P B L G T S D Z`.",
+      "A `-` marks a stroke with only right-hand keys: [[-G]] is the G on the right, not on the left."
+    ] },
+    { "t": "note", "kind": "rule", "x": "Every word has exactly **one primary** one-stroke outline, the one this course teaches. Extra outlines exist, but they only take strokes nobody else needs, so you never have to choose." },
+    { "t": "explore", "x": "Try the board: strike keys together on your keyboard, or click them. Space is the join key." },
+    { "t": "h", "x": "How to learn it" },
+    { "t": "list", "ordered": true, "items": [
+      "**Board and sounds (lessons 2 to 7).** Learn where each sound lives. Drill until a chord comes out without thinking.",
+      "**Common words (8 and 9).** A few hundred briefs cover most of what you type. They are memorised, not derived.",
+      "**The join key (10 to 13).** Endings, prefixes, syllables. This is how you type any word you have not memorised, so you are never stuck.",
+      "**Beyond words (14 to 16).** Phrases, punctuation, commands, letters.",
+      "**Practice (17 and 18).** Edge cases, then a daily routine."
+    ] },
+    { "t": "p", "x": "Each lesson is short on purpose. Read it, point at the strokes, do the **drill** at the bottom. A drill passes at 90% right on the first try; your best score is saved in this browser." },
+    { "t": "h", "x": "Setup" },
+    { "t": "p", "x": "This site reads an ordinary keyboard the way Plover's QWERTY mode does: hold the keys of a stroke together, then let go. The home row and the row above it are the consonants, `C V` and `N M` the vowels, `T G` and `Y H` the star, and **Space is the join key**. You can also click keys on the board and press Enter stroke." },
+    { "t": "table", "head": ["Keys", "Steno"], "rows": [
+      ["`Q A`", "S-"], ["`W` `S`", "T- K-"], ["`E` `D`", "P- W-"], ["`R` `F`", "H- R-"],
+      ["`C` `V`", "A O"], ["`T G` / `Y H`", "*"], ["`N` `M`", "E U"],
+      ["`U` `J`", "-F -R"], ["`I` `K`", "-P -B"], ["`O` `L`", "-L -G"], ["`P` `;`", "-T -S"], ["`[` `'`", "-D -Z"], ["Space", "+ (join)"]
+    ] },
+    { "t": "p", "x": "On a real steno keyboard, use the dictionary files this project builds (see the main README) and bind your own key to `+`." },
+    { "t": "quiz", "q": "Which one starts a new word?", "opts": ["[[+-G]]", "[[WAUBG]]", "[[+AOE]]"], "a": 1, "why": "Only a stroke without the join key begins a word." }
+  ]
+}
