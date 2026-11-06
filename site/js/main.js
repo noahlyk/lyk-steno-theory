@@ -126,7 +126,7 @@ async function lessonPage(id) {
     app.append(el('h2', {}, data.drill.title ?? 'Chapter drill'), el('p', {}, data.drill.x ??
       `Pass mark: ${data.drill.pass ?? 90}% right on the first try.`), box);
     const drill = createDrill(box, data.drill.items, {
-      id, pass: data.drill.pass ?? 90, repeat: data.drill.repeat ?? 1, limit: data.drill.limit ?? 0, deferred: true,
+      id, pass: data.drill.pass ?? 90, repeat: data.drill.repeat ?? 1, limit: data.drill.limit ?? 0, notation: Boolean(data.drill.notation),
       onDone: ({ passed }) => { if (passed) { store.setRead(id); done.paint(); } },
     });
     teardown.push(() => drill.stop());

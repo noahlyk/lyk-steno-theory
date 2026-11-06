@@ -84,7 +84,8 @@ A lesson is JSON: `id`, `title`, `goal`, `blocks`, and an optional `drill`.
 - A drill is `{ title, pass, repeat, check, items }`. An item is `[prompt, outline, ...alternatives]`
   or `{ "p": prompt, "o": [outlines], "w": "the word it must be" }` when the prompt is not the
   dictionary's own text (punctuation, commands). `check: "none"` skips the dictionary check for
-  sound and key drills.
+  sound and key drills. `notation: true` makes the prompt a stroke drawn as written (`PHAP`, in the coloured outline style) and
+  reveals the word it makes (the item's `w`) on a hit.
 
 Keep a lesson short: one idea per heading, tables over paragraphs, and every outline a real one.
 

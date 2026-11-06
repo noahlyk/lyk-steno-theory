@@ -2,6 +2,7 @@
 
 import { boardLegend, createBoard } from './board.js';
 import { el, shuffle } from './dom.js';
+import { outlineEl } from './outline.js';
 import { loadEngine } from './engine.js';
 import { whenActive } from './input.js';
 import { formatStroke, parseOutline, sameKeys } from './steno.js';
@@ -16,7 +17,9 @@ export function createDrill(host, rawItems, opts = {}) {
   // `.word` is what the strokes must type
   const items = rawItems.map((it) => (Array.isArray(it) ? Object.assign([...it], { word: it[0] })
     : Object.assign([it.p, ...it.o], { word: it.w ?? it.p })));
-  const { id = null, pass = 90, repeat = 1, limit = 0, onDone = () => {}, title = '', deferred = false } = opts;
+  // notation: the prompt is a stroke drawn as written (`PHAP`) and the word it makes is revealed on a hit
+  const { id = null, pass = 90, repeat = 1, limit = 0, onDone = () => {}, title = '', notation = false } = opts;
+  const wordOf = new Map(rawItems.filter((it) => !Array.isArray(it) && it.w).map((it) => [it.p, it.w]));
   let queue = [];
   let at = 0;
   let cands = [];
@@ -112,7 +115,7 @@ export function createDrill(host, rawItems, opts = {}) {
     strokeAt = 0;
     typed = [];
     itemMissed = false;
-    prompt.replaceChildren(queue[at][0]);
+    prompt.replaceChildren(notation ? outlineEl(queue[at][0]) : queue[at][0]);
     answer.textContent = note;
     answer.className = note ? 'answer is-good' : 'answer';
     note = '';
@@ -173,7 +176,7 @@ export function createDrill(host, rawItems, opts = {}) {
       if (done) {
         if (!itemMissed) firstTry += 1;
         else store.clearMiss(queue[at][0]);
-        answer.textContent = `${done.text}  ✓`;
+        answer.textContent = notation && wordOf.has(queue[at][0]) ? `= “${wordOf.get(queue[at][0])}”  ✓` : `${done.text}  ✓`;
         answer.className = 'answer is-good';
         nextItem();
       } else {
