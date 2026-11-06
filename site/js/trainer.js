@@ -188,12 +188,15 @@ export function recordStroke(p, { target = [], used, ms, correct }) {
 }
 
 export function recordWord(p, { ms, strokes, misses }) {
-  p.words.push({ ms, strokes, misses });
+  p.words.push({ ms, strokes, misses, g: p.guide }); // g: the guide it was typed under
   if (p.words.length > HISTORY_LIMIT) p.words.splice(0, p.words.length - HISTORY_LIMIT);
   p.recent.push({ ms, strokes, misses });
   if (p.recent.length > ASSIST_WORDS) p.recent.splice(0, p.recent.length - ASSIST_WORDS);
   p.totalTyped += 1;
 }
+
+/** Words typed from memory (no diagram) since the last unlock: the only ones an unlock is judged on. */
+export const memoryStats = (p) => windowStats(p, p.words.filter((w) => w.g === GUIDE.MEMORY));
 
 /** Speed and accuracy over the newest `size` words (default: since the last unlock, up to WINDOW). */
 export function windowStats(p, words = p.words, size = WINDOW) {
@@ -219,22 +222,27 @@ function chordsOk(p, s) {
 }
 
 export function meetsTargets(p) {
-  const s = windowStats(p);
+  const s = memoryStats(p);
   return passes(s) && chordsOk(p, s);
 }
 
-/** Unlock the next key if the newest words clear the bar. The window restarts. */
+/**
+ * Unlock the next key if the newest words typed from memory clear the bar. The window restarts and
+ * the guide comes back in full: the new key has to be learned with the diagram, then faded again.
+ */
 export function unlockIfReady(p) {
-  if (p.unlocked >= KEY_ORDER.length || !meetsTargets(p)) return false;
+  if (p.guide !== GUIDE.MEMORY || p.unlocked >= KEY_ORDER.length || !meetsTargets(p)) return false;
   p.unlocked += 1;
   p.words = [];
+  p.guide = GUIDE.FULL;
+  p.sinceGuide = 0;
   return true;
 }
 
 /** Done: every key unlocked, and the newest words clear the bar with the diagram gone. */
 export function completeIfReady(p) {
   if (p.done || p.unlocked < KEY_ORDER.length || p.guide !== GUIDE.MEMORY) return false;
-  if (!passes(windowStats(p))) return false;
+  if (!passes(memoryStats(p))) return false;
   p.done = true;
   return true;
 }

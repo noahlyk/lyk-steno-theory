@@ -52,6 +52,9 @@ more unlocks whenever your newest words (20, at least 10) are fast and clean eno
   and clean the hints go, then the diagram (greyed, "From your head now..."); a run of misses brings
   one back. The stroke under each word is never hidden. Finishing needs every key unlocked and a
   passing run from memory, then confetti.
+- **Unlocks are earned from memory.** Only words typed with the diagram gone count towards the next
+  key, and unlocking one puts the full guide (diagram and hints) back, so every new key is learned
+  with help first and then faded out again.
 - **Words** come from `site/data/words.json`, using the dictionary's real outlines, so words of
   more than one stroke appear once the join key unlocks (last).
 - Weak chords get more of the stream (weakness-weighted picking, ported from steno-lessons).

@@ -210,13 +210,13 @@ export async function keysPage(app) {
     s.done.splice(0, Math.max(0, s.done.length - DONE_KEEP));
     s.queue.shift();
     // the numbers behind this word, taken before an unlock clears the judging window
-    const stats = P.windowStats(p);
+    const stats = P.memoryStats(p);
     let toast = false;
     const was = p.guide;
     if (P.unlockIfReady(p)) {
       toast = true;
       const name = P.KEY_ORDER[p.unlocked - 1];
-      say(p.unlocked >= P.KEY_ORDER.length ? 'Every key is unlocked. Now show it from memory.' : `Unlocked ${sound(name)}${name === '+' ? ' (the join key)' : ''}.`, 'good');
+      say(p.unlocked >= P.KEY_ORDER.length ? 'Every key is unlocked. Fade the guide, then show it from memory.' : `Unlocked ${sound(name)}${name === '+' ? ' (the join key)' : ''}. The guide is back: fade it again to unlock the next.`, 'good');
       s.queue = [];
     } else if (P.completeIfReady(p)) {
       toast = true;
@@ -290,12 +290,12 @@ export async function keysPage(app) {
   }
 
   function renderMetrics() {
-    const st = P.windowStats(p);
+    const st = P.memoryStats(p);
     const need = P.requiredAccuracy(st.wpm);
     const wpmOk = st.count && st.wpm >= P.MIN_WPM;
     const accOk = st.count >= P.MIN_WORDS && st.accuracy >= need;
     metrics.replaceChildren(
-      el('span', {}, `${Math.min(st.count, P.WINDOW)} words judged`),
+      el('span', {}, `${Math.min(st.count, P.WINDOW)} words judged from memory`),
       el('span', { class: wpmOk ? 'is-good' : '' }, `${Math.round(st.wpm)} wpm (${P.MIN_WPM}+ to unlock)`),
       el('span', { class: accOk ? 'is-good' : '' }, Number.isFinite(need) ? `${Math.round(st.accuracy * 100)}% clean (${Math.ceil(need * 100)}% needed at this speed)` : `${Math.round(st.accuracy * 100)}% clean`),
       el('span', {}, `${p.totalTyped} words typed in all`),

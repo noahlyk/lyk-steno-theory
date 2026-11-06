@@ -109,6 +109,15 @@ function drillItems(id, d) {
   if (P.requiredAccuracy(P.MIN_WPM - 1) !== Infinity) fail('keys: under the minimum speed nothing may pass');
   if (!P.passes({ count: P.MIN_WORDS, wpm: 60, accuracy: 0.76 })) fail('keys: 60 wpm at 76% should pass');
   if (P.passes({ count: P.MIN_WORDS, wpm: 20, accuracy: 0.76 })) fail('keys: 20 wpm at 76% should not pass');
+  // an unlock needs the words typed from memory, and brings the guide back in full
+  const gated = P.emptyProgress();
+  for (let i = 0; i < 30; i += 1) P.recordWord(gated, { ms: 600, strokes: 1, misses: 0 });
+  if (P.unlockIfReady(gated)) fail('keys: words typed with the diagram must not unlock a key');
+  gated.guide = P.GUIDE.MEMORY;
+  if (P.unlockIfReady(gated)) fail('keys: an unlock must be judged on words typed from memory only');
+  for (let i = 0; i < 12; i += 1) P.recordWord(gated, { ms: 600, strokes: 1, misses: 0 });
+  if (!P.unlockIfReady(gated)) fail('keys: a clean run from memory should unlock');
+  if (gated.guide !== P.GUIDE.FULL) fail('keys: unlocking a key must bring the full guide back');
   // a struggling typist gets the guide back
   const weak = P.emptyProgress();
   weak.guide = P.GUIDE.MEMORY;
