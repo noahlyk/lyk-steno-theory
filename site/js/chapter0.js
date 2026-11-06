@@ -2,8 +2,9 @@
 // drill at the bottom. It is optional, and says so.
 
 import { el } from './dom.js';
-import { keysPage } from './keys.js';
+import { CHAPTER0, keysPage } from './keys.js';
 import { renderBlocks } from './lesson.js';
+import { store } from './store.js';
 
 const BLOCKS = [
   { t: 'h', x: 'Why bother' },
@@ -26,7 +27,11 @@ export async function keysChapter(app, next) {
     ...renderBlocks(BLOCKS),
     el('h2', {}, 'The drill'));
   const stop = await keysPage(app);
-  app.append(el('div', { class: 'lessonfoot' }, el('span'),
+  const done = el('button', { class: 'btn', type: 'button' });
+  const paint = () => { done.textContent = store.isRead(CHAPTER0) ? 'Done ✓ (undo)' : 'Mark as Done'; done.classList.toggle('btn--done', store.isRead(CHAPTER0)); };
+  done.addEventListener('click', () => { store.setRead(CHAPTER0, !store.isRead(CHAPTER0)); paint(); });
+  paint();
+  app.append(el('div', { class: 'lessonfoot' }, done,
     el('a', { class: 'btn btn--primary', href: `#/lesson/${next.id}` }, `${next.title} →`)));
   return stop;
 }

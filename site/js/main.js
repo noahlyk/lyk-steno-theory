@@ -21,8 +21,7 @@ const flat = (c) => c.parts.flatMap((p) => p.lessons.map((l) => ({ ...l, part: p
 
 function state(l) {
   const d = store.drill(l.id);
-  if (d?.passed) return 'done';
-  if (store.isRead(l.id)) return 'read';
+  if (d?.passed || store.isRead(l.id)) return 'done';
   return 'todo';
 }
 
@@ -58,9 +57,10 @@ async function homePage() {
   setNav('home');
   const c = await course();
   const all = flat(c);
-  const nextId = all.find((l) => state(l) === 'todo')?.id;
   const keys = keysStatus();
   const keysDone = keys.done || keys.skipped;
+  // exactly one thing is "up next": chapter 0 until it is done or skipped, then the first lesson left
+  const nextId = keysDone ? all.find((l) => state(l) === 'todo')?.id : null;
   app.append(
     el('h1', {}, c.title),
     el('p', { class: 'lede' }, c.summary),
@@ -78,18 +78,19 @@ async function homePage() {
       el('span', { class: 'card__num' }, 'Chapter 0'),
       el('span', { class: 'card__title' }, 'Learn the keys'),
       el('span', { class: 'card__sum' }, 'A word stream that unlocks one key at a time, until you know where every sound lives.'),
-      el('span', { class: 'card__state' }, keys.done ? '✓ Done' : keys.skipped ? 'Skipped' : keys.unlocked > 6 ? `${keys.unlocked} of 23 keys unlocked` : 'Up next')));
+      el('span', { class: 'card__state' }, keys.done ? '✓ Done' : keys.skipped ? 'Skipped' : el('span', { class: 'card__cta' }, keys.unlocked > 6 ? `${keys.unlocked} of 23 keys · keep going →` : 'Up next · start here →'))));
   for (const part of c.parts) {
     map.append(el('h2', { class: 'part' }, part.title));
     for (const l of part.lessons) {
       const s = state(l);
       const d = store.drill(l.id);
-      map.append(el('a', { class: `card card--${s === 'todo' ? '' : s} ${l.id === nextId ? 'card--next' : ''}`, href: `#/lesson/${l.id}` },
+      map.append(el('a', { class: `card ${s === 'done' ? 'card--done' : ''} ${l.id === nextId ? 'card--next' : ''}`, href: `#/lesson/${l.id}` },
         el('span', { class: 'card__num' }, `Chapter ${l.num}`),
         el('span', { class: 'card__title' }, l.title),
         el('span', { class: 'card__sum' }, l.summary),
         el('span', { class: 'card__state' },
-          s === 'done' ? `✓ Passed, best ${d.best}%` : s === 'read' ? 'Read, drill not passed yet' : l.id === nextId ? 'Up next' : 'Not started')));
+          s === 'done' ? (d?.passed ? `✓ Done · best ${d.best}%` : '✓ Done')
+            : l.id === nextId ? el('span', { class: 'card__cta' }, 'Up next · start here →') : 'Not started')));
     }
   }
   app.append(map);
@@ -125,14 +126,14 @@ async function lessonPage(id) {
       `Pass mark: ${data.drill.pass ?? 90}% right on the first try.`), box);
     const drill = createDrill(box, data.drill.items, {
       id, pass: data.drill.pass ?? 90, repeat: data.drill.repeat ?? 1, limit: data.drill.limit ?? 0, deferred: true,
-      onDone: () => { store.setRead(id); },
+      onDone: ({ passed }) => { if (passed) store.setRead(id); },
     });
     teardown.push(() => drill.stop());
   }
   const prev = all[at - 1];
   const next = all[at + 1];
   const read = el('button', { class: 'btn', type: 'button' });
-  const paintRead = () => { read.textContent = store.isRead(id) ? 'Read ✓ (undo)' : 'Mark as read'; };
+  const paintRead = () => { read.textContent = store.isRead(id) ? 'Done ✓ (undo)' : 'Mark as Done'; read.classList.toggle('btn--done', store.isRead(id)); };
   read.addEventListener('click', () => { store.setRead(id, !store.isRead(id)); paintRead(); });
   paintRead();
   app.append(el('div', { class: 'lessonfoot' },
@@ -267,8 +268,8 @@ async function progressPage() {
     if (s === 'done') done += 1;
     bars.append(el('div', { class: 'bar' },
       el('a', { href: `#/lesson/${l.id}` }, `${l.num}. ${l.title}`),
-      el('div', { class: 'bar__track' }, el('div', { class: `bar__fill ${s === 'read' ? 'bar__fill--read' : ''}`, style: `width:${s === 'done' ? 100 : s === 'read' ? 50 : 0}%` })),
-      el('span', { class: 'mono' }, d ? `${d.best}% · ${d.wpm} wpm · ${d.runs} runs` : s === 'read' ? 'read' : '')));
+      el('div', { class: 'bar__track' }, el('div', { class: 'bar__fill', style: `width:${s === 'done' ? 100 : 0}%` })),
+      el('span', { class: 'mono' }, d ? `${d.best}% · ${d.wpm} wpm · ${d.runs} runs` : s === 'done' ? 'done' : '')));
   }
   const missed = Object.entries(store.missed).sort((a, b) => b[1] - a[1]).slice(0, 20);
   app.append(el('h1', {}, 'Progress'),

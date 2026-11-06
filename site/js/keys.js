@@ -52,10 +52,12 @@ function strokeEl(mask, held = null) {
   return out;
 }
 
+export const CHAPTER0 = 'chapter0'; // the id chapter 0 is marked done under
+
 /** What the other pages need: has this learner finished (or skipped) the key learning? */
 export function keysStatus() {
   const p = P.normalize(store.loadKeys());
-  return { done: p.done, skipped: p.skipped, unlocked: p.unlocked };
+  return { done: p.done || store.isRead(CHAPTER0), skipped: p.skipped, unlocked: p.unlocked };
 }
 
 export function markKeysSkipped(on = true) {
@@ -96,13 +98,11 @@ export async function keysPage(app) {
   const blind = el('div', { class: 'kblind' }, el('span', {}, 'From your head now…'));
   const boardWrap = el('div', { class: 'kboard' }, el('div', { class: 'boardbox__scroll kboard__scroll' }, boardHost, blind));
   const board = createBoard(boardHost);
-  const skip = el('button', { class: 'btn', type: 'button', onclick: () => { p.skipped = true; save(); renderTop(); } }, 'I already know steno: skip this');
   const weakRow = el('div', { class: 'boardbox__hint kweak' });
 
   app.append(
     guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
-      el('div', { class: 'row' }, skip),
       el('div', { class: 'progressbar' }, progressBar), metrics, weakRow,
       stream, status, boardWrap),
     el('p', { class: 'boardbox__hint' },
@@ -253,7 +253,6 @@ export async function keysPage(app) {
   }
 
   function renderTop() {
-    skip.hidden = p.done || p.skipped;
     guideRow.replaceChildren(el('span', { class: 'kguide__label' }, 'Guide'), ...GUIDES.map(([g, name]) => el('span', {
       class: `kguide__step${p.guide === g ? ' is-on' : ''}${p.guide < g ? ' is-gone' : ''}`,
     }, name)), ...(p.done ? [el('span', { class: 'kguide__done' }, 'All keys learned ✓')] : []));
