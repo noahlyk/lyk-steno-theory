@@ -45,7 +45,7 @@ export function initDock() {
       }, (held) => {
         board.press(held);
         if (held.size) live.textContent = formatStroke(held);
-      });
+      }, { priority: true });
     } else {
       board.clear();
     }

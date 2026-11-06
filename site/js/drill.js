@@ -3,7 +3,7 @@
 import { boardLegend, createBoard } from './board.js';
 import { el, shuffle } from './dom.js';
 import { loadEngine } from './engine.js';
-import { listen } from './input.js';
+import { whenActive } from './input.js';
 import { formatStroke, parseOutline, sameKeys } from './steno.js';
 import { store } from './store.js';
 
@@ -17,7 +17,6 @@ export function createDrill(host, rawItems, opts = {}) {
   const items = rawItems.map((it) => (Array.isArray(it) ? Object.assign([...it], { word: it[0] })
     : Object.assign([it.p, ...it.o], { word: it.w ?? it.p })));
   const { id = null, pass = 90, repeat = 1, limit = 0, onDone = () => {}, title = '', deferred = false } = opts;
-  let stopListening = () => {};
   let queue = [];
   let at = 0;
   let cands = [];
@@ -96,19 +95,9 @@ export function createDrill(host, rawItems, opts = {}) {
     started = 0;
     live = true;
     note = '';
-    loadEngine().then((e) => { engine = e; }).catch(() => {}); // without it a drill wants the listed outlines
-    for (const other of running) if (other !== api) other.halt();
-    attach();
+    region.enable(true);
     root.querySelectorAll('.result').forEach((n) => n.remove());
     nextItem(true);
-  }
-
-  function attach() {
-    stopListening();
-    stopListening = listen(submit, (keys) => {
-      held = keys;
-      boardCtl.press(keys);
-    });
   }
 
   function itemOutlines() {
@@ -248,7 +237,7 @@ export function createDrill(host, rawItems, opts = {}) {
 
   function finish() {
     live = false;
-    stopListening();
+    region.enable(false); // a finished drill takes no keys, so it does not hold them from anything else
     const total = queue.length;
     const accuracy = Math.round((firstTry / total) * 100);
     const mins = Math.max((Date.now() - started) / 60000, 0.01);
@@ -275,25 +264,21 @@ export function createDrill(host, rawItems, opts = {}) {
     onDone({ accuracy, wpm, passed });
   }
 
-  let watch = null;
-  const api = {
-    halt() { live = false; stopListening(); },
-    stop() { api.halt(); watch?.disconnect(); },
-    restart: begin,
-  };
+  // no Start button and no click: the drill listens whenever it is the one being looked at (see
+  // input.js), so any number of them can share a page and only that one takes keys
+  let warmed = false;
+  const region = whenActive(root, {
+    onStroke: submit,
+    onHeld: (keys) => { held = keys; boardCtl.press(keys); },
+    onActivate: () => {
+      if (warmed) return;
+      warmed = true;
+      loadEngine().then((e) => { engine = e; }).catch(() => {}); // without it a drill wants the listed outlines
+    },
+  });
+  const api = { stop() { live = false; region.dispose(); }, restart: begin };
   running.add(api);
-  if (deferred && typeof IntersectionObserver !== 'undefined') {
-    // no Start button: it begins when it is on screen (so the keyboard is not captured while the
-    // page is just being read) and lets the keys go again when it scrolls away
-    let begun = false;
-    watch = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) { stopListening(); return; }
-      if (!begun) { begun = true; begin(); } else if (queue.length && at < queue.length) { live = true; attach(); }
-    }, { threshold: 0.5 });
-    watch.observe(root);
-  } else {
-    begin();
-  }
+  begin();
   return api;
 }
 

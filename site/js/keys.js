@@ -6,7 +6,7 @@
 import { createBoard } from './board.js';
 import { confetti } from './confetti.js';
 import { el } from './dom.js';
-import { listen } from './input.js';
+import { whenActive } from './input.js';
 import { GROUP_OF, sound, strokeEl as strokeElOf } from './outline.js';
 import { store } from './store.js';
 import * as P from './trainer.js';
@@ -60,7 +60,6 @@ export async function keysPage(app) {
     kind: '',
     sinceLesson: 0,
   };
-  let stopListening = () => {};
 
   // ---- layout ----
   const guideRow = el('div', { class: 'kguide', 'aria-label': 'guide' });
@@ -115,14 +114,10 @@ export async function keysPage(app) {
     s.message = '';
     refill();
     startWord();
-    stopListening();
-    stopListening = listen(onStroke, onHeld);
     render();
   }
   function stop() {
     s.live = false;
-    stopListening();
-    stopListening = () => {};
     board.clear();
   }
 
@@ -284,14 +279,16 @@ export async function keysPage(app) {
   }
 
   render();
-  // no Start button: the words begin when this is on screen and the keys are let go when it is not
+  // no Start button: the words begin when this becomes the thing being looked at, and it only takes
+  // keys while it is (see input.js), so other boards and drills on the page are never fed by it
   let began = false;
-  let listening = false;
-  const pause = () => { if (listening) { stopListening(); listening = false; s.held = new Set(); } };
-  const watch = new IntersectionObserver(([e]) => {
-    if (!e.isIntersecting) { pause(); return; }
-    if (!began) { began = true; listening = true; begin(); } else if (s.live && !listening) { listening = true; stopListening = listen(onStroke, onHeld); }
-  }, { threshold: 0.4 });
-  watch.observe(stream.parentElement);
-  return () => { watch.disconnect(); stop(); };
+  const region = whenActive(stream.parentElement, {
+    onStroke,
+    onHeld,
+    onActivate: () => {
+      if (!began) { began = true; begin(); } else if (s.word) s.word.lastEnd = performance.now(); // time spent away is not typing time
+    },
+    onDeactivate: () => { s.held = new Set(); paintBoard(); renderStream(); },
+  });
+  return () => { region.dispose(); stop(); };
 }

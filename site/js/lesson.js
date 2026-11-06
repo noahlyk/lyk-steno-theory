@@ -5,7 +5,7 @@ import { createBoard } from './board.js';
 import { createDrill } from './drill.js';
 import { outlineEl } from './outline.js';
 import { el } from './dom.js';
-import { listen } from './input.js';
+import { whenActive } from './input.js';
 import { dictionary } from './data.js';
 import { formatStroke, parseOutline } from './steno.js';
 
@@ -92,33 +92,30 @@ function explore(b) {
     el('div', { class: 'boardbox__scroll' }, host), el('div', { class: 'row', style: 'margin-top:.5rem' }, clear));
   // the keyboard (or a steno machine) is read while the board is on screen: no click needed, and it
   // lets go of the keys when it scrolls away. Space is not a steno key, so the page still scrolls.
-  let stop = null;
   let timer = 0;
-  const startListening = () => {
-    if (stop) return;
-    hint.textContent = 'Strike keys together on your keyboard or steno machine. Q is the join key.';
-    stop = listen((s) => {
+  whenActive(box, {
+    onStroke: (s) => {
       clearTimeout(timer);
       keys.clear();
       for (const k of s) keys.add(k);
       paint();
       timer = setTimeout(() => { keys.clear(); paint(); }, 1500);
-    }, (held) => {
+    },
+    onHeld: (held) => {
       if (!held.size) return;
       clearTimeout(timer);
       keys.clear();
       for (const k of held) keys.add(k);
       paint();
-    });
-  };
-  const stopListening = () => {
-    stop?.();
-    stop = null;
-    clearTimeout(timer);
-  };
-  if (typeof IntersectionObserver !== 'undefined') {
-    new IntersectionObserver(([e]) => (e.isIntersecting ? startListening() : stopListening()), { threshold: 0.5 }).observe(box);
-  }
+    },
+    onActivate: () => { hint.textContent = 'Strike keys together on your keyboard or steno machine. Q is the join key.'; },
+    onDeactivate: () => {
+      clearTimeout(timer);
+      keys.clear();
+      paint();
+      hint.textContent = 'Click here or scroll to it, then strike keys together on your keyboard or steno machine.';
+    },
+  });
   return el('div', {}, b.x ? el('p', {}, b.x) : null, box);
 }
 
