@@ -7,6 +7,8 @@
   --muted: #6d6a60;
   --heading: #14130f;
   --link: #1f5fa8;
+  --key: #eceae3; --key-line: #d3cfc2; --key-text: #8d897c;
+  --c-left: #e8a24a; --c-vowel: #5b9bd5; --c-right: #a07ad8; --c-misc: #6fae7e;
   --left: #d9822b;
   --left-bg: #fbe9d3;
   --vowel: #2f7bc4;
@@ -26,7 +28,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15161a; --panel: #1b1d23; --raised: #22252d; --line: #2e323d;
-    --text: #dedbd3; --muted: #9296a1; --heading: #f3f0e8; --link: #8fb8e6;
+    --key: #23262e; --key-line: #343846; --key-text: #7b8090;
+    --key: #23262e; --key-line: #343846; --key-text: #7b8090;
+  --text: #dedbd3; --muted: #9296a1; --heading: #f3f0e8; --link: #8fb8e6;
     --left: #e8a24a; --left-bg: #3c2c17; --vowel: #5b9bd5; --vowel-bg: #1d3046;
     --right: #a98be0; --right-bg: #2c2342; --join: #5fbf8a; --join-bg: #183326;
     --ok: #6fae7e; --bad: #e0645c; --bad-bg: #3d1f1d; --code-bg: #262932;
@@ -120,27 +124,24 @@ tr:last-child td { border-bottom: 0; }
 .stroke:hover, .stroke:focus-visible, .stroke.is-lit { border-color: var(--join); background: var(--join-bg); outline: none; }
 .word { font-style: italic; }
 
-/* the board */
-.board {
-  --k: 2.6rem;
-  display: grid; grid-template-columns: repeat(10, var(--k)); grid-template-rows: repeat(3, var(--k));
-  gap: 0.28rem; width: max-content; max-width: 100%;
-}
-.board--compact { --k: 1.9rem; font-size: 0.8rem; gap: 0.2rem; }
+/* the board: Keymux's geometry (js/board.js); grey when idle, colour only on held or target keys */
+.board { --u: 2rem; position: relative; flex: none; }
+.board--compact { --u: 1.25rem; }
 .key {
-  display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 600;
-  border-radius: 8px; border: 1.5px solid var(--line); background: var(--raised); color: var(--muted);
-  padding: 0; transition: background 0.08s, border-color 0.08s;
+  position: absolute; display: flex; align-items: center; justify-content: center; padding: 0;
+  font-family: var(--mono); font-weight: 700; font-size: calc(var(--u) * 0.56); line-height: 1;
+  background: var(--key); color: var(--key-text); border: 1px solid var(--key-line);
+  transition: background 0.08s, border-color 0.08s;
 }
-.key:not(.is-target):not(.is-down):not(.is-miss):not(.is-extra) { border-color: color-mix(in srgb, var(--kc) 45%, var(--line)); color: color-mix(in srgb, var(--kc) 70%, var(--muted)); }
 button.key { cursor: pointer; }
-.key--left { --kc: var(--left); --kb: var(--left-bg); }
-.key--vowel { --kc: var(--vowel); --kb: var(--vowel-bg); }
-.key--right { --kc: var(--right); --kb: var(--right-bg); }
-.key--join { --kc: var(--join); --kb: var(--join-bg); }
-.key.is-target { background: var(--kb); border-color: var(--kc); color: var(--heading); }
-.key.is-down { background: var(--kc); border-color: var(--kc); color: #fff; }
-.key.is-miss { background: var(--bad-bg); border: 2px dashed var(--bad); color: var(--bad); }
+.key--left { --kc: var(--c-left); }
+.key--vowel { --kc: var(--c-vowel); }
+.key--right { --kc: var(--c-right); }
+.key--misc { --kc: var(--c-misc); }
+.key--bar { font-size: calc(var(--u) * 0.36); }
+.key.is-target, .key.is-down { background: var(--kc); border-color: var(--kc); color: #0b0d12; box-shadow: 0 0 calc(var(--u) * 0.5) color-mix(in srgb, var(--kc) 55%, transparent); }
+.key.is-down { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--kc); }
+.key.is-miss { border: 2px dashed var(--bad); color: var(--bad); }
 .key.is-extra { background: var(--bad); border-color: var(--bad); color: #fff; }
 .boardbox { margin: 0.9rem 0; padding: 0.9rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .boardbox__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; margin-bottom: 0.7rem; min-height: 1.7rem; }
@@ -211,11 +212,12 @@ button.key { cursor: pointer; }
 @media (max-width: 36rem) {
   .bar { grid-template-columns: 1fr auto; }
   .bar__track { grid-column: 1 / -1; order: 3; }
-  .board { --k: 2rem; }
-  .board--compact { --k: 1.5rem; font-size: 0.72rem; }
+  .board { --u: 1.55rem; }
+  .board--compact { --u: 1.1rem; }
   .prompt { font-size: 1.7rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .key, .progressbar > span { transition: none; } }
 
 .stage { position: sticky; top: 3.4rem; z-index: 5; box-shadow: 0 6px 10px -8px rgba(0,0,0,.35); }
 .stage .boardbox__head { margin-bottom: 0.4rem; }
+@media (max-height: 42rem) { .stage { position: static; } }

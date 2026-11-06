@@ -6,11 +6,11 @@
     { "t": "h", "x": "Three zones" },
     { "t": "table", "head": ["Zone", "Keys", "Job"], "rows": [
       ["Left hand (amber)", "`S T K P W H R`", "The sounds a syllable **starts** with."],
-      ["Thumbs (blue)", "`A O * E U`", "The **vowel**, and the star."],
-      ["Right hand (violet)", "`F R P B L G T S D Z`", "The sounds a syllable **ends** with."],
-      ["Join key (green)", "`+`", "Struck with a stroke to continue a word."]
+      ["Thumbs (blue)", "`A O E U`", "The **vowel**."],
+      ["Right hand (purple)", "`F R P B L G T S D Z`", "The sounds a syllable **ends** with."],
+      ["Join key and star (green)", "`+`, `*`", "`+` is the top half of the `S` key, above `S-`. Struck with a stroke to continue a word. `*` is the tiebreaker (lesson 9)."]
     ] },
-    { "t": "p", "x": "`S` on the left is one tall key; so is the `*`. Everything else is a top and bottom pair. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
+    { "t": "p", "x": "The left `S` key is split in two: `+` on top, `S-` below. The `*` is one tall key. The bar across the top is the `#` number bar, which lyk strokes do not use. Keys are grey until they are part of a stroke: colour only ever means *held*. The rest are top and bottom pairs. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
     { "t": "explore", "x": "Strike or click keys. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
     { "t": "h", "x": "Steno order" },
     { "t": "p", "x": "However you press them, keys are always written left to right in the same order:" },
@@ -21,7 +21,7 @@
     { "t": "list", "items": [
       "Press all the keys of a stroke at roughly the same time. Order does not matter.",
       "The stroke is sent when **every** key is up again.",
-      "Hold Space with a stroke for the join key. [[+-G]] is Space and `L` together: `L` is the right-hand `-G` key."
+      "Hold `Q` (the `+` key, above `S-`) with a stroke for the join key. [[+-G]] is `Q` and `L` together: `L` is the right-hand `-G` key."
     ] },
     { "t": "quiz", "q": "How is T on the right hand written alone?", "opts": ["[[T]]", "[[-T]]", "[[T-]]"], "a": 1, "why": "The hyphen says: right-hand keys only." }
   ],

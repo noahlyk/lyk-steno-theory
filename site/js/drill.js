@@ -69,7 +69,7 @@ export function createDrill(host, rawItems, opts = {}) {
     el('p', { class: 'boardbox__hint', style: 'text-align:center;margin:.5rem auto 0' },
       'Hold the keys of a stroke together (Plover QWERTY: ', el('code', {}, 'QWER'), ' ', el('code', {}, 'ASDF'), ', ',
       el('code', {}, 'CV'), ' ', el('code', {}, 'TG'), ' ', el('code', {}, 'NM'), ' ', el('code', {}, 'UIOP'), ' ', el('code', {}, 'JKL;'),
-      ', join key = Space), then let go. Or click keys and press Enter.'),
+      ', join key = Q), then let go. Or click keys and press Enter.'),
   );
   host.append(root);
 

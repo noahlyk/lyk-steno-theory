@@ -95,9 +95,9 @@ export function keyCount(outline) {
 }
 
 // The Plover QWERTY mapping, by physical key (`KeyboardEvent.code`), so it works on any layout.
-// Space is lyk's join key.
+// `Q` is lyk's join key: the `+` above `S-` on the board, with `A` as `S-` below it.
 export const QWERTY = {
-  KeyQ: 'S-', KeyA: 'S-',
+  KeyQ: '+', KeyA: 'S-',
   KeyW: 'T-', KeyS: 'K-',
   KeyE: 'P-', KeyD: 'W-',
   KeyR: 'H-', KeyF: 'R-',
@@ -109,7 +109,6 @@ export const QWERTY = {
   KeyO: '-L', KeyL: '-G',
   KeyP: '-T', Semicolon: '-S',
   BracketLeft: '-D', Quote: '-Z',
-  Space: '+',
 };
 
 /** Read-aloud name of a key, for the key chart. */

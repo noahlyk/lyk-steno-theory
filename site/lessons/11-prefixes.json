@@ -26,7 +26,7 @@
     { "t": "note", "x": "You do not need to know which. Both are in the dictionary; the prefix stroke always works." },
     { "t": "h", "x": "Two words in one" },
     { "t": "p", "x": "A word that is two words is the two words, second one joined: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]. This works for any compound you can split: *sun* + *light*." },
-    { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold Space with the second stroke." }
+    { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold Q with the second stroke." }
   ],
   "drill": {
     "title": "Prefixes and compounds",

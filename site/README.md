@@ -18,7 +18,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 18 lessons in 5 parts. The only place lesson text lives. |
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |
-| `js/steno.js` | Parses and writes strokes (`TKOG/+-Z`), and the QWERTY chord map (Space is the join key). |
+| `js/steno.js` | Parses and writes strokes (`TKOG/+-Z`), and the QWERTY chord map (`Q` is the join key). |
 | `js/board.js`, `js/input.js` | The on-screen board; chord capture (keys down together, stroke on release). |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
 | `js/lesson.js` | Renders a lesson's blocks, including the sticky board that lights up for any stroke you point at. |

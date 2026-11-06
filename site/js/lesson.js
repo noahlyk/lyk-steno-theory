@@ -142,7 +142,7 @@ function explore(b) {
   box.tabIndex = 0;
   box.addEventListener('focus', () => {
     if (stop) return;
-    hint.textContent = 'Listening: strike keys together. Space is the join key.';
+    hint.textContent = 'Listening: strike keys together. Q is the join key.';
     stop = listen((s) => {
       keys.clear();
       for (const k of s) keys.add(k);
