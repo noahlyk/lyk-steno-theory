@@ -32,6 +32,7 @@
       ["Word left", "[[STPH-RB]]", "Word right", "[[STPH-BG]]"]
     ] },
     { "t": "p", "x": "Add the star to a movement stroke to **select** while you move: [[STPH*R]] is Shift+Left. `STPH` is the family; the right-hand keys say which direction." },
+    { "t": "p", "x": "The movement strokes and Backspace go the moment the **first** key comes up, not the last, so you can **hold** `STPH` and tap `-R`, `-R`, `-R` to walk the cursor left, then tap `-P` to go up, with no lifting in between. This needs Keymux; the [reference page](#/ref/punctuation/send-on-the-first-key-up) has the full list and the one trap." },
     { "t": "note", "x": "F1 to F12 are `TPW` plus the number's own sound: [[TPWUPB]] is F1, [[TPWO]] is F2." }
   ],
   "drill": {
@@ -49,14 +50,14 @@
       { "p": "hyphen between words", "o": ["H-PB"], "w": "{^-^}" },
       { "p": "capitalise next word", "o": ["KPA"], "w": "{}{-|}" },
       { "p": "Return", "o": ["SKW-BGS"], "w": "{#Return}{^}" },
-      { "p": "Backspace", "o": ["PW*FP"], "w": "{#BackSpace}" },
+      { "p": "Backspace", "o": ["PW*FP"], "w": "{:firstup}{#BackSpace}" },
       { "p": "Delete", "o": ["TK*EL"], "w": "{#Delete}" },
       { "p": "Tab", "o": ["TA*B"], "w": "{#Tab}{^}" },
       { "p": "Escape", "o": ["TPEFBG"], "w": "{#Escape}" },
-      { "p": "cursor left", "o": ["STPH-R"], "w": "{#Left}{^}" },
-      { "p": "cursor right", "o": ["STPH-G"], "w": "{#Right}{^}" },
-      { "p": "cursor up", "o": ["STPH-P"], "w": "{#Up}{^}" },
-      { "p": "cursor down", "o": ["STPH-B"], "w": "{#Down}{^}" }
+      { "p": "cursor left", "o": ["STPH-R"], "w": "{:firstup}{#Left}{^}" },
+      { "p": "cursor right", "o": ["STPH-G"], "w": "{:firstup}{#Right}{^}" },
+      { "p": "cursor up", "o": ["STPH-P"], "w": "{:firstup}{#Up}{^}" },
+      { "p": "cursor down", "o": ["STPH-B"], "w": "{:firstup}{#Down}{^}" }
     ]
   }
 }

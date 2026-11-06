@@ -32,6 +32,7 @@
     { "t": "h", "x": "Punctuation, letters and keys" },
     { "t": "table", "head": ["Need", "Page"], "rows": [
       ["Marks, capitals, cursor and editing strokes", "[Punctuation and commands](#/ref/punctuation)"],
+      ["Hold a cursor chord and tap to repeat (Keymux)", "[Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)"],
       ["The alphabet, numbers, function keys, symbols, Ctrl and Alt chords", "[Fingerspelling, numbers and modifiers](#/ref/fingerspelling)"],
       ["What is pinned before any word", "[Reserved strokes](#/ref/reserved-strokes)"]
     ] },

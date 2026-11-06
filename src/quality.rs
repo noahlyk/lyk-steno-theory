@@ -215,6 +215,35 @@ fn no_generated_outline_collides_with_a_reserved_stroke() {
     assert!(collisions.is_empty(), "words colliding with a reserved stroke: {collisions:#?}");
 }
 
+/// Keymux's `{:firstup}` marker (send on the first key up, see the Reference page on
+/// punctuation and commands) belongs only on a one-stroke key command, and goes first so
+/// Plover reads the rest of the entry the same way: `{:firstup}{#Left}{^}`, never after `{^}`.
+/// It must never sit on anything that types text or changes spacing or case.
+#[test]
+fn firstup_marker_is_only_on_key_commands_and_comes_first() {
+    let commands: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/commands.json")).expect("commands parse");
+    let mut bad = Vec::new();
+    let mut count = 0;
+    for (outline, value) in &commands {
+        if !value.contains("{:firstup}") {
+            continue;
+        }
+        count += 1;
+        let rest = value.strip_prefix("{:firstup}").unwrap_or("");
+        let braces = rest.matches('{').count();
+        let ok = !outline.contains('/')
+            && rest.starts_with("{#")
+            && !rest.contains("{:firstup}")
+            && (braces == 1 || (braces == 2 && rest.ends_with("{^}")));
+        if !ok {
+            bad.push(format!("{outline:?}: {value:?}"));
+        }
+    }
+    assert!(count > 0, "no first-up entries at all: the cursor strokes lost their marker");
+    assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
+}
+
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and
 /// `data::fallback_pronunciations`) for any word `CMUdict` has no entry for at all - this is the
 /// regression guard that the fallback is actually wired in and still reaches a real number of

@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "70 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word."
+   "x": "70 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -604,6 +604,129 @@
      "Escape"
     ]
    ]
+  },
+  {
+   "t": "h3",
+   "x": "Send on the first key up"
+  },
+  {
+   "t": "p",
+   "x": "A stroke normally goes when its **last** key comes up. A dictionary entry that carries the marker `{:firstup}` goes when its **first** key comes up instead, and the keys still down **wait**: the next key you press makes a new stroke with them. So you hold most of a chord and tap one key, again and again, and each tap is a stroke. Letting go of the held keys alone sends nothing."
+  },
+  {
+   "t": "p",
+   "x": "Example: hold `STPH` (the left hand) and tap `-R` three times. That is [[STPH-R]] three times, Left, Left, Left. Without lifting the left hand, tap `-P`: [[STPH-P]], Up. Hold `*` as well and the same taps select ([[STPH*R]], Shift+Left). The rule for every entry below is the same: hold all but one key of the stroke, tap the last. In an entry the marker sits **in front of** the command and the `{^}`, `{:firstup}{#Left}{^}`, never after, so Plover reads the rest of it the same way. The marker types nothing and changes no spacing."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Group",
+    "Strokes",
+    "Hold, then tap"
+   ],
+   "rows": [
+    [
+     "Cursor",
+     "[[STPH-R]] [[STPH-P]] [[STPH-B]] [[STPH-G]]",
+     "hold `STPH`, tap `-R` `-P` `-B` `-G`: Left, Up, Down, Right"
+    ],
+    [
+     "Word at a time",
+     "[[STPH-RB]] [[STPH-BG]]",
+     "hold `STPH` and `-B`, tap `-R` for Ctrl+Left or `-G` for Ctrl+Right"
+    ],
+    [
+     "Line and page",
+     "[[STPH-FR]] [[STPH-LG]] [[STPH-RPG]] [[STPH-FBL]]",
+     "hold the stroke minus one key: Home, End, Page Up, Page Down. Home and End only gain a faster send; Page Up and Page Down gain the repeat"
+    ],
+    [
+     "Select",
+     "[[STPH*R]] [[STPH*P]] [[STPH*B]] [[STPH*G]]",
+     "hold `STPH*`, tap `-R` `-P` `-B` `-G`: extend the selection a character or line at a time"
+    ],
+    [
+     "Select by word",
+     "[[STPH*RB]] [[STPH*BG]]",
+     "hold `STPH*` and `-B`, tap `-R` or `-G`"
+    ],
+    [
+     "Select to line or page edge",
+     "[[STPH*FR]] [[STPH*LG]] [[STPH*RPG]] [[STPH*FBL]]",
+     "hold the stroke minus one key"
+    ],
+    [
+     "Backspace",
+     "[[PW*FP]] [[PW-FP]]",
+     "hold all but one of the keys (`PW` and `-F`, then tap `-P`): delete backwards a character at a time"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "**Why these:** each is a command whose natural use is to be repeated, the family shares one left-hand base so a held `STPH` is a cursor chord, and the key sets work out: hold the base plus all but one key, and the held keys plus the tapped key make exactly the next stroke of the family. Holding more keys changes the family in place: `STPH-R` to `STPH-RB` (word left) when you add `-B`, `STPH-R` to `STPH*R` (select) when you add `*`; both are first-up too, so the walk never has to stop."
+  },
+  {
+   "t": "p",
+   "x": "**Left out on purpose:**"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Entry",
+    "Why it does not carry the marker"
+   ],
+   "rows": [
+    [
+     "Everything that types text: words, briefs, phrases, suffixes",
+     "Sending early would send a half-struck word, and a held key would then join the next word. Never."
+    ],
+    [
+     "Punctuation, capitals, glued letters, the retro commands (`{*?}`, `{*<}`, `{>}`)",
+     "They change spacing or capitalisation, or act on the previous words; repeating or sending them early is a mistake, not a convenience."
+    ],
+    [
+     "[[SKW-BGS]] and [[R*R]] (Return), [[TPEFBG]] (Escape)",
+     "Return submits forms and chat boxes and Escape cancels things: you want the deliberate send of a stroke that has fully come up, and repeating them is rarely wanted."
+    ],
+    [
+     "[[TA*B]] (Tab), [[TK*EL]] (Delete)",
+     "Wanted repeated, but both strokes sit inside the keys of dozens of common words (89 and 26 words among the 5,000 most common: *taken*, *goodbye*, *girls*, *details*), and they are struck mid-sentence between words. Backspace has the same exposure (14 and 32) but is the key held most often, so it carries the marker."
+    ],
+    [
+     "[[TPW-R]] [[TPW-G]] (Alt+Left, Alt+Right)",
+     "83 and 38 common words contain these keys (*girl*, *together*, *forward*), and `TPW` is the F-key base, so holding it taps into F-keys. Browser history is a deliberate step, not a repeat."
+    ],
+    [
+     "[[SH-FT]] [[SR-RS]] (Ctrl+Home, Ctrl+End), [[TA*BT]] (Alt+Tab Tab)",
+     "Once-only jumps; nothing to repeat."
+    ],
+    [
+     "F1 to F12 and the clipboard and Super shortcuts (`KHR*F`, `KPH*F` and the rest)",
+     "Each is its own chord with no shared base, so there is no stroke to hold and tap. Nothing repeats usefully."
+    ],
+    [
+     "`{PLOVER:...}` commands, [[TKUPT]]",
+     "They are engine commands that run once."
+    ]
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "**The trap.** Keys still down when a first-up stroke goes join the next stroke. Lift the whole hand between a cursor move and the next word, as you do between any two strokes; if one finger lags, that key rides into the next stroke. Likewise, a word whose stroke is a first-up stroke plus more keys is only hit if a key of it lands after another key has already come up, which a chord struck together never does. The exposure among the 5,000 most common words is small: 3 for `STPH-R` and `STPH-RB` (*insurance*, *internal*), 15 to 19 for `STPH-P` `-B` `-G`, 0 to 6 for the rest of the family, 14 and 32 for Backspace."
+  },
+  {
+   "t": "h3",
+   "x": "What runs it"
+  },
+  {
+   "t": "p",
+   "x": "Sending on the first key up is Keymux's. A dictionary entry carrying `{:firstup}` is flagged by Keymux's translator, and its engine sends the stroke when the first key comes up. Setting `disable_first_up: true` in Keymux's config ignores the marker everywhere, and every stroke then goes on the last key up like any other. Dictionaries without the marker, such as the plain Lapwing one, behave as before."
+  },
+  {
+   "t": "p",
+   "x": "**Plover itself does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin and looks the name up; there is none called `firstup`, and Plover 5.4.2's lookup raises `KeyError: 'firstup'`. So in plain Plover the 22 strokes above would error instead of typing the key; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk is deployed to Keymux, so the 22 strokes carry it; a Plover user can register a one-line meta plugin named `firstup` that does nothing, or take a copy of `commands.json` with the marker removed. The strokes themselves never change either way."
   },
   {
    "t": "h3",
