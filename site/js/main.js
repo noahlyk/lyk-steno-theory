@@ -1,10 +1,12 @@
 // The app shell: a hash router and the pages (lesson map, lesson, practice, lookup, key chart, progress).
 
 import { chart, dictionary, index, lesson } from './data.js';
-import { createBoard } from './board.js';
 import { createDrill, stopAllDrills } from './drill.js';
 import { el, shuffle } from './dom.js';
 import { chip, inline, renderLesson } from './lesson.js';
+import { initDock } from './dock.js';
+import { parseOutline } from './steno.js';
+import { initPopover } from './popover.js';
 import { store } from './store.js';
 
 const app = document.getElementById('app');
@@ -157,22 +159,8 @@ async function lookupPage() {
   setNav('lookup');
   const input = el('input', { class: 'search', type: 'search', placeholder: 'a word (walking) or a stroke (KAT, TKOG/+-Z)', autofocus: true, 'aria-label': 'search' });
   const out = el('div', { class: 'hits' });
-  const stageHost = el('div');
-  const stageLabel = el('span', { class: 'boardbox__label' }, ' ');
-  const board = createBoard(stageHost, { compact: true });
-  const stage = {
-    peek() {},
-    cycle(outline) {
-      import('./steno.js').then(({ parseOutline }) => {
-        const s = parseOutline(outline);
-        if (!s) return;
-        board.show(s[0]);
-        stageLabel.textContent = outline;
-      });
-    },
-  };
   const row = (label, list) => (list.length ? [el('div', { class: 'hit__label' }, label),
-    el('div', { class: 'hit__list' }, list.map((o) => chip(o, stage)))] : []);
+    el('div', { class: 'hit__list' }, list.flatMap((o) => chip(o)))] : []);
   const search = async () => {
     const q = input.value.trim();
     out.replaceChildren();
@@ -181,13 +169,19 @@ async function lookupPage() {
     const hits = [];
     const lower = q.toLowerCase();
     if (words.has(lower)) hits.push(lower);
-    const asOutline = reverse.get(q);
+    const asOutline = reverse.get(q) ?? reverse.get(q.toUpperCase());
     if (asOutline) hits.push(...asOutline.filter((w) => !hits.includes(w)));
     for (const w of words.keys()) {
       if (hits.length >= 12) break;
       if (w.startsWith(lower) && !hits.includes(w)) hits.push(w);
     }
-    if (!hits.length) out.append(el('p', {}, 'Not in this dictionary. Any stroke the dictionary misses is still read back by the fallback, and any word can be joined from its syllables.'));
+    const asked = q.toUpperCase();
+    if (parseOutline(asked)) {
+      out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `the stroke ${asked}`),
+        ...row(asOutline ? 'reads as' : 'not in this dictionary, but you can see its keys', [asked]),
+        asOutline ? el('div', { class: 'hit__list' }, asOutline.slice(0, 6).map((w) => el('span', { class: 'word' }, w))) : null));
+    }
+    if (!hits.length && !parseOutline(asked)) out.append(el('p', {}, 'Not in this dictionary. Any stroke the dictionary misses is still read back by the fallback, and any word can be joined from its syllables.'));
     for (const w of hits) {
       const outs = words.get(w);
       const one = outs.filter((o) => !o.includes('/'));
@@ -201,10 +195,8 @@ async function lookupPage() {
   };
   input.addEventListener('input', search);
   app.append(el('h1', {}, 'Lookup'),
-    el('p', { class: 'lede' }, 'The 12,000 commonest words, plus every word the lessons teach. Search a word or a stroke.'),
+    el('p', { class: 'lede' }, 'The 12,000 commonest words, plus every word the lessons teach. Search a word or a stroke, then point at any stroke to see its keys.'),
     input,
-    el('div', { class: 'boardbox', style: 'margin-top:1rem' }, el('div', { class: 'boardbox__head' }, stageLabel,
-      el('span', { class: 'boardbox__hint' }, 'Click any stroke to light its keys.')), el('div', { class: 'boardbox__scroll' }, stageHost)),
     out);
 }
 
@@ -221,22 +213,14 @@ const SOUND = {
 async function chartPage() {
   setNav('chart');
   const data = await chart();
-  const stageHost = el('div');
-  const stageLabel = el('span', { class: 'boardbox__label' }, ' ');
-  const board = createBoard(stageHost, { compact: true });
-  const stage = { peek() {}, cycle(outline) {
-    import('./steno.js').then(({ parseOutline }) => { const s = parseOutline(outline); if (s) { board.show(s[0]); stageLabel.textContent = outline; } });
-  } };
   const plain = (obj) => Object.entries(obj).filter(([k]) => !k.includes('.') && !k.includes(' '));
   const table = (title, head, entries) => el('div', {}, el('h3', {}, title),
     el('div', { class: 'tablewrap' }, el('table', {}, el('thead', {}, el('tr', {}, head.map((h) => el('th', {}, h)))),
-      el('tbody', {}, entries.map(([a, b, c]) => el('tr', {}, el('td', {}, a), el('td', {}, chip(b, stage)), el('td', {}, c ? el('span', { class: 'word' }, c) : '')))))));
+      el('tbody', {}, entries.map(([a, b, c]) => el('tr', {}, el('td', {}, a), el('td', {}, chip(b)), el('td', {}, c ? el('span', { class: 'word' }, c) : '')))))));
   const sounds = (obj) => plain(obj).map(([k, v]) => [SOUND[k]?.[0] ?? k, v, SOUND[k]?.[1] ?? '']);
   app.append(el('div', { class: 'chart' },
     el('h1', {}, 'Key chart'),
-    el('p', { class: 'lede' }, 'Every sound and the keys it takes. This is generated from the rules file, so it is always what the dictionary uses.'),
-    el('div', { class: 'boardbox stage' }, el('div', { class: 'boardbox__head' }, stageLabel,
-      el('span', { class: 'boardbox__hint' }, 'Click any stroke.')), el('div', { class: 'boardbox__scroll' }, stageHost)),
+    el('p', { class: 'lede' }, 'Every sound and the keys it takes. This is generated from the rules file, so it is always what the dictionary uses. Point at any stroke to see its keys.'),
     el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--c-left)' }), 'left hand: starting sounds'),
       el('span', {}, el('i', { style: 'background:var(--c-vowel)' }), 'thumbs: vowels'),
       el('span', {}, el('i', { style: 'background:var(--c-right)' }), 'right hand: ending sounds'),
@@ -275,5 +259,7 @@ async function progressPage() {
       el('button', { class: 'btn', type: 'button', onclick: () => { if (confirm?.('Clear all saved progress?') !== false) { store.reset(); route(); } } }, 'Clear saved progress')));
 }
 
+initPopover();
+initDock();
 window.addEventListener('hashchange', route);
 route();

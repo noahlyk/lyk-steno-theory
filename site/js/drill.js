@@ -1,6 +1,6 @@
 // A drill: a prompt, a chord to strike, a hint after a miss, and a score at the end.
 
-import { createBoard } from './board.js';
+import { boardLegend, createBoard } from './board.js';
 import { el, shuffle } from './dom.js';
 import { listen } from './input.js';
 import { formatStroke, parseOutline, sameKeys } from './steno.js';
@@ -59,6 +59,7 @@ export function createDrill(host, rawItems, opts = {}) {
     title ? el('div', { class: 'try__title' }, title) : null,
     el('div', { class: 'boardbox__head' }, label, hint),
     el('div', { class: 'boardbox__scroll' }, board),
+    boardLegend(),
     prompt, answer,
     el('div', { class: 'progressbar' }, bar),
     stats,

@@ -19,9 +19,11 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |
 | `js/steno.js` | Parses and writes strokes (`TKOG/+-Z`), and the QWERTY chord map (`Q` is the join key). |
-| `js/board.js`, `js/input.js` | The on-screen board; chord capture (keys down together, stroke on release). |
+| `js/board.js`, `js/input.js` | The on-screen board and its key states (hint, held, wrong, missing) plus the legend; chord capture (keys down together, stroke on release; the newest listener gets the keys). |
+| `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
+| `js/dock.js`, `js/translate.js` | The "Try it" pad (button, or `?`): type with Plover QWERTY, the board glows the held keys, and `translate(strokes)` turns the strokes into words. All stroke-to-text lives behind that one function. |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
-| `js/lesson.js` | Renders a lesson's blocks, including the sticky board that lights up for any stroke you point at. |
+| `js/lesson.js` | Renders a lesson's blocks; every `[[word|OUTLINE]]` becomes a hover-board chip. |
 | `js/main.js`, `js/data.js`, `js/store.js` | The router and pages (lessons, practice, lookup, key chart, progress); data loading; progress in `localStorage`. |
 
 ## Writing a lesson

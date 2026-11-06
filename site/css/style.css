@@ -115,7 +115,7 @@ tr:last-child td { border-bottom: 0; }
 .steps { padding-left: 1.3rem; }
 .steps li { margin: 0.25rem 0; max-width: 68ch; }
 
-/* stroke chips: hover, focus or click lights the board */
+/* stroke chips: pointing at one (or focusing it) shows its keys on the hover board */
 .stroke {
   font-family: var(--mono); font-size: 0.92em; padding: 0.06em 0.45em; border-radius: 5px;
   background: var(--code-bg); border: 1px solid var(--line); cursor: pointer; white-space: nowrap;
@@ -139,10 +139,54 @@ button.key { cursor: pointer; }
 .key--right { --kc: var(--c-right); }
 .key--misc { --kc: var(--c-misc); }
 .key--bar { font-size: calc(var(--u) * 0.36); }
-.key.is-target, .key.is-down { background: var(--kc); border-color: var(--kc); color: #0b0d12; box-shadow: 0 0 calc(var(--u) * 0.5) color-mix(in srgb, var(--kc) 55%, transparent); }
-.key.is-down { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--kc); }
-.key.is-miss { border: 2px dashed var(--bad); color: var(--bad); }
-.key.is-extra { background: var(--bad); border-color: var(--bad); color: #fff; }
+/* key states, one look each (the legend under a drill's board shows them):
+   hint     tinted fill, solid coloured outline, coloured label, no glow: "press this"
+   held     solid colour with a glow: a key you are holding (a tick on it when it is a hinted key)
+   wrong    solid red with a cross: held, but the hint does not want it (also "extra" after a miss)
+   missing  dashed red outline that pulses: the hint wanted it and you did not hold it */
+.key.is-target, .sw.is-target {
+  background: color-mix(in srgb, var(--kc) 24%, var(--key)); border: 2px solid var(--kc); color: var(--kc);
+}
+.key.is-down, .sw.is-down {
+  background: var(--kc); border-color: var(--kc); color: #0b0d12;
+  box-shadow: 0 0 calc(var(--u, 1.2rem) * 0.55) color-mix(in srgb, var(--kc) 65%, transparent);
+}
+.board.has-target .key.is-down:not(.is-target), .key.is-extra, .sw.is-wrong {
+  background: var(--bad); border: 2px solid var(--bad); color: #fff; box-shadow: none;
+}
+.board.has-target .key.is-down.is-target::after { content: "\2713"; }
+.board.has-target .key.is-down:not(.is-target)::after, .key.is-extra::after { content: "\00d7"; }
+.key::after { position: absolute; top: 0.08em; right: 0.2em; font-size: 0.7em; line-height: 1; }
+.key.is-miss, .sw.is-miss {
+  background: var(--bad-bg); border: 2px dashed var(--bad); color: var(--bad); animation: missing 1s ease-in-out infinite;
+}
+@keyframes missing { 50% { opacity: 0.45; } }
+.keylegend { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; justify-content: center; margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted); }
+.keylegend span { display: inline-flex; align-items: center; gap: 0.4em; }
+.sw { --kc: var(--c-left); --u: 1.2rem; display: inline-block; width: 1.1em; height: 1.1em; border-radius: 4px; background: var(--key); border: 1px solid var(--key-line); }
+
+/* the hover board (js/popover.js) */
+.pop {
+  position: fixed; z-index: 30; pointer-events: none; padding: 0.55rem 0.7rem 0.7rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.5);
+}
+.pop[hidden] { display: none; }
+.pop__head { display: flex; gap: 0.8rem; align-items: baseline; margin-bottom: 0.45rem; min-height: 1.3rem; }
+.pop__label { font-family: var(--mono); color: var(--heading); font-size: 1.05rem; }
+.pop__note { color: var(--muted); font-size: 0.82rem; }
+
+/* the "Try it" typing pad (js/dock.js): collapsed to one button until asked for */
+.dock { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; max-width: calc(100vw - 2rem); }
+.dock__btn { box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.5); }
+.dock__panel { padding: 0.7rem 0.8rem 0.8rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.5); max-width: 100%; overflow-x: auto; }
+.dock__panel[hidden] { display: none; }
+.dock__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; margin-bottom: 0.6rem; }
+.dock__head .btn { padding: 0.15rem 0.6rem; }
+.dock__live { font-family: var(--mono); font-size: 1.1rem; color: var(--heading); margin-top: 0.5rem; min-height: 1.5rem; }
+.dock__out { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; font-size: 1.15rem; min-height: 1.7rem; }
+.dock__word.is-unknown { color: var(--bad); font-family: var(--mono); font-size: 0.95rem; }
+.dock__tape { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+
 .boardbox { margin: 0.9rem 0; padding: 0.9rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .boardbox__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; margin-bottom: 0.7rem; min-height: 1.7rem; }
 .boardbox__label { font-family: var(--mono); font-size: 1.15rem; color: var(--heading); }
@@ -216,8 +260,4 @@ button.key { cursor: pointer; }
   .board--compact { --u: 1.1rem; }
   .prompt { font-size: 1.7rem; }
 }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .key, .progressbar > span { transition: none; } }
-
-.stage { position: sticky; top: 3.4rem; z-index: 5; box-shadow: 0 6px 10px -8px rgba(0,0,0,.35); }
-.stage .boardbox__head { margin-bottom: 0.4rem; }
-@media (max-height: 42rem) { .stage { position: static; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .key, .progressbar > span { transition: none; } .key.is-miss, .sw.is-miss { animation: none; } }

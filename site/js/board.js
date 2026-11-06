@@ -1,3 +1,5 @@
+import { el } from './dom.js';
+
 // The on-screen steno board, laid out exactly like Keymux's overlay (src/overlay/geometry.rs and
 // render.rs) with the lyk config's `+: SplitKey(slot: "S-", half: Top)`: the `S-` key is split in
 // two, `+` on top and `S-` below, each as tall as a finger key; the `#` bar across every column,
@@ -92,12 +94,15 @@ export function createBoard(host, { onToggle = null, compact = false } = {}) {
   make('#', '#', 'misc', 0, BAR_Y, WIDTH, BAR_H, 'soft', 'soft', false).classList.add('key--bar');
 
   const reset = () => {
+    host.classList.remove('has-target');
     for (const el of els.values()) el.classList.remove('is-target', 'is-down', 'is-miss', 'is-extra');
   };
   return {
     clear: reset,
     show(keys) {
       reset();
+      // with a hint on, a held key the hint does not want turns red (see the key-state CSS)
+      host.classList.toggle('has-target', Boolean(keys?.size));
       for (const id of keys ?? []) els.get(id)?.classList.add('is-target');
     },
     press(keys) {
@@ -110,4 +115,12 @@ export function createBoard(host, { onToggle = null, compact = false } = {}) {
       for (const id of got) if (!want.has(id)) els.get(id)?.classList.add('is-extra');
     },
   };
+}
+
+/** The key-state legend: what a hinted, held, wrong and missing key each look like. */
+export function boardLegend() {
+  const item = (cls, text) => el('span', {}, el('i', { class: `sw ${cls}` }), text);
+  return el('div', { class: 'keylegend', 'aria-label': 'key colours' },
+    item('is-target', 'hold this'), item('is-down', 'you are holding'),
+    item('is-wrong', 'not needed'), item('is-miss', 'you missed'));
 }
