@@ -184,6 +184,8 @@ button.key { cursor: pointer; }
 .pop__sep { opacity: 0.35; }
 .pop__stroke.is-dim { opacity: 0.5; }
 .pop__label { font-family: var(--mono); color: var(--heading); font-size: 1.05rem; }
+.pop__def { margin-left: auto; font-family: var(--mono); font-size: 1.05rem; color: var(--ok); white-space: nowrap; }
+.pop__def--guess, .pop__def--raw { color: var(--muted); font-style: italic; }
 .pop__note { color: var(--muted); font-size: 0.82rem; }
 
 /* the "Try it" typing pad (js/dock.js): collapsed to one button until asked for */

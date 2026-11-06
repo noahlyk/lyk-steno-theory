@@ -319,7 +319,25 @@ export function createEngine({ dict, joins = {}, chart }) {
   const outlinesOf = (word) => [...(byWord.get(norm(word)) ?? [])].sort((a, b) =>
     (a.split('/').length - b.split('/').length) || (a.length - b.length));
 
-  return { translate, accepts, prefixOf, outlinesOf, resolveRun, parseOutline };
+  /**
+   * What an outline is defined as, in Plover's dictionary syntax where there is one: `{^ed}` for a
+   * continuation stroke that is a suffix (it attaches to the word before), the raw value of a
+   * punctuation or command entry (`{.}`), the word of an ordinary entry, and otherwise what the
+   * fallback reads the keys as. { text, how: 'suffix' | 'entry' | 'guess' | 'raw' }.
+   */
+  function define(strokes) {
+    const bits = strokes.map(bitsOf);
+    const lone = bits.every((b) => b & JOIN);
+    const sfx = !lone ? undefined : bits.length === 1 ? suffix.get(bits[0]) : bits.length === 2 ? suffix2.get(bits.join('/')) : undefined;
+    if (sfx !== undefined) return { text: `{^${sfx}}`, how: 'suffix' };
+    const t = outlineText(strokes);
+    if (punct.has(t)) return { text: punct.get(t), how: 'entry' };
+    if (entries.has(t)) return { text: entries.get(t), how: 'entry' };
+    const read = translate(strokes);
+    return { text: read.text, how: read.parts.some((p) => p.kind === 'raw') ? 'raw' : 'guess' };
+  }
+
+  return { translate, define, accepts, prefixOf, outlinesOf, resolveRun, parseOutline };
 }
 
 let loading = null;

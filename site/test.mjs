@@ -50,6 +50,15 @@ expect('prefix: the stem of a word', engine.prefixOf('ended', strokes('ED')), tr
 expect('prefix: nothing typed', engine.prefixOf('ended', []), true);
 expect('prefix: wrong', engine.prefixOf('ended', strokes('KAT')), false);
 
+// what an outline is defined as, in Plover's syntax where there is one
+const def = (o) => engine.define(strokes(o));
+expect('+-D is {^ed}', def('+-D').text, '{^ed}');
+expect('+-G is {^ing}', def('+-G').text, '{^ing}');
+expect('-FP is {.}', def('-FP').text, '{.}');
+expect('ED/+-D is the word', def('ED/+-D').text, 'ended');
+expect('ED/+-D is an entry', def('ED/+-D').how, 'entry');
+expect('SKP/+-R is read back, not an entry', def('SKP/+-R').how, 'guess');
+
 for (const e of errors) console.error('FAIL', e);
 console.log(`engine: ${total} outlines read back (${wrong} differ), ${errors.length} failures`);
 process.exit(errors.length ? 1 : 0);

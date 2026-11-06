@@ -5,12 +5,14 @@
 import { createBoard } from './board.js';
 import { el } from './dom.js';
 import { parseOutline } from './steno.js';
+import { define, ensure } from './translate.js';
 
 const STEP_MS = 900;
 let pop = null;
 let ctl = null;
 let label = null;
 let note = null;
+let def = null;
 let timer = 0;
 let shownFor = null;
 let touched = false;
@@ -20,7 +22,8 @@ function build() {
   ctl = createBoard(host, { compact: true });
   label = el('span', { class: 'pop__label' });
   note = el('span', { class: 'pop__note' });
-  pop = el('div', { class: 'pop', role: 'tooltip', hidden: true }, el('div', { class: 'pop__head' }, label, note), host);
+  def = el('span', { class: 'pop__def' });
+  pop = el('div', { class: 'pop', role: 'tooltip', hidden: true }, el('div', { class: 'pop__head' }, label, note, def), host);
   document.body.append(pop);
 }
 
@@ -46,6 +49,20 @@ function paint(strokes, outline, at) {
   note.textContent = strokes.length > 1 ? `stroke ${at + 1} of ${strokes.length}` : '';
 }
 
+// what the outline is defined as, top right: `{^ed}` for a suffix stroke, the word for an entry
+function paintDefinition(anchor, outline) {
+  const d = define(outline);
+  if (d) {
+    def.textContent = d.text;
+    def.className = `pop__def pop__def--${d.how}`;
+    def.title = { suffix: 'a suffix: attaches to the word before', entry: 'a dictionary entry', guess: 'not an entry: read back from the keys', raw: 'nothing reads this' }[d.how];
+    place(anchor);
+    return;
+  }
+  def.textContent = '';
+  ensure().then(() => { if (shownFor === anchor) paintDefinition(anchor, outline); }, () => {});
+}
+
 export function hidePreview() {
   clearInterval(timer);
   shownFor = null;
@@ -62,6 +79,7 @@ export function showPreview(anchor) {
   shownFor = anchor;
   let at = 0;
   paint(strokes, outline, at);
+  paintDefinition(anchor, outline);
   pop.hidden = false;
   place(anchor);
   if (strokes.length > 1) {
