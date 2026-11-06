@@ -106,7 +106,7 @@ button { font: inherit; color: inherit; }
 .card--next .card__title { color: var(--link); }
 .card__cta { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 999px; background: var(--link); color: var(--panel); font-weight: 700; font-size: 0.88rem; }
 .donetop { display: flex; justify-content: flex-end; margin-bottom: 0.6rem; }
-.btn--done { border: 2px solid var(--ok); color: var(--ok); font-weight: 700; background: color-mix(in srgb, var(--ok) 24%, var(--panel)); }
+.btn.btn--done, .btn.btn--done:hover { border: 2px solid var(--ok); color: var(--ok); font-weight: 700; background: color-mix(in srgb, var(--ok) 24%, var(--panel)); }
 
 /* lesson body */
 .lesson > * + * { margin-top: 0.9rem; }
