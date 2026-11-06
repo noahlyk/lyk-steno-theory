@@ -4,7 +4,7 @@
 import { el } from './dom.js';
 import { CHAPTER0, keysPage } from './keys.js';
 import { renderBlocks } from './lesson.js';
-import { store } from './store.js';
+import { doneControl } from './done.js';
 
 const BLOCKS = [
   { t: 'h', x: 'Why bother' },
@@ -27,11 +27,9 @@ export async function keysChapter(app, next) {
     ...renderBlocks(BLOCKS),
     el('h2', {}, 'The drill'));
   const stop = await keysPage(app);
-  const done = el('button', { class: 'btn', type: 'button' });
-  const paint = () => { done.textContent = store.isRead(CHAPTER0) ? 'Done ✓ (undo)' : 'Mark as Done'; done.classList.toggle('btn--done', store.isRead(CHAPTER0)); };
-  done.addEventListener('click', () => { store.setRead(CHAPTER0, !store.isRead(CHAPTER0)); paint(); });
-  paint();
-  app.append(el('div', { class: 'lessonfoot' }, done,
+  const done = doneControl(CHAPTER0);
+  app.append(el('div', { class: 'lessonfoot' }, done.foot,
     el('a', { class: 'btn btn--primary', href: `#/lesson/${next.id}` }, `${next.title} →`)));
+  if (done.top) app.prepend(done.top);
   return stop;
 }

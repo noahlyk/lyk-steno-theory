@@ -3,6 +3,7 @@
 import { chart, dictionary, index, lesson } from './data.js';
 import { createDrill, stopAllDrills } from './drill.js';
 import { keysChapter } from './chapter0.js';
+import { doneControl } from './done.js';
 import { keysStatus, markKeysSkipped } from './keys.js';
 import { el, shuffle } from './dom.js';
 import { chip, inline, renderLesson } from './lesson.js';
@@ -126,20 +127,18 @@ async function lessonPage(id) {
       `Pass mark: ${data.drill.pass ?? 90}% right on the first try.`), box);
     const drill = createDrill(box, data.drill.items, {
       id, pass: data.drill.pass ?? 90, repeat: data.drill.repeat ?? 1, limit: data.drill.limit ?? 0, deferred: true,
-      onDone: ({ passed }) => { if (passed) store.setRead(id); },
+      onDone: ({ passed }) => { if (passed) { store.setRead(id); done.paint(); } },
     });
     teardown.push(() => drill.stop());
   }
   const prev = all[at - 1];
   const next = all[at + 1];
-  const read = el('button', { class: 'btn', type: 'button' });
-  const paintRead = () => { read.textContent = store.isRead(id) ? 'Done ✓ (undo)' : 'Mark as Done'; read.classList.toggle('btn--done', store.isRead(id)); };
-  read.addEventListener('click', () => { store.setRead(id, !store.isRead(id)); paintRead(); });
-  paintRead();
+  const done = doneControl(id);
   app.append(el('div', { class: 'lessonfoot' },
     prev ? el('a', { class: 'btn', href: `#/lesson/${prev.id}` }, `← ${prev.title}`) : el('span'),
-    read,
+    done.foot,
     next ? el('a', { class: 'btn btn--primary', href: `#/lesson/${next.id}` }, `${next.title} →`) : el('a', { class: 'btn', href: '#/practice' }, 'Practice →')));
+  if (done.top) app.prepend(done.top);
 }
 
 async function practicePage() {
