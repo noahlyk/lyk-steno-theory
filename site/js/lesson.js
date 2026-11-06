@@ -47,14 +47,11 @@ const BLOCKS = {
     el('tbody', {}, b.rows.map((r) => el('tr', {}, r.map((c) => el('td', {}, inline(String(c))))))))),
   explore: (b) => explore(b),
   try: (b) => {
-    const box = el('div', { class: 'try' });
-    const start = el('button', { class: 'btn btn--primary', type: 'button' }, b.start ?? 'Try it');
-    start.addEventListener('click', () => {
-      start.remove();
-      createDrill(box, b.items, { title: b.title ?? 'Try it', pass: 0, repeat: b.repeat ?? 1 });
-    });
-    box.append(el('div', { class: 'try__title' }, b.title ?? 'Try it'),
-      el('p', {}, b.x ?? `${b.items.length} to type. The keys light up after a miss.`), start);
+    const box = el('div', { class: 'try' },
+      el('div', { class: 'try__title' }, b.title ?? 'Try it'),
+      el('p', {}, b.x ?? `${b.items.length} to type. The keys light up after a miss.`));
+    // starts by itself when it is on screen (no Start button)
+    createDrill(box, b.items, { pass: 0, repeat: b.repeat ?? 1, deferred: true });
     return box;
   },
   quiz: (b) => quiz(b),

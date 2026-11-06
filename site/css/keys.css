@@ -62,7 +62,9 @@
 .kstatus--good { color: var(--ok); font-weight: 600; }
 .kmetrics .is-good { color: var(--ok); font-weight: 600; }
 .kweak { text-align: center; min-height: 1.3rem; }
-.kboard { display: flex; justify-content: center; }
+.kboard { display: flex; justify-content: center; margin-top: 0.8rem; }
+.kboard .board { --u: 3rem; }
+@media (max-width: 36rem) { .kboard .board { --u: 1.85rem; } }
 .kboard__scroll { position: relative; }
 /* the diagram when it is no longer a crutch: greyed, its letters gone, a note across it */
 .kboard.is-blind .board { filter: grayscale(1); opacity: 0.35; }

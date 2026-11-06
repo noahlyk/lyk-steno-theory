@@ -94,8 +94,8 @@ export async function keysPage(app) {
   const progressBar = el('span');
   const boardHost = el('div');
   const blind = el('div', { class: 'kblind' }, el('span', {}, 'From your head now…'));
-  const boardWrap = el('div', { class: 'boardbox kboard' }, el('div', { class: 'boardbox__scroll kboard__scroll' }, boardHost, blind));
-  const board = createBoard(boardHost, { compact: true });
+  const boardWrap = el('div', { class: 'kboard' }, el('div', { class: 'boardbox__scroll kboard__scroll' }, boardHost, blind));
+  const board = createBoard(boardHost);
   const skip = el('button', { class: 'btn', type: 'button', onclick: () => { p.skipped = true; save(); renderTop(); } }, 'I already know steno: skip this');
   const weakRow = el('div', { class: 'boardbox__hint kweak' });
 
@@ -103,9 +103,8 @@ export async function keysPage(app) {
     guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
       el('div', { class: 'row' }, skip),
-      stream, status,
-      el('div', { class: 'progressbar' }, progressBar), metrics, weakRow),
-    boardWrap,
+      el('div', { class: 'progressbar' }, progressBar), metrics, weakRow,
+      stream, status, boardWrap),
     el('p', { class: 'boardbox__hint' },
       'Hold the keys of a stroke together on your keyboard (Plover QWERTY: ', el('code', {}, 'QWER ASDF'), ' left hand, ',
       el('code', {}, 'C V'), ' and ', el('code', {}, 'N M'), ' thumbs, ', el('code', {}, 'T'), ' star, ', el('code', {}, 'UIOP JKL;'),
