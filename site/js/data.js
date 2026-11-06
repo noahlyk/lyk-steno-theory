@@ -22,7 +22,12 @@ export async function dictionary() {
   if (dict) return dict;
   dict = (async () => {
     const { words } = await getJson('data/words.json');
-    const map = new Map(Object.entries(words));
+    // outlines on the number bar (`#KOPL`) have no key on the board, so they are not offered
+    const map = new Map();
+    for (const [w, outs] of Object.entries(words)) {
+      const typable = outs.filter((o) => !o.includes('#'));
+      if (typable.length) map.set(w, typable);
+    }
     const reverse = new Map();
     for (const [w, outs] of map) {
       for (const o of outs) {
