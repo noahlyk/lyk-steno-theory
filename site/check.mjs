@@ -259,6 +259,14 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   }
 }
 
+{
+  // the central hover enhancer (js/hover.js) must be started by the app and styled
+  const main = readFileSync(new URL('js/main.js', new URL('./', import.meta.url)), 'utf8');
+  if (!/initHover\(app\)/.test(main)) fail('hover: main.js does not call initHover(app)');
+  const css = readFileSync(new URL('css/style.css', new URL('./', import.meta.url)), 'utf8');
+  if (!/^\.hov\s*\{/m.test(css)) fail('hover: css/style.css has no .hov rule');
+}
+
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);

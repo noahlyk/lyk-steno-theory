@@ -11,6 +11,7 @@ import { initDock } from './dock.js';
 import { initHid } from './hid.js';
 import { parseOutline } from './steno.js';
 import { initPopover } from './popover.js';
+import { initHover } from './hover.js';
 import { hitRows, refHome, refPageView, searchRef } from './reference.js';
 import { store } from './store.js';
 
@@ -244,7 +245,7 @@ async function chartPage() {
   const plain = (obj) => Object.entries(obj).filter(([k]) => !k.includes('.') && !k.includes(' '));
   const table = (title, head, entries) => el('div', {}, el('h3', {}, title),
     el('div', { class: 'tablewrap' }, el('table', {}, el('thead', {}, el('tr', {}, head.map((h) => el('th', {}, h)))),
-      el('tbody', {}, entries.map(([a, b, c]) => el('tr', {}, el('td', {}, a), el('td', {}, chip(b)), el('td', {}, c ? el('span', { class: 'word' }, c) : '')))))));
+      el('tbody', {}, entries.map(([a, b, c]) => el('tr', {}, el('td', { 'data-nohover': '' }, a), el('td', {}, chip(b)), el('td', {}, c ? el('span', { class: 'word' }, c) : '')))))));
   const sounds = (obj) => plain(obj).map(([k, v]) => [SOUND[k]?.[0] ?? k, v, SOUND[k]?.[1] ?? '']);
   app.append(el('div', { class: 'chart' },
     el('h1', {}, 'Key chart'),
@@ -281,13 +282,14 @@ async function progressPage() {
     el('p', { class: 'lede' }, `${done} of ${all.length} chapter drills passed. Saved in this browser only.`),
     bars,
     el('h2', {}, 'Words you miss most'),
-    missed.length ? el('div', { class: 'hit__list' }, missed.map(([w, n]) => el('span', { class: 'stroke' }, `${w} ×${n}`)))
+    missed.length ? el('div', { class: 'hit__list' }, missed.map(([w, n]) => el('span', { class: 'stroke' }, el('span', { class: 'word' }, w), ` ×${n}`)))
       : el('p', {}, 'None yet.'),
     el('div', { class: 'row', style: 'margin-top:2rem' },
       el('button', { class: 'btn', type: 'button', onclick: () => { if (confirm?.('Clear all saved progress?') !== false) { store.reset(); route(); } } }, 'Clear saved progress')));
 }
 
 initPopover();
+initHover(app);
 initDock();
 initHid(document.getElementById('hid-host'));
 window.addEventListener('hashchange', route);

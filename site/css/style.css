@@ -131,6 +131,9 @@ tr:last-child td { border-bottom: 0; }
 }
 .stroke:hover, .stroke:focus-visible, .stroke.is-lit { border-color: var(--join); background: var(--join-bg); outline: none; }
 .word { font-style: italic; }
+/* any word or outline that hover.js found in the dictionary: a faint dotted underline, same everywhere */
+.hov { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: help; }
+.hov:hover, .hov:focus-visible { text-decoration-color: var(--join); background: var(--join-bg); border-radius: 3px; outline: none; }
 
 /* the board: Keymux's geometry (js/board.js); grey when idle, colour only on held or target keys */
 .board { --u: 2.6rem; position: relative; flex: none; }

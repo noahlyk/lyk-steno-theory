@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine } from './js/engine.js';
 import { parseOutline } from './js/steno.js';
+import { classify, classifyList } from './js/hovermatch.js';
 import { store } from './js/store.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -58,7 +59,50 @@ expect('+-G is {^ing}', def('+-G').text, '{^ing}');
 expect('-FP is {.}', def('-FP').text, '{.}');
 expect('ED/+-D is the word', def('ED/+-D').text, 'ended');
 expect('ED/+-D is an entry', def('ED/+-D').how, 'entry');
-expect('SKP/+-R is read back, not an entry', def('SKP/+-R').how, 'guess');
+expect('SKP/+-L is read back, not an entry', def('SKP/+-L').how, 'guess');
+
+// what hover.js may put a board on (the same dictionary shape data.js builds)
+{
+  const dict = { words: new Map(), reverse: new Map() };
+  for (const [w, outs] of Object.entries(words)) {
+    const typable = outs.filter((o) => !o.includes('#'));
+    if (!typable.length) continue;
+    dict.words.set(w, typable);
+    for (const o of typable) dict.reverse.set(o, [...(dict.reverse.get(o) ?? []), w]);
+  }
+  const hit = (what, text, want) => expect(`hover ${what}`, classify(text, dict), want);
+  hit('word ends', 'ends', words.ends[0]);
+  hit('word girls (best outline only)', 'girls', words.girls[0]);
+  hit('word with spaces round it', ' ends ', words.ends[0]);
+  hit('outline KAT (a real entry)', 'KAT', 'KAT');
+  hit('outline TKPWAEUPL', 'TKPWAEUPL', 'TKPWAEUPL');
+  hit('outline ED/+-D', 'ED/+-D', 'ED/+-D');
+  hit('suffix stroke -D', '-D', '-D');
+  hit('left-hand pattern S-', 'S-', 'S-');
+  hit('the star', '*', '*');
+  hit('English in capitals AND', 'AND', null);
+  hit('English in capitals NOTE', 'NOTE', null);
+  hit('a one-letter key name A', 'A', null);
+  hit('bare key group TKPW (not an entry)', 'TKPW', null);
+  hit('empty stroke between slashes', 'A//B', null);
+  hit('lone join key', '+', null);
+  hit('lone hyphen', '-', null);
+  hit('hyphenated English', 'E-MAIL', null);
+  hit('a word the dictionary lacks', 'zzzzqx', null);
+  hit('a sentence', 'ends the line', null);
+  hit('mixed case', 'Ends', null);
+  hit('a number', '12', null);
+  hit('a one-letter word', 'a', null);
+  hit('code-ish text', 'foo()', null);
+  hit('a path', 'rules/words.toml', null);
+  expect('furniture word in a cell', classify('no', dict, true), null);
+  expect('furniture word in code', classify('no', dict, false), words.no[0]);
+  const list = classifyList('ends, girls', dict, true);
+  expect('list pieces', list?.map((p) => `${p.outline ? 'W' : 's'}:${p.text}`).join('|'), 'W:ends|s:, |W:girls');
+  expect('list with a non-match', classifyList('ends, zzzzqx', dict), null);
+  expect('prose is not a list', classifyList('ends the line', dict), null);
+  expect('plain separator-only', classifyList(', ', dict), null);
+}
 
 // a run with the keys shown counts as a run but never sets the best
 store.recordRun('t-peek', { accuracy: 80, wpm: 30, pass: 90 });

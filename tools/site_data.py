@@ -86,6 +86,45 @@ def lesson_claims(lesson):
     return claims
 
 
+SHOWN = re.compile(r'`([a-z][a-z\'-]+)`|\{\{([a-z][a-z\'-]+)\}\}')
+
+
+def shown_words(lesson):
+    """Lower-case words the page shows as code, as {{italic}} or as a whole table cell or list item:
+    the site's hover board (site/js/hover.js) puts their outline on them, so words.json must hold them."""
+    found = set()
+
+    def cell(text):
+        for part in re.split(r'\s*[,;]\s*|\s+/\s+', text.strip()):
+            if re.fullmatch(r"[a-z][a-z'-]+", part):
+                found.add(part)
+
+    def walk(value):
+        if isinstance(value, str):
+            for m in SHOWN.finditer(value):
+                found.add(m.group(1) or m.group(2))
+        elif isinstance(value, list):
+            for v in value:
+                walk(v)
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                if k == 'rows':
+                    for row in v:
+                        for c in row:
+                            cell(str(c))
+                elif k == 'items' and lesson_blocks_list(v):
+                    for i in v:
+                        cell(i)
+                else:
+                    walk(v)
+    walk(lesson['blocks'])
+    return found
+
+
+def lesson_blocks_list(items):
+    return isinstance(items, list) and all(isinstance(i, str) for i in items)
+
+
 def typable(outline):
     """The site's board has no number bar or spelling marker, so outlines using them cannot be struck."""
     return '#' not in outline and '~' not in outline
@@ -159,7 +198,8 @@ def main():
     # words.json
     rank = ranks()
     top = sorted((w for w in by_word if w in rank and w.isalpha()), key=lambda w: rank[w])[:TOP]
-    pick = set(top) | {w for w in wanted if w in by_word}
+    shown = set().union(*(shown_words(l) for l in lessons)) if lessons else set()
+    pick = set(top) | {w for w in wanted | shown if w in by_word}
     words = {}
     for w in pick:
         outs = by_word[w]
@@ -177,7 +217,7 @@ def main():
     with open(os.path.join(SITE, 'data', 'words.json'), 'w') as f:
         json.dump({'words': dict(sorted(words.items(), key=lambda kv: rank.get(kv[0], 10**9)))}, f, separators=(',', ':'))
     print(f'words.json: {len(words)} words')
-    write_engine(files, set(top) | {w for w in wanted if w in by_word}, rank)
+    write_engine(files, pick, rank)
 
     # chart.json
     rules = tomllib.load(open(path('rules', 'plover.toml'), 'rb'))
