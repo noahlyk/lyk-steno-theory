@@ -5,6 +5,32 @@
 lyk writes word boundaries explicitly instead of leaving them to be inferred. Every stroke after
 the first one of a word carries a join key (`+`); a stroke without it always starts a new word.
 
+## The clearest example: one key, a word and an ending
+
+The right-hand `D` is both *do* and *-ed*:
+
+| Strokes | Reads |
+|---|---|
+| `-D` | *do* (a word: no join key) |
+| `ED/+-D` | *ended* (the same `-D` with `+` is the ending *-ed*) |
+| `ED` `-D` | *end do* (without `+`, the same two strokes are two words) |
+
+A theory with no join key has to give the suffix the bare key (Plover's `-D` is `{^ed}`, always
+attaching to the word before), so *do* cannot have it. Here nothing about the keys decides, only
+the join key, so a word and an ending share a key. They do for many:
+
+| Key | Alone | With `+` |
+|---|---|---|
+| `-D` | *do* | *-ed* |
+| `-G` | *go* | *-ing* |
+| `-Z` | *was* | *-s* |
+| `-R` | *for* | *-er* |
+| `-L` | *all* | *-ly* |
+| `-PB` | *an* | *-en* |
+| `-F` | *of* | *-ive* |
+
+That is what lets an ending be one key and the commonest words keep the cheapest keys.
+
 That one convention is what the rest of this theory leans on, chapter after chapter:
 
 - A continuation stroke — a suffix struck on its own, or the consonants of a syllable that didn't

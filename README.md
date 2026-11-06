@@ -8,7 +8,8 @@
 **lyk is steno with explicit word boundaries.** Every stroke after the first of a word carries a
 join key (`+`), so a stroke without it always starts a word. Continuation strokes live apart from
 the words, which lets a suffix be as short as `-G` or `-D` without ever being read as a word, and
-lets a stem overlap with a word without a clash.
+lets a stem overlap with a word without a clash: `-D` is *do*, while `ED/+-D` is *ended*, the same
+key doing two jobs.
 
 This program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover
 and Lapwing already do and measured against them. Inspired by [Froj](https://github.com/StenoHarri/Froj);

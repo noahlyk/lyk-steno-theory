@@ -5,12 +5,23 @@
   "blocks": [
     { "t": "h", "x": "The one idea" },
     { "t": "p", "x": "lyk is steno where **every stroke after the first of a word carries a join key (`+`)**. A stroke without it always starts a new word. Nothing has to be guessed from the keys." },
+    { "t": "p", "x": "The whole benefit in one key, the right-hand `D`:" },
     { "t": "table", "head": ["You strike", "It reads", "Why"], "rows": [
-      ["[[walk|WAUBG]]", "walk", "No `+`, so it starts a word."],
-      ["[[WAUBG/+-G]]", "walking", "The second stroke has `+`, so it continues the word: -ing."],
-      ["[[+-G]]", "-ing", "Alone, a join-key stroke attaches to whatever came before."]
+      ["[[do|-D]]", "do", "No `+`, so it is a word: *do*."],
+      ["[[ended|ED/+-D]]", "ended", "The same `-D` with `+` is the ending *-ed*."],
+      ["[[end|ED]] [[do|-D]]", "end do", "Without `+`, the same two strokes are two words."]
     ] },
-    { "t": "p", "x": "Because a continuation can never be mistaken for a word, it can be one key: `-G` for -ing, `-D` for -ed, `-Z` for -s. Other theories patch word edges with extra keys or dropped vowels." },
+    { "t": "p", "x": "Other theories give the ending `-D` (*-ed*) the key, so *do* cannot be one. Here the join key tells them apart, so a word and an ending can share a key. Many do:" },
+    { "t": "table", "head": ["Key", "Alone: a word", "With `+`: an ending"], "rows": [
+      ["`-D`", "[[do|-D]]", "[[+-D]] -ed"],
+      ["`-G`", "[[go|-G]]", "[[+-G]] -ing"],
+      ["`-Z`", "[[was|-Z]]", "[[+-Z]] -s"],
+      ["`-R`", "[[for|-R]]", "[[+-R]] -er"],
+      ["`-L`", "[[all|-L]]", "[[+-L]] -ly"],
+      ["`-PB`", "[[an|-PB]]", "[[+-PB]] -en"],
+      ["`-F`", "[[of|-F]]", "[[+-F]] -ive"]
+    ] },
+    { "t": "p", "x": "So an ending can be a single key, with no extra keys or dropped vowels to keep it from being read as a word." },
     { "t": "h", "x": "Reading an outline" },
     { "t": "list", "items": [
       "`/` separates the strokes of one word: [[WAUBG/+-G]].",
