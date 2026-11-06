@@ -1,11 +1,11 @@
 {
   "title": "Learn lyk",
-  "summary": "Steno with explicit word boundaries, taught in 18 short lessons after a key-learning warm-up (Learn the keys). Read a little, point at any stroke to see its keys, then drill it on your own keyboard.",
+  "summary": "Steno with explicit word boundaries, taught in 18 short chapters, after an optional warm-up (chapter 0, Learn the keys). Read a little, point at any stroke to see its keys, then drill it on your own keyboard.",
   "parts": [
     {
       "title": "Foundations",
       "lessons": [
-        { "id": "01-start", "num": 1, "title": "Start here", "summary": "The one idea, how outlines read, and how to learn the rest." },
+        { "id": "01-start", "num": 1, "title": "Learn your first sounds", "summary": "The one idea behind lyk, how outlines read, and how to learn the rest." },
         { "id": "02-board", "num": 2, "title": "The board", "summary": "Keys, hands and steno order. Strike your first strokes." },
         { "id": "03-onsets", "num": 3, "title": "Starting sounds", "summary": "The left hand: every consonant a word can begin with." },
         { "id": "04-vowels", "num": 4, "title": "Vowels", "summary": "The thumbs: each vowel sound and the star." },

@@ -15,7 +15,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 
 | | |
 |---|---|
-| `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 18 lessons in 5 parts. The only place lesson text lives. |
+| `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 18 chapters in 5 parts (plus the optional chapter 0, Learn the keys). The only place lesson text lives. |
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |
 | `data/engine.json`, `data/joins.json` | What the stroke engine reads: every outline of the dictionary (word -> outlines) plus the reserved strokes and suffixes, then the 12 cheapest join-built backups of each common word. About 1.2 MB gzipped, fetched when a drill starts. **Generated.** |
@@ -27,6 +27,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/hid.js` | A steno machine over Plover HID (WebHID, Chromium browsers only): decodes the 64-lever snapshot to lyk keys and feeds `input.js`'s `feed()`, so every drill takes it like the keyboard. Header button to connect; reconnects a machine it was already allowed. |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
 | `js/trainer.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, the speed/accuracy unlock trade, the fading guide. |
+| `js/chapter0.js` | Chapter 0: the intro text, then the key stream as its drill. |
 | `js/keys.js`, `css/keys.css` | The `#/keys` page: the word stream, guide, key chips; `js/confetti.js` for the finish. Progress in its own `localStorage` key. |
 | `js/lesson.js` | Renders a lesson's blocks; every `[[word|OUTLINE]]` becomes a hover-board chip. |
 | `js/main.js`, `js/data.js`, `js/store.js` | The router and pages (lessons, practice, lookup, key chart, progress); data loading; progress in `localStorage`. |
@@ -55,7 +56,7 @@ more unlocks whenever your newest words (20, at least 10) are fast and clean eno
   more than one stroke appear once the join key unlocks (last).
 - Weak chords get more of the stream (weakness-weighted picking, ported from steno-lessons).
 
-Lessons show a soft gate until it is done, with a skip. Everything saves in this browser.
+It is chapter 0 of the course and optional: it has an intro above the stream (`js/chapter0.js`), the stream is its drill at the bottom, and lessons only mention it quietly until it is done or dismissed. Everything saves in this browser.
 
 ## Writing a lesson
 

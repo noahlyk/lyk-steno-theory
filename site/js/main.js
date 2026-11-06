@@ -2,7 +2,8 @@
 
 import { chart, dictionary, index, lesson } from './data.js';
 import { createDrill, stopAllDrills } from './drill.js';
-import { keysPage, keysStatus, markKeysSkipped } from './keys.js';
+import { keysChapter } from './chapter0.js';
+import { keysStatus, markKeysSkipped } from './keys.js';
 import { el, shuffle } from './dom.js';
 import { chip, inline, renderLesson } from './lesson.js';
 import { initDock } from './dock.js';
@@ -40,7 +41,7 @@ async function route() {
   app.replaceChildren();
   window.scrollTo(0, 0);
   try {
-    if (page === 'keys') { setNav('keys'); teardown.push(await keysPage(app)); }
+    if (page === 'keys') { setNav('keys'); teardown.push(await keysChapter(app, flat(await course())[0])); }
     else if (page === 'lesson') await lessonPage(arg);
     else if (page === 'practice') await practicePage();
     else if (page === 'lookup') await lookupPage();
@@ -65,29 +66,30 @@ async function homePage() {
     el('p', { class: 'lede' }, c.summary),
     el('div', { class: 'row', style: 'margin-top:.8rem' },
       keysDone
-        ? el('a', { class: 'btn btn--primary', href: `#/lesson/${nextId ?? all[0].id}` }, nextId && nextId !== all[0].id ? 'Continue' : 'Start lesson 1')
-        : el('a', { class: 'btn btn--primary', href: '#/keys' }, keys.unlocked > 6 ? 'Continue learning the keys' : 'Start: learn the keys'),
+        ? el('a', { class: 'btn btn--primary', href: `#/lesson/${nextId ?? all[0].id}` }, nextId && nextId !== all[0].id ? 'Continue' : 'Start chapter 1')
+        : el('a', { class: 'btn btn--primary', href: '#/keys' }, keys.unlocked > 6 ? 'Continue chapter 0: learn the keys' : 'Start with chapter 0: learn the keys'),
+      keysDone ? null : el('a', { class: 'btn', href: `#/lesson/${all[0].id}` }, 'Skip to chapter 1'),
       el('a', { class: 'btn', href: '#/chart' }, 'Key chart'),
       el('a', { class: 'btn', href: '#/lookup' }, 'Look up a word')),
   );
   const map = el('div', { class: 'map' });
-  map.append(el('h2', { class: 'part' }, 'Step 0'),
-    el('a', { class: `card card--${keys.done ? 'done' : keys.skipped ? 'read' : ''} ${keysDone ? '' : 'card--next'}`, href: '#/keys' },
-      el('span', { class: 'card__num' }, 'Before lesson 1'),
+  map.append(el('h2', { class: 'part' }, 'Warm-up (optional)'),
+    el('a', { class: `card card--${keys.done ? 'done' : keys.skipped ? 'skipped' : ''} ${keysDone ? '' : 'card--next'}`, href: '#/keys' },
+      el('span', { class: 'card__num' }, 'Chapter 0'),
       el('span', { class: 'card__title' }, 'Learn the keys'),
       el('span', { class: 'card__sum' }, 'A word stream that unlocks one key at a time, until you know where every sound lives.'),
-      el('span', { class: 'card__state' }, keys.done ? 'Done' : keys.skipped ? 'Skipped' : keys.unlocked > 6 ? `${keys.unlocked} of 23 keys unlocked` : 'Up next')));
+      el('span', { class: 'card__state' }, keys.done ? '✓ Done' : keys.skipped ? 'Skipped' : keys.unlocked > 6 ? `${keys.unlocked} of 23 keys unlocked` : 'Up next')));
   for (const part of c.parts) {
     map.append(el('h2', { class: 'part' }, part.title));
     for (const l of part.lessons) {
       const s = state(l);
       const d = store.drill(l.id);
       map.append(el('a', { class: `card card--${s === 'todo' ? '' : s} ${l.id === nextId ? 'card--next' : ''}`, href: `#/lesson/${l.id}` },
-        el('span', { class: 'card__num' }, `Lesson ${l.num}`),
+        el('span', { class: 'card__num' }, `Chapter ${l.num}`),
         el('span', { class: 'card__title' }, l.title),
         el('span', { class: 'card__sum' }, l.summary),
         el('span', { class: 'card__state' },
-          s === 'done' ? `Passed, best ${d.best}%` : s === 'read' ? 'Read, drill not passed yet' : l.id === nextId ? 'Up next' : 'Not started')));
+          s === 'done' ? `✓ Passed, best ${d.best}%` : s === 'read' ? 'Read, drill not passed yet' : l.id === nextId ? 'Up next' : 'Not started')));
     }
   }
   app.append(map);
@@ -106,11 +108,9 @@ async function lessonPage(id) {
   const { body } = renderLesson(data);
   const keys = keysStatus();
   if (!keys.done && !keys.skipped) {
-    const gate = el('div', { class: 'note note--warn kgate' },
-      el('p', {}, 'Finish ', el('a', { href: '#/keys' }, 'Learn the keys'), ' before the theory: these lessons assume you know where every sound sits.'),
-      el('div', { class: 'row' },
-        el('a', { class: 'btn btn--primary', href: '#/keys' }, 'Learn the keys'),
-        el('button', { class: 'btn', type: 'button', onclick: () => { markKeysSkipped(); gate.remove(); } }, 'I already know steno: skip')));
+    const gate = el('div', { class: 'note kgate' },
+      el('p', {}, 'Optional: ', el('a', { href: '#/keys' }, 'chapter 0, Learn the keys'), ' trains where every sound sits, and makes these chapters easier.',
+        ' ', el('button', { class: 'btn', type: 'button', onclick: () => { markKeysSkipped(); gate.remove(); } }, 'Dismiss')));
     app.append(gate);
   }
   app.append(

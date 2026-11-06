@@ -103,8 +103,6 @@ export async function keysPage(app) {
   const weakRow = el('div', { class: 'boardbox__hint kweak' });
 
   app.append(
-    el('h1', {}, 'Learn the keys'),
-    el('p', { class: 'lede' }, 'Before the theory, learn where every sound lives. Type the words as they come. You start with six keys, and another unlocks whenever your last words are fast and clean enough: the faster you go, the less perfect you need to be. As you get good, the diagram and hints fade out; if you struggle they come back.'),
     guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
       el('div', { class: 'row' }, start, skip),
