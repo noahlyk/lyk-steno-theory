@@ -11,7 +11,7 @@ untouched axis: keys per *word boundary*. A handful of pronoun+verb bigrams domi
 the same way a handful of single words do, so this is plausibly higher-leverage than any further
 per-word tuning at this point. lyk's own join key also removes the main reason traditional
 theories have to be cautious here (word-boundary ambiguity with a continuing stroke), so there's
-a real argument lyk can do this more cleanly than the theory it's inspired by.
+a real argument lyk can do this more cleanly than traditional theories.
 
 ## What this explicitly is NOT
 

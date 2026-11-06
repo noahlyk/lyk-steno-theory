@@ -14,8 +14,8 @@ lets a stem overlap with a word without a clash: `-D` is *do*, while `ED/+-D` is
 key doing two jobs.
 
 This program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover
-and Lapwing already do and measured against them. Inspired by [Froj](https://github.com/StenoHarri/Froj);
-written in Rust, with the rules as data. American English only.
+and Lapwing already do and measured against them. It is written in Rust, with the rules as data.
+American English only.
 
 ## Where lyk stands
 

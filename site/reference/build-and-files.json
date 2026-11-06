@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "lyk is steno with explicit word boundaries: every stroke after the first of a word carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover and Lapwing already do and measured against them. It is written in Rust with the rules as data. American English only. Inspired by [Froj](https://github.com/StenoHarri/Froj). See [the join key](#/ref/join-key)."
+   "x": "lyk is steno with explicit word boundaries: every stroke after the first of a word carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover and Lapwing already do and measured against them. It is written in Rust with the rules as data. American English only. See [the join key](#/ref/join-key)."
   },
   {
    "t": "h",
