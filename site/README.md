@@ -59,6 +59,9 @@ more unlocks whenever your newest words (20, at least 10) are fast and clean eno
 - **Unlocks are earned from memory.** Only words typed with the diagram gone count towards the next
   key, and unlocking one puts the full guide (diagram and hints) back, so every new key is learned
   with help first and then faded out again.
+- **The `-` only where it is needed.** The stroke under a word shows a dash when the right-hand keys
+  could not otherwise be told from the left in steno order (`-T`, `-PB`, `-S`) and leaves it out when
+  they can (`-D`, `-F`, `KPWR-BG` written as `KPWRBG`, anything with a vowel or star).
 - **Words** come from `site/data/words.json`, using the dictionary's real outlines, so words of
   more than one stroke appear once the join key unlocks (last).
 - Weak chords get more of the stream (weakness-weighted picking, ported from steno-lessons).

@@ -72,6 +72,23 @@ export function formatStroke(keys) {
   return (has('+') ? '+' : '') + body;
 }
 
+/**
+ * Does this stroke need a `-` to be read back as it was meant? Only when there is no vowel or star
+ * and the right-hand letters, written bare in steno order, would read as other keys: `-T` is
+ * ambiguous (a bare `T` is the left one), `PB` and `KPWR-BG`'s `BG` are not, because steno order
+ * only lets them be right-hand keys.
+ */
+export function needsHyphen(keys) {
+  const has = (id) => keys.has(id);
+  if (VOWELS.some((k) => has(k))) return false;
+  const left = LEFT.filter((k) => has(`${k}-`)).join('');
+  const right = RIGHT.filter((k) => has(`-${k}`)).join('');
+  if (right === '') return false;
+  const read = parseStroke(left + right);
+  const want = new Set([...keys].filter((k) => k !== '+'));
+  return !read || !sameKeys(read, want);
+}
+
 /** Strokes of an outline `A/+B-C` as an array of key Sets; null if any stroke is not valid. */
 export function parseOutline(text) {
   const out = [];

@@ -7,7 +7,7 @@ import { createBoard } from './board.js';
 import { confetti } from './confetti.js';
 import { el } from './dom.js';
 import { listen } from './input.js';
-import { KEYS } from './steno.js';
+import { KEYS, needsHyphen } from './steno.js';
 import { store } from './store.js';
 import * as P from './trainer.js';
 
@@ -41,8 +41,10 @@ const sound = (id) => id.replace('-', ''); // `+` stays `+`
 function strokeEl(mask, held = null) {
   const keys = new Set(P.keysOf(mask));
   const out = el('span', { class: 'kst' });
+  let dashed = !needsHyphen(keys); // a `-` only where the right hand could not otherwise be told from the left
   for (const k of DISPLAY_ORDER) {
     if (!keys.has(k)) continue;
+    if (!dashed && k.startsWith('-')) { out.append(el('span', { class: 'ks ks--dash' }, '-')); dashed = true; }
     const pair = PAIR_OF.get(k);
     const paired = pair && keys.has(pair.with) ? ` pair-${pair.pos}` : '';
     out.append(el('span', { class: `ks ks--${GROUP_OF(k)}${paired}${held?.has(k) ? ' is-held' : ''}` }, sound(k)));

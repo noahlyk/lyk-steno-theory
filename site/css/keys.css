@@ -44,6 +44,7 @@
 .ks--vowel { color: var(--ink-vowel); }
 .ks--right { color: var(--ink-right); }
 .ks--misc { color: var(--ink-misc); }
+.ks--dash { color: var(--muted); }
 /* keys one finger plays together are tied by an underline, like the other repo's word stream */
 .ks.pair-a, .ks.pair-b { box-shadow: inset 0 -5px 0 -3px currentColor; }
 .ks.pair-b { margin-left: -1px; }

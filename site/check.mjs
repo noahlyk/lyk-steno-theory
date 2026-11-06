@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as P from './js/trainer.js';
+import { needsHyphen } from './js/steno.js';
 import { decodeReport, REPORT_ID } from './js/hid.js';
 import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
 
@@ -135,6 +136,14 @@ function drillItems(id, d) {
   if (keys([9, 24, 25, 26], true) !== '*') fail('hid: every asterisk lever is *');
   if (keys([10, 11, 12, 21], true) !== '-F -Z E U') fail(`hid: right bank decoded as ${keys([10, 11, 12, 21], true)}`);
   if (decodeReport(0x01, report(1)) !== null) fail('hid: wrong report id must be ignored');
+}
+
+// the `-` only where steno order cannot tell the right hand from the left
+{
+  const need = (t) => needsHyphen(parseStroke(t));
+  for (const [t, want] of [['-T', true], ['-S', true], ['-D', false], ['-F', false], ['-PB', true], ['TK-T', false], ['KPWR-BG', false], ['SR-R', false], ['TKOG', false], ['*T', false], ['+-T', true], ['+-G', false]]) {
+    if (need(t) !== want) fail(`hyphen: ${t} should ${want ? '' : 'not '}need a dash`);
+  }
 }
 
 if (errors.length) {
