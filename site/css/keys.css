@@ -1,4 +1,11 @@
-/* "Learn the keys" (#/keys): the prestige word stream. Colour means the key's hand, as on the board. */
+/* stroke letters are text on a pale ground, so light mode gets darker inks than the board's fills */
+:root { --ink-left: #b4540a; --ink-vowel: #1f68b8; --ink-right: #7440b8; --ink-misc: #25804f; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ink-left: var(--left); --ink-vowel: var(--vowel); --ink-right: var(--right); --ink-misc: var(--join); }
+}
+:root[data-theme="dark"] { --ink-left: var(--left); --ink-vowel: var(--vowel); --ink-right: var(--right); --ink-misc: var(--join); }
+
+/* "Learn the keys" (#/keys): the word stream. Colour means the key's hand, as on the board. */
 .kguide { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 1rem 0 0.4rem; font-size: 0.88rem; }
 .kguide__label { color: var(--muted); margin-right: 0.2rem; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; }
 .kguide__step { padding: 0.15rem 0.7rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); }
@@ -34,10 +41,10 @@
 .kst { display: inline-flex; font-family: var(--key-font); font-size: 1.45rem; font-weight: 700; line-height: 1.25; text-transform: uppercase; white-space: nowrap; }
 .ks { padding: 0 1px; border-radius: 3px; }
 .ks.is-gap { margin-left: 0.3em; }
-.ks--left { color: var(--left); }
-.ks--vowel { color: var(--vowel); }
-.ks--right { color: var(--right); }
-.ks--misc { color: var(--join); }
+.ks--left { color: var(--ink-left); }
+.ks--vowel { color: var(--ink-vowel); }
+.ks--right { color: var(--ink-right); }
+.ks--misc { color: var(--ink-misc); }
 /* keys one finger plays together are tied by an underline, like the other repo's word stream */
 .ks.pair-a, .ks.pair-b { box-shadow: inset 0 -5px 0 -3px currentColor; }
 .ks.pair-b { margin-left: -1px; }
