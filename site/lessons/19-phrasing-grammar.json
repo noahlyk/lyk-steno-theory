@@ -1,0 +1,395 @@
+{
+  "id": "19-phrasing-grammar",
+  "title": "The phrasing grammar",
+  "goal": "One stroke for a whole phrase: who on the left, when on the vowels, not on the star, the verb on the right.",
+  "blocks": [
+    {
+      "t": "h",
+      "x": "One stroke writes a whole phrase"
+    },
+    {
+      "t": "p",
+      "x": "Today a phrase is two words whose keys do not collide ({{of the}} is [[of the|-FT]]). That can never reach the pairs people say most: *I* is [[I|EU]], and its vowels clash with almost every verb. The phrasing grammar solves it by giving each part of the phrase its own region of the board, so every combination is one stroke and none can overlap. [[=it was|KPWHEB]] is *it* + past + *be*; [[=I know|SWR-PB]] is *I* + *know*."
+    },
+    {
+      "t": "note",
+      "kind": "warn",
+      "x": "**Status: designed and measured, not built into the dictionary yet.** The generator does not make these strokes (plans/08, awaiting typing). Every stroke here is checked against the generator's own prototype (`tools/phrasing_prototype.py`), not against the built dictionary, so they are drawn with a dashed edge and Lookup will not find them. A few are strokes other entries hold today (see the next chapter). Learn this for the day it ships, or try it with the trial dictionary described there."
+    },
+    {
+      "t": "grammar"
+    },
+    {
+      "t": "h",
+      "x": "The four parts"
+    },
+    {
+      "t": "table",
+      "head": [
+        "Part",
+        "Keys",
+        "Says"
+      ],
+      "rows": [
+        [
+          "**Starter**",
+          "left bank",
+          "who: *I*, *you*, *he*, *she*, *it*, *we*, *they*, *there*"
+        ],
+        [
+          "**Auxiliary**",
+          "the vowels `A O E U`",
+          "when, and which modal: present, past, *can*, *will*, *shall*, *may*, *must*"
+        ],
+        [
+          "**Not**",
+          "the star `*`",
+          "the negative of whatever the rest says, and nothing else"
+        ],
+        [
+          "**Verb**",
+          "right bank",
+          "*be*, *have*, *have been*, or one of 20 common verbs"
+        ]
+      ]
+    },
+    {
+      "t": "p",
+      "x": "About 36 things to learn (8 starters, 5 modals with `E` and `*`, 3 special verbs, 20 verbs) give 3,758 phrases. A phrase is one stroke in steno order as always: the starter, then the vowels and star, then the verb."
+    },
+    {
+      "t": "h",
+      "x": "Starters: the left bank"
+    },
+    {
+      "t": "p",
+      "x": "A starter is a left-bank chord that no English word starts with, so a phrase never collides with a word's own stroke."
+    },
+    {
+      "t": "table",
+      "head": [
+        "Starter",
+        "Chord",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "{{I}}",
+          "[[SWR]]",
+          "I, you and we end in `WR`"
+        ],
+        [
+          "{{you}}",
+          "[[KPWR]]",
+          ""
+        ],
+        [
+          "{{he}}",
+          "[[STWH]]",
+          "he, she and it end in `WH`"
+        ],
+        [
+          "{{she}}",
+          "[[SKWH]]",
+          ""
+        ],
+        [
+          "{{it}}",
+          "[[KPWH]]",
+          ""
+        ],
+        [
+          "{{we}}",
+          "[[TWR]]",
+          ""
+        ],
+        [
+          "{{they}}",
+          "[[STWHR]]",
+          "they and there share `S-T-H-R`"
+        ],
+        [
+          "{{there}}",
+          "[[STHR]]",
+          "only with *be*, *have been* and the modals"
+        ]
+      ]
+    },
+    {
+      "t": "h",
+      "x": "Auxiliary: the vowels, E for the past, star for not"
+    },
+    {
+      "t": "table",
+      "head": [
+        "Vowels",
+        "Present",
+        "With `E` (past)",
+        "With `*` (not)",
+        "With `*E`"
+      ],
+      "rows": [
+        [
+          "(none)",
+          "*I do*, *he does*, or the verb in the present",
+          "*I did*, or the verb in the past",
+          "*I don't*",
+          "*I didn't*"
+        ],
+        [
+          "[[A]]",
+          "*can*",
+          "*could* [[AE]]",
+          "*can't*",
+          "*couldn't*"
+        ],
+        [
+          "[[O]]",
+          "*will*",
+          "*would* [[OE]]",
+          "*won't*",
+          "*wouldn't*"
+        ],
+        [
+          "[[U]]",
+          "*shall*",
+          "*should* [[EU]]",
+          "*shall not*",
+          "*shouldn't*"
+        ],
+        [
+          "[[AO]]",
+          "*may*",
+          "*might* [[AOE]]",
+          "*may not*",
+          "*might not*"
+        ],
+        [
+          "[[AU]]",
+          "*must*",
+          "(none)",
+          "*mustn't*",
+          "(none)"
+        ]
+      ]
+    },
+    {
+      "t": "note",
+      "kind": "rule",
+      "x": "`E` is the past everywhere: *could* is *can* in the past, *would* is *will*'s, *should* is *shall*'s, *might* is *may*'s, exactly as English builds them. The star means *not* and nothing else in a phrase."
+    },
+    {
+      "t": "h",
+      "x": "Verbs: the right bank"
+    },
+    {
+      "t": "table",
+      "head": [
+        "Verb",
+        "Code",
+        "Verb",
+        "Code"
+      ],
+      "rows": [
+        [
+          "*be (am/is/are, was/were)*",
+          "[[-B]]",
+          "*want*",
+          "[[-PBT]]"
+        ],
+        [
+          "*have (has, had)*",
+          "[[-F]]",
+          "*look*",
+          "[[-BLG]]"
+        ],
+        [
+          "*have been*",
+          "[[-FB]]",
+          "*tell*",
+          "[[-L]]"
+        ],
+        [
+          "*say*",
+          "[[-S]]",
+          "*feel*",
+          "[[-FL]]"
+        ],
+        [
+          "*go*",
+          "[[-G]]",
+          "*mean*",
+          "[[-PBL]]"
+        ],
+        [
+          "*get*",
+          "[[-T]]",
+          "*need*",
+          "[[-D]]"
+        ],
+        [
+          "*make*",
+          "[[-BG]]",
+          "*like*",
+          "[[-BLGZ]]"
+        ],
+        [
+          "*know*",
+          "[[-PB]]",
+          "*hear*",
+          "[[-R]]"
+        ],
+        [
+          "*think*",
+          "[[-PBG]]",
+          "*seem*",
+          "[[-PLS]]"
+        ],
+        [
+          "*take*",
+          "[[-BGT]]",
+          "*find*",
+          "[[-PBD]]"
+        ],
+        [
+          "*see*",
+          "[[-SZ]]",
+          "*give*",
+          "[[-FG]]"
+        ],
+        [
+          "*come*",
+          "[[-PL]]",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "t": "h",
+      "x": "Working out a verb's code"
+    },
+    {
+      "t": "list",
+      "ordered": true,
+      "items": [
+        "Go down the verbs from the commonest. A verb's code is its **last consonant** on the right bank: *get* [[-T]], *think* [[-PBG]], *come* [[-PL]].",
+        "If the word ends in a vowel, use its **first** consonant instead: *say* [[-S]], *go* [[-G]], *know* [[-PB]].",
+        "If a commoner verb already has that code, add the verb's **first consonant**: *take* [[-BGT]] (*make* has [[-BG]]); *feel* [[-FL]] (*tell* has [[-L]]).",
+        "If that is taken too, add [[-Z]]: *see* [[-SZ]], *like* [[-BLGZ]]."
+      ]
+    },
+    {
+      "t": "p",
+      "x": "*be* [[-B]], *go* [[-G]] and *think* [[-PBG]] are the same keys as those words' own right-bank sounds in lyk. *have been* [[-FB]] is *have* plus *be*."
+    },
+    {
+      "t": "h",
+      "x": "Try it"
+    },
+    {
+      "t": "try",
+      "title": "Starter and verb",
+      "check": "grammar",
+      "x": "Six strokes: a starter and a verb.",
+      "items": [
+        [
+          "I am",
+          "SWR-B"
+        ],
+        [
+          "you see",
+          "KPWR-SZ"
+        ],
+        [
+          "he was",
+          "STWHEB"
+        ],
+        [
+          "it is",
+          "KPWH-B"
+        ],
+        [
+          "I know",
+          "SWR-PB"
+        ],
+        [
+          "I do",
+          "SWR"
+        ]
+      ]
+    }
+  ],
+  "drill": {
+    "title": "Build the stroke",
+    "check": "grammar",
+    "pass": 90,
+    "repeat": 2,
+    "items": [
+      [
+        "I am",
+        "SWR-B"
+      ],
+      [
+        "I know",
+        "SWR-PB"
+      ],
+      [
+        "I see",
+        "SWR-SZ"
+      ],
+      [
+        "you are",
+        "KPWR-B"
+      ],
+      [
+        "you know",
+        "KPWR-PB"
+      ],
+      [
+        "it is",
+        "KPWH-B"
+      ],
+      [
+        "he was",
+        "STWHEB"
+      ],
+      [
+        "she had",
+        "SKWHEF"
+      ],
+      [
+        "we have",
+        "TWR-F"
+      ],
+      [
+        "I do",
+        "SWR"
+      ],
+      [
+        "I can",
+        "SWRA"
+      ],
+      [
+        "I will",
+        "SWRO"
+      ],
+      [
+        "I didn't know",
+        "SWR*EPB"
+      ],
+      [
+        "they are",
+        "STWHR-B"
+      ],
+      [
+        "he said",
+        "STWHES"
+      ],
+      [
+        "there is",
+        "STHR-B"
+      ]
+    ]
+  }
+}

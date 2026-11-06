@@ -8,8 +8,9 @@ import { el } from './dom.js';
 import { whenActive } from './input.js';
 import { dictionary } from './data.js';
 import { formatStroke, parseOutline } from './steno.js';
+import { grammarComposer } from './grammar.js';
 
-const TOKEN = /\[\[(.+?)\]\]|`(.+?)`|\*\*(.+?)\*\*|\{\{(.+?)\}\}|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*([^*\s`[][^*`[]*?)\*/g;
+const TOKEN = /\[\[(.+?)\]\]|`(.+?)`|\*\*(.+?)\*\*|\{\{(.+?)\}\}|\[([^\]]+)\]\(((?:https?:\/\/|#\/)[^)\s]+)\)|\*([^*\s`[][^*`[]*?)\*/g;
 
 /** Inline markup: [[word|OUTLINE]], [[OUTLINE]], `code`, **bold**, {{italic word}}, *italic*, [text](url). */
 export function inline(text) {
@@ -31,16 +32,27 @@ export function inline(text) {
 
 export function chip(spec, { styled = false } = {}) {
   const bar = spec.indexOf('|');
-  const word = bar < 0 ? null : spec.slice(0, bar);
+  let word = bar < 0 ? null : spec.slice(0, bar);
   const outline = bar < 0 ? spec : spec.slice(bar + 1);
+  // `=it was|KPWHEB`: a phrasing-grammar stroke, not a dictionary entry (drawn with a dashed edge)
+  const grammar = word?.startsWith('=') ?? false;
+  if (grammar) word = word.slice(1);
   // the hover board (popover.js) reads data-outline; an outline that is not a stroke has none
-  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null },
+  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}${grammar ? ' stroke--grammar' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null,
+    title: grammar ? 'a phrasing-grammar stroke: not in the dictionary yet' : null },
     styled ? outlineEl(outline) : outline);
   return word ? [el('span', { class: 'word' }, word), ' ', node] : [node];
 }
 
+/** The anchor of a heading: its plain words, so `#/ref/briefs/the-star-ladder` can point at it. */
+export const slug = (text) => text.toLowerCase().replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
 const BLOCKS = {
-  h: (b) => el('h2', {}, b.x),
+  h: (b) => el('h2', { id: slug(b.x) }, inline(b.x)),
+  h3: (b) => el('h3', { id: slug(b.x) }, inline(b.x)),
+  // a formula or a short block of code, kept as written
+  pre: (b) => el('pre', { class: 'formula' }, b.x),
+  grammar: () => grammarComposer(),
   p: (b) => el('p', {}, inline(b.x)),
   list: (b) => el(b.ordered ? 'ol' : 'ul', { class: 'steps' }, b.items.map((i) => el('li', {}, inline(i)))),
   note: (b) => el('div', { class: `note ${b.kind ? `note--${b.kind}` : ''}` }, el('p', {}, inline(b.x))),

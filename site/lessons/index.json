@@ -1,6 +1,6 @@
 {
   "title": "Learn lyk",
-  "summary": "Steno with explicit word boundaries, taught in 18 short chapters, after an optional warm-up (chapter 0, Learn the keys). Read a little, point at any stroke to see its keys, then drill it on your own keyboard.",
+  "summary": "Steno with explicit word boundaries, taught in 20 short chapters, after an optional warm-up (chapter 0, Learn the keys). Read a little, point at any stroke to see its keys, then drill it on your own keyboard.",
   "parts": [
     {
       "title": "Foundations",
@@ -43,6 +43,13 @@
       "lessons": [
         { "id": "17-edges", "num": 17, "title": "Strokes you can type", "summary": "What the pinky cannot press, and what happens on a miss." },
         { "id": "18-practice", "num": 18, "title": "A practice plan", "summary": "How to turn all of this into speed." }
+      ]
+    },
+    {
+      "title": "End game",
+      "lessons": [
+        { "id": "19-phrasing-grammar", "num": 19, "title": "The phrasing grammar", "summary": "One stroke for a whole phrase: who, when, not, and the verb. Designed and measured; not in the dictionary yet." },
+        { "id": "20-phrasing-strokes", "num": 20, "title": "Phrasing in practice", "summary": "Worked examples, what it saves, how to try it today, and the forty commonest phrases." }
       ]
     }
   ]

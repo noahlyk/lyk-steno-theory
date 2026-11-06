@@ -281,3 +281,19 @@ button.key { cursor: pointer; }
 .hid { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
 .hid.is-on .hid__btn { border-color: var(--ok); color: var(--ok); }
 .hid__join { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+/* Reference area: search hits, section blurbs, formulas, grammar strokes, the composer */
+.refsec { color: var(--muted); margin: 0.2rem 0 0.6rem; }
+.refhits { display: grid; gap: 0.4rem; margin: 1rem 0; }
+.refhit { display: block; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); text-decoration: none; color: var(--text); }
+.refhit:hover { border-color: var(--link); }
+.refhit__where { display: block; font-weight: 650; color: var(--heading); }
+.refhit__text { display: block; font-size: 0.9rem; color: var(--muted); }
+.hit .refhit { margin-top: 0.4rem; }
+pre.formula { font-family: var(--mono); font-size: 0.88rem; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem 0.9rem; overflow-x: auto; line-height: 1.55; margin: 0.8rem 0; }
+.stroke--grammar { border-style: dashed; }
+.gcomp__row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: end; }
+.gcomp__pick { display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); font-weight: 650; }
+.gcomp__pick select { font: inherit; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.gcomp__not { display: flex; align-items: center; gap: 0.3rem; color: var(--text); font-weight: 400; padding-bottom: 0.4rem; }
+.gcomp__out { margin: 0.8rem 0; font-size: 1.3rem; }

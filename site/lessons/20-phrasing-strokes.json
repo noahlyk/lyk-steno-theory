@@ -1,0 +1,329 @@
+{
+  "id": "20-phrasing-strokes",
+  "title": "Phrasing in practice",
+  "goal": "Whole phrases as single strokes: worked examples, what it saves, and how to try the grammar today.",
+  "blocks": [
+    {
+      "t": "h",
+      "x": "Putting the parts together"
+    },
+    {
+      "t": "table",
+      "head": [
+        "Phrase",
+        "Parts"
+      ],
+      "rows": [
+        [
+          "[[=it was|KPWHEB]]",
+          "it + past + be"
+        ],
+        [
+          "[[=it is|KPWH-B]]",
+          "it + be"
+        ],
+        [
+          "[[=I am|SWR-B]]",
+          "I + be"
+        ],
+        [
+          "[[=I am not|SWR*B]]",
+          "I + not + be"
+        ],
+        [
+          "[[=I know|SWR-PB]]",
+          "I + know"
+        ],
+        [
+          "[[=I don't know|SWR*PB]]",
+          "I + not + know"
+        ],
+        [
+          "[[=I didn't know|SWR*EPB]]",
+          "I + past + not + know"
+        ],
+        [
+          "[[=it would be|KPWHOEB]]",
+          "it + would + be"
+        ],
+        [
+          "[[=he had been|STWHEFB]]",
+          "he + past + have been"
+        ],
+        [
+          "[[=I couldn't have been|SWRA*EFB]]",
+          "I + could + not + have been"
+        ],
+        [
+          "[[=they weren't|STWHR*EB]]",
+          "they + past + not + be"
+        ],
+        [
+          "[[=you see|KPWR-SZ]]",
+          "you + see"
+        ],
+        [
+          "[[=I do|SWR]]",
+          "I alone"
+        ]
+      ]
+    },
+    {
+      "t": "p",
+      "x": "Keys in steno order: left bank (starter), vowels and star, then the right bank. When there are no vowels or star, a `-` marks the start of the right bank, as in {{I am}} [[SWR-B]]."
+    },
+    {
+      "t": "h",
+      "x": "There"
+    },
+    {
+      "t": "p",
+      "x": "*there* takes *be*, *have been* and the modals only, not the other verbs, and no bare *do*: [[=there is|STHR-B]], [[=there was|STHREB]], [[=there would be|STHROEB]], [[=there must have been|STHRAUFB]]."
+    },
+    {
+      "t": "h",
+      "x": "What it takes from today's dictionary"
+    },
+    {
+      "t": "p",
+      "x": "37 of the 3,758 grammar strokes are held by something today: 19 merged two-word phrases and 18 short forms, extras and backups of rare words. The generator will place the grammar first so the displaced words settle on their next outline. In the prototype no word is left without an outline."
+    },
+    {
+      "t": "h",
+      "x": "What it saves"
+    },
+    {
+      "t": "table",
+      "head": [
+        "Text",
+        "Words",
+        "Strokes today",
+        "With the grammar"
+      ],
+      "rows": [
+        [
+          "Five Gutenberg novels",
+          "712,328",
+          "667,147",
+          "653,013 (2.1% fewer)"
+        ],
+        [
+          "Quote passages",
+          "3,104",
+          "3,136",
+          "3,115 (0.7% fewer)"
+        ]
+      ]
+    },
+    {
+      "t": "p",
+      "x": "Measured by `tools/phrasing_prototype.py` over today's dictionary with today's merged phrases taken first. By tier, starter plus auxiliary alone saves 0.6%; adding *be*, *have* and *have been* takes it to 1.4%; the 20 verbs to 2.1%. Five verbs (*say*, *see*, *know*, *think*, *go*) are 46% of the verbs' share. The novels are third-person past narration, so everyday first- and second-person present typing has more of these pairs per word and this undercounts it."
+    },
+    {
+      "t": "h",
+      "x": "Trying it today"
+    },
+    {
+      "t": "pre",
+      "x": "cargo run --release -- build\npython3 tools/phrasing_prototype.py         # writes out/grammar-trial/\ncp out/grammar-trial/02-lyk-*.json ~/.config/keymux/steno/lyk/"
+    },
+    {
+      "t": "p",
+      "x": "The trial folder is the whole `02-lyk-*` set with the displaced entries removed and the grammar added as `02-lyk-grammar.json`. `lyk deploy` puts the normal dictionary back (it removes any `02-lyk-` file it did not write)."
+    },
+    {
+      "t": "h",
+      "x": "Not covered yet"
+    },
+    {
+      "t": "list",
+      "items": [
+        "Questions: *do you*, *are you*, *can I* (the starter after the auxiliary).",
+        "*that*, *this*, *what*, *who* as starters.",
+        "*I'm* and *it's*: contracted positives.",
+        "More verbs, chosen by measured gain."
+      ]
+    },
+    {
+      "t": "note",
+      "kind": "rule",
+      "x": "When it ships, the generator will read `rules/grammar.toml` and write the strokes into the dictionary, and this chapter's strokes will then be checked against the built dictionary like every other lesson. Until then they are the grammar, not dictionary entries."
+    },
+    {
+      "t": "h",
+      "x": "The commonest phrases"
+    },
+    {
+      "t": "p",
+      "x": "These forty come up most in running text (counted over the Gutenberg corpus), commonest first: the chapter drill below is exactly this list."
+    }
+  ],
+  "drill": {
+    "title": "The commonest phrases",
+    "check": "grammar",
+    "pass": 90,
+    "repeat": 1,
+    "items": [
+      [
+        "it was",
+        "KPWHEB"
+      ],
+      [
+        "it is",
+        "KPWH-B"
+      ],
+      [
+        "he was",
+        "STWHEB"
+      ],
+      [
+        "I am",
+        "SWR-B"
+      ],
+      [
+        "I have",
+        "SWR-F"
+      ],
+      [
+        "I was",
+        "SWREB"
+      ],
+      [
+        "he had",
+        "STWHEF"
+      ],
+      [
+        "there was",
+        "STHREB"
+      ],
+      [
+        "I had",
+        "SWREF"
+      ],
+      [
+        "she was",
+        "SKWHEB"
+      ],
+      [
+        "they were",
+        "STWHREB"
+      ],
+      [
+        "there is",
+        "STHR-B"
+      ],
+      [
+        "I do",
+        "SWR"
+      ],
+      [
+        "she had",
+        "SKWHEF"
+      ],
+      [
+        "he is",
+        "STWH-B"
+      ],
+      [
+        "they are",
+        "STWHR-B"
+      ],
+      [
+        "I know",
+        "SWR-PB"
+      ],
+      [
+        "you are",
+        "KPWR-B"
+      ],
+      [
+        "he said",
+        "STWHES"
+      ],
+      [
+        "I could",
+        "SWRAE"
+      ],
+      [
+        "they had",
+        "STWHREF"
+      ],
+      [
+        "you know",
+        "KPWR-PB"
+      ],
+      [
+        "I think",
+        "SWR-PBG"
+      ],
+      [
+        "we are",
+        "TWR-B"
+      ],
+      [
+        "he would",
+        "STWHOE"
+      ],
+      [
+        "I see",
+        "SWR-SZ"
+      ],
+      [
+        "you have",
+        "KPWR-F"
+      ],
+      [
+        "I will",
+        "SWRO"
+      ],
+      [
+        "he has",
+        "STWH-F"
+      ],
+      [
+        "I would",
+        "SWROE"
+      ],
+      [
+        "he says",
+        "STWH-S"
+      ],
+      [
+        "I did",
+        "SWRE"
+      ],
+      [
+        "I thought",
+        "SWREPBG"
+      ],
+      [
+        "I can",
+        "SWRA"
+      ],
+      [
+        "he could",
+        "STWHAE"
+      ],
+      [
+        "I say",
+        "SWR-S"
+      ],
+      [
+        "she could",
+        "SKWHAE"
+      ],
+      [
+        "it would be",
+        "KPWHOEB"
+      ],
+      [
+        "we have",
+        "TWR-F"
+      ],
+      [
+        "I got",
+        "SWRET"
+      ]
+    ]
+  }
+}

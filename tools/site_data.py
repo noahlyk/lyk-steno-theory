@@ -20,6 +20,8 @@ from lyk_out import path, role_files, ranks  # noqa: E402
 
 SITE = path('site')
 LESSONS = sorted(glob.glob(os.path.join(SITE, 'lessons', '[0-9]*.json')))
+# the Reference area: pages with the same blocks as a lesson, but no drill
+REFERENCE = sorted(p for p in glob.glob(os.path.join(SITE, 'reference', '*.json')) if not p.endswith('index.json'))
 TOP = 12000  # words in the lookup
 JOINS_PER_WORD = 12  # backups kept per common word for the engine
 # in the order an outline's word is decided when two roles write the same outline
@@ -32,7 +34,14 @@ def cost(outline):
 
 
 def load_lessons():
-    return [json.load(open(f)) for f in LESSONS]
+    return [json.load(open(f)) for f in LESSONS + REFERENCE]
+
+
+def grammar_entries():
+    """The phrasing grammar's strokes: {phrase: outline}. It is not in the dictionary yet (plans/08), so its
+    claims are written `[[=it was|KPWHEB]]` and checked against the generator's prototype instead."""
+    import phrasing_prototype as g
+    return {text: outline for outline, text in g.entries().items()}
 
 
 TOKEN = re.compile(r'\[\[(.+?)\]\]')
@@ -62,6 +71,9 @@ def lesson_claims(lesson):
     drill = lesson.get('drill')
     blocks = [b for b in lesson['blocks'] if b.get('t') == 'try'] + ([drill] if drill else [])
     for b in blocks:
+        if b.get('check', 'dict') == 'grammar':
+            for item in b['items']:
+                claims.append(('=' + item[0], item[1], f"{lesson['id']} drill"))
         if b.get('check', 'dict') != 'dict':
             continue
         for item in b['items']:
@@ -127,15 +139,20 @@ def main():
     lessons = load_lessons()
     bad = []
     wanted = set()
+    grammar = grammar_entries()
     for lesson in lessons:
         for word, outline, where in lesson_claims(lesson):
+            if word.startswith('='):
+                if grammar.get(word[1:]) != outline:
+                    bad.append(f"{where}: grammar phrase {word[1:]!r} is not {outline} (the grammar writes {grammar.get(word[1:])})")
+                continue
             wanted.add(word)
             if outline not in by_word.get(word, {}):
                 here = sorted(by_word.get(word, {}), key=cost)[:4]
                 bad.append(f'{where}: {word!r} is not {outline} (has {here})')
     for line in bad:
         print('WRONG', line)
-    print(f'{len(lessons)} lessons, {len(wanted)} words checked, {len(bad)} wrong')
+    print(f'{len(lessons)} lessons and reference pages, {len(wanted)} words checked, {len(bad)} wrong')
     if check_only:
         sys.exit(1 if bad else 0)
 
@@ -171,7 +188,23 @@ def main():
     with open(os.path.join(SITE, 'data', 'chart.json'), 'w') as f:
         json.dump(chart, f, indent=1)
     print('chart.json written')
+    write_grammar(grammar)
     sys.exit(1 if bad else 0)
+
+
+def write_grammar(grammar):
+    """site/data/grammar.json: the grammar's parts and every stroke it writes, for the composer and its drill."""
+    import phrasing_prototype as g
+    data = {
+        'starters': [[w, c, p] for w, (c, p) in g.STARTERS.items()],
+        'modals': [[m, *spec] for m, spec in g.MODALS.items()],
+        'verbs': [[b, s3, ed, code] for b, s3, ed, code in g.VERBS],
+        'special': [['be', g.BE], ['have', g.HAVE], ['have been', g.HAVE_BEEN]],
+        'entries': dict(sorted(grammar.items())),
+    }
+    with open(os.path.join(SITE, 'data', 'grammar.json'), 'w') as f:
+        json.dump(data, f, separators=(',', ':'))
+    print(f'grammar.json: {len(grammar)} strokes')
 
 
 if __name__ == '__main__':
