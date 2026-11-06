@@ -27,6 +27,8 @@ const GUIDES = [
 
 const hints = (mask) => P.keysOf(mask).map((k) => HINT[k]).join(' ');
 
+export const CHAPTER0 = 'chapter0'; // the id chapter 0 is marked done under
+
 /** What the other pages need: has this learner finished (or skipped) the key learning? */
 export function keysStatus() {
   const p = P.normalize(store.loadKeys());

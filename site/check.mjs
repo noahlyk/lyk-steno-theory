@@ -161,6 +161,33 @@ function drillItems(id, d) {
   }
 }
 
+// every named import of a site module is something that module really exports (a browser refuses
+// to load the whole app on one missing name, and nothing else here would notice)
+{
+  const dir = new URL('./js/', import.meta.url);
+  const files = readdirSync(dir).filter((f) => f.endsWith('.js'));
+  const exportsOf = new Map();
+  const src = new Map();
+  for (const f of files) {
+    const text = readFileSync(new URL(f, dir), 'utf8');
+    src.set(f, text);
+    const names = new Set();
+    for (const m of text.matchAll(/^export\s+(?:async\s+)?(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1]);
+    for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm)) for (const n of m[1].split(',')) names.add(n.trim().split(/\s+as\s+/).pop());
+    exportsOf.set(f, names);
+  }
+  for (const [f, text] of src) {
+    for (const m of text.matchAll(/^import\s*\{([^}]*)\}\s*from\s*'\.\/([\w-]+\.js)'/gm)) {
+      const have = exportsOf.get(m[2]);
+      if (!have) { fail(`imports: ${f} imports from a missing module ${m[2]}`); continue; }
+      for (const n of m[1].split(',')) {
+        const name = n.trim().split(/\s+as\s+/)[0];
+        if (name && !have.has(name)) fail(`imports: ${f} imports ${name}, which ${m[2]} does not export`);
+      }
+    }
+  }
+}
+
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
