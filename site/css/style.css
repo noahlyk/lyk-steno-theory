@@ -262,3 +262,8 @@ button.key { cursor: pointer; }
   .prompt { font-size: 1.7rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .key, .progressbar > span { transition: none; } .key.is-miss, .sw.is-miss { animation: none; } }
+
+/* steno machine (WebHID, Chromium only) */
+.hid { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
+.hid.is-on .hid__btn { border-color: var(--ok); color: var(--ok); }
+.hid__join { display: inline-flex; align-items: center; gap: 0.25rem; }

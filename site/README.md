@@ -24,11 +24,20 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/board.js`, `js/input.js` | The on-screen board and its key states (hint, held, wrong, missing) plus the legend; chord capture (keys down together, stroke on release; the newest listener gets the keys). |
 | `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
 | `js/dock.js`, `js/translate.js` | The "Try it" pad (button, or `?`): type with Plover QWERTY, the board glows the held keys, and `translate(strokes)` turns the strokes into words. All stroke-to-text lives behind that one function. |
+| `js/hid.js` | A steno machine over Plover HID (WebHID, Chromium browsers only): decodes the 64-lever snapshot to lyk keys and feeds `input.js`'s `feed()`, so every drill takes it like the keyboard. Header button to connect; reconnects a machine it was already allowed. |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
 | `js/trainer.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, the speed/accuracy unlock trade, the fading guide. |
 | `js/keys.js`, `css/keys.css` | The `#/keys` page: the word stream, guide, key chips; `js/confetti.js` for the finish. Progress in its own `localStorage` key. |
 | `js/lesson.js` | Renders a lesson's blocks; every `[[word|OUTLINE]]` becomes a hover-board chip. |
 | `js/main.js`, `js/data.js`, `js/store.js` | The router and pages (lessons, practice, lookup, key chart, progress); data loading; progress in `localStorage`. |
+
+## Steno machine (Plover HID)
+
+In Chrome, Edge or Brave a **Connect steno machine** button appears in the header. The Uni's top S
+key is the join key (`+`) and the bottom one is `S-`, matching lyk's board (untick "top S is the
+join key" to make both `S-`); the four asterisk levers are `*`, and `#` keys press nothing. Strokes
+fire when the last key comes up, the same as with the keyboard. The decoder is unit-tested
+(`check.mjs`) on synthetic reports; it has not been run against hardware yet.
 
 ## Learn the keys
 

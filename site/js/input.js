@@ -8,6 +8,14 @@ const typing = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA
 const stack = [];
 
 /**
+ * Hands the listener on top the keys a steno machine is holding right now (a Set of key ids; empty
+ * when everything is up). The stroke fires when the last key comes up, as it does for a keyboard.
+ */
+export function feed(ids) {
+  stack.at(-1)?.feed(ids);
+}
+
+/**
  * Starts listening. `onStroke(Set<keyId>)` fires when a chord is released; `onHeld(Set<keyId>)`
  * fires as keys go down and up, so the board can show what is held. Returns a stop function.
  */
@@ -15,7 +23,17 @@ export function listen(onStroke, onHeld = () => {}) {
   const down = new Set(); // physical key codes held
   const chord = new Set(); // key ids pressed since the chord began
   const ids = () => new Set([...down].map((c) => QWERTY[c]));
-  const me = {};
+  const me = {
+    feed(held) {
+      for (const id of held) chord.add(id);
+      onHeld(new Set(held));
+      if (held.size === 0 && chord.size > 0) {
+        const stroke = new Set(chord);
+        chord.clear();
+        onStroke(stroke);
+      }
+    },
+  };
   stack.push(me);
 
   const onDown = (e) => {

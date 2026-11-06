@@ -6,6 +6,7 @@ import { keysPage, keysStatus, markKeysSkipped } from './keys.js';
 import { el, shuffle } from './dom.js';
 import { chip, inline, renderLesson } from './lesson.js';
 import { initDock } from './dock.js';
+import { initHid } from './hid.js';
 import { parseOutline } from './steno.js';
 import { initPopover } from './popover.js';
 import { store } from './store.js';
@@ -282,5 +283,6 @@ async function progressPage() {
 
 initPopover();
 initDock();
+initHid(document.getElementById('hid-host'));
 window.addEventListener('hashchange', route);
 route();
