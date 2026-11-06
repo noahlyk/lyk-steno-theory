@@ -3,6 +3,7 @@
 
 import { createBoard } from './board.js';
 import { createDrill } from './drill.js';
+import { outlineEl } from './outline.js';
 import { el } from './dom.js';
 import { listen } from './input.js';
 import { dictionary } from './data.js';
@@ -28,12 +29,13 @@ export function inline(text) {
   return out;
 }
 
-export function chip(spec) {
+export function chip(spec, { styled = false } = {}) {
   const bar = spec.indexOf('|');
   const word = bar < 0 ? null : spec.slice(0, bar);
   const outline = bar < 0 ? spec : spec.slice(bar + 1);
   // the hover board (popover.js) reads data-outline; an outline that is not a stroke has none
-  const node = el('button', { class: 'stroke', type: 'button', 'data-outline': parseOutline(outline) ? outline : null }, outline);
+  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null },
+    styled ? outlineEl(outline) : outline);
   return word ? [el('span', { class: 'word' }, word), ' ', node] : [node];
 }
 

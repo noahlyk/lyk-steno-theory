@@ -182,7 +182,7 @@ async function lookupPage() {
   const input = el('input', { class: 'search', type: 'search', placeholder: 'a word (walking) or a stroke (KAT, TKOG/+-Z)', autofocus: true, 'aria-label': 'search' });
   const out = el('div', { class: 'hits' });
   const row = (label, list) => (list.length ? [el('div', { class: 'hit__label' }, label),
-    el('div', { class: 'hit__list' }, list.flatMap((o) => chip(o)))] : []);
+    el('div', { class: 'hit__list' }, list.flatMap((o) => chip(o, { styled: true })))] : []);
   const search = async () => {
     const q = input.value.trim();
     out.replaceChildren();

@@ -25,6 +25,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
 | `js/dock.js`, `js/translate.js` | The "Try it" pad (button, or `?`): type with Plover QWERTY, the board glows the held keys, and `translate(strokes)` turns the strokes into words. All stroke-to-text lives behind that one function. |
 | `js/hid.js` | A steno machine over Plover HID (WebHID, Chromium browsers only): decodes the 64-lever snapshot to lyk keys and feeds `input.js`'s `feed()`, so every drill takes it like the keyboard. Header button to connect; reconnects a machine it was already allowed. |
+| `js/outline.js` | How a stroke or outline is drawn to be read: letters in steno order coloured by hand, finger pairs underlined, a `-` only where needed, strokes divided by a thin rule. Used by the key trainer and lookup (no tape-style columns). |
 | `js/drill.js` | A drill: prompt, chord, hint on a miss, first-try accuracy and speed. |
 | `js/trainer.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, the speed/accuracy unlock trade, the fading guide. |
 | `js/chapter0.js` | Chapter 0: the intro text, then the key stream as its drill. |

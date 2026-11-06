@@ -7,19 +7,13 @@ import { createBoard } from './board.js';
 import { confetti } from './confetti.js';
 import { el } from './dom.js';
 import { listen } from './input.js';
-import { KEYS, needsHyphen } from './steno.js';
+import { GROUP_OF, sound, strokeEl as strokeElOf } from './outline.js';
 import { store } from './store.js';
 import * as P from './trainer.js';
 
 const LOOKAHEAD = 4; // upcoming words shown
 const DONE_KEEP = 6; // finished words left in view
 const IDLE_MS = 3000; // a wait longer than this counts as this much
-const GROUP_OF = (k) => (k === '+' || k === '*' ? 'misc' : /^[AOEU]$/.test(k) ? 'vowel' : k.startsWith('-') ? 'right' : 'left');
-// keys one finger plays together (a column; the two keys of a thumb pair): underlined when both are in a stroke
-const PAIRS = [['+', 'S-'], ['T-', 'K-'], ['P-', 'W-'], ['H-', 'R-'], ['A', 'O'], ['E', 'U'],
-  ['-F', '-R'], ['-P', '-B'], ['-L', '-G'], ['-T', '-S'], ['-D', '-Z']];
-const PAIR_OF = new Map(PAIRS.flatMap(([a, b]) => [[a, { pos: 'a', with: b }], [b, { pos: 'b', with: a }]]));
-const DISPLAY_ORDER = ['+', ...KEYS.filter((k) => k !== '+')];
 // The Plover QWERTY key each steno key sits under (input.js has the same map by key code).
 const HINT = {
   'S-': 'A', 'T-': 'W', 'K-': 'S', 'P-': 'E', 'W-': 'D', 'H-': 'R', 'R-': 'F', A: 'C', O: 'V', '*': 'T', E: 'N', U: 'M',
@@ -32,27 +26,6 @@ const GUIDES = [
 ];
 
 const hints = (mask) => P.keysOf(mask).map((k) => HINT[k]).join(' ');
-const sound = (id) => id.replace('-', ''); // `+` stays `+`
-
-/**
- * One stroke as a row of letters, in steno order, one colour per hand, the keys one finger plays
- * together underlined. `held` (a Set of key ids) lights the keys being pressed.
- */
-function strokeEl(mask, held = null) {
-  const keys = new Set(P.keysOf(mask));
-  const out = el('span', { class: 'kst' });
-  let dashed = !needsHyphen(keys); // a `-` only where the right hand could not otherwise be told from the left
-  for (const k of DISPLAY_ORDER) {
-    if (!keys.has(k)) continue;
-    if (!dashed && k.startsWith('-')) { out.append(el('span', { class: 'ks ks--dash' }, '-')); dashed = true; }
-    const pair = PAIR_OF.get(k);
-    const paired = pair && keys.has(pair.with) ? ` pair-${pair.pos}` : '';
-    out.append(el('span', { class: `ks ks--${GROUP_OF(k)}${paired}${held?.has(k) ? ' is-held' : ''}` }, sound(k)));
-  }
-  return out;
-}
-
-export const CHAPTER0 = 'chapter0'; // the id chapter 0 is marked done under
 
 /** What the other pages need: has this learner finished (or skipped) the key learning? */
 export function keysStatus() {
@@ -268,7 +241,7 @@ export async function keysPage(app) {
       const label = el('span', { class: 'kcell__strokes' });
       strokes.forEach((m, i) => {
         const now = current && i === s.word.strokeIdx;
-        const group = el('span', { class: `kgroup${now ? ' is-now' : ''}${current && i < s.word.strokeIdx ? ' is-done' : ''}` }, strokeEl(m, now ? s.held : null));
+        const group = el('span', { class: `kgroup${now ? ' is-now' : ''}${current && i < s.word.strokeIdx ? ' is-done' : ''}` }, strokeElOf(new Set(P.keysOf(m)), now ? s.held : null));
         if (now && showHints()) group.append(el('small', { class: 'kcell__hint' }, hints(m)));
         label.append(group);
       });
