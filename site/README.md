@@ -49,7 +49,9 @@ A word stream that teaches where every sound sits, before the theory. You start 
 more unlocks whenever your newest words (20, at least 10) are fast and clean enough.
 
 - **Speed trades against accuracy.** Fast may be sloppy, slow must be clean: the accuracy needed
-  slides from 97% at 17 wpm to 75% at 60 wpm, and under 17 wpm nothing passes. Individual chords are
+  slides from 97% at 14 wpm to 75% at 60 wpm, and under 14 wpm nothing passes. Speed counts the
+  work, not the words: a word weighs its key presses over three, plus half a unit per extra stroke
+  (never under one), so a six-key or two-stroke word is not "slow" for taking longer than a short one. Individual chords are
   not held against you above 45 wpm.
 - **One adaptive guide, no levels.** It starts as the diagram *with the answer* (the keys to press
   light up) and the QWERTY hints; as you get fast and clean the hints and the answer go (the diagram

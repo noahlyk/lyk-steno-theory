@@ -24,7 +24,7 @@ export const KEY_ORDER = [
 export const START_KEYS = 6;
 export const WINDOW = 20; // the newest words that judge an unlock
 export const MIN_WORDS = 10; // fewest words before an unlock can be judged
-export const MIN_WPM = 17; // below this nothing passes, however clean
+export const MIN_WPM = 14; // below this nothing passes, however clean (in work-adjusted wpm, see workOf)
 export const FAST_WPM = 60; // at and above this the loosest accuracy applies
 export const ACC_SLOW = 0.97; // accuracy needed at MIN_WPM
 export const ACC_FAST = 0.75; // accuracy needed at FAST_WPM
@@ -187,10 +187,21 @@ export function recordStroke(p, { target = [], used, ms, correct }) {
   return recordChord(p, wrong.length ? wrong : targetUnits, ms, false);
 }
 
-export function recordWord(p, { ms, strokes, misses }) {
-  p.words.push({ ms, strokes, misses, g: p.guide }); // g: the guide it was typed under
+/**
+ * How much typing a word is, in units of one ordinary three-key stroke (never under 1): its key
+ * presses over three, plus half a unit for each stroke after the first. Speed is measured in these,
+ * so a word of six keys or two strokes is not "slow" just because it takes longer than a short one.
+ */
+export function workOf(masks) {
+  const keys = masks.reduce((n, m) => n + popcount(m), 0);
+  return Math.max(1, keys / 3 + 0.5 * (masks.length - 1));
+}
+
+export function recordWord(p, { ms, strokes, misses, masks = [] }) {
+  const w = masks.length ? workOf(masks) : 1;
+  p.words.push({ ms, strokes, misses, w, g: p.guide }); // w: its work; g: the guide it was typed under
   if (p.words.length > HISTORY_LIMIT) p.words.splice(0, p.words.length - HISTORY_LIMIT);
-  p.recent.push({ ms, strokes, misses });
+  p.recent.push({ ms, strokes, misses, w });
   if (p.recent.length > ASSIST_WORDS) p.recent.splice(0, p.recent.length - ASSIST_WORDS);
   p.totalTyped += 1;
 }
@@ -198,14 +209,15 @@ export function recordWord(p, { ms, strokes, misses }) {
 /** Words typed from memory (no diagram) since the last unlock: the only ones an unlock is judged on. */
 export const memoryStats = (p) => windowStats(p, p.words.filter((w) => w.g === GUIDE.MEMORY));
 
-/** Speed and accuracy over the newest `size` words (default: since the last unlock, up to WINDOW). */
+/** Work-adjusted speed (`wpm`, a typical three-key word per minute) and accuracy over the newest `size` words. */
 export function windowStats(p, words = p.words, size = WINDOW) {
   const recent = words.slice(-size);
   const count = recent.length;
   const ms = recent.reduce((s, w) => s + w.ms, 0);
+  const work = recent.reduce((s, w) => s + (w.w ?? 1), 0);
   const strokes = recent.reduce((s, w) => s + w.strokes, 0);
   const misses = recent.reduce((s, w) => s + w.misses, 0);
-  return { count, wpm: ms > 0 ? (count * 60000) / ms : 0, accuracy: strokes + misses > 0 ? strokes / (strokes + misses) : 1 };
+  return { count, wpm: ms > 0 ? (work * 60000) / ms : 0, rawWpm: ms > 0 ? (count * 60000) / ms : 0, accuracy: strokes + misses > 0 ? strokes / (strokes + misses) : 1 };
 }
 
 export function chordAccuracy(p, id) {

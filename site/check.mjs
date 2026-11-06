@@ -119,6 +119,21 @@ function drillItems(id, d) {
   for (let i = 0; i < 12; i += 1) P.recordWord(gated, { ms: 600, strokes: 1, misses: 0 });
   if (!P.unlockIfReady(gated)) fail('keys: a clean run from memory should unlock');
   if (gated.guide !== P.GUIDE.FULL) fail('keys: unlocking a key must bring the full guide back');
+  // speed counts the work: the same pace per key passes with big words as with small ones
+  const small = P.emptyProgress();
+  const big = P.emptyProgress();
+  const mask3 = P.maskOf(['T-', 'K-', 'A']);
+  const mask8 = P.maskOf(['S-', 'T-', 'K-', 'P-', 'A', 'E', '-T', '-S']);
+  for (let i = 0; i < 12; i += 1) {
+    small.guide = big.guide = P.GUIDE.MEMORY;
+    P.recordWord(small, { ms: 1000, strokes: 1, misses: 0, masks: [mask3] });
+    P.recordWord(big, { ms: 4170, strokes: 2, misses: 0, masks: [mask8, mask3] });
+  }
+  const ws = P.windowStats(small);
+  const wb = P.windowStats(big);
+  if (Math.abs(ws.wpm - 60) > 1) fail(`keys: three-key words at 1s should be 60 work-wpm, got ${ws.wpm}`);
+  if (Math.abs(wb.wpm - ws.wpm) > 2) fail(`keys: the same pace per key must score the same with big words (${wb.wpm} vs ${ws.wpm})`);
+  if (wb.rawWpm >= wb.wpm) fail('keys: a big word should count for more than a plain word');
   // a struggling typist gets the guide back
   const weak = P.emptyProgress();
   weak.guide = P.GUIDE.MEMORY;

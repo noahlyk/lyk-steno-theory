@@ -198,7 +198,7 @@ export async function keysPage(app) {
 
   function wordDone() {
     const w = s.word;
-    P.recordWord(p, { ms: w.ms, strokes: w.strokeIdx, misses: w.misses });
+    P.recordWord(p, { ms: w.ms, strokes: w.strokeIdx, misses: w.misses, masks: w.doneStrokes });
     s.done.push({ text: w.text, strokes: w.doneStrokes, missed: w.misses > 0 });
     s.done.splice(0, Math.max(0, s.done.length - DONE_KEEP));
     s.queue.shift();
@@ -291,7 +291,7 @@ export async function keysPage(app) {
     const accOk = st.count >= P.MIN_WORDS && st.accuracy >= need;
     metrics.replaceChildren(
       el('span', {}, `${Math.min(st.count, P.WINDOW)} words judged from memory`),
-      el('span', { class: wpmOk ? 'is-good' : '' }, `${Math.round(st.wpm)} wpm (${P.MIN_WPM}+ to unlock)`),
+      el('span', { class: wpmOk ? 'is-good' : '' }, `${Math.round(st.wpm)} wpm (${P.MIN_WPM}+ to unlock; big words count for more)`),
       el('span', { class: accOk ? 'is-good' : '' }, Number.isFinite(need) ? `${Math.round(st.accuracy * 100)}% clean (${Math.ceil(need * 100)}% needed at this speed)` : `${Math.round(st.accuracy * 100)}% clean`),
       el('span', {}, `${p.totalTyped} words typed in all`),
       ...(p.best ? [el('span', {}, `best ${p.best} wpm`)] : []));
