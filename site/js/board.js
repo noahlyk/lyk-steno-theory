@@ -65,33 +65,28 @@ function place(el, x, y, w, h, top, bottom) {
  *   press(keys)       mark these as held down (the learner's stroke)
  *   diff(want, got)   mark missing and extra keys after a miss
  *   clear()
- * `onToggle(id)` makes the keys clickable. The `#` bar is drawn as on the keyboard but is not a
- * lyk key, so it never lights.
+ * The board is a display, not an input: there is nothing to click. The `#` bar is drawn as on the
+ * keyboard but is not a lyk key, so it never lights.
  */
-export function createBoard(host, { onToggle = null, compact = false } = {}) {
+export function createBoard(host, { compact = false } = {}) {
   host.classList.add('board');
   if (compact) host.classList.add('board--compact');
   host.textContent = '';
   host.style.width = u(WIDTH);
   host.style.height = u(HEIGHT);
   const els = new Map();
-  const make = (id, label, group, x, y, w, h, top, bottom, interactive) => {
-    const el = document.createElement(onToggle && interactive ? 'button' : 'div');
+  const make = (id, label, group, x, y, w, h, top, bottom) => {
+    const el = document.createElement('div');
     el.className = `key key--${group}`;
     el.dataset.key = id;
     el.textContent = label;
     place(el, x, y, w, h, top, bottom);
-    if (onToggle && interactive) {
-      el.type = 'button';
-      el.setAttribute('aria-label', id === '+' ? 'join key' : `key ${label}`);
-      el.addEventListener('click', () => onToggle(id));
-    }
     host.append(el);
     els.set(id, el);
     return el;
   };
-  for (const [id, col, y, h, group, top, bottom] of KEYS) make(id, LABEL(id), group, col * STEP, y, 1, h, top, bottom, true);
-  make('#', '#', 'misc', 0, BAR_Y, WIDTH, BAR_H, 'soft', 'soft', false).classList.add('key--bar');
+  for (const [id, col, y, h, group, top, bottom] of KEYS) make(id, LABEL(id), group, col * STEP, y, 1, h, top, bottom);
+  make('#', '#', 'misc', 0, BAR_Y, WIDTH, BAR_H, 'soft', 'soft').classList.add('key--bar');
 
   const reset = () => {
     host.classList.remove('has-target');

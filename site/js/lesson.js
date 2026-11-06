@@ -68,18 +68,13 @@ export function renderBlocks(blocks) {
   });
 }
 
-/** A free board: strike or click a stroke and see its text and what the dictionary says it is. */
+/** A free board: strike a stroke and see its text and what the dictionary says it is. */
 function explore(b) {
   const host = el('div');
   const label = el('span', { class: 'boardbox__label' }, ' ');
-  const hint = el('span', { class: 'boardbox__hint' }, 'Strike keys together on your keyboard or steno machine, or click the keys.');
+  const hint = el('span', { class: 'boardbox__hint' }, 'Strike keys together on your keyboard or steno machine.');
   const keys = new Set();
-  const ctl = createBoard(host, { onToggle: (k) => {
-    if (keys.has(k)) keys.delete(k);
-    else keys.add(k);
-    paint();
-  } });
-  const clear = el('button', { class: 'btn', type: 'button', onclick: () => { keys.clear(); paint(); } }, 'Clear');
+  const ctl = createBoard(host);
   const paint = async () => {
     ctl.press(keys);
     label.textContent = keys.size ? formatStroke(keys) : ' ';
@@ -89,7 +84,7 @@ function explore(b) {
   };
   const box = el('div', { class: 'boardbox' },
     el('div', { class: 'boardbox__head' }, label, hint),
-    el('div', { class: 'boardbox__scroll' }, host), el('div', { class: 'row', style: 'margin-top:.5rem' }, clear));
+    el('div', { class: 'boardbox__scroll' }, host));
   // the keyboard (or a steno machine) is read while the board is on screen: no click needed, and it
   // lets go of the keys when it scrolls away. Space is not a steno key, so the page still scrolls.
   let timer = 0;
@@ -113,7 +108,7 @@ function explore(b) {
       clearTimeout(timer);
       keys.clear();
       paint();
-      hint.textContent = 'Click here or scroll to it, then strike keys together on your keyboard or steno machine.';
+      hint.textContent = 'Strike keys together on your keyboard or steno machine.';
     },
   });
   return el('div', {}, b.x ? el('p', {}, b.x) : null, box);

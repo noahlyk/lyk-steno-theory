@@ -30,7 +30,7 @@
       "A `-` marks a stroke with only right-hand keys: [[-G]] is the G on the right, not on the left."
     ] },
     { "t": "note", "kind": "rule", "x": "Every word has exactly **one primary** one-stroke outline, the one this course teaches. Extra outlines exist, but they only take strokes nobody else needs, so you never have to choose." },
-    { "t": "explore", "x": "Try the board: strike keys together on your keyboard, or click them. Q is the join key." },
+    { "t": "explore", "x": "Try the board: strike keys together on your keyboard or steno machine. Q is the join key." },
     { "t": "h", "x": "How to learn it" },
     { "t": "list", "ordered": true, "items": [
       "**Board and sounds (lessons 2 to 7).** Learn where each sound lives. Drill until a chord comes out without thinking.",
@@ -41,7 +41,7 @@
     ] },
     { "t": "p", "x": "Each lesson is short on purpose. Read it, point at the strokes, do the **drill** at the bottom. A drill passes at 90% right on the first try; your best score is saved in this browser." },
     { "t": "h", "x": "Setup" },
-    { "t": "p", "x": "This site reads an ordinary keyboard the way Plover's QWERTY mode does: hold the keys of a stroke together, then let go. The home row and the row above it are the consonants, `C V` and `N M` the vowels, `T G` and `Y H` the star, and **`Q` is the join key** (the `+` above `S-`, as on a Keymux board). You can also click keys on the board and press Enter stroke." },
+    { "t": "p", "x": "This site reads an ordinary keyboard the way Plover's QWERTY mode does: hold the keys of a stroke together, then let go. The home row and the row above it are the consonants, `C V` and `N M` the vowels, `T G` and `Y H` the star, and **`Q` is the join key** (the `+` above `S-`, as on a Keymux board)." },
     { "t": "table", "head": ["Keys", "Steno"], "rows": [
       ["`Q`", "+ (join)"], ["`A`", "S-"], ["`W` `S`", "T- K-"], ["`E` `D`", "P- W-"], ["`R` `F`", "H- R-"],
       ["`C` `V`", "A O"], ["`T G` / `Y H`", "*"], ["`N` `M`", "E U"],

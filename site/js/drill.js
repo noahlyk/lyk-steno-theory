@@ -42,8 +42,6 @@ export function createDrill(host, rawItems, opts = {}) {
   const answer = el('div', { class: 'answer' });
   const bar = el('span');
   const stats = el('div', { class: 'stats' });
-  const enter = el('button', { class: 'btn', type: 'button', onclick: () => submit(held.size ? held : manual) }, 'Enter stroke');
-  const clearBtn = el('button', { class: 'btn', type: 'button', onclick: () => setManual(new Set()) }, 'Clear');
   const showToggle = el('input', { type: 'checkbox', id: `show-${Math.random().toString(36).slice(2)}` });
   showToggle.checked = store.settings.hint === 'always';
   showToggle.addEventListener('change', () => {
@@ -51,17 +49,7 @@ export function createDrill(host, rawItems, opts = {}) {
     showTarget();
   });
 
-  let manual = new Set();
-  const boardCtl = createBoard(board, { onToggle: (k) => {
-    const next = new Set(manual);
-    if (next.has(k)) next.delete(k);
-    else next.add(k);
-    setManual(next);
-  } });
-  function setManual(keys) {
-    manual = keys;
-    boardCtl.press(manual);
-  }
+  const boardCtl = createBoard(board);
 
   const root = el('div', { class: 'drillbox' },
     title ? el('div', { class: 'try__title' }, title) : null,
@@ -72,13 +60,12 @@ export function createDrill(host, rawItems, opts = {}) {
     el('div', { class: 'progressbar' }, bar),
     stats,
     el('div', { class: 'row row--center', style: 'margin-top:.6rem' },
-      enter, clearBtn,
       el('label', { class: 'boardbox__hint' }, showToggle, ' always show the keys'),
     ),
     el('p', { class: 'boardbox__hint', style: 'text-align:center;margin:.5rem auto 0' },
       'Hold the keys of a stroke together (Plover QWERTY: ', el('code', {}, 'QWER'), ' ', el('code', {}, 'ASDF'), ', ',
       el('code', {}, 'CV'), ' ', el('code', {}, 'TG'), ' ', el('code', {}, 'NM'), ' ', el('code', {}, 'UIOP'), ' ', el('code', {}, 'JKL;'),
-      ', join key = Q), then let go. Or click keys and press Enter.'),
+      ', join key = Q) or a steno machine, then let go.'),
   );
   host.append(root);
 
@@ -119,7 +106,7 @@ export function createDrill(host, rawItems, opts = {}) {
     answer.textContent = note;
     answer.className = note ? 'answer is-good' : 'answer';
     note = '';
-    setManual(new Set());
+    boardCtl.press(new Set());
     label.textContent = '';
     hint.textContent = '';
     showTarget();
@@ -164,11 +151,11 @@ export function createDrill(host, rawItems, opts = {}) {
     strokes += 1;
     const got = new Set(keys);
     if (engineJudges()) {
-      setManual(new Set());
+      boardCtl.press(new Set());
       if (judgeWithEngine(got)) return;
     }
     const matching = cands.filter((c) => c.strokes[strokeAt] && sameKeys(c.strokes[strokeAt], got));
-    setManual(new Set());
+    boardCtl.press(new Set());
     if (matching.length) {
       cands = matching;
       strokeAt += 1;

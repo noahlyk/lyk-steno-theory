@@ -11,7 +11,7 @@
       ["Join key and star (green)", "`+`, `*`", "`+` is the top half of the `S` key, above `S-`. Struck with a stroke to continue a word. `*` is the tiebreaker (lesson 9)."]
     ] },
     { "t": "p", "x": "The left `S` key is split in two: `+` on top, `S-` below. The `*` is one tall key. The bar across the top is the `#` number bar, which lyk strokes do not use. Keys are grey until they are part of a stroke: colour only ever means *held*. The rest are top and bottom pairs. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
-    { "t": "explore", "x": "Strike or click keys. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
+    { "t": "explore", "x": "Strike keys on your keyboard. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
     { "t": "h", "x": "Steno order" },
     { "t": "p", "x": "However you press them, keys are always written left to right in the same order:" },
     { "t": "table", "rows": [["`S T K P W H R`", "`A O * E U`", "`F R P B L G T S D Z`"]] },
