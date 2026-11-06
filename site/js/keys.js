@@ -9,6 +9,8 @@ import { el } from './dom.js';
 import { whenActive } from './input.js';
 import { GROUP_OF, sound, strokeEl as strokeElOf } from './outline.js';
 import { store } from './store.js';
+
+const SHOW_ID = 'kshow';
 import * as P from './trainer.js';
 
 const LOOKAHEAD = 4; // upcoming words shown
@@ -59,7 +61,18 @@ export async function keysPage(app) {
     message: '',
     kind: '',
     sinceLesson: 0,
+    peekWord: false, // always-show was on at some moment of the word in play
+    peekWindow: false, // ... or at some moment of the 20-word window a best is judged on
   };
+  // Never saved, never cleared by turning it off: a window that was peeked at cannot set a best.
+  const showToggle = el('input', { type: 'checkbox', id: SHOW_ID });
+  showToggle.checked = store.settings.hint === 'always';
+  const peekNote = el('div', { class: 'boardbox__hint peeknote', 'aria-live': 'polite' });
+  showToggle.addEventListener('change', () => {
+    store.setSetting('hint', showToggle.checked ? 'always' : 'miss');
+    if (showToggle.checked) { s.peekWord = true; s.peekWindow = true; }
+    render();
+  });
 
   // ---- layout ----
   const guideRow = el('div', { class: 'kguide', 'aria-label': 'guide' });
@@ -78,7 +91,9 @@ export async function keysPage(app) {
     guideRow, chips,
     el('div', { class: 'boardbox kstreambox' },
       el('div', { class: 'progressbar' }, progressBar), metrics, weakRow,
-      stream, status, boardWrap),
+      stream, status, boardWrap,
+      el('div', { class: 'row row--center' }, el('label', { class: 'boardbox__hint', for: SHOW_ID }, showToggle, ' always show the keys')),
+      peekNote),
     el('p', { class: 'boardbox__hint' },
       'Hold the keys of a stroke together on your keyboard (Plover QWERTY: ', el('code', {}, 'QWER ASDF'), ' left hand, ',
       el('code', {}, 'C V'), ' and ', el('code', {}, 'N M'), ' thumbs, ', el('code', {}, 'T'), ' star, ', el('code', {}, 'UIOP JKL;'),
@@ -103,6 +118,7 @@ export async function keysPage(app) {
     const all = P.displayVariants(w, mask());
     s.word = { text: w.text, all, candidates: all, strokeIdx: 0, doneStrokes: [], misses: 0, wrongChords: 0, ms: 0, lastEnd: performance.now() };
     s.partial = 0;
+    s.peekWord = showToggle.checked;
   }
   const target = () => s.word?.candidates[0]?.[s.word.strokeIdx] ?? 0;
 
@@ -111,6 +127,7 @@ export async function keysPage(app) {
     s.queue = [];
     s.done = [];
     s.sinceLesson = 0;
+    s.peekWindow = showToggle.checked;
     s.message = '';
     refill();
     startWord();
@@ -168,7 +185,7 @@ export async function keysPage(app) {
 
   function wordDone() {
     const w = s.word;
-    P.recordWord(p, { ms: w.ms, strokes: w.strokeIdx, misses: w.misses, masks: w.doneStrokes });
+    P.recordWord(p, { ms: w.ms, strokes: w.strokeIdx, misses: w.misses, masks: w.doneStrokes, assisted: s.peekWord });
     s.done.push({ text: w.text, strokes: w.doneStrokes, missed: w.misses > 0 });
     s.done.splice(0, Math.max(0, s.done.length - DONE_KEEP));
     s.queue.shift();
@@ -195,8 +212,9 @@ export async function keysPage(app) {
     if (s.sinceLesson >= P.WINDOW) {
       s.sinceLesson = 0;
       P.recordLesson(p, stats);
-      const best = toast ? null : P.recordBestIfFaster(p, stats);
+      const best = toast ? null : P.recordBestIfFaster(p, stats, { assisted: s.peekWindow });
       if (best) say(`New best: ${best} wpm!`, 'good');
+      s.peekWindow = showToggle.checked; // the next window starts clean (or peeked, if it is still on)
     }
     save();
     refill();
@@ -208,10 +226,10 @@ export async function keysPage(app) {
 
   // ---- drawing ----
   const revealed = () => Boolean(s.word && s.word.wrongChords >= P.LABEL_REVEAL_MISSES);
-  const showDiagram = () => p.guide >= P.GUIDE.DIAGRAM || revealed();
-  const showHints = () => p.guide === P.GUIDE.FULL;
+  const showDiagram = () => p.guide >= P.GUIDE.DIAGRAM || showToggle.checked || revealed();
+  const showHints = () => p.guide === P.GUIDE.FULL || showToggle.checked;
   // the diagram always shows what you press; it only shows what you SHOULD press with the full guide
-  const showAnswer = () => p.guide === P.GUIDE.FULL || revealed();
+  const showAnswer = () => p.guide === P.GUIDE.FULL || showToggle.checked || revealed();
 
   function paintBoard() {
     boardWrap.classList.toggle('is-blind', !showDiagram());
@@ -274,6 +292,7 @@ export async function keysPage(app) {
     renderTop();
     renderStream();
     renderMetrics();
+    peekNote.textContent = s.peekWindow ? 'Keys were shown in this stretch of words, so it will not count toward your best, and the words typed with them shown do not count toward unlocks.' : '';
     if (rePaint) paintBoard();
     else boardWrap.classList.toggle('is-blind', !showDiagram());
   }

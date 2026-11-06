@@ -47,12 +47,18 @@ export const store = {
   drill(id) {
     return load().drills[id] ?? null;
   },
-  /** Record a finished run; keeps the best accuracy and fastest speed. */
-  recordRun(id, { accuracy, wpm, pass }) {
+  /**
+   * Record a finished run; keeps the best accuracy and fastest speed. A run that was `assisted`
+   * (the always-show-the-keys option was on at any moment of it) still counts as a run and can pass
+   * the lesson, but never sets the best.
+   */
+  recordRun(id, { accuracy, wpm, pass, assisted = false }) {
     const d = (load().drills[id] ??= { runs: 0, best: 0, wpm: 0, passed: false });
     d.runs += 1;
-    d.best = Math.max(d.best, accuracy);
-    d.wpm = Math.max(d.wpm, wpm);
+    if (!assisted) {
+      d.best = Math.max(d.best, accuracy);
+      d.wpm = Math.max(d.wpm, wpm);
+    }
     d.last = accuracy;
     if (accuracy >= pass) d.passed = true;
     save();

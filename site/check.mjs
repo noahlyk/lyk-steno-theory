@@ -119,6 +119,18 @@ function drillItems(id, d) {
   for (let i = 0; i < 12; i += 1) P.recordWord(gated, { ms: 600, strokes: 1, misses: 0 });
   if (!P.unlockIfReady(gated)) fail('keys: a clean run from memory should unlock');
   if (gated.guide !== P.GUIDE.FULL) fail('keys: unlocking a key must bring the full guide back');
+  // "always show the keys": a word typed with it on, even briefly, is not from memory and never counts
+  const peek = P.emptyProgress();
+  peek.guide = P.GUIDE.MEMORY;
+  for (let i = 0; i < 30; i += 1) P.recordWord(peek, { ms: 600, strokes: 1, misses: 0, assisted: true });
+  if (P.memoryStats(peek).count !== 0 || P.unlockIfReady(peek)) fail('keys: words typed with the keys shown must not unlock a key');
+  for (let i = 0; i < 12; i += 1) P.recordWord(peek, { ms: 600, strokes: 1, misses: 0 });
+  if (P.memoryStats(peek).count !== 12 || !P.unlockIfReady(peek)) fail('keys: clean memory words still unlock after peeked ones');
+  const full = P.emptyProgress();
+  full.unlocked = P.KEY_ORDER.length;
+  const goodWindow = { count: P.WINDOW, wpm: 50, accuracy: 0.95 };
+  if (P.recordBestIfFaster(full, goodWindow, { assisted: true }) !== null || full.best !== null) fail('keys: a window with the keys shown must not set a best');
+  if (P.recordBestIfFaster(full, goodWindow) !== 50) fail('keys: an unassisted passing window sets a best');
   // speed counts the work: the same pace per key passes with big words as with small ones
   const small = P.emptyProgress();
   const big = P.emptyProgress();

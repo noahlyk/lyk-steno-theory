@@ -22,7 +22,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/engine.js`, `js/translate.js` | The stroke-to-text engine: `translate(strokes)` says what a stream types, `accepts(word, strokes)` whether it types that word by any route, `prefixOf` whether it still can. `translate.js` is the loaded-on-demand wrapper for pages that show the output. |
 | `js/steno.js` | Parses and writes strokes (`TKOG/+-Z`), and the QWERTY chord map (`Q` is the join key). |
 | `js/board.js`, `js/input.js` | The on-screen board (a display only: nothing on it is clickable, there is no click-to-type anywhere) and its key states (hint, held, wrong, missing) plus the legend; chord capture (keys down together, stroke on release) from the keyboard or a steno machine. |
-| | **Who takes the keys:** anything that takes strokes (a try-it board, a drill, the key stream) registers a region with `whenActive` in `input.js`. Exactly one region listens at a time: the one with the most of itself on screen (at least 40% in view), or the one just clicked or tabbed into, so several can share a page and only the one in front of you is ever fed, by keyboard or steno machine. A finished drill steps aside. The Try it pad, opened on purpose, outranks them all. |
+| | **Who takes the keys:** anything that takes strokes (a try-it board, a drill, the key stream) registers a region with `whenActive` in `input.js`. Exactly one region listens at a time: the one with the most of itself on screen (at least 40% in view), or the one just clicked or tabbed into, so several can share a page and only the one in front of you is ever fed, by keyboard or steno machine. The Try it pad, opened on purpose, outranks them all. |
 | `js/popover.js` | The hover board: pointing at or focusing any stroke chip (`data-outline`) floats its keys beside it, stepping through a multi-stroke outline; a tap toggles on touch. No click, nothing sticky. |
 | | The preview's top right says what the outline is defined as (`engine.define`): `{^ed}` for a suffix stroke, `{.}` for punctuation, the word for an entry, an italic reading for anything the fallback composes. The strokes not being shown are dimmed, not bracketed. |
 | `js/dock.js`, `js/translate.js` | The "Try it" pad (button, or `?`): type with Plover QWERTY, the board glows the held keys, and `translate(strokes)` turns the strokes into words. All stroke-to-text lives behind that one function. |
@@ -42,6 +42,27 @@ key is the join key (`+`) and the bottom one is `S-`, matching lyk's board (unti
 join key" to make both `S-`); the four asterisk levers are `*`, and `#` keys press nothing. Strokes
 fire when the last key comes up, the same as with the keyboard. The decoder is unit-tested
 (`check.mjs`) on synthetic reports; it has not been run against hardware yet.
+
+## Always show the keys, and restarting a run
+
+Every drill has an "always show the keys" box, and so does the key stream. It is allowed, with a price:
+
+- **If it is ever on during a run, that run cannot set a best.** Even for a moment, even if it is
+  switched off again before the end, and a run that *starts* with it already on is peeked too. In a
+  drill (`js/drill.js`) the flag (`peeked`) is only ever set during a run, never cleared until the next
+  run begins; the result card says "Keys were shown during this run, so it does not count toward your
+  best", a small note says the same while the run is live, and `store.recordRun(..., { assisted })`
+  still counts the run and lets it pass the lesson but leaves the best accuracy and best speed alone.
+- **In the key stream** (`js/keys.js`) a word typed with it on at any moment is saved with `a: 1`;
+  `memoryStats` (what unlocks and finishing are judged on) ignores such words, so they are never "from
+  memory", and the 20-word window it touched cannot set a best wpm (`recordBestIfFaster(..., { assisted })`).
+  The window flag is in memory only and is not reset by turning the box off; the next window starts clean.
+  The box itself is the same saved setting in both places.
+- **A keypress restarts a finished drill.** On the results card, any stroke (a whole chord, from the
+  keyboard or a steno machine) starts a fresh run; that stroke is only the restart and is not scored. The
+  first 700 ms after the results appear are ignored, since a typist's next stroke is still the last
+  word. Mid-run nothing restarts, and the key stream has no results card, so there is nothing to
+  restart. The finished drill keeps listening, so it follows the usual who-takes-the-keys rule.
 
 ## Learn the keys
 

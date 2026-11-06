@@ -8,6 +8,8 @@ import { whenActive } from './input.js';
 import { formatStroke, parseOutline, sameKeys } from './steno.js';
 import { store } from './store.js';
 
+const RESTART_GUARD_MS = 700; // strokes this soon after the results appear are still the last word's typing
+
 /**
  * items: [[prompt, outline, ...alternativeOutlines]]
  * opts:  id (progress key, omit to not save), pass (percent), repeat, limit, onDone(result)
@@ -34,6 +36,8 @@ export function createDrill(host, rawItems, opts = {}) {
   let engine = null; // the stroke-to-text engine, once loaded: any way of typing the word passes
   let typed = []; // the strokes struck so far for this word, when the engine is judging
   let note = '';
+  let peeked = false; // the always-show option was on at some moment of this run: it cannot set a best
+  let finishedAt = 0; // when the results appeared; a keypress then starts a fresh run
 
   const board = el('div');
   const label = el('span', { class: 'boardlabel boardbox__label' });
@@ -44,8 +48,14 @@ export function createDrill(host, rawItems, opts = {}) {
   const stats = el('div', { class: 'stats' });
   const showToggle = el('input', { type: 'checkbox', id: `show-${Math.random().toString(36).slice(2)}` });
   showToggle.checked = store.settings.hint === 'always';
+  const peekNote = el('div', { class: 'boardbox__hint peeknote', style: 'text-align:center' });
+  const paintPeek = () => {
+    peekNote.textContent = peeked && live ? 'Keys were shown during this run, so it will not count toward your best.' : '';
+  };
   showToggle.addEventListener('change', () => {
     store.setSetting('hint', showToggle.checked ? 'always' : 'miss');
+    if (showToggle.checked && live) peeked = true; // turning it off again does not undo it
+    paintPeek();
     showTarget();
   });
 
@@ -62,6 +72,7 @@ export function createDrill(host, rawItems, opts = {}) {
     el('div', { class: 'row row--center', style: 'margin-top:.6rem' },
       el('label', { class: 'boardbox__hint' }, showToggle, ' always show the keys'),
     ),
+    peekNote,
     el('p', { class: 'boardbox__hint', style: 'text-align:center;margin:.5rem auto 0' },
       'Hold the keys of a stroke together (Plover QWERTY: ', el('code', {}, 'QWER'), ' ', el('code', {}, 'ASDF'), ', ',
       el('code', {}, 'CV'), ' ', el('code', {}, 'TG'), ' ', el('code', {}, 'NM'), ' ', el('code', {}, 'UIOP'), ' ', el('code', {}, 'JKL;'),
@@ -85,6 +96,9 @@ export function createDrill(host, rawItems, opts = {}) {
     started = 0;
     live = true;
     note = '';
+    peeked = showToggle.checked; // starting a run with it on is already peeking
+    finishedAt = 0;
+    paintPeek();
     region.enable(true);
     root.querySelectorAll('.result').forEach((n) => n.remove());
     nextItem(true);
@@ -146,6 +160,11 @@ export function createDrill(host, rawItems, opts = {}) {
   }
 
   function submit(keys) {
+    // on the results, a keypress (a whole stroke) starts a fresh run; that stroke is only the restart
+    if (!live && finishedAt) {
+      if (Date.now() - finishedAt > RESTART_GUARD_MS) begin();
+      return;
+    }
     if (!live || !cands.length || keys.size === 0) return;
     if (!started) started = Date.now();
     strokes += 1;
@@ -227,13 +246,14 @@ export function createDrill(host, rawItems, opts = {}) {
 
   function finish() {
     live = false;
-    region.enable(false); // a finished drill takes no keys, so it does not hold them from anything else
+    finishedAt = Date.now();
+    paintPeek();
     const total = queue.length;
     const accuracy = Math.round((firstTry / total) * 100);
     const mins = Math.max((Date.now() - started) / 60000, 0.01);
     const wpm = Math.round(total / mins);
     const passed = accuracy >= pass;
-    const saved = id ? store.recordRun(id, { accuracy, wpm, pass }) : null;
+    const saved = id ? store.recordRun(id, { accuracy, wpm, pass, assisted: peeked }) : null;
     prompt.textContent = '';
     answer.textContent = '';
     boardCtl.clear();
@@ -244,14 +264,16 @@ export function createDrill(host, rawItems, opts = {}) {
       el('div', { class: 'result__big' }, `${accuracy}%`),
       el('div', {}, passed ? `Passed (${pass}% first try needed). ${wpm} words a minute.`
         : `${pass}% first try needed. ${wpm} words a minute. Run it again.`),
+      peeked ? el('div', { class: 'boardbox__hint peeknote' }, 'Keys were shown during this run, so it does not count toward your best.') : null,
       saved ? el('div', { class: 'boardbox__hint' }, `Best ${saved.best}%, ${saved.runs} run${saved.runs === 1 ? '' : 's'}`) : null,
       misses.length ? el('ul', { class: 'misslist' }, misses.slice(0, 12).map((m) =>
         el('li', {}, el('strong', {}, m.prompt), ' wants ', el('code', {}, m.outline), ', you struck ', el('code', {}, m.got)))) : null,
       el('div', { class: 'row row--center', style: 'margin-top:.7rem' },
-        el('button', { class: 'btn btn--primary', type: 'button', onclick: begin }, 'Run again')),
+        el('button', { class: 'btn btn--primary', type: 'button', onclick: begin }, 'Run again'),
+        el('span', { class: 'boardbox__hint' }, 'or strike any key')),
     );
     root.append(result);
-    onDone({ accuracy, wpm, passed });
+    onDone({ accuracy, wpm, passed, assisted: peeked });
   }
 
   // no Start button and no click: the drill listens whenever it is the one being looked at (see
@@ -266,7 +288,7 @@ export function createDrill(host, rawItems, opts = {}) {
       loadEngine().then((e) => { engine = e; }).catch(() => {}); // without it a drill wants the listed outlines
     },
   });
-  const api = { stop() { live = false; region.dispose(); }, restart: begin };
+  const api = { stop() { live = false; finishedAt = 0; region.dispose(); }, restart: begin };
   running.add(api);
   begin();
   return api;

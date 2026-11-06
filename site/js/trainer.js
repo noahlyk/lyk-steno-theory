@@ -197,17 +197,21 @@ export function workOf(masks) {
   return Math.max(1, keys / 3 + 0.5 * (masks.length - 1));
 }
 
-export function recordWord(p, { ms, strokes, misses, masks = [] }) {
+export function recordWord(p, { ms, strokes, misses, masks = [], assisted = false }) {
   const w = masks.length ? workOf(masks) : 1;
-  p.words.push({ ms, strokes, misses, w, g: p.guide }); // w: its work; g: the guide it was typed under
+  // w: its work; g: the guide it was typed under; a: "always show the keys" was on at some moment of it
+  p.words.push(assisted ? { ms, strokes, misses, w, g: p.guide, a: 1 } : { ms, strokes, misses, w, g: p.guide });
   if (p.words.length > HISTORY_LIMIT) p.words.splice(0, p.words.length - HISTORY_LIMIT);
   p.recent.push({ ms, strokes, misses, w });
   if (p.recent.length > ASSIST_WORDS) p.recent.splice(0, p.recent.length - ASSIST_WORDS);
   p.totalTyped += 1;
 }
 
-/** Words typed from memory (no diagram) since the last unlock: the only ones an unlock is judged on. */
-export const memoryStats = (p) => windowStats(p, p.words.filter((w) => w.g === GUIDE.MEMORY));
+/**
+ * Words typed from memory (no diagram) since the last unlock: the only ones an unlock is judged on.
+ * A word typed with "always show the keys" on, even briefly, is not from memory and never counts.
+ */
+export const memoryStats = (p) => windowStats(p, p.words.filter((w) => w.g === GUIDE.MEMORY && !w.a));
 
 /** Work-adjusted speed (`wpm`, a typical three-key word per minute) and accuracy over the newest `size` words. */
 export function windowStats(p, words = p.words, size = WINDOW) {
@@ -264,9 +268,12 @@ export function recordLesson(p, stats) {
   if (p.lessonHistory.length > LESSON_HISTORY_LIMIT) p.lessonHistory.splice(0, p.lessonHistory.length - LESSON_HISTORY_LIMIT);
 }
 
-/** A personal best counts only with every key unlocked and a whole passing window. Whole wpm. */
-export function recordBestIfFaster(p, stats) {
-  if (p.unlocked < KEY_ORDER.length || stats.count < WINDOW || !passes(stats)) return null;
+/**
+ * A personal best counts only with every key unlocked and a whole passing window. Whole wpm.
+ * `assisted`: "always show the keys" was on at any moment of the window, so it cannot be a best.
+ */
+export function recordBestIfFaster(p, stats, { assisted = false } = {}) {
+  if (assisted || p.unlocked < KEY_ORDER.length || stats.count < WINDOW || !passes(stats)) return null;
   const wpm = Math.floor(stats.wpm);
   if (wpm <= (p.best ?? 0)) return null;
   p.best = wpm;
