@@ -2330,3 +2330,18 @@ with a board that lights up for any stroke, drills on a real keyboard, a lookup 
 - Not copied from Lapwing Lab: fix-up drills against a stored history, ghost runs, routines,
   month-end reports. They need a server and a database; the Practice page's "drill my misses" is
   the small version of the first.
+
+## Spelled compounds as a backup (2026-11-06)
+
+`noone` had no `no` + `one` route: the compound direction demanded the word's CMUdict sounds split
+exactly into two placed words' sounds, and CMUdict hears *noone* as /N UW N/ (*noon*). `nobody`,
+`anybody`, `everyone` and `cannot` were missing for the same reason (a reduced vowel, a collapsed
+consonant). The fix is a second, looser test beside it (`Stems::spelled_compounds`): the spelling
+must be the two words' spellings joined, both halves common (top 5,000; a half under 4 letters top
+1,000), and the consonants (vowels and stress dropped) within one edit of the halves' consonants.
+Consonants rather than whole sounds because vowels are what speech and CMUdict reshape; one edit
+admits *noone* (an extra `W`) and rejects *father* against *fat* + *her* (two). Backup only: a
+primary is untouched, so `lyk score` moves by a rounding (4+ syllables 5.695 -> 5.691 keys per
+stroke) from rare words whose best outline was already a backup. Not made a primary candidate:
+754 words with a two-stroke primary would save 1 to 3 keys by it, all ranked past 2,600, and a
+primary that is a pair of other words' outlines moves whenever either half does.

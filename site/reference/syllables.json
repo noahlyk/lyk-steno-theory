@@ -65,7 +65,21 @@
       "More than one split can pass. *outside* is both *out* + *side* and *outs* + *ide*; both are kept as separate entries.",
       "A word that is a prefix word of its own (*out*, *up*, *self*) needs no prefix entry: two whole words back to back already covers it."
     ] },
-    { "t": "note", "kind": "warn", "x": "This direction misses compounds whose boundary speech reshapes beyond a stress shift: *cannot* (the two `N`s collapse), *yourself* (*your* reduces to a single `ER0`), *anybody* (*body* loses its stressed vowel), *everyone*. These are left alone, not guessed at; use the other ways to join them." },
+    { "t": "note", "kind": "warn", "x": "The exact-sound test above misses compounds whose boundary speech reshapes beyond a stress shift: *cannot* (the two `N`s collapse), *yourself* (*your* reduces to a single `ER0`), *anybody* (*body* loses its stressed vowel), *everyone*, and *noone* (CMUdict hears *noon*). The spelled compound below catches them." },
+    { "t": "h3", "x": "Direction 3b: two whole words by spelling (spelled compound)" },
+    { "t": "p", "x": "The same two-words-back-to-back join, found by the word's **letters** first and checked loosely by its **consonants**, so a vowel that speech or CMUdict changes does not hide it: [[noone|PHO/+WUPB]] (*no* + *one*), [[nobody|PHO/+PWO*ED]], [[anybody|AEPB/+PWO*ED]], [[everyone|EF/+WUPB]], [[cannot|K/+OT]]. It runs in every round, beside Direction 3, and a text both produce is one entry." },
+    { "t": "table", "head": ["Gate", "Rule", "Why"], "rows": [
+      ["Spelling", "The word is at least 5 letters, only `a` to `z`, not in `not_family`, and is exactly the first half's letters then the second half's, at every split from 2 letters in.", "Two letters at each end at least; names with apostrophes and listed non-compounds stay out."],
+      ["Both halves are words", "Each half is a placed word in the top 5,000 of the frequency list (`COMPOUND_PART_RANK`).", "A half rarer than that is more likely a spelling accident (*ted*, *ford*) than a word."],
+      ["Short halves are common", "A half under 4 letters (`COMPOUND_PART_LETTERS`) must be in the top 1,000 (`COMPOUND_COMMON_RANK`).", "Keeps *no*, *one*, *up*, *man*, *how*; drops *ted*, *per*, *ric*."],
+      ["Consonants agree", "The word's consonant phonemes (vowels and stress dropped) differ from the first half's joined to the second half's by at most one insertion, deletion or change (`COMPOUND_CONSONANT_SLACK`), for some pronunciation of each.", "*noone* /N UW N/ against *no* + *one* /N W N/ is one `W`. *father* against *fat* + *her* is two: rejected."],
+      ["Fastest outline only", "Each half joins through its fastest outline (star-ladder markers dropped), the second with the join key on every stroke.", "The pair a reader would guess; Direction 3 also joins a half's plain rules reading."]
+    ] },
+    { "t": "list", "items": [
+      "It is a backup only: it never changes a primary, and it takes only a text nobody holds, the commoner word winning a text two words compose.",
+      "No pronunciation check beyond the consonants, so a rare accident can pass (*thinking* is *thin* + *king* by this test). It costs nothing but a spare route.",
+      "A one-stroke primary always outranks it (*noone* stays [[TPHAO*PB]]); a word with no one-stroke form of its own can end up with it as its best outline."
+    ] },
     { "t": "h", "x": "Sound matches need not mean anything" },
     { "t": "p", "x": "None of the sound-based directions requires the match to make sense. *doctor* is exactly *docked* plus *-er*, and *crash* is a `k` in front of *rash*: coincidences, reused anyway. When more than one placed word ties on sound alone (*build* and *billed* are exact homophones), the word's own spelling breaks the tie if it can (*building* starts with *build*, not *billed*; see [spelling](#/ref/spelling)). If spelling does not settle it, the word is left alone." },
     { "t": "h", "x": "Direction 4: word families" },

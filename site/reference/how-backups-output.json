@@ -29,7 +29,8 @@
       ["(d) family", "A family member's stem outline, whatever it is, plus the ending's standalone stroke: call + -ed is [[KAUL/+-D]], look + -s is [[HRAOBG/+-S]]. Covers endings that are not a syllable of their own, which (a) cannot."],
       ["(e) syllables", "The word itself, one syllable per stroke, from each pronunciation: its folded outline; a reduced last syllable struck like a suffix ([[TAEU/+-BL]]); every vowel written ([[TAEU/+PWUL]]); both syllable splits ([[HREPL/+UPB]], [[HRE/+PHUPB]]); a fixed prefix folded or alone. A kept schwa is always `U`. Needs no other word, so it runs in round 0 only."],
       ["(f) prefix", "A prefix's own stroke, then the placed stem's whole outline joined: [[UPB/+KHRAOER]] (unclear), [[TKE/+KOED]] (decode), [[TPHOPB/+STOP]] (nonstop). The word's sound must end in the stem's."],
-      ["(c) compound", "Two placed words back to back, when the spelling really is the two words joined (myself = my + self)."]
+      ["(c) compound", "Two placed words back to back, when the spelling really is the two words joined (myself = my + self)."],
+      ["(c2) spelled compound", "The same, found by letters and a loose consonant check, for pairs CMUdict does not split cleanly: [[PHO/+WUPB]] (noone = no + one). See [syllables and folding](#/ref/syllables)."]
     ] },
     { "t": "p", "x": "Direction (f) uses eighteen prefixes: un, dis, mis, re, pre, de, co, en, im, in, non, sub, trans, anti, inter, semi, over, under. See [prefixes](#/ref/prefixes)." },
     { "t": "h3", "x": "Endings used by direction (d)" },

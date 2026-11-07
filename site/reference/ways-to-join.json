@@ -48,7 +48,7 @@
       ["-ance, -ence", "[[+UPBS]]", "[[presence|PREZ/+UPBS]]"],
       ["'s", "[[+-PBTS]]", "read as \"'s\" after any word by the [fallback](#/ref/fallback); no entries"]
     ] },
-    { "t": "p", "x": "Endings stack: *needlessly* is *need* `+-LS` `+-L`. A word that is two words is the two words: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]." },
+    { "t": "p", "x": "Endings stack: *needlessly* is *need* `+-LS` `+-L`. A word that is two words is the two words: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]], and the ones speech blurs: [[noone|PHO/+WUPB]], [[nobody|PHO/+PWO*ED]], [[cannot|K/+OT]], [[everyone|EF/+WUPB]], [[anybody|AEPB/+PWO*ED]]. Both words must be common (top 5,000, and a short one top 1,000) and their consonants must add up to the word's, give or take one sound; see [syllables and folding](#/ref/syllables)." },
     { "t": "h", "x": "2. A prefix, then a word you know" },
     { "t": "p", "x": "Stroke the prefix on its own, then the word with the join key held." },
     { "t": "table", "head": ["Prefix", "Stroke", "Example"], "rows": [

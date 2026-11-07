@@ -11,7 +11,9 @@
 //!   (*build* + "-ing"), or plus a two-stroke suffix from `rules/suffixes.toml` found by spelling
 //!   (*cube* + "-ism");
 //! - **lead**: a leading consonant cluster folded onto a placed word's first stroke (*ever* -> *never*);
-//! - **compound**: two placed words back to back, when the spelling is the two joined (*myself*);
+//! - **compound**: two placed words back to back, when the spelling is the two joined (*myself*), and
+//!   a second route for the pairs `CMUdict`'s sounds do not split cleanly (*noone* `PHO/+WUPB`,
+//!   [`Stems::spelled_compounds`]);
 //! - **ending**: a family link's stem plus its ending's stroke (*call* + "-ed", *fool* + "-ish");
 //! - **prefix**: a prefix's stroke, then a placed stem's outline (*un* + *clear*);
 //! - **syllables**: the word itself one syllable per stroke (`Rules::syllable_paths`), round 0 only;
@@ -40,6 +42,19 @@ pub const REST_QUOTAS: [usize; 4] = [3, 4, 4, 2];
 /// How many paths of two strokes and of three a word with no join of its own is given, each with
 /// the star marker after it (see [`Stems::marked_joins`]).
 const MARKED_QUOTAS: [usize; 5] = [3, 3, 0, 0, 0];
+
+/// A spelled compound's halves must both be this common (rank in the frequency list, 0 the most
+/// common): a half rarer than this is more likely an accident of spelling (*ted*, *ford*) than a word.
+const COMPOUND_PART_RANK: usize = 5_000;
+/// A half shorter than this many letters must be among the [`COMPOUND_COMMON_RANK`] most common
+/// words (*no*, *one*, *up*, *man*); a longer half need only pass [`COMPOUND_PART_RANK`].
+const COMPOUND_PART_LETTERS: usize = 4;
+const COMPOUND_COMMON_RANK: usize = 1_000;
+/// A spelled compound is at least this many letters (no *a*+*go*).
+const COMPOUND_MIN_LETTERS: usize = 5;
+/// The most the word's consonants may differ from its halves' consonants joined, as phonemes
+/// inserted, deleted or changed: `CMUdict` says *noone* is /N UW N/, *no* + *one* is /N W N/.
+const COMPOUND_CONSONANT_SLACK: usize = 1;
 
 /// Rounds at most. Each round only builds on the previous round's new entries, so growth stops
 /// well before this; hitting it would mean something matches too permissively.
@@ -238,6 +253,9 @@ impl<'a> Stems<'a> {
         for outline in self.compounds(word, sounds) {
             push(outline, Some(sounds));
         }
+        for outline in self.spelled_compounds(word) {
+            push(outline, None);
+        }
         for (outline, family) in self.ended(word) {
             push(outline, (!family).then_some(sounds.as_slice()));
         }
@@ -410,6 +428,47 @@ impl<'a> Stems<'a> {
         out
     }
 
+    /// Two placed words back to back at every split where the spelling is exactly the two joined
+    /// and the consonants agree (within [`COMPOUND_CONSONANT_SLACK`]) even where the vowels do not:
+    /// *noone* is `no` + `one` though `CMUdict` hears /N UW N/. Both halves must be common words
+    /// ([`COMPOUND_PART_RANK`], [`COMPOUND_PART_LETTERS`]) and each joins through its fastest
+    /// outline only, so the result is the one a reader would guess. Whole outlines joined, so no
+    /// fragment check; the sound gate is the guard against *fat* + *her* style accidents.
+    fn spelled_compounds(&self, word: &str) -> Vec<Vec<Stroke>> {
+        let mut out = Vec::new();
+        if word.len() < COMPOUND_MIN_LETTERS || !word.bytes().all(|b| b.is_ascii_lowercase()) || self.not_family.contains(word) {
+            return out;
+        }
+        let setup = self.setup;
+        let Some(prons) = setup.pron.get(word) else { return out };
+        let common = |part: &str| {
+            setup.rank.get(part).is_some_and(|&r| {
+                r < COMPOUND_PART_RANK && (part.len() >= COMPOUND_PART_LETTERS || r < COMPOUND_COMMON_RANK)
+            })
+        };
+        for at in 2..=word.len() - 2 {
+            let (first, second) = word.split_at(at);
+            if !common(first) || !common(second) {
+                continue;
+            }
+            let (Some(a), Some(b)) = (self.of(first, word).first(), self.of(second, word).first()) else { continue };
+            let (Some(firsts), Some(seconds)) = (setup.pron.get(first), setup.pron.get(second)) else { continue };
+            let near = prons.iter().any(|w| {
+                let w = consonants(w);
+                firsts.iter().any(|f| {
+                    seconds.iter().any(|s| {
+                        let joined: Vec<&str> = consonants(f).into_iter().chain(consonants(s)).collect();
+                        edit_distance(&w, &joined) <= COMPOUND_CONSONANT_SLACK
+                    })
+                })
+            });
+            if near {
+                out.push([a.as_slice(), b].concat());
+            }
+        }
+        out
+    }
+
     /// Every family link's stem plus its ending's stroke (`call` + "-ed", `fool` + "-ish").
     /// Each with whether its ending is a family one (see `Link::is_family`).
     fn ended(&self, word: &str) -> Vec<(Vec<Stroke>, bool)> {
@@ -453,6 +512,25 @@ fn folded(outline: &[Stroke]) -> Option<Vec<Stroke>> {
     }
     let merged = before.fold(*last)?;
     Some([head, &[merged]].concat())
+}
+
+/// `sounds` without its vowels, stress digits removed.
+fn consonants(sounds: &[String]) -> Vec<&str> {
+    const VOWELS: [&str; 15] = ["AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH", "IY", "OW", "OY", "UH", "UW"];
+    stress_stripped(sounds).into_iter().filter(|p| !VOWELS.contains(p)).collect()
+}
+
+/// Phonemes inserted, deleted or changed to turn `a` into `b`.
+fn edit_distance(a: &[&str], b: &[&str]) -> usize {
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, x) in a.iter().enumerate() {
+        let mut cur = vec![i + 1];
+        for (j, y) in b.iter().enumerate() {
+            cur.push((prev[j + 1] + 1).min(cur[j] + 1).min(prev[j] + usize::from(x != y)));
+        }
+        prev = cur;
+    }
+    prev[b.len()]
 }
 
 /// `sounds` with every stress digit removed.
@@ -568,6 +646,18 @@ mod tests {
         assert_eq!(text("A/+PWE/+-PB"), Some("A/+PWEPB".to_owned()));
         assert_eq!(text("A/+PWEL/+-PB"), None);
         assert_eq!(text("A/+PWEPB/+-PB"), None);
+    }
+
+    #[test]
+    fn a_spelled_compound_is_judged_by_its_consonants() {
+        let sounds = |s: &str| s.split(' ').map(str::to_owned).collect::<Vec<_>>();
+        let (noone, no, one) = (sounds("N UW1 N"), sounds("N OW1"), sounds("W AH1 N"));
+        let joined: Vec<&str> = consonants(&no).into_iter().chain(consonants(&one)).collect();
+        assert_eq!(edit_distance(&consonants(&noone), &joined), COMPOUND_CONSONANT_SLACK);
+        // fat + her is two consonants away from father
+        let (father, fat, her) = (sounds("F AA1 DH ER0"), sounds("F AE1 T"), sounds("HH ER1"));
+        let joined: Vec<&str> = consonants(&fat).into_iter().chain(consonants(&her)).collect();
+        assert!(edit_distance(&consonants(&father), &joined) > COMPOUND_CONSONANT_SLACK);
     }
 
     #[test]

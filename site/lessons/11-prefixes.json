@@ -25,7 +25,7 @@
     { "t": "p", "x": "`ex-` and `dis-` have keys of their own that join the next stroke's left hand, so the word stays one stroke: [[expect|KPEBGT]], [[distance|STKUPBS]]. `un-`, `mis-`, `over-`, `under-` and `inter-` fold the same way when their keys fit. When they clash with the stem's own keys, the prefix is a stroke of its own, as above." },
     { "t": "note", "x": "You do not need to know which. Both are in the dictionary; the prefix stroke always works." },
     { "t": "h", "x": "Two words in one" },
-    { "t": "p", "x": "A word that is two words is the two words, second one joined: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]. This works for any compound you can split: *sun* + *light*." },
+    { "t": "p", "x": "A word that is two words is the two words, second one joined: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]. This works for any compound you can split: *sun* + *light*, and even where speech blurs the join: [[noone|PHO/+WUPB]] is *no* + *one*, [[cannot|K/+OT]] is *can* + *not*." },
     { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold Q with the second stroke." }
   ],
   "drill": {
