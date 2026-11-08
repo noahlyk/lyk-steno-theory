@@ -219,6 +219,8 @@ fn no_generated_outline_collides_with_a_reserved_stroke() {
 /// punctuation and commands) belongs only on a one-stroke key command, and goes first so
 /// Plover reads the rest of the entry the same way: `{:firstup}{#Left}{^}`, never after `{^}`.
 /// It must never sit on anything that types text or changes spacing or case.
+// `{:firstup}` is a dictionary meta, not a format string.
+#[allow(clippy::literal_string_with_formatting_args)]
 #[test]
 fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     let commands: std::collections::BTreeMap<String, String> =
