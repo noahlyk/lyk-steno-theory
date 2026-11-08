@@ -6,7 +6,7 @@ on 15,458 backups (90.1% weighted by use, 94.8% top-5, 92.3% for the 2,000 commo
 §6's 97%/93% bar; wasm answers identical to native, 2.3 ms mean / 6 ms p99, 67 MB wasm memory. `deploy` ships no backups at all (the solver
 replaces them; `build` keeps them in `out/lyk` as the test set), so §6's thinning phase is moot. §1's
 RAM figure was not measured: keymux memory-maps its dictionary caches, and the backups cache shrinks
-88 -> 0 MB on disk; the solver adds ~62 MB resident. A one-key misstroke layer is built (single strokes only). §3c layer 3 (switching mid-piece) is not.
+88 -> 0 MB on disk; the solver adds ~67 MB resident. A one-key misstroke layer is built (single strokes only). §3c layer 3 (switching mid-piece) is not.
 
 ## 1. The problem, measured
 
