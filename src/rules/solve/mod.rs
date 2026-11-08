@@ -52,6 +52,8 @@ const DROP_UNSTRESSED: u8 = 1;
 const DROP_SECONDARY: u8 = 3;
 const DROP_STRESSED: u8 = 8;
 const DROP_CONSONANT: u8 = 4;
+/// Leaving out the consonant a word ends on, beyond what a consonant costs anywhere else.
+const DROP_FINAL_CONSONANT: u8 = 1;
 /// `HH` and the `Y` glide are often not struck at all.
 const DROP_WEAK_CONSONANT: u8 = 2;
 /// Leaving out a word's last vowel, beyond what that vowel costs anywhere else.
@@ -434,8 +436,9 @@ fn chords(tables: &[&HashMap<String, Stroke>], sounds: &mut Sounds) -> Vec<(u32,
 /// What skipping a sound of a word's pronunciation costs.
 /// Only a reduced vowel (`[reduce]`'s AH, IH, ER) is cheap to leave out: any other vowel is a
 /// syllable the theory strikes, and a full vowel that ends the word all the more (*probably*'s
-/// final IY is what tells it from *probable*, whose reduced *-ble* is left out freely).
-fn drop_cost(sound: &str, last: bool) -> u8 {
+/// final IY is what tells it from *probable*, whose reduced *-ble* is left out freely). A consonant
+/// that ends the word is what tells it apart too: 1 more (*problem*'s M, beside *probably*).
+fn drop_cost(sound: &str, last: bool, ends_word: bool) -> u8 {
     if sound.ends_with(|c: char| c.is_ascii_digit()) {
         let reduced = matches!(plain(sound), "AH" | "IH" | "ER");
         let drop = match sound.chars().last() {
@@ -446,6 +449,8 @@ fn drop_cost(sound: &str, last: bool) -> u8 {
         if last && !reduced { (drop + tuned_pack("DROP_LAST", DROP_LAST)).min(DROP_STRESSED) } else { drop }
     } else if matches!(plain(sound), "HH" | "Y") {
         DROP_WEAK_CONSONANT
+    } else if ends_word {
+        DROP_CONSONANT + tuned_pack("DROP_FINAL_CONSONANT", DROP_FINAL_CONSONANT)
     } else {
         DROP_CONSONANT
     }
@@ -470,6 +475,10 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
     for (id, (word, rank)) in words.iter().enumerate() {
         let id = index(id);
         for variant in &lexicon.pron[*word] {
+            // An abbreviation said in full (*tv* as *television*): those sounds are the full word's
+            if variant.len() > 2 * word.chars().count() + 1 {
+                continue;
+            }
             let (runs, run_of) = align_runs(word, variant);
             let last_vowel = variant.iter().rposition(|s| s.ends_with(|c: char| c.is_ascii_digit()));
             let path: Vec<EdgeKey> = variant
@@ -479,7 +488,7 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                 .map(|(at, (sound, letters))| EdgeKey {
                     mask: 1 << sounds.id(sound),
                     letters,
-                    drop: drop_cost(sound, Some(at) == last_vowel),
+                    drop: drop_cost(sound, Some(at) == last_vowel, at + 1 == variant.len()),
                     vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
                 })
                 .collect();
@@ -871,6 +880,20 @@ mod tests {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
+    }
+
+    #[test]
+    fn a_tie_goes_to_the_more_common_word() {
+        // Each pair costs the same once rarity is rounded to whole points: the commoner word wins
+        for (outline, word, over) in [("AEU/+T", "eight", "ate"), ("PWO/+-R/+-G", "boring", "baring"), ("TA/+P", "tape", "tap")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}: {word} over {over}");
+        }
+    }
+
+    #[test]
+    fn an_abbreviation_said_in_full_leaves_those_sounds_to_the_full_word() {
+        // *tv* is also said *television*: those sounds type *television*, however common *tv* is
+        assert_eq!(model().answer("TE/+HRO/+SREURB/+UPB").as_deref(), Some("television"));
     }
 
     #[test]

@@ -106,6 +106,10 @@
      "2"
     ],
     [
+     "the consonant the word ends on skipped (*problem*'s M, so `PRO/+-BL` is *probably*, 9, not *problem*, 10): on top of the above",
+     "1"
+    ],
+    [
      "a sound in the run the word does not have",
      "6"
     ],
@@ -127,6 +131,8 @@
    "t": "list",
    "items": [
     "At most three sounds of a word in a row are skipped, and a word starts with at most one skipped sound, a weak one (the *a-* of *about*).",
+    "**A tie goes to the commoner word.** Rarity is rounded to whole points, so homophones often cost the same: `AEU/+T` is *eight*, not *ate*; `TA/+P` *tape*, not *tap*; `PWO/+-R/+-G` *boring* (*bore* + *-ing*), not *baring*.",
+    "**An abbreviation said in full** (*tv* also said *television*: more sounds than twice its letters plus one) is not matched by those sounds: they type the full word.",
     "**Every stroke is used.** A stroke of a run must match at least one sound of the word it is read into (or be a suffix chord or a known outline): a stroke you strike is never explained away as sounds the word does not have. Sounds can be doubled or missing; the order is kept (only the consonants of one stroke may swap, as above).",
     "The cheapest reading wins. Two words that read the same go to the commoner one: a homophone struck with no spelling cue types the commoner word."
    ],

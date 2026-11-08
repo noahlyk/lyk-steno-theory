@@ -2477,3 +2477,15 @@ every vowel key reads) spells the word at 2, not 3 (*dance*, not *dancer*; neutr
 weighted, kept because it is the rule he asked for; at 1 it lost 0.5). The beam 256 -> 512: +0.6
 for +1 ms (3.2 ms mean, 9 ms p99 in wasm, answers identical to native); 1024 gave 0.1 more for
 13 ms more, and a wider `REL` only cost time. Top-1 88.4%, 90.5% weighted, top-5 96.2%.
+
+**A tie goes to the commoner word (2026-11-08).** Rarity is rounded to whole points, so homophones
+tied and the reading found first won: *ate* for `AEU/+T`, *tap* for `TA/+P`, *baring* for
+`PWO/+-R/+-G`. Ties now go to the commoner word: the 2,000 commonest 92.5 -> 93.7%, weighted by use
+90.5 -> 91.1%, the rare band down, top-1 88.4 -> 87.7%; kept, since he means the commoner word more
+often than not. It exposed two ties the order had hidden. *problem* tied *probably* on `PRO/+-BL`
+(dropping AH + M against IY): skipping a word's final consonant now costs 1 more, the same idea as
+its last vowel (no change on the eval, the family table holds). And *tv*, which the pronunciation
+data also says as *television*, took that word's sounds: a pronunciation with more sounds than
+twice the word's letters plus one is an abbreviation said in full and is not matched. Tried and
+reverted: *c* read only as K where English keeps it hard (`SO/+UP` was *couple*, "so-up"):
+87.7 -> 87.0%, since the generator's spelled backups write hard *c* as `S` too (`SOPL/+E` *come*).

@@ -1072,7 +1072,12 @@ impl Model {
         }
         // Precedence, not only cost: a word you know followed by ending chords, when they spell a
         // real word, is that word (`PROB/+-BL` *probable*); only then the cheapest reading
-        out.sort_by_key(|r| (!(r.composed && self.known.contains_key(&r.text.to_lowercase())), r.cost));
+        // A tie goes to the commoner word (ids run most common first): rarity is rounded to whole
+        // points, so *eight* and *ate* cost the same
+        out.sort_by_key(|r| {
+            let id = self.known.get(&r.text.to_lowercase()).copied();
+            (!(r.composed && id.is_some()), r.cost, id.unwrap_or(u32::MAX))
+        });
         out.truncate(keep);
         out
     }
