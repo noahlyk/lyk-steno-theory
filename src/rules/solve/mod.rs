@@ -617,13 +617,9 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
     let mut suffixes: Vec<(u32, &String, bool)> = Vec::new();
     for (stroke, text) in &rules.suffixes {
         let hard = stroke.0 | Stroke::STAR;
-        if hard == stroke.0 {
-            suffixes.push((stroke.0, text, false));
-        } else {
-            suffixes.push((stroke.0, text, false));
-            if !plain.contains(&hard) {
-                suffixes.push((hard, text, true));
-            }
+        suffixes.push((stroke.0, text, false));
+        if hard != stroke.0 && !plain.contains(&hard) {
+            suffixes.push((hard, text, true));
         }
     }
     suffixes.sort_unstable();
