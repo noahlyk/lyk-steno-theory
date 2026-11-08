@@ -149,6 +149,9 @@ enum Piece {
     Suffix(u32),
     TwoSuffix(u32),
     Stem(u32),
+    /// A known outline one key off the stroke struck: a guess at a misstroke, never a word
+    /// struck on purpose, so it does not take a known outline's precedence
+    Slip(u32),
 }
 
 const NO_BACK: u32 = u32::MAX;
@@ -995,7 +998,7 @@ impl Model {
                             continue;
                         }
                         if let Some(&stem) = self.stems.get(&[near][..]) {
-                            arena.push((root.back, Piece::Stem(stem)));
+                            arena.push((root.back, Piece::Slip(stem)));
                             let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
                             pending[i + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32, used: true });
                         }
@@ -1082,14 +1085,14 @@ impl Model {
             let (back, piece) = arena[at as usize];
             rarity += match piece {
                 Piece::Word(w) => self.word_cost[w as usize],
-                Piece::Stem(s) => self.stem_cost[s as usize],
+                Piece::Stem(s) | Piece::Slip(s) => self.stem_cost[s as usize],
                 Piece::Suffix(_) | Piece::TwoSuffix(_) => 0,
             };
             let text = match piece {
                 Piece::Word(w) => self.words[w as usize].clone(),
                 Piece::Suffix(s) => self.suffixes[s as usize].1.clone(),
                 Piece::TwoSuffix(s) => self.two_suffixes[s as usize].2.clone(),
-                Piece::Stem(s) => self.stem_text[s as usize].clone(),
+                Piece::Stem(s) | Piece::Slip(s) => self.stem_text[s as usize].clone(),
             };
             pieces.push((piece, text));
             at = back;

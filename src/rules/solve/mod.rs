@@ -835,6 +835,17 @@ mod tests {
     }
 
     #[test]
+    fn only_a_struck_outline_plus_endings_comes_first_never_a_misstroke_guess() {
+        for (outline, word, why) in [
+            ("KHRO/+-S", "encloses", "KHRO is enclose: enclose + s, rule b"),
+            ("SKRAEPL/+-Z", "screams", "not cream + s, one key off SKRAEPL"),
+            ("STAOUP/+-D", "stupid", "not stew + ed, one key off STAOUP"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline} ({why})");
+        }
+    }
+
+    #[test]
     fn a_known_outline_goes_on_into_a_longer_word_spelled_from_it() {
         // *liquid* says IH where *liquidation* says AH: the letters, not the sounds, line them up
         assert_eq!(model().answer("KWEULD/+ARB/+UPB").as_deref(), Some("liquidation"));
