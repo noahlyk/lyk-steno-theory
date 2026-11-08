@@ -611,13 +611,14 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
         b.u8(coda);
     }
     // Each suffix chord twice: as the rules write it, one reading of the stroke among others, and
-    // with the star on its first stroke, the suffix sheet's hard entry (see `crate::output`)
+    // with the star on its first stroke, the suffix sheet's hard entry (see `crate::output`); a
+    // chord with its star already (`+*T`, the TH sound too) has no hard form
     let plain: Vec<u32> = rules.suffixes.keys().map(|s| s.0).collect();
     let mut suffixes: Vec<(u32, &String, bool)> = Vec::new();
     for (stroke, text) in &rules.suffixes {
         let hard = stroke.0 | Stroke::STAR;
         if hard == stroke.0 {
-            suffixes.push((stroke.0, text, true));
+            suffixes.push((stroke.0, text, false));
         } else {
             suffixes.push((stroke.0, text, false));
             if !plain.contains(&hard) {
@@ -842,6 +843,13 @@ mod tests {
             ("STAOUP/+-D", "stupid", "not stew + ed, one key off STAOUP"),
         ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline} ({why})");
+        }
+    }
+
+    #[test]
+    fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
+        for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
     }
 

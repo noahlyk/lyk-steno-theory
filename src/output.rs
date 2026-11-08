@@ -104,13 +104,16 @@ pub struct Written {
 /// A suffix chord as the suffix sheet writes it: with the star on its first stroke (`+*-D`), the
 /// hard suffix that always attaches its text. The plain chord the rules give it (`+-D`) is left to
 /// the solver plugin, which reads it as the suffix or as sounds, whichever fits the run (see
-/// `site/reference/suffixes.json`). A chord that has its star already (`+*T`) is written as it is.
-pub fn hard_suffix(outline: &[Stroke]) -> Vec<Stroke> {
+/// `site/reference/suffixes.json`). A chord that has its star already (`+*T`, also the TH sound)
+/// has no hard form: it is not written, and is the solver's alone.
+pub fn hard_suffix(outline: &[Stroke]) -> Option<Vec<Stroke>> {
     let mut hard = outline.to_vec();
-    if let Some(first) = hard.first_mut() {
-        first.0 |= Stroke::STAR;
+    let first = hard.first_mut()?;
+    if first.0 & Stroke::STAR != 0 {
+        return None;
     }
-    hard
+    first.0 |= Stroke::STAR;
+    Some(hard)
 }
 
 /// What an entry is defined as in the file. A suffix is an attach, `{^ed}`, so its stroke glues
@@ -126,7 +129,12 @@ pub fn definition(entry: &crate::generate::Entry) -> String {
 pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written>> {
     let mut by_role: BTreeMap<Role, BTreeMap<String, String>> = BTreeMap::new();
     for entry in &generated.entries {
-        let outline = if entry.origin == Origin::Suffix { hard_suffix(&entry.outline) } else { entry.outline.clone() };
+        let outline = if entry.origin == Origin::Suffix {
+            let Some(hard) = hard_suffix(&entry.outline) else { continue };
+            hard
+        } else {
+            entry.outline.clone()
+        };
         by_role
             .entry(Role::of(entry.origin))
             .or_default()
