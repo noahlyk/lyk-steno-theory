@@ -102,6 +102,8 @@ const ROOT_DROP: u32 = 2;
 const MAX_DELETES: usize = 3;
 /// Readings of the run's end kept (distinct texts), and words emitted per trie position.
 const KEEP_ENDS: usize = 16;
+/// The runs read last that a working memory keeps, to go on from.
+const RUNS_KEPT: usize = 4;
 const EMIT_PER_NODE: usize = 3;
 /// The longest run the solver reads as one word (a giant word struck syllable by syllable is 12
 /// at most): the strokes past it are read back as keys, never dropped.
@@ -246,14 +248,15 @@ pub struct Scratch {
     back: Vec<u32>,
     used: Vec<bool>,
     generation: u32,
-    /// The run read last, step by step: keymux asks again on every stroke, and the next run
-    /// usually is this one and one stroke more
-    progress: Progress,
+    /// The runs read last, step by step, most recent first: keymux asks again on every stroke, and
+    /// the next run usually is one of these and one stroke more (it also asks for the newest
+    /// stroke alone, so one run kept is not enough)
+    runs: Vec<Progress>,
     steps: usize,
 }
 
 /// Where reading a run stands after each of its strokes, to go on from.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Progress {
     run: Vec<u32>,
     /// `before[i]`: the beam before stroke `i` (so `before[run.len()]` is the end)
@@ -274,7 +277,7 @@ impl Scratch {
             back: vec![0; nodes],
             used: vec![false; nodes],
             generation: 0,
-            progress: Progress::default(),
+            runs: Vec::new(),
             steps: 0,
         }
     }
@@ -1040,8 +1043,8 @@ impl Model {
             return out;
         }
         self.advance(sc, run);
-        let arena = &sc.progress.arena;
-        let states = sc.progress.before[k].clone();
+        let arena = &sc.runs[0].arena;
+        let states = sc.runs[0].before[k].clone();
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
         let mut out: Vec<Reading> = Vec::new();
         for s in ends {
@@ -1091,8 +1094,17 @@ impl Model {
     /// as the two agree: keymux asks again on every stroke, so most calls read one stroke. After
     /// it, `sc.progress.before[run.len()]` is the beam at the run's end.
     fn advance(&self, sc: &mut Scratch, run: &[u32]) {
-        let mut p = std::mem::take(&mut sc.progress);
-        let same = p.run.iter().zip(run).take_while(|(a, b)| a == b).count();
+        let shared = |p: &Progress| p.run.iter().zip(run).take_while(|(a, b)| a == b).count();
+        // The kept run that goes furthest along this one, the most recent of those that tie
+        let best = (0..sc.runs.len()).rev().max_by_key(|&at| shared(&sc.runs[at])).filter(|&at| shared(&sc.runs[at]) > 0);
+        // Taken when this run goes on from all of it; copied when it parts from it partway, so the
+        // run kept is still there to go back to
+        let mut p = match best {
+            Some(at) if shared(&sc.runs[at]) == sc.runs[at].run.len() => sc.runs.remove(at),
+            Some(at) => sc.runs[at].clone(),
+            None => Progress::default(),
+        };
+        let same = shared(&p);
         // The last stroke both share is read again only when it may start a hard two-stroke
         // suffix: that depends on the stroke after it, which has changed
         let from = match same.checked_sub(1) {
@@ -1116,7 +1128,8 @@ impl Model {
             sc.steps += 1;
         }
         p.run = run.to_vec();
-        sc.progress = p;
+        sc.runs.insert(0, p);
+        sc.runs.truncate(RUNS_KEPT);
     }
 
     /// Read stroke `i` of `run`: the beam before it is `p.before[i]`, the one after it is pushed.

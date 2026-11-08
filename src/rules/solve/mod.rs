@@ -983,6 +983,17 @@ mod tests {
             model().solve_with(&mut going, &strokes[..n], 1);
         }
         assert_eq!(going.steps_taken(), 12);
+        // keymux also asks for the newest stroke alone (`+KAT`) before the whole run: that must not
+        // lose the run read so far, so the work stays one stroke's per stroke
+        let joined: Vec<u32> = "KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT".split('/').map(|s| core::parse_stroke(s).unwrap()).collect();
+        let mut going = model().scratch();
+        for n in 1..=joined.len() {
+            if n > 1 {
+                model().solve_with(&mut going, &joined[n - 1..n], 1);
+            }
+            model().solve_with(&mut going, &joined[..n], 1);
+        }
+        assert!(going.steps_taken() <= 12 + 11, "{} steps", going.steps_taken());
     }
 
     #[test]
