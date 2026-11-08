@@ -118,6 +118,18 @@
   },
   {
    "t": "h",
+   "x": "Holding + (sticky plus)"
+  },
+  {
+   "t": "p",
+   "x": "You can strike `+` in every continuation stroke, or **hold it down** across them. Held, `+` stays in each stroke while the other keys come and go: each stroke is sent as its other keys come up, `+` part of it, so `THAS`, then `+` held while you strike `EUFG`, is `THAS/+EUFG`, and a long word is struck syllable after syllable with `+` never let go. Letting go of `+` on its own sends nothing. A word's first stroke is struck without `+`, as ever; only the strokes after it are joined."
+  },
+  {
+   "t": "p",
+   "x": "`deploy` puts a small mod in the steno folder, the sticky-plus file (`06-lyk-sticky-plus.rs`). The engine asks it, each time a key comes up with others still down, whether to send the stroke now (its `send_early` hook), and it says yes when `+` is the only one left. It needs a keymux with plugin `send_early` support; an older keymux does not load it, and `+` then behaves as before (a stroke with `+` held goes when `+` comes up)."
+  },
+  {
+   "t": "h",
    "x": "Where you meet it"
   },
   {

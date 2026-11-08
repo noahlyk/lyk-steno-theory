@@ -2510,3 +2510,15 @@ word), and the first rule widens: a brief or a taught outline struck whole is it
 known word plus endings. Taught outlines 93.3 -> 98.6% (the rest share an outline with a spelling
 variant, *theatre* and *theater*); backups 88.7 -> 88.8%. Blob 20.2 -> 21.4 MB, wasm 78 MB,
 3.4 ms mean / 9.6 ms p99, identical to native.
+
+**Sticky plus: hold `+` across strokes (2026-11-08, from "hold + during multiple strokes").** He
+wanted `+` held down through a word's continuation strokes rather than struck in each, as a mod of
+lyk's own, keymux staying a generic engine. keymux gained one generic plugin hook,
+`send_early(held, stroke)` (asked whenever a key comes up with others still down; non-zero sends
+the stroke now, exactly as a `{:firstup}` entry does, the held keys going with the next), and a
+plugin may now leave out `alloc`/`fallback` (a mod that reads no words). lyk's mod,
+`rules/reserved/sticky-plus.rs`, deployed as `06-lyk-sticky-plus.rs`, answers it: send when `+`
+(bit 23) is the only key still down. Each stroke goes as it is struck, `+` part of it; output is
+not held back until `+` is let go, since the solver already re-reads the run on every stroke and
+holding text back would hide what it reads. Named for how the key is used; "latch" was the other
+candidate.

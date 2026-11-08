@@ -30,6 +30,8 @@ const STATIC_FILES: &[(&str, &str)] = &[
     ("01-lyk-commands.json", include_str!("../rules/reserved/commands.json")),
     ("03-lyk-punctuation.json", include_str!("../rules/reserved/punctuation.json")),
     ("04-lyk-emilys-modifiers.json", include_str!("../rules/reserved/emilys-modifiers.json")),
+    // A keymux mod (needs keymux's `send_early`): hold `+` across strokes
+    ("06-lyk-sticky-plus.rs", include_str!("../rules/reserved/sticky-plus.rs")),
     (".keymux-theory", "lyk\n"),
 ];
 
@@ -476,4 +478,30 @@ pub fn family_report(setup: &analysis::Setup, generated: &generate::Generated, s
         let _ = writeln!(out, "  #{rank:<6} {word:<16} {own:<14} stem {stem} {stem_outline}");
     }
     out
+}
+
+/// The sticky-plus mod `deploy` ships, read as ordinary Rust: what it answers keymux.
+#[cfg(test)]
+#[path = "../rules/reserved/sticky-plus.rs"]
+mod sticky_plus;
+
+#[cfg(test)]
+mod sticky_plus_tests {
+    use super::sticky_plus::send_early;
+    use crate::stroke::Stroke;
+
+    fn bits(outline: &str) -> i64 {
+        i64::from(Stroke::parse(outline).expect("a stroke").0)
+    }
+
+    #[test]
+    fn a_stroke_goes_when_only_plus_is_still_down() {
+        let plus = i64::from(Stroke::JOIN);
+        assert_eq!(plus, 1 << 23, "the mod's own bit for + is the join key's");
+        let kat = bits("KAT") | plus;
+        assert_eq!(send_early(plus, kat), 1, "+ held alone, the stroke goes");
+        assert_eq!(send_early(bits("-T") | plus, kat), 0, "a key of the stroke still down: wait");
+        assert_eq!(send_early(plus, plus), 0, "+ by itself is no stroke");
+        assert_eq!(send_early(bits("KA"), bits("KAT")), 0, "without + nothing changes");
+    }
 }
