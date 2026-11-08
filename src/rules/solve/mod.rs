@@ -874,6 +874,14 @@ mod tests {
     }
 
     #[test]
+    fn the_search_is_wide_enough_for_a_long_run_of_loose_sounds() {
+        // Each of these falls out of a 256-state beam before its last stroke settles it
+        for (outline, word) in [("THAO*E/+TPH/+KEU/+-PBG", "thinking"), ("-FL/+EU/+-T", "flight"), ("R/+EU/+-F/+E/+-R", "river")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
     fn striking_a_words_silent_final_e_spells_that_word() {
         // The written *e* struck as a vowel: *dance*, not the *-er* word that sounds the same
         for (outline, word) in [("TKA/+-PB/+SE", "dance"), ("PW/+EU/+K/+E", "bike"), ("HA*PB/+TK/+HRE", "handle")] {

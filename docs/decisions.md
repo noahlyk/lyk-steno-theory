@@ -2459,3 +2459,21 @@ finished readings were carried between strokes, ranked before the not-a-word pen
 nonsense (*pro* + *able*, *from* + *able*) crowded out *probable*; they are now ranked with it. And
 pieces that spell a word were priced as that word even when cheaper than the pieces (*thi* + *s* =
 *this*, beating *these*); a composition now costs at least its pieces, and *y* + *s* is *-ies*.
+
+**Toward 100%: what the misses are, and six fixes, each with a test first (2026-11-08).** The
+3,944 misses of 30,916 (87.2%) sorted: 59% gave a *more* common real word (*trash* for *thrash*,
+mostly right without context), 28% a rarer one (pure errors), 12% junk stitched from pieces
+(*inc* + *airport*). So 100% is not the goal; ~93% is about the ceiling here, and context (the word
+before) the lever beyond it, which needs keymux to pass it (not done: the plugin stays pure). The
+costs were re-swept one step each way: all within ±0.2, so the gains are structural. In order:
+a known outline goes on into a longer word **spelled** from it, lined up by letters, not sounds
+(*liquid* IH, *liquidation* AH; +79). A misstroke guess (one key off) no longer takes a struck
+outline's precedence (`SKRAEPL/+-Z` was *cream* + *s*; +52, none lost). Each `+*` ending a run steps
+one word down, the star ladder's meaning, where it was read as a misstroke of `-F` *of* (*fightof*;
+25/48 ladder outlines right against 4). `+*T` (*-th*) has no forced form, since its own chord is
+starred and is also the TH sound: the sheet no longer holds it and the solver reads TH or *-th*
+(`H/+E/+HR/+*T` *health*; +46). A silent final *e* struck as an *e* (EH or IY only, not a schwa
+every vowel key reads) spells the word at 2, not 3 (*dance*, not *dancer*; neutral on top-1, +0.1
+weighted, kept because it is the rule he asked for; at 1 it lost 0.5). The beam 256 -> 512: +0.6
+for +1 ms (3.2 ms mean, 9 ms p99 in wasm, answers identical to native); 1024 gave 0.1 more for
+13 ms more, and a wider `REL` only cost time. Top-1 88.4%, 90.5% weighted, top-5 96.2%.

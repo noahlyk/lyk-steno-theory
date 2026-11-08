@@ -84,7 +84,8 @@ pub const MAX_READINGS: u32 = 40;
 /// Ways to cover one bank's keys with chords, at most (the tables list bigger chords first).
 const COVERS: usize = 48;
 /// Positions kept per step, and how far behind the best a position may fall before it is dropped.
-const BEAM: usize = 256;
+/// 512 over 256: +0.6 points for +1 ms a run (3 ms mean, 8 ms p99); 1024 adds 0.1 for 13 ms more.
+const BEAM: usize = 512;
 const REL: u32 = 10;
 /// (tuning) the beam threshold, natively overridable while tuning
 fn rel() -> u32 {
