@@ -914,6 +914,17 @@ mod tests {
     }
 
     #[test]
+    fn no_stroke_of_a_long_run_is_dropped() {
+        // A giant word struck syllable by syllable: the 13th stroke and on still count
+        let run = |n: usize| vec!["KAT"; n].join("/+");
+        let twelve = model().answer(&run(12));
+        let thirteen = model().answer(&run(13));
+        assert_ne!(twelve, thirteen, "a 13th stroke changed nothing");
+        let thirty = model().answer(&run(30)).unwrap_or_default();
+        assert!(thirty.len() > thirteen.unwrap_or_default().len(), "strokes past the solver's reach are dropped: {thirty}");
+    }
+
+    #[test]
     fn a_prefix_chord_in_the_first_stroke_is_always_read() {
         // `STK` *dis-* in a stroke with dozens of free readings: never cut by the cap on them
         for (outline, word) in [("STKPAOER/+UT/+-D", "dispirited"), ("STKERT/+AEU/+-GS", "dissertation"), ("STKPHEPL/+ED", "dismembered")] {

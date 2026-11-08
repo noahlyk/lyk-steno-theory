@@ -246,7 +246,7 @@
   },
   {
    "t": "p",
-   "x": "When no reading costs 40 or less, plus 6 for each stroke, the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 12 strokes is read on its first 12."
+   "x": "When no reading costs 40 or less, plus 6 for each stroke, the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 24 strokes is read on its first 24, the strokes after them read back as keys and added on: none is dropped."
   },
   {
    "t": "h",

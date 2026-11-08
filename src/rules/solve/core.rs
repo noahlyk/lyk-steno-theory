@@ -100,8 +100,9 @@ const MAX_DELETES: usize = 3;
 /// Readings of the run's end kept (distinct texts), and words emitted per trie position.
 const KEEP_ENDS: usize = 16;
 const EMIT_PER_NODE: usize = 3;
-/// The longest run the solver reads: a longer one is the dictionary's business.
-pub const MAX_RUN: usize = 12;
+/// The longest run the solver reads as one word (a giant word struck syllable by syllable is 12
+/// at most): the strokes past it are read back as keys, never dropped.
+pub const MAX_RUN: usize = 24;
 /// Above this (plus the per-stroke allowance) the best reading is no reading: the plain
 /// read-back is shown instead.
 pub const THRESHOLD: u32 = 40;
@@ -1200,11 +1201,18 @@ impl Model {
         if run.first().is_some_and(|s| s & SPELL != 0) {
             return self.spelled(&run);
         }
-        let limit = THRESHOLD + THRESHOLD_PER_STROKE * run.len() as u32;
-        match self.solve_with(sc, &run, 1).into_iter().next() {
-            Some(best) if best.cost <= limit => Some(best.text),
-            _ => self.read_back(&run),
+        // A run past the solver's reach: its first [`MAX_RUN`] strokes read, the rest read back,
+        // never dropped
+        let (head, tail) = run.split_at(run.len().min(MAX_RUN));
+        let limit = THRESHOLD + THRESHOLD_PER_STROKE * head.len() as u32;
+        let mut text = match self.solve_with(sc, head, 1).into_iter().next() {
+            Some(best) if best.cost <= limit => best.text,
+            _ => self.read_back(head)?,
+        };
+        if !tail.is_empty() {
+            text.push_str(&self.read_back(tail)?);
         }
+        Some(text)
     }
 
     /// A spelling-mode run, one letter a stroke.
