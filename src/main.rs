@@ -47,7 +47,7 @@ struct Cli {
     /// Rules to use instead of the built-in ones
     #[arg(long, global = true)]
     rules: Option<PathBuf>,
-    /// Do not note when `out/lyk` was built by other code or rules than these (also
+    /// Do not note when `out/lyk` was built by other rules or generator source than these (also
     /// `LYK_NO_STALE_NOTE=1`)
     #[arg(long, global = true)]
     no_stale_check: bool,
