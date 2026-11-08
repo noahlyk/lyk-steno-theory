@@ -226,10 +226,13 @@ struct EdgeKey {
 struct Trie {
     children: Vec<HashMap<EdgeKey, u32>>,
     ends: Vec<Vec<(u32, u8)>>,
+    /// Where each word's pronunciations end, by word: where a known outline of it enters the trie
+    sound_ends: HashMap<u32, Vec<u32>>,
 }
 
 impl Trie {
-    fn insert(&mut self, path: &[EdgeKey], word: u32, extra: u8) {
+    /// Add `path` for `word`; the node it ends at.
+    fn insert(&mut self, path: &[EdgeKey], word: u32, extra: u8) -> u32 {
         if self.children.is_empty() {
             self.children.push(HashMap::new());
             self.ends.push(Vec::new());
@@ -250,6 +253,7 @@ impl Trie {
             Some(end) => end.1 = end.1.min(extra),
             None => self.ends[at].push((word, extra)),
         }
+        index(at)
     }
 }
 
@@ -432,7 +436,8 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                     vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
                 })
                 .collect();
-            trie.insert(&path, id, 0);
+            let end = trie.insert(&path, id, 0);
+            trie.sound_ends.entry(id).or_default().push(end);
         }
         for reading in orthography::readings(word, 1) {
             let path: Vec<EdgeKey> = reading
@@ -465,7 +470,8 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     b.u32(core::VERSION);
     write_sounds(&mut b, &sounds);
     write_tables(&mut b, &tables, rules);
-    write_stems(&mut b, stems, lexicon);
+    let ids: HashMap<&str, u32> = words.iter().enumerate().map(|(i, (w, _))| (w.as_str(), index(i))).collect();
+    write_stems(&mut b, stems, lexicon, |text| ids.get(text).and_then(|id| trie.sound_ends.get(id)).cloned().unwrap_or_default());
     b.len(words.len());
     for (word, rank) in &words {
         b.str(word);
@@ -558,7 +564,7 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
 
 /// The known outlines, six strokes or fewer, each with its word's rank (the lexicon's bound for a
 /// word outside it).
-fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon) {
+fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon, sound_ends: impl Fn(&str) -> Vec<u32>) {
     let mut stems: Vec<&(Vec<Stroke>, String)> = stems.iter().filter(|(o, _)| !o.is_empty() && o.len() <= 6).collect();
     stems.sort_by(|a, b| (&a.0, &a.1).cmp(&(&b.0, &b.1)));
     b.len(stems.len());
@@ -570,6 +576,13 @@ fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon)
         b.str(text);
         let rank = lexicon.rank.get(text.as_str()).copied().unwrap_or(lexicon.common);
         b.u32(index(rank.min(lexicon.common)));
+        // Where the word's own sounds end in the trie, so later strokes can carry on into a
+        // longer word (`SKEL` *cancel*, then `+EUPBG`, *canceling*)
+        let ends = sound_ends(text);
+        b.u8(u8::try_from(ends.len().min(8)).expect("eight or fewer"));
+        for node in ends.iter().take(8) {
+            b.u32(*node);
+        }
     }
 }
 

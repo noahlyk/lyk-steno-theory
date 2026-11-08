@@ -163,6 +163,7 @@
   {
    "t": "list",
    "items": [
+    "**A known outline can carry on into a longer word.** After a known outline, the strokes that follow may go on with the same word's sounds instead of starting a new piece: `AUGS` is *audition*, so `AUGS/+AOEUPBG` reads *auditioning*, priced as *auditioning* plus 1.",
     "**Pieces that spell a word are that word.** *part* + `+-S` is *parts*, priced at the rarity of *parts*, not of *part*.",
     "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well.",
     "A word piece only ends at a stroke boundary; a suffix chord is always the suffix, never its bare consonants."

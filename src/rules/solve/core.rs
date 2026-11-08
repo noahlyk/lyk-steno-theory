@@ -58,6 +58,9 @@ pub const STEM_LATER: u32 = 2;
 /// A stroke read as a known single-stroke outline one key away (a key too many or one missed): a
 /// misstroke. 0 turns the reading off.
 pub const SLIP: u32 = 4;
+/// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
+/// `+EUPBG`: *canceling*).
+pub const STEM_ENTER: u32 = 1;
 /// A prefix chord (`KP` for *ex-*) read as the prefix's sounds, on a run's first stroke.
 pub const PREFIX: u32 = 1;
 /// A reading of several pieces whose text is not itself a word.
@@ -170,6 +173,7 @@ pub struct Costs {
     pub max_readings: u32,
     pub slip: u32,
     pub prefix: u32,
+    pub stem_enter: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -196,6 +200,7 @@ impl Costs {
             max_readings: tuned("MAX_READINGS", MAX_READINGS),
             slip: tuned("SLIP", SLIP),
             prefix: tuned("PREFIX", PREFIX),
+            stem_enter: tuned("STEM_ENTER", STEM_ENTER),
         }
     }
 }
@@ -298,6 +303,8 @@ pub struct Model {
     stem_text: Vec<String>,
     /// A known outline's word's rarity, as a word's
     stem_cost: Vec<u32>,
+    /// Where a known outline's word's sounds end in the trie, to carry on into a longer word
+    stem_nodes: Vec<Vec<u32>>,
     max_stem: usize,
     /// `R` and `ER`: an R-coloured vowel is often struck as the `-R` key (`PHART`, *mat-er-*)
     r_sound: u8,
@@ -354,7 +361,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 fn rank_cost(rank: u32) -> u32 {
     let log2 = f64::from(rank + 2).log2();
@@ -434,6 +441,7 @@ impl Model {
         let mut stems = HashMap::with_capacity(n);
         let mut stem_text = Vec::with_capacity(n);
         let mut stem_cost = Vec::with_capacity(n);
+        let mut stem_nodes: Vec<Vec<u32>> = Vec::with_capacity(n);
         let mut max_stem = 0;
         for i in 0..n {
             let len = r.u8() as usize;
@@ -441,6 +449,8 @@ impl Model {
             max_stem = max_stem.max(len);
             stem_text.push(r.str());
             stem_cost.push(rank_cost(r.u32()));
+            let ends = r.u8();
+            stem_nodes.push((0..ends).map(|_| r.u32()).collect());
             stems.entry(outline).or_insert(i as u32);
         }
         let n = r.u32() as usize;
@@ -496,6 +506,7 @@ impl Model {
             stems,
             stem_text,
             stem_cost,
+            stem_nodes,
             max_stem,
             r_sound,
             er_sound,
@@ -939,8 +950,15 @@ impl Model {
                     }
                     if let Some(&stem) = self.stems.get(&key) {
                         arena.push((root.back, Piece::Stem(stem)));
-                        let cost = root.cost + piece + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
+                        let later = if first { 0 } else { self.c.stem_later };
+                        let cost = root.cost + piece + self.stem_cost[stem as usize] + later;
                         pending[j + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32 });
+                        // The same word's sounds, for the strokes after to carry on into a longer
+                        // word: its rarity and its piece are charged when that word ends
+                        for &node in &self.stem_nodes[stem as usize] {
+                            let cost = root.cost + later + self.c.stem_enter + self.lookahead[node as usize];
+                            pending[j + 1].push(St { node, cost, back: root.back });
+                        }
                     }
                 }
                 // A misstroke: one key more or fewer than a known single-stroke outline
@@ -972,7 +990,7 @@ impl Model {
             self.emit(&next, &mut arena, &mut emitted);
             next.extend(emitted);
             next.append(&mut pending[i + 1]);
-            states = self.settle(sc, &next, Deletions::Roots);
+            states = self.settle(sc, &next, Deletions::All);
         }
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
         let mut out: Vec<Reading> = Vec::new();
