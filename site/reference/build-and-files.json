@@ -197,7 +197,7 @@
     [
      "`02-lyk-suffixes.json`",
      "the standalone suffix strokes (see [suffixes](#/ref/suffixes))",
-     "42, each defined as an attach `{^text}`"
+     "42, each on its starred chord (`+*D`), defined as an attach `{^text}`; the plain chord is the solver's"
     ]
    ]
   },

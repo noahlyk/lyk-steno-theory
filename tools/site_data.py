@@ -140,6 +140,12 @@ def write_engine(files, pick, rank):
                 continue
             seen.add(outline)
             core.setdefault(word, []).append(outline)
+    # The suffix sheet's entries are the starred chords (`+*D`); the plain chord (`+-D`) is the
+    # solver's, which reads it as the suffix after any word, so the site's engine does the same
+    for outline, text in tomllib.load(open(path('rules', 'suffixes.toml'), 'rb')).items():
+        if outline not in seen:
+            seen.add(outline)
+            core.setdefault(text, []).append(outline)
     for word in core:
         core[word].sort(key=cost)
     reserved = {}

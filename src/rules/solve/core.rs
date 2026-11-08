@@ -43,7 +43,7 @@ pub const SUB_CONSONANT: u32 = 4;
 /// A vowel struck as a different vowel than the word has, heard or spelled.
 pub const SWAP_VOWEL: u32 = 6;
 /// A vowel struck as a letter the word does not spell that vowel with.
-pub const SPELL_MISS: u32 = 3;
+pub const SPELL_MISS: u32 = 5;
 /// A vowel struck as the word spells it rather than as it is heard (`O` for the OY of *toilet*),
 /// as the generator's own lattice prices it.
 pub const SPELLED_VOWEL: u32 = 1;
@@ -57,7 +57,10 @@ pub const SUFFIX: u32 = 1;
 pub const STEM_LATER: u32 = 2;
 /// A stroke read as a known single-stroke outline one key away (a key too many or one missed): a
 /// misstroke. 0 turns the reading off.
-pub const SLIP: u32 = 4;
+pub const SLIP: u32 = 5;
+/// 1: every stroke of a run must match at least one sound of the word it is read into (or be a
+/// suffix chord or a known outline), never be explained away as sounds the word does not have.
+pub const MUST_USE: u32 = 1;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
 /// `+EUPBG`: *canceling*).
 pub const STEM_ENTER: u32 = 1;
@@ -135,6 +138,9 @@ struct St {
     node: u32,
     cost: u32,
     back: u32,
+    /// Whether the stroke being read has matched a sound of this word yet: a stroke that is
+    /// struck is used, never explained away as sounds the word does not have
+    used: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -174,6 +180,7 @@ pub struct Costs {
     pub slip: u32,
     pub prefix: u32,
     pub stem_enter: u32,
+    pub must_use: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -201,6 +208,7 @@ impl Costs {
             slip: tuned("SLIP", SLIP),
             prefix: tuned("PREFIX", PREFIX),
             stem_enter: tuned("STEM_ENTER", STEM_ENTER),
+            must_use: tuned("MUST_USE", MUST_USE),
         }
     }
 }
@@ -217,12 +225,13 @@ pub struct Scratch {
     stamp: Vec<u32>,
     cost: Vec<u32>,
     back: Vec<u32>,
+    used: Vec<bool>,
     generation: u32,
 }
 
 impl Scratch {
     fn new(nodes: usize) -> Self {
-        Self { stamp: vec![0; nodes], cost: vec![0; nodes], back: vec![0; nodes], generation: 0 }
+        Self { stamp: vec![0; nodes], cost: vec![0; nodes], back: vec![0; nodes], used: vec![false; nodes], generation: 0 }
     }
     fn begin(&mut self) {
         self.generation = self.generation.wrapping_add(1);
@@ -232,26 +241,30 @@ impl Scratch {
         }
     }
     /// Put `node` in the beam being built at `cost`; whether it was not there before.
-    fn offer(&mut self, node: u32, cost: u32, back: u32) -> bool {
-        matches!(self.offer_new(node, cost, back), Offer::New)
+    fn offer(&mut self, s: St) -> bool {
+        matches!(self.offer_new(s), Offer::New)
     }
-    fn offer_new(&mut self, node: u32, cost: u32, back: u32) -> Offer {
-        let n = node as usize;
+    /// A state that has used the stroke beats one that has not at the same cost.
+    fn offer_new(&mut self, s: St) -> Offer {
+        let n = s.node as usize;
         if self.stamp[n] != self.generation {
             self.stamp[n] = self.generation;
-            self.cost[n] = cost;
-            self.back[n] = back;
+            self.cost[n] = s.cost;
+            self.back[n] = s.back;
+            self.used[n] = s.used;
             Offer::New
-        } else if cost < self.cost[n] {
-            self.cost[n] = cost;
-            self.back[n] = back;
+        } else if s.cost < self.cost[n] || (s.cost == self.cost[n] && s.used && !self.used[n]) {
+            self.cost[n] = s.cost;
+            self.back[n] = s.back;
+            self.used[n] = s.used;
             Offer::Better
         } else {
             Offer::Worse
         }
     }
     fn state(&self, node: u32) -> St {
-        St { node, cost: self.cost[node as usize], back: self.back[node as usize] }
+        let n = node as usize;
+        St { node, cost: self.cost[n], back: self.back[n], used: self.used[n] }
     }
 }
 
@@ -288,8 +301,11 @@ pub struct Model {
     spelled_any: [u64; 16],
     spelled: Vec<Vec<u8>>,
     vowel_coda: Vec<(u32, u8, u8, u8)>,
-    suffixes: Vec<(u32, String)>,
-    two_suffixes: Vec<(u32, u32, String)>,
+    /// Suffix chords and their text, and whether the chord is the hard one (the star on its
+    /// first stroke, `+*-D`, the suffix sheet's own entry): always the suffix, never read as
+    /// sounds. The plain chord (`+-D`) is one reading among the stroke's others.
+    suffixes: Vec<(u32, String, bool)>,
+    two_suffixes: Vec<(u32, u32, String, bool)>,
     spelling: Vec<(u32, String)>,
     stems: HashMap<Vec<u32>, u32>,
     stem_text: Vec<String>,
@@ -353,7 +369,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 
 fn rank_cost(rank: u32) -> u32 {
     let log2 = f64::from(rank + 2).log2();
@@ -414,9 +430,9 @@ impl Model {
         let n = r.u32() as usize;
         let vowel_coda = (0..n).map(|_| (r.u32(), r.u8(), r.u8(), r.u8())).collect();
         let n = r.u32() as usize;
-        let suffixes = (0..n).map(|_| (r.u32(), r.str())).collect();
+        let suffixes = (0..n).map(|_| (r.u32(), r.str(), r.u8() != 0)).collect();
         let n = r.u32() as usize;
-        let two_suffixes = (0..n).map(|_| (r.u32(), r.u32(), r.str())).collect();
+        let two_suffixes = (0..n).map(|_| (r.u32(), r.u32(), r.str(), r.u8() != 0)).collect();
         let n = r.u32() as usize;
         let spelling = (0..n).map(|_| (r.u32(), r.str())).collect();
         let n = r.u32() as usize;
@@ -770,7 +786,7 @@ impl Model {
             best = best.min(c.cost);
             if c.node == 0 {
                 roots.push(*c);
-            } else if sc.offer(c.node, c.cost, c.back) {
+            } else if sc.offer(*c) {
                 nodes.push(c.node);
             }
         }
@@ -801,12 +817,13 @@ impl Model {
                         }
                         let cost = s.cost + e.drop() + self.lookahead[e.child as usize] - here;
                         if cost <= limit {
-                            match sc.offer_new(e.child, cost, s.back) {
+                            let skipped = St { node: e.child, cost, ..*s };
+                            match sc.offer_new(skipped) {
                                 Offer::New => {
                                     nodes.push(e.child);
-                                    next.push(St { node: e.child, cost, back: s.back });
+                                    next.push(skipped);
                                 }
-                                Offer::Better => next.push(St { node: e.child, cost, back: s.back }),
+                                Offer::Better => next.push(skipped),
                                 Offer::Worse => {}
                             }
                         }
@@ -836,13 +853,13 @@ impl Model {
             // A sound the word does not have; never before any word has started, or a stroke
             // could be skipped outright
             if s.node != 0 {
-                out.push(St { node: s.node, cost: s.cost + self.c.insert, back: s.back });
+                out.push(St { cost: s.cost + self.c.insert, ..*s });
             }
             let here = self.lookahead[s.node as usize];
             for e in self.edges_of(s.node) {
                 if let Some(c) = self.match_cost(tok, *e) {
                     let cost = s.cost + c + self.lookahead[e.child as usize] - here;
-                    out.push(St { node: e.child, cost, back: s.back });
+                    out.push(St { node: e.child, cost, back: s.back, used: true });
                 }
             }
         }
@@ -883,6 +900,7 @@ impl Model {
                     node: 0,
                     cost: s.cost + piece + self.word_cost[word as usize] + u32::from(extra) - self.lookahead[s.node as usize],
                     back: (arena.len() - 1) as u32,
+                    used: true,
                 });
             }
         }
@@ -911,8 +929,18 @@ impl Model {
         }
         let mut arena: Vec<(u32, Piece)> = Vec::new();
         let mut pending: Vec<Vec<St>> = vec![Vec::new(); k + 1];
-        let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK }], true);
+        let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK, used: true }], true);
+        // A hard suffix chord is only ever its suffix: the strokes it covers are not read as sounds
+        let mut hard_until = 0;
         for i in 0..k {
+            if i > 0 && run[i] & JOIN != 0 && i >= hard_until {
+                if self.suffixes.iter().any(|&(s, _, hard)| hard && s == run[i]) {
+                    hard_until = i + 1;
+                } else if run.get(i + 1).is_some_and(|&next| self.two_suffixes.iter().any(|&(a, b, _, hard)| hard && a == run[i] && b == next)) {
+                    hard_until = i + 2;
+                }
+            }
+            let hard = i < hard_until;
             // Exact pieces that start here, from the positions that just finished a piece
             let roots: Vec<St> = states.iter().filter(|s| s.node == 0).copied().collect();
             for root in &roots {
@@ -920,17 +948,22 @@ impl Model {
                 let piece = if first { 0 } else { self.c.piece };
                 let stroke = run[i];
                 if !first && stroke & JOIN != 0 {
-                    if let Some(at) = self.suffixes.iter().position(|(s, _)| *s == stroke) {
+                    if let Some(at) = self.suffixes.iter().position(|(s, _, _)| *s == stroke) {
+                        let cost = if self.suffixes[at].2 { 0 } else { self.c.suffix };
                         arena.push((root.back, Piece::Suffix(at as u32)));
-                        pending[i + 1].push(St { node: 0, cost: root.cost + self.c.suffix, back: (arena.len() - 1) as u32 });
+                        pending[i + 1].push(St { node: 0, cost: root.cost + cost, back: (arena.len() - 1) as u32, used: true });
                     }
                     if let Some(at) = run
                         .get(i + 1)
-                        .and_then(|&next| self.two_suffixes.iter().position(|(a, b, _)| *a == stroke && *b == next))
+                        .and_then(|&next| self.two_suffixes.iter().position(|(a, b, _, _)| *a == stroke && *b == next))
                     {
+                        let cost = if self.two_suffixes[at].3 { 0 } else { self.c.suffix };
                         arena.push((root.back, Piece::TwoSuffix(at as u32)));
-                        pending[i + 2].push(St { node: 0, cost: root.cost + self.c.suffix, back: (arena.len() - 1) as u32 });
+                        pending[i + 2].push(St { node: 0, cost: root.cost + cost, back: (arena.len() - 1) as u32, used: true });
                     }
+                }
+                if hard {
+                    continue;
                 }
                 let mut key: Vec<u32> = Vec::new();
                 for j in i..k.min(i + self.max_stem) {
@@ -942,12 +975,12 @@ impl Model {
                         arena.push((root.back, Piece::Stem(stem)));
                         let later = if first { 0 } else { self.c.stem_later };
                         let cost = root.cost + piece + self.stem_cost[stem as usize] + later;
-                        pending[j + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32 });
+                        pending[j + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32, used: true });
                         // The same word's sounds, for the strokes after to carry on into a longer
                         // word: its rarity and its piece are charged when that word ends
                         for &node in &self.stem_nodes[stem as usize] {
                             let cost = root.cost + later + self.c.stem_enter + self.lookahead[node as usize];
-                            pending[j + 1].push(St { node, cost, back: root.back });
+                            pending[j + 1].push(St { node, cost, back: root.back, used: true });
                         }
                     }
                 }
@@ -962,7 +995,7 @@ impl Model {
                         if let Some(&stem) = self.stems.get(&[near][..]) {
                             arena.push((root.back, Piece::Stem(stem)));
                             let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
-                            pending[i + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32 });
+                            pending[i + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32, used: true });
                         }
                     }
                 }
@@ -973,8 +1006,16 @@ impl Model {
             alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
             alts.truncate(self.c.max_readings as usize);
             alts.sort();
+            if hard {
+                alts.clear();
+            }
+            // Each stroke must match at least one sound of the word it is read into
+            let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
             let mut next = Vec::new();
-            self.walk(sc, &alts, 0, &states, &mut next);
+            self.walk(sc, &alts, 0, &starting, &mut next);
+            if self.c.must_use > 0 {
+                next.retain(|s| s.used);
+            }
             let mut next = self.settle(sc, &next, false);
             let mut emitted = Vec::new();
             self.emit(&next, &mut arena, &mut emitted);
@@ -1080,7 +1121,7 @@ impl Model {
     pub fn read_back(&self, run: &[u32]) -> Option<String> {
         let mut text = String::new();
         for (i, &stroke) in run.iter().enumerate() {
-            if let Some((_, suffix)) = self.suffixes.iter().find(|(s, _)| i > 0 && stroke & JOIN != 0 && *s == stroke) {
+            if let Some((_, suffix, _)) = self.suffixes.iter().find(|(s, _, _)| i > 0 && stroke & JOIN != 0 && *s == stroke) {
                 text.push_str(suffix);
                 continue;
             }

@@ -2428,3 +2428,21 @@ generator's `I` missed its lowercase rank (*I* priced as the rarest word). Both 
 blob and one packed from `out/lyk` are now byte-identical, and wasm matches native on all 3,865.
 Result: top-1 86.7% (90.1% weighted by use, 94.8% top-5, 92.3% for the 2,000 commonest words);
 the tape 9.0% -> 10.8%; 2.3 ms mean in wasm; `deploy` 27 s with no backups shipped.
+
+**Hard suffixes are starred; a struck stroke is used; *probable* (2026-11-08, from his typing).**
+He turned the suffix sheet off: a hard `+-D` = `{^ed}` entry overrides the solver. The sheet now
+writes each chord with `*` on its first stroke (`+*D` `{^ed}`, `+*EUZ/+-PL` `{^ism}`), the hard
+suffix; the plain chord is the solver's (a cheap suffix reading among the stroke's others), and a
+starred chord inside a run is forced (never read as sounds). `rules/suffixes.toml` stays plain;
+the site's engine lists both chords. *probable* could not be typed as a run at all (`PROB/+ABL`,
+`+-BL`, `+AEBL` all gave *probably*): skipping *probably*'s final IY cost 1 like a schwa, and its
+spelling path skipped the final *y* the same way. Now only a reduced vowel (AH, IH, ER unstressed)
+is cheap to skip, any other costs 3, and a word's last vowel 2 more unless reduced (sounds) or an
+*e* (spelling, often silent or reduced); `PROB/+ABL` reads *probable*. His rule, "adding an e
+should force it to use it": every stroke must match a sound of its word (or be a suffix chord or
+known outline); measured a wash on backups (87.3% vs 87.1%) since generated outlines never carry a
+throwaway stroke, kept because it is the behaviour he asked for. A vowel struck as a letter the word
+does not spell it with went 3 -> 5, the biggest win of the round (86.3 -> 87.3%); misstroke 4 -> 5
+re-tuned with it. Top-1 87.4%, 91.2% weighted by use, the tape 10.8%. `TK*UP` (undo word) does not
+take back a whole solver run: undoing the run's translation restores the partial it replaced, so a
+whole-run undo needs keymux's `take_back` to keep going through the restored partials (not done).

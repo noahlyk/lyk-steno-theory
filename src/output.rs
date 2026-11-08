@@ -11,7 +11,7 @@
 //! that changes nothing leaves every file's modification time alone.
 
 use crate::generate::{written, Generated, Origin};
-use crate::stroke::render_outline;
+use crate::stroke::{Stroke, render_outline};
 use anyhow::{Context, Result};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -101,6 +101,18 @@ pub struct Written {
     pub changed: bool,
 }
 
+/// A suffix chord as the suffix sheet writes it: with the star on its first stroke (`+*-D`), the
+/// hard suffix that always attaches its text. The plain chord the rules give it (`+-D`) is left to
+/// the solver plugin, which reads it as the suffix or as sounds, whichever fits the run (see
+/// `site/reference/suffixes.json`). A chord that has its star already (`+*T`) is written as it is.
+pub fn hard_suffix(outline: &[Stroke]) -> Vec<Stroke> {
+    let mut hard = outline.to_vec();
+    if let Some(first) = hard.first_mut() {
+        first.0 |= Stroke::STAR;
+    }
+    hard
+}
+
 /// What an entry is defined as in the file. A suffix is an attach, `{^ed}`, so its stroke glues
 /// its text onto whatever word came before it even when no joined outline (`TEST/+-D`) exists;
 /// every other entry is its word as written. [`crate::built`] strips the attach on the way back in.
@@ -114,10 +126,11 @@ pub fn definition(entry: &crate::generate::Entry) -> String {
 pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written>> {
     let mut by_role: BTreeMap<Role, BTreeMap<String, String>> = BTreeMap::new();
     for entry in &generated.entries {
+        let outline = if entry.origin == Origin::Suffix { hard_suffix(&entry.outline) } else { entry.outline.clone() };
         by_role
             .entry(Role::of(entry.origin))
             .or_default()
-            .insert(render_outline(&entry.outline), definition(entry));
+            .insert(render_outline(&outline), definition(entry));
     }
     std::fs::create_dir_all(dir).with_context(|| dir.display().to_string())?;
     let mut done = Vec::new();

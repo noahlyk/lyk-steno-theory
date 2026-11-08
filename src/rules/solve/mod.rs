@@ -54,8 +54,15 @@ const DROP_STRESSED: u8 = 8;
 const DROP_CONSONANT: u8 = 4;
 /// `HH` and the `Y` glide are often not struck at all.
 const DROP_WEAK_CONSONANT: u8 = 2;
+/// Leaving out a word's last vowel, beyond what that vowel costs anywhere else.
+const DROP_LAST: u8 = 2;
 /// A word reached through its spelling rather than its sounds.
 const SPELLED_PATH: u8 = 3;
+
+/// A packing cost, or (natively, while tuning) `LYK_SOLVE_<NAME>` overriding it.
+fn tuned_pack(name: &str, default: u8) -> u8 {
+    std::env::var(format!("LYK_SOLVE_{name}")).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+}
 /// A consonant chord whose sound the rules tie to a spelling (`T.ed` on `-D`).
 const SPELLED_CONSONANT: u8 = 2;
 
@@ -398,13 +405,18 @@ fn chords(tables: &[&HashMap<String, Stroke>], sounds: &mut Sounds) -> Vec<(u32,
 }
 
 /// What skipping a sound of a word's pronunciation costs.
-fn drop_cost(sound: &str) -> u8 {
+/// Only a reduced vowel (`[reduce]`'s AH, IH, ER) is cheap to leave out: any other vowel is a
+/// syllable the theory strikes, and a full vowel that ends the word all the more (*probably*'s
+/// final IY is what tells it from *probable*, whose reduced *-ble* is left out freely).
+fn drop_cost(sound: &str, last: bool) -> u8 {
     if sound.ends_with(|c: char| c.is_ascii_digit()) {
-        match sound.chars().last() {
-            Some('0') => DROP_UNSTRESSED,
-            Some('2') => DROP_SECONDARY,
+        let reduced = matches!(plain(sound), "AH" | "IH" | "ER");
+        let drop = match sound.chars().last() {
+            Some('0') if reduced => DROP_UNSTRESSED,
+            Some('0' | '2') => DROP_SECONDARY,
             _ => DROP_STRESSED,
-        }
+        };
+        if last && !reduced { (drop + tuned_pack("DROP_LAST", DROP_LAST)).min(DROP_STRESSED) } else { drop }
     } else if matches!(plain(sound), "HH" | "Y") {
         DROP_WEAK_CONSONANT
     } else {
@@ -426,13 +438,15 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
     for (id, (word, _)) in words.iter().enumerate() {
         let id = index(id);
         for variant in &lexicon.pron[*word] {
+            let last_vowel = variant.iter().rposition(|s| s.ends_with(|c: char| c.is_ascii_digit()));
             let path: Vec<EdgeKey> = variant
                 .iter()
                 .zip(align(word, variant))
-                .map(|(sound, letters)| EdgeKey {
+                .enumerate()
+                .map(|(at, (sound, letters))| EdgeKey {
                     mask: 1 << sounds.id(sound),
                     letters,
-                    drop: drop_cost(sound),
+                    drop: drop_cost(sound, Some(at) == last_vowel),
                     vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
                 })
                 .collect();
@@ -440,20 +454,30 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
             trie.sound_ends.entry(id).or_default().push(end);
         }
         for reading in orthography::readings(word, 1) {
+            let last_vowel = reading.iter().rposition(|p| p.heard.ends_with(|c: char| c.is_ascii_digit()));
             let path: Vec<EdgeKey> = reading
                 .iter()
-                .map(|phone| {
+                .enumerate()
+                .map(|(at, phone)| {
                     let vowel = phone.heard.ends_with(|c: char| c.is_ascii_digit());
                     if vowel {
                         let mask = (1u64 << sounds.id(&phone.heard)) | (1 << sounds.id(&phone.long)) | (1 << sounds.id(&phone.weak));
-                        let drop = if phone.weak.ends_with('0') { DROP_UNSTRESSED } else { DROP_SECONDARY };
+                        // The last vowel letter is a syllable struck (*probably*'s *y*), as on the
+                        // sounds' own path; not an *e*, which ends a word as often reduced or silent
+                        let drop = if Some(at) == last_vowel && phone_letters(phone) != letters("e") {
+                            (DROP_SECONDARY + tuned_pack("DROP_LAST", DROP_LAST)).min(DROP_STRESSED)
+                        } else if phone.weak.ends_with('0') {
+                            DROP_UNSTRESSED
+                        } else {
+                            DROP_SECONDARY
+                        };
                         EdgeKey { mask, letters: phone_letters(phone), drop, vowel }
                     } else {
                         EdgeKey { mask: 1 << sounds.id(&phone.heard), letters: 0, drop: DROP_CONSONANT, vowel }
                     }
                 })
                 .collect();
-            trie.insert(&path, id, SPELLED_PATH);
+            trie.insert(&path, id, tuned_pack("SPELLED_PATH", SPELLED_PATH));
         }
     }
     (words, trie)
@@ -528,21 +552,44 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
         b.u8(letters);
         b.u8(coda);
     }
-    let mut suffixes: Vec<(&Stroke, &String)> = rules.suffixes.iter().collect();
+    // Each suffix chord twice: as the rules write it, one reading of the stroke among others, and
+    // with the star on its first stroke, the suffix sheet's hard entry (see `crate::output`)
+    let plain: Vec<u32> = rules.suffixes.keys().map(|s| s.0).collect();
+    let mut suffixes: Vec<(u32, &String, bool)> = Vec::new();
+    for (stroke, text) in &rules.suffixes {
+        let hard = stroke.0 | Stroke::STAR;
+        if hard == stroke.0 {
+            suffixes.push((stroke.0, text, true));
+        } else {
+            suffixes.push((stroke.0, text, false));
+            if !plain.contains(&hard) {
+                suffixes.push((hard, text, true));
+            }
+        }
+    }
     suffixes.sort_unstable();
     b.len(suffixes.len());
-    for (stroke, text) in suffixes {
-        b.u32(stroke.0);
+    for (stroke, text, hard) in suffixes {
+        b.u32(stroke);
         b.str(text);
+        b.u8(u8::from(hard));
     }
     // In a fixed order: the rules hold them in a hash map's
-    let mut two_stroke: Vec<&(String, Vec<Stroke>)> = rules.two_stroke_suffixes.iter().collect();
-    two_stroke.sort_by(|a, b| (&a.1, &a.0).cmp(&(&b.1, &b.0)));
+    let mut two_stroke: Vec<(u32, u32, &String, bool)> = Vec::new();
+    for (text, strokes) in &rules.two_stroke_suffixes {
+        let (first, second) = (strokes[0].0, strokes[1].0);
+        two_stroke.push((first, second, text, first & Stroke::STAR != 0));
+        if first & Stroke::STAR == 0 {
+            two_stroke.push((first | Stroke::STAR, second, text, true));
+        }
+    }
+    two_stroke.sort_unstable();
     b.len(two_stroke.len());
-    for (text, strokes) in two_stroke {
-        b.u32(strokes[0].0);
-        b.u32(strokes[1].0);
+    for (first, second, text, hard) in two_stroke {
+        b.u32(first);
+        b.u32(second);
         b.str(text);
+        b.u8(u8::from(hard));
     }
     let mut spelling: Vec<(&Stroke, &String)> = rules.spelling.iter().collect();
     spelling.sort_unstable();

@@ -13,7 +13,7 @@
   },
   {
    "t": "p",
-   "x": "Every suffix in this table is a **standalone dictionary entry**: an outline whose strokes all carry the join key `+`, defined as a pure attach, `{^ed}` for [[+-D]], `{^'s}` for [[+-PBTS]], `{^ing}` for [[+-G]] and so on (`out/lyk/02-lyk-suffixes.json`). Strike any word, then the suffix stroke, and the ending glues onto it **even when the dictionary has no joined outline for that pair**: *test* then [[+-D]] types *tested* whether or not `TEST/+-D` exists. A longer joined outline (the stem's own backup, or a word's own `X/+-D`) always wins over the bare suffix entry. A two-stroke suffix is one two-stroke entry (`+EUZ/+-PL` is `{^ism}`)."
+   "x": "Every suffix in this table is a **standalone dictionary entry on its starred chord**: the chord with `*` added to its first stroke, defined as a pure attach (`out/lyk/02-lyk-suffixes.json`): `+*D` is `{^ed}`, `+*G` is `{^ing}`, `+*EUZ/+-PL` is `{^ism}`. The star **forces** the suffix: strike any word, then the starred chord, and the ending glues on whatever the run says. The plain chord in the table ([[+-D]], [[+-G]], ...) is **not** an entry: [the solver](#/ref/fallback) reads it, as the suffix or as part of the word's own sounds, whichever fits the whole run (*test* then [[+-D]] is *tested*; *prob* then [[+-BL]] is *probable*). Use the plain chord by default; reach for the star when the solver picks a whole word and you want the bare ending. A chord with its own star already (`+*T` *th*) is its own entry."
   },
   {
    "t": "note",
