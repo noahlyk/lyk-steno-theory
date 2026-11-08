@@ -423,7 +423,7 @@ const fn is_primary_origin(origin: Origin) -> bool {
 }
 
 /// Every single-stroke word's primary outline, by its own bare stroke — what
-/// `Rules::resolve`/the deployed plugin check before reading an unmatched run's first stroke as
+/// `Rules::resolve` checks before reading an unmatched run's first stroke as
 /// raw phonemes, so a continuation after a known word (`SKP/+-R`, "and" plus "-er") reads as that
 /// word's own real text ("ander") instead of garbling the word itself ("sper", "and"'s own `SKP`
 /// read as if it meant nothing). A standalone suffix's own entry is excluded the same way
@@ -434,13 +434,8 @@ const fn is_primary_origin(origin: Origin) -> bool {
 /// back as "of thes", nonsense) — see `site/reference/phrases.json`. Collision-free by construction: `taken`
 /// already guarantees one word per outline text, so there is never more than one candidate for a
 /// given stroke here. Only a word's primary counts, not its short forms, backups, extras or
-/// alternates: the same word under four strokes made the deployed plugin's table twice the size
-/// for no reading it could not already give.
-pub fn single_stroke_stems(generated: &Generated) -> HashMap<Stroke, String> {
-    single_stroke_stems_of(&generated.entries)
-}
-
-/// [`single_stroke_stems`] over bare entries, such as a dictionary read back from disk
+/// alternates: the same word under four strokes would only repeat a reading it already gives.
+/// Over bare entries, such as a dictionary read back from disk
 /// (`crate::built`), where every word file entry stands in as a primary.
 pub fn single_stroke_stems_of(entries: &[Entry]) -> HashMap<Stroke, String> {
     entries

@@ -56,7 +56,7 @@ rule, table and mechanism, searchable: the [cheat sheet](https://noahlyk.github.
 [how it works](https://noahlyk.github.io/lyk-steno-theory/#/ref/how-stroke-setup), the rules, the
 [briefs](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs), the
 [suffix table](https://noahlyk.github.io/lyk-steno-theory/#/ref/suffixes), punctuation and
-fingerspelling, the [fallback](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback). The
+fingerspelling, the [stroke read-back](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback). The
 maintainer's logs stay here: [`docs/decisions.md`](docs/decisions.md) and [`docs/roadmap.md`](docs/roadmap.md).
 
 The numbers themselves (this page's "Where lyk stands" above, and the full breakdown at
@@ -77,8 +77,8 @@ not looked up.
   suffixes be as short as a single key.
 - **Measured, not asserted**: `build` and `score` print cost and match-rate against Plover and
   Lapwing on the same words, every time — see [the full benchmarks](#full-benchmarks).
-- **A miss always resolves**: a stroke the dictionary doesn't have still reads back as something
-  sensible, phonetically, as a real engine's last resort — see [the fallback page](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
+- **A miss can be read back**: `resolve` and `lookup` read a stroke the dictionary doesn't have as
+  something sensible, phonetically (no engine runs it; a live miss types its raw keys) — see [the stroke read-back page](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
 
 ## Use
 
@@ -91,8 +91,7 @@ cargo run --release -- score --write-readme   # ...and rewrite any stale one in 
 cargo run --release -- --version           # the git version baked in at compile time (also -V, or the hidden `version` command); `build` stamps it into out/lyk/.built and the query commands say once if it differs (silence: --no-stale-check or LYK_NO_STALE_NOTE=1); see the Reference, Build and files
 cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files); quiet: the files, and a warning only if a word is stranded
 cargo run --release -- build --report      # ...plus every diagnostic and the cost tables (the invariants are tests: cargo test --release)
-cargo run --release -- plugin              # generate keymux's WASM fallback plugin from the rules
-cargo run --release -- deploy              # build + plugin, copied straight into keymux's live config
+cargo run --release -- deploy              # build, copied straight into keymux's live config
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
 cargo run --release -- explain moon        # which rules wrote a word, next to Plover and Lapwing
 cargo run --release -- family build       # build, builds, building...: each one's outline and its stem + ending entry

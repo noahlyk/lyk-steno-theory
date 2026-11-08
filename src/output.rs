@@ -145,8 +145,24 @@ pub fn write_if_different(path: &Path, content: &[u8]) -> Result<bool> {
     Ok(true)
 }
 
+/// Files of the dropped WASM fallback plugin: generated beside the dictionary folder (`out/`) or
+/// shipped into a keymux config. Removed silently wherever found, so none is ever copied or loaded.
+pub const DROPPED_PLUGIN_FILES: [&str; 3] =
+    ["lyk-orthographic-fallback.rs", "lyk-orthographic-fallback.wasm", "05-lyk-orthographic-fallback.rs"];
+
+/// Delete any [`DROPPED_PLUGIN_FILES`] in `dir`, saying nothing.
+pub fn remove_dropped_plugin(dir: &Path) {
+    for name in DROPPED_PLUGIN_FILES {
+        let _ = std::fs::remove_file(dir.join(name));
+    }
+}
+
 /// Remove the generated dictionary files in `dir` that no role writes any more.
 pub fn remove_stale(dir: &Path) -> Result<()> {
+    remove_dropped_plugin(dir);
+    if let Some(parent) = dir.parent() {
+        remove_dropped_plugin(parent);
+    }
     for entry in std::fs::read_dir(dir).with_context(|| dir.display().to_string())?.flatten() {
         let name = entry.file_name();
         let name = name.to_string_lossy();
@@ -203,5 +219,21 @@ mod tests {
             assert!(dir.join(kept).exists(), "{kept}");
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_dropped_plugin_files_are_removed_beside_and_inside_the_dictionary_folder() {
+        let root = std::env::temp_dir().join(format!("lyk-dropped-plugin-{}", std::process::id()));
+        let dir = root.join("lyk");
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in DROPPED_PLUGIN_FILES {
+            std::fs::write(root.join(name), "x").unwrap();
+            std::fs::write(dir.join(name), "x").unwrap();
+        }
+        remove_stale(&dir).unwrap();
+        for name in DROPPED_PLUGIN_FILES {
+            assert!(!root.join(name).exists() && !dir.join(name).exists(), "{name}");
+        }
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

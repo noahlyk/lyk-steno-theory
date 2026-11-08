@@ -161,20 +161,12 @@
   },
   {
    "t": "h",
-   "x": "The plugin"
-  },
-  {
-   "t": "p",
-   "x": "`cargo run -- plugin` generates the same letter table and dispatch into the deployed WASM plugin, as it does for the phonetic tables (see [the fallback](#/ref/fallback/keeping-the-plugin-honest)). There is no second hand-kept copy."
-  },
-  {
-   "t": "h",
    "x": "Not yet on a physical key"
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "`~` has no physical key in the live keymux config yet. Spelling mode works through `cargo run -- resolve` and the generated plugin, but you cannot strike it at a keyboard today. Until then, spell a word with the glued fingerspelling letters (`A*`, `PW*`, ...; see [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text))."
+   "x": "`~` has no physical key in the live keymux config yet. Spelling mode works through `cargo run -- resolve`, but you cannot strike it at a keyboard today. Until then, spell a word with the glued fingerspelling letters (`A*`, `PW*`, ...; see [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text))."
   }
  ]
 }

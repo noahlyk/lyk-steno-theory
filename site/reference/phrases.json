@@ -195,7 +195,7 @@
   },
   {
    "t": "p",
-   "x": "Phrase placement is one pass, run once after the backup pass has settled and before the \"stranded\" diagnostic is computed. It sees the dictionary in its final state, backups included. Phrase entries have their own origin (`Phrase`), and the reading fallback never treats a phrase as a word: a continuation stroke after `-FT` is not read as *of the* plus an ending. See [the fallback](#/ref/fallback)."
+   "x": "Phrase placement is one pass, run once after the backup pass has settled and before the \"stranded\" diagnostic is computed. It sees the dictionary in its final state, backups included. Phrase entries have their own origin (`Phrase`), and the stroke read-back never treats a phrase as a word: a continuation stroke after `-FT` is not read as *of the* plus an ending. See [the stroke read-back](#/ref/fallback)."
   },
   {
    "t": "h",

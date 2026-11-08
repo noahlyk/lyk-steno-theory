@@ -15,7 +15,7 @@
     { "t": "list", "items": [
       "**Swap**, still one stroke: the voiced and unvoiced partner trade places. [[cadence|KAEUPBTS]], [[utters|URTS]], [[silenced|SAOEUPBLTS]].",
       "**Split**, two strokes, if no swap is free: the pinky keys that fit stay, the rest go to a joined stroke. `-SD` becomes `-S` then `+-D`.",
-      "A few rare words have no outline at all because their only repair would change a sound. The fallback reads their strokes."
+      "A few rare words have no outline at all because their only repair would change a sound. `resolve` reads their strokes back."
     ] },
     { "t": "p", "x": "You never decide this. If a word's outline looks different from the sounds, this is usually why." },
     { "t": "h", "x": "When a stroke misses" },

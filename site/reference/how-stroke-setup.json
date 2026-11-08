@@ -52,7 +52,7 @@
       ["3. Map or refuse", "Every remaining token goes through a consonant, vowel or diphthong table. One unrecognized symbol fails the whole pronunciation: no partial, guessed translation ever ships."],
       ["4. Assign stress", "Neither source marks lexical stress. The first vowel becomes primary (`1`), every other vowel unstressed (`0`). This is often wrong for a later-stressed word such as began."]
     ] },
-    { "t": "note", "kind": "warn", "x": "Step 4 is a known limitation: the fallback guesses stress from position, so a word whose stress falls later can be split into syllables the wrong way. The orthographic fallback for words with no pronunciation at all is a separate mechanism: see [The orthographic fallback](#/ref/fallback)." },
+    { "t": "note", "kind": "warn", "x": "Step 4 is a known limitation: the fallback guesses stress from position, so a word whose stress falls later can be split into syllables the wrong way. A word with no pronunciation at all gets no outline from the rules; it can still be spelled letter by letter (see [Spelling mode](#/ref/spelling-mode))." },
     { "t": "h3", "x": "A real rescue, traced" },
     { "t": "table", "head": ["Stage", "Value"], "rows": [
       ["Word", "hobgoblin"],

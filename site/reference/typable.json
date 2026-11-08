@@ -126,7 +126,7 @@
   },
   {
    "t": "p",
-   "x": "Four rare words have no outline because their only repair fails the consonant check on the voiced `-D`: *cleansed*, *pulsed*, *blitzed*, *repulsed*. They are still typable from their syllables, e.g. [[cleansed|KEPBS/+-D]], and [the fallback](#/ref/fallback) reads their strokes back."
+   "x": "Four rare words have no outline because their only repair fails the consonant check on the voiced `-D`: *cleansed*, *pulsed*, *blitzed*, *repulsed*. They are still typable from their syllables, e.g. [[cleansed|KEPBS/+-D]], and [the stroke read-back](#/ref/fallback) reads their strokes back."
   }
  ]
 }

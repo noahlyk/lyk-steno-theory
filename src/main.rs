@@ -121,22 +121,6 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
-    /// Generate the keymux WASM plugin that reads a stroke back the way these rules would,
-    /// for whatever a dictionary misses: the single source of this logic, so the deployed
-    /// plugin can never drift from the theory it is supposed to mirror
-    Plugin {
-        /// Where to write the plugin's Rust source
-        #[arg(long, default_value = "out/lyk-orthographic-fallback.rs")]
-        out: PathBuf,
-        /// Words to cover when building the dictionary's single-stroke stem table, most common
-        /// first. Matches `build`/`deploy`'s own default: a smaller count leaves out mid-frequency
-        /// words the real, deployed stem table knows about.
-        #[arg(long, default_value_t = 100_000)]
-        common: usize,
-        /// Briefs to use instead of the built-in ones
-        #[arg(long)]
-        briefs: Option<PathBuf>,
-    },
     /// Build the dictionary: briefs first, then the rules, and say what it costs to type
     Build {
         /// The folder to write the Plover JSON dictionary files to, one per role (`02-lyk-words.json`,
@@ -291,8 +275,8 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
-    /// Build the dictionary and the plugin, then copy both straight into the live keymux config:
-    /// the one command for everything `build` and `plugin` otherwise leave as a manual copy/paste
+    /// Build the dictionary, then copy it straight into the live keymux config along with the
+    /// reserved stroke tables: the one command for everything `build` otherwise leaves as a manual copy/paste
     Deploy {
         /// Where keymux's lyk config lives
         #[arg(long, default_value = "~/.config/keymux/steno/lyk")]
@@ -348,11 +332,6 @@ fn main() -> Result<()> {
         Command::Explain { word, common, briefs, rebuild } => {
             commands::run_explain(&setup, word.as_deref(), *common, briefs.as_deref(), *rebuild)
         }
-        Command::Plugin { out, common, briefs } => {
-            let setup = setup(Some(*common))?;
-            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            commands::write_plugin(&setup, &briefs, *common, cli.rules.as_deref(), out)
-        }
         Command::Build {
             out,
             common,
@@ -402,7 +381,7 @@ fn main() -> Result<()> {
         Command::Deploy { to, common, briefs } => {
             let setup = setup(Some(*common))?;
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            commands::deploy(&setup, &briefs, *common, cli.rules.as_deref(), to)
+            commands::deploy(&setup, &briefs, *common, to)
         }
     }
 }

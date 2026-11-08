@@ -192,7 +192,7 @@ impl<'a> Lookup<'a> {
     }
 
     fn forward_row(&self, strokes: &[Stroke], mark: Mark) -> Row {
-        // Not an entry: the rules' best reading is what the deployed fallback plugin types
+        // Not an entry: the rules' best reading is what the stroke reads back as
         let reading = || {
             self.setup.rules.resolve(strokes, Some(&self.stems)).map_or_else(
                 || ("(no translation)".to_owned(), How::Entry),

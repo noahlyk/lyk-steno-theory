@@ -64,7 +64,7 @@ not where most of the value is per entry spent, which is the other reason to not
 4. Decide dictionary vs. WASM **based on the result of step 3**, not in advance: if any candidate
    needs to beat out a real word on purpose, it has to be a loaded-above-the-base dictionary file
    (WASM fallback plugins can only fill gaps, never override). If nothing needs to override
-   anything, WASM is the better fit and matches how the orthographic fallback already works here
+   anything, WASM is the better fit and matches how the orthographic fallback already works here (HISTORICAL: that plugin has since been removed)
    (generated from the rules, not hand-maintained as a giant table).
 5. Build, verify with the same rigor as every other change (`cargo build/test --release`, `score
    --check-readme`, `clippy`), and write a new docs chapter for it — exhaustively, since this is a

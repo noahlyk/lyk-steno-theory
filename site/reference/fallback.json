@@ -1,7 +1,7 @@
 {
  "id": "fallback",
- "title": "The orthographic fallback",
- "goal": "Know what a stroke that misses the dictionary reads back as, and how that logic is built into keymux's WASM plugin.",
+ "title": "The stroke read-back",
+ "goal": "Know what `resolve` and `lookup` print for a stroke that is not in the dictionary, and the rules that reading follows.",
  "blocks": [
   {
    "t": "h",
@@ -13,7 +13,7 @@
   },
   {
    "t": "p",
-   "x": "A real steno engine uses it as its last resort: look the stroke up in the dictionary first, and only on a miss run `!resolve` instead of echoing the keys. In Plover it is a `StenoDictionary` plugin loaded at the bottom of the stack. In keymux it is a WASM module asked only after every dictionary ahead of it has missed, and only for one stroke or a run the join key declared as one word."
+   "x": "No engine runs this reading: a live steno engine types a stroke that misses the dictionary as its raw keys, and lyk ships no plugin to change that. The reading is what `resolve` and `lookup` print for a miss, and what the site's trainer shows. Treat it as a way to check that a stroke you improvised is a sensible one."
   },
   {
    "t": "h",
@@ -136,40 +136,7 @@
   },
   {
    "t": "p",
-   "x": "`!resolve` (alias `stroke`) prints what the outline types in quotes, with a note when the dictionary has no entry and the quoted word is the rules' reading of it, then the entries nearest to it (see [the interactive session](#/ref/build-and-files/the-interactive-session)). Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
-  },
-  {
-   "t": "h",
-   "x": "Keeping the plugin honest"
-  },
-  {
-   "t": "pre",
-   "x": "cargo run --release -- plugin [--out out/lyk-orthographic-fallback.rs]"
-  },
-  {
-   "t": "p",
-   "x": "`plugin` generates the WASM plugin's `.rs` source **directly from the rule tables**: the same onset/vowel/coda data and the same \"no vowel key means no vowel sound\" logic as `!resolve`, ported to plain `u32`s, inside a fixed `alloc`/`!fallback` ABI template. Nothing is hand-copied. Regenerate and redeploy the file after any change to the rule tables; never hand-edit the deployed plugin."
-  },
-  {
-   "t": "h3",
-   "x": "The joins export"
-  },
-  {
-   "t": "p",
-   "x": "The plugin also exports `joins(bits) -> bool`, true whenever `Stroke::JOIN` is set. keymux has no built-in idea of a join key (every key is just a bit), so without this export it would treat every stroke as its own word, although a lookup of an already-built multi-stroke entry such as `WORBG/+-G` would still work. Regenerate and redeploy the plugin whenever `Stroke::JOIN`'s bit position changes, not only when a rule table does."
-  },
-  {
-   "t": "h3",
-   "x": "The stem table"
-  },
-  {
-   "t": "p",
-   "x": "The plugin embeds a stem table: the **primary one-stroke outline of each of the 10,000 commonest words** (`PLUGIN_STEM_WORDS` in `src/main.rs`), sorted and searched by binary search (about 180 KB). A rarer word at the start of a run is not lost; it reads back from its sounds rather than its spelling."
-  },
-  {
-   "t": "note",
-   "kind": "warn",
-   "x": "Unlike the other tables, the stem table is a snapshot of which word is on which single stroke right now. `plugin` builds the dictionary to make it, so regenerate and redeploy when the **dictionary** changes too, not only when a rule table does."
+   "x": "`!resolve` (alias `stroke`) prints what the outline types in quotes, with a note when the dictionary has no entry and the quoted word is the rules' reading of it, then the entries nearest to it (see [the interactive session](#/ref/build-and-files/the-interactive-session)). Many `+`-joined runs are already backup entries, so the read-back only matters for runs the dictionary lacks."
   }
  ]
 }

@@ -92,5 +92,5 @@ Commit(s) on `main`, pushed. Regenerate and redeploy to the live config:
 cargo run --release -- build
 cargo run --release -- plugin
 cp out/lyk.json ~/.config/keymux/steno/lyk/02-lyk-words.json
-cp out/lyk-orthographic-fallback.rs ~/.config/keymux/steno/lyk/05-lyk-orthographic-fallback.rs
+cp out/lyk-orthographic-fallback.rs ~/.config/keymux/steno/lyk/05-lyk-orthographic-fallback.rs   # HISTORICAL: the plugin was removed; no such file exists any more
 ```

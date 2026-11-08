@@ -1,18 +1,18 @@
 //! What each `lyk-steno-theory` subcommand does beyond calling one library function: deploying,
-//! looking words up, family reports, the plugin, and the ergonomics query. `main` only parses
+//! looking words up, family reports, and the ergonomics query. `main` only parses
 //! the command line and dispatches here.
 
 use crate::answer::{Ask, Lookup};
 use crate::interactive::{self, Session};
 use crate::view::{View, terminal_colour};
-use crate::{analysis, built, ergonomics, family, generate, output, rules, stroke};
+use crate::{analysis, built, ergonomics, family, generate, output, stroke};
 use anyhow::{Context, Result};
 use std::fmt::Write as _;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 
 /// Every file lyk's keymux config is made of, besides the two this binary generates fresh each
-/// time (the words dictionary and the fallback plugin): the reserved stroke tables this repo
+/// time (the words dictionary): the reserved stroke tables this repo
 /// already tracks as its own source of truth (`rules/reserved/`), verbatim, under the numbered
 /// name keymux loads them by, plus the one piece of generic keymux scaffolding (the theory-name
 /// marker) every theory folder needs to be recognized and reloadable at all. Static, not derived
@@ -33,14 +33,13 @@ const STATIC_FILES: &[(&str, &str)] = &[
     (".keymux-theory", "lyk\n"),
 ];
 
-/// `build` and `plugin`, plus every reserved stroke table and the generic scaffolding keymux
+/// `build`, plus every reserved stroke table and the generic scaffolding keymux
 /// needs, straight into keymux's live config: the whole folder from one command, not a partial
 /// update that assumes the rest is already sitting there correctly.
 pub fn deploy(
     setup: &analysis::Setup,
     briefs: &generate::Briefs,
     common: usize,
-    rules_path: Option<&Path>,
     to: &Path,
 ) -> Result<()> {
     let to = expand_home(to)?;
@@ -48,19 +47,17 @@ pub fn deploy(
 
     let words_out = PathBuf::from("out/lyk");
     generate::build(setup, briefs, common, &words_out, None, false)?;
-    let plugin_out = PathBuf::from("out/lyk-orthographic-fallback.rs");
-    write_plugin(setup, briefs, common, rules_path, &plugin_out)?;
 
     // Plain overwrite of every generated file; files an earlier layout left behind are removed.
     let mut copied = Vec::new();
     for role in output::Role::ALL {
         copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
     }
-    copied.push((plugin_out, to.join("05-lyk-orthographic-fallback.rs")));
     for (from, dest) in &copied {
         std::fs::copy(from, dest).with_context(|| dest.display().to_string())?;
     }
     output::remove_stale(&to)?;
+    output::remove_dropped_plugin(&to);
 
     for (name, content) in STATIC_FILES {
         let dest = to.join(name);
@@ -278,41 +275,6 @@ fn report_ergonomics(strokes: &[stroke::Stroke], query: &str, is_word: bool) {
         println!("{query} (a stroke outline):");
     }
     println!("{}", ergonomics::explain_outline(strokes));
-}
-
-/// How many of the commonest words get their own stem row in the deployed plugin.
-const PLUGIN_STEM_WORDS: usize = 10_000;
-
-/// Generate the orthographic-fallback plugin's source and write it to `out`. Builds the
-/// dictionary (same `setup`/`briefs`/`common` as `build`/`deploy`) to embed its single-stroke
-/// stem table in the plugin — see [`rules::Rules::generate_plugin`].
-pub fn write_plugin(
-    setup: &analysis::Setup,
-    briefs: &generate::Briefs,
-    common: usize,
-    rules_path: Option<&Path>,
-    out: &Path,
-) -> Result<()> {
-    let rules = match rules_path {
-        Some(path) => rules::Rules::load(path)?,
-        None => rules::Rules::built_in()?,
-    };
-    let generated = generate::generate(setup, briefs, common)?;
-    // Only the commonest words are embedded: a rarer word as the start of a run reads back from
-    // its sounds, which is what a stem table is only a nicer spelling of. See `site/reference/fallback.json`.
-    let mut stems = generate::single_stroke_stems(&generated);
-    let mut ranked: Vec<(&String, &u64)> = setup.count.iter().collect();
-    ranked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-    let common_words: std::collections::HashSet<&str> =
-        ranked.into_iter().take(PLUGIN_STEM_WORDS).map(|(word, _)| word.as_str()).collect();
-    stems.retain(|_, word| common_words.contains(word.as_str()));
-    let source = rules.generate_plugin(&stems);
-    if let Some(parent) = out.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(out, source).with_context(|| out.display().to_string())?;
-    println!("wrote {}", out.display());
-    Ok(())
 }
 
 /// `paths`: every way the lattice writes a word, and what became of each. With no word, the

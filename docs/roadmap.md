@@ -35,7 +35,7 @@ fixed, not just found:
   theories. Functionally there; a dedicated `lookup` alias with a terser output is a nice-to-have,
   not a gap. (Separately, a much bigger reverse-lookup redesign is in progress elsewhere — see
   keymux's own planning for that, not this repo.)
-- **The AO/UH fallback tie-break**: fixed — see `3822e12`. The orthographic fallback's best guess
+- **The AO/UH fallback tie-break**: fixed — see `3822e12`. The (since removed) orthographic fallback plugin's best guess
   for a bare `AO` stroke is now "oo" (`UW.oo`), not "uh" (`UH`), since the latter was the rarer of
   three colliding readings despite "winning" by an accidental plain-vs-variant tie-break rule.
 - **Brief outlines that split a two-key consonant in half** (`good`, `day`, `work`, and 245 of the
@@ -95,7 +95,7 @@ construction).
   recommends over leaving it to per-word judgment. Already the deliberate approach, confirmed.
 
 All four hold up. The one genuine finding from this pass was unrelated to the taxonomy itself: the
-orthographic fallback's bare-`AO` tie-break (section 1 above) was picking the least likely of three
+(since removed) orthographic fallback plugin's bare-`AO` tie-break (section 1 above) was picking the least likely of three
 colliding readings — fixed (see `3822e12`).
 
 Two other ideas from the same reading, still worth keeping in mind:

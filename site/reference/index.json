@@ -49,7 +49,7 @@
         { "id": "punctuation", "title": "Punctuation and commands", "summary": "Every mark, capital, cursor and editing stroke." },
         { "id": "fingerspelling", "title": "Fingerspelling, numbers and modifiers", "summary": "The alphabet, numbers, function keys, symbols and OS chords." },
         { "id": "spelling-mode", "title": "Spelling mode", "summary": "Letter-exact typing for a word with no pronunciation." },
-        { "id": "fallback", "title": "The fallback", "summary": "What happens when a stroke misses the dictionary." }
+        { "id": "fallback", "title": "The stroke read-back", "summary": "What `resolve` and `lookup` print for a stroke the dictionary misses." }
       ]
     },
     {

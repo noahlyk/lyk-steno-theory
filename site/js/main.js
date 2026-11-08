@@ -206,7 +206,7 @@ async function lookupPage() {
         ...row(asOutline ? 'reads as' : 'not in this dictionary, but you can see its keys', [asked]),
         asOutline ? el('div', { class: 'hit__list' }, asOutline.slice(0, 6).map((w) => el('span', { class: 'word' }, w))) : null));
     }
-    if (!hits.length && !parseOutline(asked)) out.append(el('p', {}, 'Not in this dictionary. Any stroke the dictionary misses is still read back by the fallback, and any word can be joined from its syllables.'));
+    if (!hits.length && !parseOutline(asked)) out.append(el('p', {}, 'Not in this dictionary. `resolve` still reads back any stroke the dictionary misses, and any word can be joined from its syllables.'));
     for (const w of hits) {
       const outs = words.get(w);
       const one = outs.filter((o) => !o.includes('/'));

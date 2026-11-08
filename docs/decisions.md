@@ -1978,7 +1978,7 @@ proposed and not built.
 
 
 
-**The deployed fallback plugin is 8x smaller (`05-lyk-orthographic-fallback.rs`).** 1.45 MB of its
+**(Removed since: see the last entry.) The deployed fallback plugin is 8x smaller (`05-lyk-orthographic-fallback.rs`).** 1.45 MB of its
 1.45 MB was the stem table: every one-stroke entry in the dictionary (56,000 rows, the same word
 under its primary, short form, backup and extras), found by a linear scan on every miss. It now holds
 only primaries, only the 10,000 commonest words, searched by binary search: 10,000 rows, 181 KB. The
@@ -2345,3 +2345,17 @@ primary is untouched, so `lyk score` moves by a rounding (4+ syllables 5.695 -> 
 stroke) from rare words whose best outline was already a backup. Not made a primary candidate:
 754 words with a two-stroke primary would save 1 to 3 keys by it, all ranked past 2,600, and a
 primary that is a pair of other words' outlines moves whenever either half does.
+
+**The WASM fallback plugin is gone (`plugin` command, `plugin_template.rs.in`, the deployed
+`05-lyk-orthographic-fallback.rs`).** He no longer wants it. Measured first: the plugin was only a
+consumer of `Rules::resolve`, so `build` output is byte-identical with and without it. The
+generator-side spelling reading (`orthography.rs`, `orthographic_paths`) is a different thing and
+stays: it builds the syllable-spelled backups for words that *do* have pronunciations (no word
+without a CMUdict pronunciation is placed by the generator at all, so "words the rules could not
+place" is 410 either way). Turning it off changes 1.31M backup entries (3.86M -> 2.55M), 58,023
+words' backup sets, 584 words lose every backup (103 of them in the 20,000 commonest: *done*,
+*buy*, *eye*, *owe*, *curious*...), 9 primaries and 143 short forms move, and `score` keys/stroke
+goes 5.637 -> 5.658. `Rules::resolve` stays for `resolve`/`lookup`/`explain` and the site; `deploy`
+now deletes an old `05-lyk-orthographic-fallback.rs` from the keymux folder. Consequence for
+keymux: the plugin's `joins` export is what told keymux that `+` strokes belong to one word, so a
+config without it treats each stroke as its own word.

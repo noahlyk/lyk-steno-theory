@@ -11,7 +11,6 @@ mod brevity;
 mod fragments;
 mod lattice;
 mod orthography;
-mod plugin;
 mod resolve;
 
 
