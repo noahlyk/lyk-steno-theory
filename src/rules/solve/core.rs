@@ -64,8 +64,6 @@ pub const MUST_USE: u32 = 1;
 /// Joining two pieces that together spell a real word past the lexicon (*look* + *up*, *lookup*), in
 /// place of [`PIECE`].
 pub const COMPOUND_PIECE: u32 = 2;
-/// 1: each `+*` ending a run steps one reading down; 0: it is only a marker, read as nothing.
-pub const STAR_NEXT: u32 = 1;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
 /// `+EUPBG`: *canceling*).
 pub const STEM_ENTER: u32 = 1;
@@ -163,6 +161,8 @@ enum Piece {
     /// A known outline one key off the stroke struck: a guess at a misstroke, never a word
     /// struck on purpose, so it does not take a known outline's precedence
     Slip(u32),
+    /// The text a lone `+` locked in: the run's first piece, fixed, that the rest adds to
+    Locked,
 }
 
 const NO_BACK: u32 = u32::MAX;
@@ -199,7 +199,6 @@ pub struct Costs {
     pub stem_enter: u32,
     pub must_use: u32,
     pub compound_piece: u32,
-    pub star_next: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -229,7 +228,6 @@ impl Costs {
             stem_enter: tuned("STEM_ENTER", STEM_ENTER),
             must_use: tuned("MUST_USE", MUST_USE),
             compound_piece: tuned("COMPOUND_PIECE", COMPOUND_PIECE),
-            star_next: tuned("STAR_NEXT", STAR_NEXT),
         }
     }
 }
@@ -259,6 +257,8 @@ pub struct Scratch {
 #[derive(Default, Clone)]
 struct Progress {
     run: Vec<u32>,
+    /// The text locked in ahead of the run (a lone `+`), which the run adds to
+    locked: Option<String>,
     /// `before[i]`: the beam before stroke `i` (so `before[run.len()]` is the end)
     before: Vec<Vec<St>>,
     /// The pieces found so far, and how many there were before each stroke
@@ -434,6 +434,25 @@ impl Reader<'_> {
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
 pub const VERSION: u32 = 8;
+
+/// `run` with each `+*` (the join key and the star alone) put on the stroke before it as its star:
+/// the star struck late, `+-T` then `+*` is `+*T`.
+fn late_stars(run: &[u32]) -> Vec<u32> {
+    let mut out: Vec<u32> = Vec::with_capacity(run.len());
+    for &stroke in run {
+        match out.last_mut() {
+            Some(before) if stroke == JOIN | STAR => *before |= STAR,
+            _ => out.push(stroke),
+        }
+    }
+    out
+}
+
+/// Where the last lone `+` (the join key alone) is in `run`, after its first stroke: it locks in
+/// what the strokes before it type, and the strokes after it add to that.
+fn last_lock(run: &[u32]) -> Option<usize> {
+    run.iter().skip(1).rposition(|&s| s == JOIN).map(|at| at + 1)
+}
 
 /// A spelling's key in the table of real words past the lexicon (FNV-1a, 64 bits): the packer and
 /// the decoder hash alike, natively and in wasm.
@@ -1029,26 +1048,32 @@ impl Model {
 
     /// [`Self::solve`] with the caller's own working memory.
     pub fn solve_with(&self, sc: &mut Scratch, run: &[u32], keep: usize) -> Vec<Reading> {
+        let run = late_stars(run);
+        let Some(at) = last_lock(&run) else { return self.solve_locked(sc, &run, keep, None) };
+        let Some(locked) = self.answer_run(sc, &run[..at]) else { return Vec::new() };
+        let tail = &run[at + 1..];
+        if tail.is_empty() {
+            let pieces = vec![locked.clone()];
+            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0 }];
+        }
+        self.solve_locked(sc, tail, keep, Some(&locked))
+    }
+
+    /// [`Self::solve_with`] for a run with no lock or late star in it, after `locked` (the text a
+    /// lone `+` kept), if any.
+    fn solve_locked(&self, sc: &mut Scratch, run: &[u32], keep: usize, locked: Option<&str>) -> Vec<Reading> {
         let k = run.len().min(MAX_RUN);
         let run = &run[..k];
         if k == 0 {
             return Vec::new();
         }
-        // Each `+*` that ends the run steps one reading down: the next word that reads the same
-        let stars = run.iter().skip(1).rev().take_while(|&&s| s & !JOIN == STAR).count();
-        if stars > 0 && self.c.star_next > 0 {
-            let mut out = self.solve_with(sc, &run[..k - stars], keep + stars);
-            out.drain(..stars.min(out.len().saturating_sub(1)));
-            out.truncate(keep);
-            return out;
-        }
-        self.advance(sc, run);
+        self.advance(sc, run, locked);
         let arena = &sc.runs[0].arena;
         let states = sc.runs[0].before[k].clone();
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
         let mut out: Vec<Reading> = Vec::new();
         for s in ends {
-            let mut reading = self.reading(arena, s);
+            let mut reading = self.reading(arena, s, locked);
             // Pieces that do not add up to a word are a guess at one the lexicon lacks: allowed,
             // but only when nothing that is a word reads as well
             // Pieces that do add up to a word are that word, and as rare as it is: `part` + `s` is
@@ -1093,8 +1118,8 @@ impl Model {
     /// Read `run` into `sc`'s progress stroke by stroke, going on from the run read before as far
     /// as the two agree: keymux asks again on every stroke, so most calls read one stroke. After
     /// it, `sc.progress.before[run.len()]` is the beam at the run's end.
-    fn advance(&self, sc: &mut Scratch, run: &[u32]) {
-        let shared = |p: &Progress| p.run.iter().zip(run).take_while(|(a, b)| a == b).count();
+    fn advance(&self, sc: &mut Scratch, run: &[u32], locked: Option<&str>) {
+        let shared = |p: &Progress| if p.locked.as_deref() == locked { p.run.iter().zip(run).take_while(|(a, b)| a == b).count() } else { 0 };
         // The kept run that goes furthest along this one, the most recent of those that tie
         let best = (0..sc.runs.len()).rev().max_by_key(|&at| shared(&sc.runs[at])).filter(|&at| shared(&sc.runs[at]) > 0);
         // Taken when this run goes on from all of it; copied when it parts from it partway, so the
@@ -1112,9 +1137,16 @@ impl Model {
             _ => same,
         };
         if from == 0 || p.before.is_empty() {
-            p = Progress::default();
-            p.before.push(self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK, used: true }], true));
-            p.arena_at.push(0);
+            p = Progress { locked: locked.map(str::to_owned), ..Progress::default() };
+            // A locked text is the run's first piece already: what follows goes on from it
+            let back = if locked.is_some() {
+                p.arena.push((NO_BACK, Piece::Locked));
+                0
+            } else {
+                NO_BACK
+            };
+            p.before.push(self.settle(sc, &[St { node: 0, cost: 0, back, used: true }], true));
+            p.arena_at.push(p.arena.len());
             p.hard_until_at.push(0);
         } else {
             p.before.truncate(from + 1);
@@ -1158,7 +1190,8 @@ impl Model {
             next.append(&mut arrived);
             next
         } else {
-            let (mut alts, kept) = self.readings_kept(run[i], i == 0);
+            // A word's first stroke, unless a locked text came first
+            let (mut alts, kept) = self.readings_kept(run[i], i == 0 && p.locked.is_none());
             // Only the readings near the stroke's plainest: the rest never win
             let cheapest = alts.first().map_or(0, |a| a.1);
             alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
@@ -1187,7 +1220,7 @@ impl Model {
             next
         };
         let mut next = next;
-        self.keep_ends(&p.arena, &mut next);
+        self.keep_ends(&p.arena, &mut next, p.locked.as_deref());
         p.before.push(self.settle(sc, &next, true));
         p.arena_at.push(p.arena.len());
     }
@@ -1272,12 +1305,12 @@ impl Model {
     /// The finished readings worth carrying on, at most [`KEEP_ENDS`], ranked as the end will rank
     /// them: pieces that spell no word cost [`NONWORD`] more there, so a heap of cheap nonsense
     /// (*pro* + *able*, *from* + *able*) must not crowd a real word (*probable*) out before then.
-    fn keep_ends(&self, arena: &[(u32, Piece)], states: &mut Vec<St>) {
+    fn keep_ends(&self, arena: &[(u32, Piece)], states: &mut Vec<St>, locked: Option<&str>) {
         let mut ends: Vec<(u32, St)> = states
             .iter()
             .filter(|s| s.node == 0 && s.back != NO_BACK)
             .map(|&s| {
-                let r = self.reading(arena, s);
+                let r = self.reading(arena, s, locked);
                 let text = r.text.to_lowercase();
                 let nonsense = r.pieces.len() > 1 && !self.known.contains_key(&text) && (r.joins == 0 || self.spelled_rank(&text).is_none());
                 (s.cost + if nonsense { self.c.nonword } else { 0 }, s)
@@ -1292,7 +1325,7 @@ impl Model {
         states.extend(ends.into_iter().map(|e| e.1));
     }
 
-    fn reading(&self, arena: &[(u32, Piece)], end: St) -> Reading {
+    fn reading(&self, arena: &[(u32, Piece)], end: St, locked: Option<&str>) -> Reading {
         let mut pieces: Vec<(Piece, String)> = Vec::new();
         let mut rarity = 0;
         let mut at = end.back;
@@ -1301,13 +1334,14 @@ impl Model {
             rarity += match piece {
                 Piece::Word(w) => self.word_cost[w as usize],
                 Piece::Stem(s) | Piece::Slip(s) => self.stem_cost[s as usize],
-                Piece::Suffix(_) | Piece::TwoSuffix(_) => 0,
+                Piece::Suffix(_) | Piece::TwoSuffix(_) | Piece::Locked => 0,
             };
             let text = match piece {
                 Piece::Word(w) => self.words[w as usize].clone(),
                 Piece::Suffix(s) => self.suffixes[s as usize].1.clone(),
                 Piece::TwoSuffix(s) => self.two_suffixes[s as usize].2.clone(),
                 Piece::Stem(s) | Piece::Slip(s) => self.stem_text[s as usize].clone(),
+                Piece::Locked => locked.unwrap_or_default().to_owned(),
             };
             pieces.push((piece, text));
             at = back;
@@ -1324,7 +1358,7 @@ impl Model {
             text = "I".into();
         }
         let composed = pieces.len() > 1
-            && matches!(pieces[0].0, Piece::Stem(_))
+            && matches!(pieces[0].0, Piece::Stem(_) | Piece::Locked)
             && pieces[1..].iter().all(|(p, _)| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
         let exact = pieces.len() == 1 && matches!(pieces[0].0, Piece::Stem(_));
         // Each word piece after the first was charged a piece's join
@@ -1349,13 +1383,31 @@ impl Model {
         if run.first().is_some_and(|s| s & SPELL != 0) {
             return self.spelled(&run);
         }
+        self.answer_run(sc, &run)
+    }
+
+    /// What a run types: its late stars put on the strokes before them, each lone `+` locking in
+    /// what came before it.
+    fn answer_run(&self, sc: &mut Scratch, run: &[u32]) -> Option<String> {
+        let run = late_stars(run);
+        let Some(at) = last_lock(&run) else { return self.answer_locked(sc, &run, None) };
+        let locked = self.answer_run(sc, &run[..at])?;
+        let tail = &run[at + 1..];
+        if tail.is_empty() {
+            return Some(locked);
+        }
+        self.answer_locked(sc, tail, Some(&locked))
+    }
+
+    /// What a run with no lock or late star in it types after `locked`.
+    fn answer_locked(&self, sc: &mut Scratch, run: &[u32], locked: Option<&str>) -> Option<String> {
         // A run past the solver's reach: its first [`MAX_RUN`] strokes read, the rest read back,
         // never dropped
         let (head, tail) = run.split_at(run.len().min(MAX_RUN));
         let limit = THRESHOLD + THRESHOLD_PER_STROKE * head.len() as u32;
-        let mut text = match self.solve_with(sc, head, 1).into_iter().next() {
+        let mut text = match self.solve_locked(sc, head, 1, locked).into_iter().next() {
             Some(best) if best.cost <= limit => best.text,
-            _ => self.read_back(head)?,
+            _ => format!("{}{}", locked.unwrap_or(""), self.read_back(head)?),
         };
         if !tail.is_empty() {
             text.push_str(&self.read_back(tail)?);
@@ -1464,5 +1516,6 @@ pub fn parse_stroke(text: &str) -> Option<u32> {
         bits |= 1 << at;
         cursor = at + 1;
     }
-    (bits & !(JOIN | SPELL) != 0).then_some(bits)
+    // No keys is no stroke, but for the join key alone: the lone `+` that locks a run's text in
+    (bits & !(JOIN | SPELL) != 0 || bits == JOIN).then_some(bits)
 }

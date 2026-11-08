@@ -943,6 +943,36 @@ mod tests {
     }
 
     #[test]
+    fn plus_star_puts_the_star_on_the_stroke_before() {
+        // `+*` is the star struck late: `+-T` then `+*` is `+*T`, the TH of *health*
+        assert_eq!(model().answer("H/+E/+HR/+-T/+*"), model().answer("H/+E/+HR/+*T"));
+        assert_eq!(model().answer("H/+E/+HR/+-T/+*").as_deref(), Some("health"));
+    }
+
+    #[test]
+    fn plus_alone_locks_the_text_so_far_and_what_follows_adds_to_it() {
+        // `+` alone keeps what the run says now; the strokes after only add to it, and are read
+        // as what the whole would then spell
+        for (outline, word) in [
+            ("KAT/+", "cat"),
+            ("HRAOBG/+/+UP", "lookup"),
+            ("PROB/+/+-BL", "probable"),
+            ("PROB/+/+-BL/+-L", "probably"),
+            ("PROBL/+/+-L", "probably"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+        // Never rewritten: whatever follows, the locked *cat* stays at the front
+        for tail in ["+-L/+OG", "+AS/+TROF/+EBG", "+-S"] {
+            let answer = model().answer(&format!("KAT/+/{tail}")).unwrap_or_default();
+            assert!(answer.starts_with("cat"), "KAT/+/{tail} gave {answer}");
+        }
+        // Locks stack: each one keeps all that came before it
+        let answer = model().answer("KAT/+/+-S/+").unwrap_or_default();
+        assert_eq!(answer, "cats");
+    }
+
+    #[test]
     fn a_run_read_stroke_by_stroke_reads_as_it_does_from_scratch() {
         // keymux asks again on every stroke: the solver goes on from the run it read last, and must
         // answer exactly as it would reading the whole run fresh
@@ -1081,20 +1111,6 @@ mod tests {
     fn striking_a_words_silent_final_e_spells_that_word() {
         // The written *e* struck as a vowel: *dance*, not the *-er* word that sounds the same
         for (outline, word) in [("TKA/+-PB/+SE", "dance"), ("PW/+EU/+K/+E", "bike"), ("HA*PB/+TK/+HRE", "handle")] {
-            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
-        }
-    }
-
-    #[test]
-    fn each_star_stroke_ending_a_run_steps_one_word_down() {
-        // The star ladder's marker: the word after the one the run reads as, never `-F` *of*
-        for (outline, word) in [
-            ("TP/+EUT", "fight"),
-            ("TP/+EUT/+*", "fit"),
-            ("*T/+U/+-PL", "them"),
-            ("*T/+U/+-PL/+*", "thumb"),
-            ("*T/+U/+-PL/+*/+*", "time"),
-        ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
     }

@@ -31,7 +31,8 @@ impl Stroke {
     /// instead, the same way any other multi-stroke word continues. See `site/reference/spelling-mode.json`.
     pub const SPELL: u32 = 1 << 24;
 
-    /// Parse notation such as `KAT`, `-T` or `STPH*`. Numbers and a bare `#` are not supported.
+    /// Parse notation such as `KAT`, `-T` or `STPH*`, or `+` alone (the join key, which locks in a
+    /// run's text so far). Numbers and a bare `#` are not supported.
     pub fn parse(text: &str) -> Option<Self> {
         let (mut bits, text) = match (text.strip_prefix('+'), text.strip_prefix('~')) {
             (Some(rest), _) => (Self::JOIN, rest),
@@ -48,7 +49,7 @@ impl Stroke {
             bits |= 1 << at;
             cursor = at + 1;
         }
-        (bits & !(Self::JOIN | Self::SPELL) != 0).then_some(Self(bits))
+        (bits & !(Self::JOIN | Self::SPELL) != 0 || bits == Self::JOIN).then_some(Self(bits))
     }
 
     /// The right pinky's four keys are a 2x2 block (`-T`/`-S` in one column, `-D`/`-Z` in the
@@ -250,9 +251,9 @@ mod tests {
         assert_ne!(spell, join);
         assert_eq!(spell.0 & Stroke::SPELL, Stroke::SPELL);
         assert_eq!(spell.0 & Stroke::JOIN, 0);
-        // A bare marker with no keys down is as meaningless as a bare join key alone
+        // A bare marker with no keys down means nothing; the join key alone is lock, a stroke
         assert_eq!(Stroke::parse("~"), None);
-        assert_eq!(Stroke::parse("+"), None);
+        assert_eq!(Stroke::parse("+"), Some(Stroke(Stroke::JOIN)));
     }
 }
 

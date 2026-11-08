@@ -2522,3 +2522,12 @@ plugin may now leave out `alloc`/`fallback` (a mod that reads no words). lyk's m
 not held back until `+` is let go, since the solver already re-reads the run on every stroke and
 holding text back would hide what it reads. Named for how the key is used; "latch" was the other
 candidate.
+
+**Lock (`+` alone) and the late star (`+*`) (2026-11-08, his design).** `+*` now puts the star on
+the stroke before (`+-T` then `+*` is `+*T`), in place of the star ladder's "one word down", which
+he dropped. A tap of `+` alone locks in what the run types so far: the strokes after it are read as
+going on from that text, a first piece already struck (cost 0, never rewritten), so the whole is
+scored as what it spells: a known word, a real spelling (`HRAOBG/+/+UP` *lookup*), a known word
+and endings (`PROB/+/+-BL` *probable*), or neither. Locks stack. The incremental reading is keyed
+by the locked text too. `Stroke::parse` and the plugin's parser now take `+` alone (keymux renders
+the join key alone so). Backups 88.8% unchanged. Retroactive join was considered and left out.

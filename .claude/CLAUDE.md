@@ -28,6 +28,15 @@ checked against `tools/phrasing_prototype.py`, not the dictionary, until the gen
 Learn the theory from the site (lessons in order, then the Reference), not from the repository
 files.
 
+**lyk owns the theory; keymux is a generic engine.** This repo is 100% the ground of the custom
+theory: its rules, dictionary, the solver plugin (`src/rules/solve/`, deployed as
+`05-lyk-solver.rs`) and its mods (`rules/reserved/sticky-plus.rs`, `06-lyk-sticky-plus.rs`), built
+only to be used and to work with keymux the moment `deploy` writes them. keymux
+(`/home/fib/code/noahlyk/keymux`) is a generic, Plover-like steno engine that could host any theory,
+and must never hardcode lyk's rules. When a lyk idea needs the engine to do something new, keymux
+gains a *generic plugin capability* (documented in its `docs/plugins/`), and every lyk-specific
+choice (key bits, strokes, words, behaviors such as lock `+` and the late star `+*`) stays here.
+
 **No pull requests.** This repo takes no PRs, ever. Finished work lands by fast-forwarding `main`:
 linear history, no merge commits, no force pushes on `main`. Do not open, suggest or leave a PR
 open. GitHub cannot delete a PR, so a stray one is closed (`gh pr close`) and its branch deleted.

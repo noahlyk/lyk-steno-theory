@@ -130,6 +130,14 @@
   },
   {
    "t": "h",
+   "x": "Lock (`+` alone) and the late star (`+*`)"
+  },
+  {
+   "t": "p",
+   "x": "**Lock: tap `+` on its own** inside a run and what the run types now is kept: the strokes after it only add to it, and the solver reads them as going on from it (`HRAOBG/+/+UP` is *look* kept, then *lookup*). Letting go of a held `+` after its strokes is not a tap and locks nothing; tap it fresh. **`+*` puts the star on the stroke before**, struck late (`+-T` then `+*` is `+*T`). Both are the solver's: see [the solver](#/ref/fallback)."
+  },
+  {
+   "t": "h",
    "x": "Where you meet it"
   },
   {
