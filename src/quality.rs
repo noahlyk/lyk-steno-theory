@@ -246,8 +246,8 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
-/// Keymux's runtime overlay/tape/keyboard/lookup controls (`{:overlay:hide}` and friends) act on
-/// a running overlay and type nothing, so each one must carry `{:transparent}` first (a control
+/// Keymux's runtime overlay/tape/keyboard/lookup controls (`{:overlay:hide}` and friends) and the engine unload
+/// (`{:engine:unload}`) act on the running program and type nothing, so each one must carry `{:transparent}` first (a control
 /// struck in the middle of a join must not break it), name only a part/verb Keymux parses, and
 /// sit on a stroke no other entry shares and no word outline took (the collision test above
 /// covers the words; this one covers the table itself).
@@ -270,6 +270,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         ("PHRO*T", "{:transparent}{:tape:toggle}"),
         ("PHRO*TZ", "{:transparent}{:tape:clear}"),
         ("PHRO*B", "{:transparent}{:keyboard:toggle}"),
+        ("PHRO*PLZ", "{:transparent}{:engine:unload}"),
     ];
     for (outline, value) in expected {
         assert_eq!(commands.get(outline).map(String::as_str), Some(value), "{outline}");
@@ -289,10 +290,11 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
                     | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
                     | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
                     | "lookup:open" | "lookup:close" | "lookup:toggle"
+                    | "engine:unload"
             );
         assert!(valid && rest.matches('{').count() == 1, "{outline}: {value:?} is not a Keymux control");
     }
-    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented nine");
+    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented ten");
     for (outline, value) in [
         ("R*EUD", "{:redo}"),
         ("TK*UP", "{:undo_word}"),

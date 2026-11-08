@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **83 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **84 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "83 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "84 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -970,7 +970,30 @@
   },
   {
    "t": "p",
-   "x": "**How they were chosen.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above, and the last keys name the part and the verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: the plain chord opens, the star flips, `D` closes. Only toggle is given to the tape and keyboard, and show/hide only to the whole panel, to keep the layout small: a hide is a toggle when you know the state. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine strokes are checked free of every word outline, backup and phrase in the built dictionary."
+   "x": "**How they were chosen.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above, and the last keys name the part and the verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: the plain chord opens, the star flips, `D` closes. Only toggle is given to the tape and keyboard, and show/hide only to the whole panel, to keep the layout small: a hide is a toggle when you know the state. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes are checked free of every word outline, backup and phrase in the built dictionary."
+  },
+  {
+   "t": "h3",
+   "x": "Engine memory (Keymux)"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Definition",
+    "Effect"
+   ],
+   "rows": [
+    [
+     "[[PHRO*PLZ]]",
+     "`{:transparent}{:engine:unload}`",
+     "Free the dictionaries from RAM"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The big lyk dictionaries take hundreds of megabytes while loaded (about 700 MB). This stroke frees them. **There is no reload stroke:** the next stroke of any kind loads the engine again first and then performs, so the one stroke after an unload is slower (the load time) and nothing is lost. It types nothing, keeps the spacing and capitals around it and stays off the tape, like the controls above. It is runtime-only: nothing is written to the config, and a restart loads the dictionaries as usual. It needs a Keymux that knows `{:engine:unload}`. The outline is the `PHRO*` control base with `-PL` (memory, as in the M of *memory*) and `Z` (zap, as in `PHRO*TZ`); the bare `PHRO*PL` is not used because it begins a multi-stroke word, so a standalone stroke would hold it up."
   },
   {
    "t": "h3",
@@ -1025,7 +1048,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 13 strokes would error instead of acting; every other stroke is unaffected. Workarounds: register no-op meta plugins with those names (nothing to do, since the overlay does not exist there), or use a copy of `commands.json` with these 13 entries removed (for [[PHRUP]] only the `{:transparent}` marker: `{PLOVER:LOOKUP}` is plain Plover). The theory is not changed for Plover; Keymux is the target engine."
+   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `engine`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 14 strokes would error instead of acting; every other stroke is unaffected. Workarounds: register no-op meta plugins with those names (nothing to do, since the overlay does not exist there), or use a copy of `commands.json` with these 14 entries removed (for [[PHRUP]] only the `{:transparent}` marker: `{PLOVER:LOOKUP}` is plain Plover). The theory is not changed for Plover; Keymux is the target engine."
   }
  ]
 }

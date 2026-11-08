@@ -81,5 +81,6 @@
 "R*EUD": "{:redo}",
 "TK*UP": "{:undo_word}",
 "TKPWA*EPB": "{:again}",
-"SWA*P": "{:swap}"
+"SWA*P": "{:swap}",
+"PHRO*PLZ": "{:transparent}{:engine:unload}"
 }
