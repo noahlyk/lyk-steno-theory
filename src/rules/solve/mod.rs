@@ -18,7 +18,7 @@
 pub mod core;
 pub mod plugin;
 
-pub use self::core::Model;
+pub use self::core::{Model, Reading};
 
 use super::orthography::{self, Phone};
 use super::resolve::default_spelling;

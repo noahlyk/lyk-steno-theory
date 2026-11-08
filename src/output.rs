@@ -154,8 +154,14 @@ pub fn write_if_different(path: &Path, content: &[u8]) -> Result<bool> {
 
 /// Files of the dropped WASM fallback plugin: generated beside the dictionary folder (`out/`) or
 /// shipped into a keymux config. Removed silently wherever found, so none is ever copied or loaded.
-pub const DROPPED_PLUGIN_FILES: [&str; 3] =
-    ["lyk-orthographic-fallback.rs", "lyk-orthographic-fallback.wasm", "05-lyk-orthographic-fallback.rs"];
+pub const DROPPED_PLUGIN_FILES: [&str; 5] = [
+    "lyk-orthographic-fallback.rs",
+    "lyk-orthographic-fallback.wasm",
+    "05-lyk-orthographic-fallback.rs",
+    // The solver's thinned backups, from before `deploy` stopped shipping backups at all
+    "backups-thin.json",
+    "backups-thin.stamp",
+];
 
 /// Delete any [`DROPPED_PLUGIN_FILES`] in `dir`, saying nothing.
 pub fn remove_dropped_plugin(dir: &Path) {

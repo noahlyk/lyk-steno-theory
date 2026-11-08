@@ -64,7 +64,8 @@ fn print_files(generated: &Generated, files: &[Written], out: &Path) {
     println!("wrote {} entries to {} ({} files)", generated.entries.len(), out.display(), files.len());
     for file in files {
         let unchanged = if file.changed { "" } else { "  (unchanged)" };
-        println!("  {:<24} {:>7} entries{unchanged}", file.role.file_name(), file.entries);
+        let unshipped = if file.role == crate::output::Role::Backups { "  (not deployed: the solver's test set)" } else { "" };
+        println!("  {:<24} {:>7} entries{unchanged}{unshipped}", file.role.file_name(), file.entries);
     }
 }
 

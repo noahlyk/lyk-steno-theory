@@ -67,7 +67,7 @@
     ],
     [
      "`!deploy`",
-     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, with the backups thinned to those the solver does not read as their word (see [the solver](#/ref/fallback/the-backups-keymux-gets)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
+     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, and without the backups, which the solver replaces (see [the solver](#/ref/fallback/no-backups-in-keymux)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
     ],
     [
      "`explain [WORD]`",
@@ -176,7 +176,7 @@
     ],
     [
      "`02-lyk-backups.json`",
-     "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join)); `!deploy` ships only those the solver does not read as their word",
+     "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join)); not deployed: the solver reads them, and they are its test set",
      "about 3.9 million in `out/lyk`"
     ],
     [
@@ -207,7 +207,7 @@
   },
   {
    "t": "p",
-   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy` (besides the thinned backups `backups-thin.json` and its stamp, which `!deploy` writes and ships as `02-lyk-backups.json`): `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules; it holds only the source hash, see Version below)."
+   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy`: `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules; it holds only the source hash, see Version below)."
   },
   {
    "t": "list",
@@ -315,7 +315,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, copied into ~/.config/keymux/steno/lyk (the backups thinned, the solver plugin beside them)"
+   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, copied into ~/.config/keymux/steno/lyk (the solver plugin, no backups)"
   },
   {
    "t": "p",

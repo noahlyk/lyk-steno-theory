@@ -79,7 +79,7 @@ not looked up.
   Lapwing on the same words, every time — see [the full benchmarks](#full-benchmarks).
 - **A miss types its word**: lyk ships a keymux plugin, the solver, that reads a stroke or `+` run
   the dictionary doesn't have as the word its keys sound like (a beam search over every word's
-  pronunciation, about 2 ms a run), so `deploy` ships only the backups it would read differently —
+  pronunciation, about 2 ms a run), so `deploy` ships no backups at all —
   see [the solver](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
 
 ## Use
@@ -94,7 +94,7 @@ cargo run --release -- --version           # the git version baked in at compile
 cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files); quiet: the files, and a warning only if a word is stranded
 cargo run --release -- build --report      # ...plus every diagnostic and the cost tables (the invariants are tests: cargo test --release)
 cargo run --release -- deploy              # build, copied straight into keymux's live config with the solver
-                                            #   plugin, the backups thinned to those it reads differently
+                                            #   plugin and no backups (the solver replaces them)
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
 cargo run --release -- explain moon        # which rules wrote a word, next to Plover and Lapwing
 cargo run --release -- family build       # build, builds, building...: each one's outline and its stem + ending entry

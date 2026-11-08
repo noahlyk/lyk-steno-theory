@@ -2400,3 +2400,14 @@ tape before). Known cost: a misstroke with a key missing now reads as some real 
 *teabag* for *typing*) instead of its raw keys; reading a stroke one key from an entry is the next
 layer. **Undoing the thinning while keeping the solver is safe; undoing the solver while keeping
 the thinned backups is not:** 3.3M outlines would go back to typing their raw keys.
+
+**`deploy` ships no backups (the solver replaces them).** "This entire plugin is to REPLACE that
+system": the thinned file still shipped 557,081 backups, the ones the solver reads as another word.
+Measured, they are mostly rare-word ambiguity: 74% are words rarer than rank 20,000, 3,522 are words
+of the 1,000 commonest (an outline the rules give two words equally, `PO/+-R/+-T/+-S` *ports* or
+*parts*). Every word keeps its primary and its other entries, and ~85% of its generated ways in
+still type it through the solver, so none is shipped: `deploy` deletes `02-lyk-backups.json` from
+the keymux folder, and the 18-minute thinning pass is gone with it. `build` still writes the full
+backups to `out/lyk`, marked "not deployed", as the solver's test set and the lookup catalogue.
+**If the solver is ever removed, `deploy` must ship the backups again**, or every multi-stroke way
+into a word other than its entries types its raw keys.

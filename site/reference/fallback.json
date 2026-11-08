@@ -228,11 +228,11 @@
   },
   {
    "t": "h",
-   "x": "The backups keymux gets"
+   "x": "No backups in keymux"
   },
   {
    "t": "p",
-   "x": "`build` still writes every backup to `out/lyk` (the lookup commands and this site list them). `deploy` ships only the backups the solver does **not** already read as their word, exactly, case included; the rest it leaves to the solver. Every outline that typed a word before still types it, and the dictionary keymux holds in memory is a fraction of the size. The thinned file is cached as `out/lyk/backups-thin.json` until the solver or the backups change."
+   "x": "`deploy` ships **no backups**. Any outline that sounds like a word is read by the solver, so keymux holds no list of the dozens of ways into each word: a word keeps its primary outline and its other entries (short forms, alternates, extras), and every other outline types whatever the solver reads it as. `build` still writes the generated backups to `out/lyk/02-lyk-backups.json`, never deployed: they are the solver's test set (`solve --eval` reads every Nth one and checks it types its word, 85% do) and the catalogue `lookup` and this site list ways into a word from. An outline whose backup word differs from what the solver reads types the solver's word."
   },
   {
    "t": "h",

@@ -49,17 +49,16 @@ pub fn deploy(
     generate::build(setup, briefs, common, &words_out, None, false)?;
 
     // Plain overwrite of every generated file; files an earlier layout left behind are removed.
-    // The backups keymux gets are only those the solver plugin does not already read as their
-    // word (see `crate::solve::thin_backups`); `out/lyk` keeps them all for the lookup commands.
-    let thin = crate::solve::thin_backups(&words_out)?;
-    println!(
-        "backups: {} shipped, {} left to the solver, which reads them as their word",
-        thin.kept, thin.dropped
-    );
+    // The backups are not shipped: the solver plugin reads any outline that sounds like a word as
+    // that word, so keymux holds no list of them (`out/lyk` keeps them, as the solver's test set
+    // and the lookup commands' catalogue of ways in).
     let mut copied = Vec::new();
-    for role in output::Role::ALL {
-        let from = if role == output::Role::Backups { thin.path.clone() } else { words_out.join(role.file_name()) };
-        copied.push((from, to.join(role.file_name())));
+    for role in output::Role::ALL.into_iter().filter(|r| *r != output::Role::Backups) {
+        copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
+    }
+    let shipped_backups = to.join(output::Role::Backups.file_name());
+    if shipped_backups.exists() {
+        std::fs::remove_file(&shipped_backups).with_context(|| shipped_backups.display().to_string())?;
     }
     // The solver plugin: keymux compiles the source, which reads the blob beside it
     for name in [crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE] {
