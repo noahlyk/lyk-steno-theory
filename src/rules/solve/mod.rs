@@ -58,6 +58,11 @@ const DROP_WEAK_CONSONANT: u8 = 2;
 const DROP_LAST: u8 = 2;
 /// A word reached through its spelling rather than its sounds.
 const SPELLED_PATH: u8 = 3;
+/// A known outline goes on into a longer word spelled from it (*liquid*, *liquidation*) when it is
+/// at least this many letters: a shorter one starts too many words to mean any.
+const STEM_START_LETTERS: usize = 3;
+/// The most places in the trie one known outline goes on from: its own sounds' ends first.
+const STEM_NODES: usize = 8;
 
 /// A packing cost, or (natively, while tuning) `LYK_SOLVE_<NAME>` overriding it.
 fn tuned_pack(name: &str, default: u8) -> u8 {
@@ -132,6 +137,15 @@ fn spellable(sound: &str) -> u8 {
 /// vowel no letters could be given to): the word's runs of vowel letters matched to its vowel
 /// sounds in order, a run skipped where it is silent (a final `e` freely).
 fn align(word: &str, sounds: &[String]) -> Vec<u8> {
+    let (groups, of) = align_runs(word, sounds);
+    of.iter().map(|g| g.map_or(0, |g| groups[g].0)).collect()
+}
+
+/// A run of vowel letters: its letters, whether it is a silent final `e`, and where it starts.
+type VowelRun = (u8, bool, usize);
+
+/// [`align`]'s workings: each run of vowel letters, and which run each sound is spelled with.
+fn align_runs(word: &str, sounds: &[String]) -> (Vec<VowelRun>, Vec<Option<usize>>) {
     /// A vowel sound left with no letters, a run of letters skipped (not a silent `e`), a sound
     /// matched to letters that do not usually spell it.
     const NO_LETTERS: u32 = 3;
@@ -141,7 +155,7 @@ fn align(word: &str, sounds: &[String]) -> Vec<u8> {
     let chars: Vec<char> = word.chars().collect();
     let is_vowel_letter = |at: usize| "aeiou".contains(chars[at]) || (chars[at] == 'y' && at > 0);
     // Each run of vowel letters, and whether it is a silent final `e`
-    let mut groups: Vec<(u8, bool)> = Vec::new();
+    let mut groups: Vec<VowelRun> = Vec::new();
     let mut at = 0;
     while at < chars.len() {
         if is_vowel_letter(at) {
@@ -150,7 +164,7 @@ fn align(word: &str, sounds: &[String]) -> Vec<u8> {
                 at += 1;
             }
             let text: String = chars[start..at].iter().collect();
-            groups.push((letters(&text), text == "e" && at == chars.len() && start > 0));
+            groups.push((letters(&text), text == "e" && at == chars.len() && start > 0, start));
         } else {
             at += 1;
         }
@@ -178,12 +192,12 @@ fn align(word: &str, sounds: &[String]) -> Vec<u8> {
             }
         }
     }
-    let mut out = vec![0u8; sounds.len()];
+    let mut out = vec![None; sounds.len()];
     let (mut s, mut g) = (vowels.len(), groups.len());
     while s > 0 || g > 0 {
         let here = cost[s][g];
         if s > 0 && g > 0 && cost[s - 1][g - 1] + odd(s - 1, g - 1) == here {
-            out[vowels[s - 1]] = groups[g - 1].0;
+            out[vowels[s - 1]] = Some(g - 1);
             s -= 1;
             g -= 1;
         } else if s > 0 && cost[s - 1][g] + NO_LETTERS == here {
@@ -192,7 +206,7 @@ fn align(word: &str, sounds: &[String]) -> Vec<u8> {
             g -= 1;
         }
     }
-    out
+    (groups, out)
 }
 
 /// The letters an orthographic reading's vowel came from, recovered from its sounds.
@@ -235,16 +249,25 @@ struct Trie {
     ends: Vec<Vec<(u32, u8)>>,
     /// Where each word's pronunciations end, by word: where a known outline of it enters the trie
     sound_ends: HashMap<u32, Vec<u32>>,
+    /// Where the sounds of a word's first letters end, by those letters and the word's rank:
+    /// where a known outline spelled that way enters a longer word (*liquid*, *liquidation*)
+    spelled_starts: HashMap<String, Vec<(usize, u32)>>,
 }
 
 impl Trie {
     /// Add `path` for `word`; the node it ends at.
     fn insert(&mut self, path: &[EdgeKey], word: u32, extra: u8) -> u32 {
+        self.insert_along(path, word, extra).last().copied().unwrap_or(0)
+    }
+
+    /// [`Self::insert`], with every node along the path: `nodes[i]` is where the first `i` sounds end.
+    fn insert_along(&mut self, path: &[EdgeKey], word: u32, extra: u8) -> Vec<u32> {
         if self.children.is_empty() {
             self.children.push(HashMap::new());
             self.ends.push(Vec::new());
         }
         let mut at = 0usize;
+        let mut nodes = vec![0];
         for key in path {
             at = if let Some(&child) = self.children[at].get(key) {
                 child as usize
@@ -255,12 +278,13 @@ impl Trie {
                 self.children[at].insert(*key, index(child));
                 child
             };
+            nodes.push(index(at));
         }
         match self.ends[at].iter_mut().find(|(w, _)| *w == word) {
             Some(end) => end.1 = end.1.min(extra),
             None => self.ends[at].push((word, extra)),
         }
-        index(at)
+        nodes
     }
 }
 
@@ -435,9 +459,10 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
         .collect();
     words.sort_by(|a, b| (a.1, a.0).cmp(&(b.1, b.0)));
     let mut trie = Trie::default();
-    for (id, (word, _)) in words.iter().enumerate() {
+    for (id, (word, rank)) in words.iter().enumerate() {
         let id = index(id);
         for variant in &lexicon.pron[*word] {
+            let (runs, run_of) = align_runs(word, variant);
             let last_vowel = variant.iter().rposition(|s| s.ends_with(|c: char| c.is_ascii_digit()));
             let path: Vec<EdgeKey> = variant
                 .iter()
@@ -450,8 +475,27 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                     vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
                 })
                 .collect();
-            let end = trie.insert(&path, id, 0);
-            trie.sound_ends.entry(id).or_default().push(end);
+            let nodes = trie.insert_along(&path, id, 0);
+            trie.sound_ends.entry(id).or_default().push(nodes[path.len()]);
+            // Before each vowel spelled after the first, when every vowel sound before it is
+            // spelled by the vowel letters before it in turn: the word's letters up to there, said
+            let mut vowels_before = 0;
+            for (at, run) in run_of.iter().enumerate() {
+                let vowel = variant[at].ends_with(|c: char| c.is_ascii_digit());
+                if !vowel {
+                    continue;
+                }
+                let Some(run) = *run else { break };
+                if run != vowels_before {
+                    break;
+                }
+                vowels_before += 1;
+                let start = runs[run].2;
+                if run > 0 && start >= STEM_START_LETTERS {
+                    let letters: String = word.chars().take(start).collect();
+                    trie.spelled_starts.entry(letters).or_default().push((*rank, nodes[at]));
+                }
+            }
         }
         for reading in orthography::readings(word, 1) {
             let last_vowel = reading.iter().rposition(|p| p.heard.ends_with(|c: char| c.is_ascii_digit()));
@@ -495,7 +539,21 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     write_sounds(&mut b, &sounds);
     write_tables(&mut b, &tables, rules);
     let ids: HashMap<&str, u32> = words.iter().enumerate().map(|(i, (w, _))| (w.as_str(), index(i))).collect();
-    write_stems(&mut b, stems, lexicon, |text| ids.get(text).and_then(|id| trie.sound_ends.get(id)).cloned().unwrap_or_default());
+    write_stems(&mut b, stems, lexicon, |text| {
+        let mut ends = ids.get(text).and_then(|id| trie.sound_ends.get(id)).cloned().unwrap_or_default();
+        // Then where longer words spelled the same way go on from it, most common first
+        let mut starts = trie.spelled_starts.get(text).cloned().unwrap_or_default();
+        starts.sort_unstable();
+        for (_, node) in starts {
+            if ends.len() >= STEM_NODES {
+                break;
+            }
+            if !ends.contains(&node) {
+                ends.push(node);
+            }
+        }
+        ends
+    });
     b.len(words.len());
     for (word, rank) in &words {
         b.str(word);
@@ -774,6 +832,12 @@ mod tests {
         ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline} ({rule})");
         }
+    }
+
+    #[test]
+    fn a_known_outline_goes_on_into_a_longer_word_spelled_from_it() {
+        // *liquid* says IH where *liquidation* says AH: the letters, not the sounds, line them up
+        assert_eq!(model().answer("KWEULD/+ARB/+UPB").as_deref(), Some("liquidation"));
     }
 
     #[test]
