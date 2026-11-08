@@ -16,10 +16,10 @@ use crate::stroke::Stroke;
 /// One position of the pseudo-pronunciation: the sound as a short reading, a long reading, and a
 /// weak one.
 #[derive(Clone)]
-struct Phone {
-    heard: String,
-    long: String,
-    weak: String,
+pub(super) struct Phone {
+    pub(super) heard: String,
+    pub(super) long: String,
+    pub(super) weak: String,
 }
 
 impl Phone {
@@ -40,7 +40,7 @@ impl Phone {
 /// How many readings of one word are tried, at most.
 const MAX_READINGS: usize = 24;
 
-const VOWEL_PAIRS: [(&str, &str); 20] = [
+pub(super) const VOWEL_PAIRS: [(&str, &str); 20] = [
     ("ea", "IY"),
     ("ee", "IY"),
     ("ie", "IY"),
@@ -67,7 +67,7 @@ fn is_vowel_letter(c: char) -> bool {
     "aeiou".contains(c)
 }
 
-const fn short_long(c: char) -> (&'static str, &'static str) {
+pub(super) const fn short_long(c: char) -> (&'static str, &'static str) {
     match c {
         'a' => ("AE", "EY"),
         'e' => ("EH", "IY"),
@@ -119,7 +119,7 @@ impl Rules {
 }
 
 /// The pseudo-pronunciations of a word's letters.
-fn readings(word: &str, min_vowels: usize) -> Vec<Vec<Phone>> {
+pub(super) fn readings(word: &str, min_vowels: usize) -> Vec<Vec<Phone>> {
     let letters: Vec<char> = word.chars().collect();
     if !letters.iter().all(char::is_ascii_lowercase) {
         return Vec::new();

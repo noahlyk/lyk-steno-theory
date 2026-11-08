@@ -30,6 +30,7 @@ mod ergonomics;
 mod family;
 mod reverse;
 mod rules;
+mod solve;
 mod stroke;
 mod version;
 mod view;
@@ -168,6 +169,28 @@ enum Command {
     /// Read a stroke outline back into sounds, as the engine's last resort when it misses the
     /// dictionary: the word if it's one the dictionary writes, otherwise the rules' best
     /// phonetic reading of the keys, or a true miss if no reading fits them at all. Keymux's
+    /// The solver: what a run of strokes that missed the dictionary reads as. With an outline,
+    /// every reading of it, cheapest first; with `--eval N`, how well it recovers every Nth
+    /// backup's word, and `--tape` the steno tape's misses
+    Solve {
+        /// A stroke outline, such as `KOPL/+PU/+TER`
+        outline: Option<String>,
+        /// Test against every Nth entry of the built dictionary's backups
+        #[arg(long)]
+        eval: Option<usize>,
+        /// Also read the misses (`?` lines) of this steno tape
+        #[arg(long)]
+        tape: Option<PathBuf>,
+        /// Write every backup the solver reads wrong here (outline, word, reading, cost, pieces)
+        #[arg(long)]
+        misses: Option<PathBuf>,
+        /// The built dictionary to read the known outlines from
+        #[arg(long, default_value = "out/lyk")]
+        dir: PathBuf,
+        /// Words in the solver's lexicon, most common first
+        #[arg(long, default_value_t = 100_000)]
+        common: usize,
+    },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
     #[command(visible_alias = "stroke")]
@@ -359,6 +382,18 @@ fn main() -> Result<()> {
             let setup = setup(Some(*common))?;
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
+        }
+        Command::Solve { outline, eval, tape, misses, dir, common } => {
+            let setup = setup(Some(*common))?;
+            let options = solve::Options {
+                outline: outline.as_deref(),
+                eval: *eval,
+                tape: tape.as_deref(),
+                misses: misses.as_deref(),
+                dir,
+                common: *common,
+            };
+            solve::run(&setup, &options)
         }
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

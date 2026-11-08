@@ -12,6 +12,7 @@ mod fragments;
 mod lattice;
 mod orthography;
 mod resolve;
+pub mod solve;
 
 
 const BUILT_IN: &str = include_str!("../../rules/plover.toml");
