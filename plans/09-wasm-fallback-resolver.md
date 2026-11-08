@@ -1,12 +1,12 @@
 # 09 — The solver plugin: read a missed run as the word it meant, without a table of every outline
 
 **Status: built, on the experimental branch `experiment/wasm-fallback-resolver` (not on `main`).**
-Measured (see `docs/decisions.md`, the last entry, for the why of each piece): top-1 85.2% on 15,458
-backups (88.4% weighted by use, 93.9% top-5), below §6's 97%/93% bar; wasm answers identical to
-native, 2.0 ms mean / 6 ms p99, 62 MB wasm memory. `deploy` ships no backups at all (the solver
+Measured (see `docs/decisions.md`, the last three entries, for the why of each piece): top-1 86.7%
+on 15,458 backups (90.1% weighted by use, 94.8% top-5, 92.3% for the 2,000 commonest words), below
+§6's 97%/93% bar; wasm answers identical to native, 2.3 ms mean / 6 ms p99, 67 MB wasm memory. `deploy` ships no backups at all (the solver
 replaces them; `build` keeps them in `out/lyk` as the test set), so §6's thinning phase is moot. §1's
 RAM figure was not measured: keymux memory-maps its dictionary caches, and the backups cache shrinks
-88 -> 0 MB on disk; the solver adds ~62 MB resident. §3c layer 3 (switching mid-piece) and a key-typo layer (a stroke one key from an entry) are not built.
+88 -> 0 MB on disk; the solver adds ~62 MB resident. A one-key misstroke layer is built (single strokes only). §3c layer 3 (switching mid-piece) is not.
 
 ## 1. The problem, measured
 

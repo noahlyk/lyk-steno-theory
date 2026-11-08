@@ -205,14 +205,6 @@ impl Costs {
     }
 }
 
-/// Which positions of a beam being settled may skip sounds of their word.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Deletions {
-    None,
-    Roots,
-    All,
-}
-
 enum Offer {
     New,
     Better,
@@ -766,10 +758,10 @@ impl Model {
 
     /// The candidates as a beam: each trie position once, at its cheapest (the root keeps several,
     /// since each is a different text so far), every sound of the word then skippable up to
-    /// [`MAX_DELETES`] in a row (from every position, or only the root's, when `deletions` says),
+    /// [`MAX_DELETES`] in a row (when `skips`),
     /// and only the [`BEAM`] best within [`REL`] of the leader. No sorting: a stamp per trie node
     /// says whether it is in the beam being built.
-    fn settle(&self, sc: &mut Scratch, cands: &[St], deletions: Deletions) -> Vec<St> {
+    fn settle(&self, sc: &mut Scratch, cands: &[St], skips: bool) -> Vec<St> {
         sc.begin();
         let mut nodes: Vec<u32> = Vec::with_capacity(cands.len());
         let mut roots: Vec<St> = Vec::new();
@@ -788,11 +780,9 @@ impl Model {
         roots.sort_unstable_by_key(|r| r.cost);
         roots.truncate(KEEP_ENDS);
         let limit = best + self.rel;
-        if deletions != Deletions::None {
+        if skips {
             let mut frontier: Vec<St> = roots.clone();
-            if deletions == Deletions::All {
-                frontier.extend(nodes.iter().map(|&n| sc.state(n)));
-            }
+            frontier.extend(nodes.iter().map(|&n| sc.state(n)));
             for round in 0..MAX_DELETES {
                 let mut next = Vec::new();
                 for s in &frontier {
@@ -856,7 +846,7 @@ impl Model {
                 }
             }
         }
-        self.settle(sc, &out, Deletions::All)
+        self.settle(sc, &out, true)
     }
 
     /// Push `states` through every reading of a stroke at once: readings that share a first few
@@ -921,7 +911,7 @@ impl Model {
         }
         let mut arena: Vec<(u32, Piece)> = Vec::new();
         let mut pending: Vec<Vec<St>> = vec![Vec::new(); k + 1];
-        let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK }], Deletions::All);
+        let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK }], true);
         for i in 0..k {
             // Exact pieces that start here, from the positions that just finished a piece
             let roots: Vec<St> = states.iter().filter(|s| s.node == 0).copied().collect();
@@ -985,12 +975,12 @@ impl Model {
             alts.sort();
             let mut next = Vec::new();
             self.walk(sc, &alts, 0, &states, &mut next);
-            let mut next = self.settle(sc, &next, Deletions::None);
+            let mut next = self.settle(sc, &next, false);
             let mut emitted = Vec::new();
             self.emit(&next, &mut arena, &mut emitted);
             next.extend(emitted);
             next.append(&mut pending[i + 1]);
-            states = self.settle(sc, &next, Deletions::All);
+            states = self.settle(sc, &next, true);
         }
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
         let mut out: Vec<Reading> = Vec::new();

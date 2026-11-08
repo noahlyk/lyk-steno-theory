@@ -535,8 +535,11 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
         b.u32(stroke.0);
         b.str(text);
     }
-    b.len(rules.two_stroke_suffixes.len());
-    for (text, strokes) in &rules.two_stroke_suffixes {
+    // In a fixed order: the rules hold them in a hash map's
+    let mut two_stroke: Vec<&(String, Vec<Stroke>)> = rules.two_stroke_suffixes.iter().collect();
+    two_stroke.sort_by(|a, b| (&a.1, &a.0).cmp(&(&b.1, &b.0)));
+    b.len(two_stroke.len());
+    for (text, strokes) in two_stroke {
         b.u32(strokes[0].0);
         b.u32(strokes[1].0);
         b.str(text);
@@ -565,7 +568,11 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
 /// The known outlines, six strokes or fewer, each with its word's rank (the lexicon's bound for a
 /// word outside it).
 fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon, sound_ends: impl Fn(&str) -> Vec<u32>) {
-    let mut stems: Vec<&(Vec<Stroke>, String)> = stems.iter().filter(|(o, _)| !o.is_empty() && o.len() <= 6).collect();
+    // An outline with an empty stroke in it is no outline a keyboard sends
+    let mut stems: Vec<&(Vec<Stroke>, String)> = stems
+        .iter()
+        .filter(|(o, _)| !o.is_empty() && o.len() <= 6 && o.iter().all(|s| s.0 & !Stroke::JOIN != 0))
+        .collect();
     stems.sort_by(|a, b| (&a.0, &a.1).cmp(&(&b.0, &b.1)));
     b.len(stems.len());
     for (outline, text) in stems {
@@ -573,12 +580,15 @@ fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon,
         for s in outline {
             b.u32(s.0 & !Stroke::JOIN);
         }
-        b.str(text);
-        let rank = lexicon.rank.get(text.as_str()).copied().unwrap_or(lexicon.common);
+        // Lowercase, as ranks and the lexicon are and as the dictionary reads back: the generator
+        // writes the pronoun `I`, which the decoder capitalizes again on the way out
+        let lower = text.to_lowercase();
+        b.str(&lower);
+        let rank = lexicon.rank.get(lower.as_str()).copied().unwrap_or(lexicon.common);
         b.u32(index(rank.min(lexicon.common)));
         // Where the word's own sounds end in the trie, so later strokes can carry on into a
         // longer word (`SKEL` *cancel*, then `+EUPBG`, *canceling*)
-        let ends = sound_ends(text);
+        let ends = sound_ends(&lower);
         b.u8(u8::try_from(ends.len().min(8)).expect("eight or fewer"));
         for node in ends.iter().take(8) {
             b.u32(*node);

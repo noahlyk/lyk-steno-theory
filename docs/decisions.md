@@ -2411,3 +2411,20 @@ the keymux folder, and the 18-minute thinning pass is gone with it. `build` stil
 backups to `out/lyk`, marked "not deployed", as the solver's test set and the lookup catalogue.
 **If the solver is ever removed, `deploy` must ship the backups again**, or every multi-stroke way
 into a word other than its entries types its raw keys.
+
+**The solver, second pass (prefix chords, right-hand vowels, misstrokes, carrying a known outline
+on, deterministic packing).** An ex- probe (89 strokings of 25 ex- words) found that `KP` folded
+into a first stroke read 7/22: the rules' `[[prefix]]` chords were never packed. They are now,
+read on a run's first stroke only, at cost 1 (20/24). It also found vowel entries whose keys reach
+into the right hand (`ER` is `UR`, `ER.ir` `EUR`) filed under their vowel keys alone, so bare `U`
+read ER for free; they are now vowel+coda chords. A stroke one key from a known one-stroke outline
+reads as that outline at cost 4 (the tape: 776 of 3,595 labelled misses were one key off what was
+struck next). A known outline also enters the trie where its word's sounds end, so `AUGS/+AOEUPBG`
+carries *audition* on to *auditioning*. Tried and dropped: a vowel letter struck as its long sound
+(`AOEU` for *i*) lost 0.3-0.5 points at every cost. Two bugs in packing, found because the deployed
+plugin and the read-back model disagreed on 7 of 3,865 outlines: the two-stroke suffixes were
+written in hash-map order (every build a new blob, so a new plugin compile in keymux), and the
+generator's `I` missed its lowercase rank (*I* priced as the rarest word). Both fixed; `deploy`'s
+blob and one packed from `out/lyk` are now byte-identical, and wasm matches native on all 3,865.
+Result: top-1 86.7% (90.1% weighted by use, 94.8% top-5, 92.3% for the 2,000 commonest words);
+the tape 9.0% -> 10.8%; 2.3 ms mean in wasm; `deploy` 27 s with no backups shipped.
