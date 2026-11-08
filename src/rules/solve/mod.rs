@@ -71,6 +71,8 @@ const STEM_NODES: usize = 8;
 /// Real words pieces may spell past the lexicon: ranked below this, and this many letters or more.
 const SPELLINGS: usize = 250_000;
 const SPELLING_LETTERS: usize = 4;
+/// (tuning) a plural morpheme's last vowel kept, never folded away
+const PLURAL_VOWEL_KEPT: bool = false;
 
 /// A packing cost, or (natively, while tuning) `LYK_SOLVE_<NAME>` overriding it.
 fn tuned_pack(name: &str, default: u8) -> u8 {
@@ -470,6 +472,45 @@ fn drop_cost(sound: &str, last: bool, ends_word: bool) -> u8 {
     }
 }
 
+/// One way of saying `word` as a path down the trie: each sound, the vowel letters it is spelled
+/// with, and what skipping it costs.
+fn sound_path(word: &str, variant: &[String], sounds: &mut Sounds) -> Vec<EdgeKey> {
+    let last_vowel = variant.iter().rposition(|s| s.ends_with(|c: char| c.is_ascii_digit()));
+    variant
+        .iter()
+        .zip(align(word, variant))
+        .enumerate()
+        .map(|(at, (sound, letters))| EdgeKey {
+            mask: 1 << sounds.id(sound),
+            letters,
+            drop: drop_cost(sound, Some(at) == last_vowel, at + 1 == variant.len()),
+            vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
+        })
+        .collect()
+}
+
+const MORPHEMES: &str = include_str!("../../../rules/morphemes.toml");
+
+/// A piece a giant word is built from (`rules/morphemes.toml`): its spelling, whether it is a
+/// prefix (else a suffix), and every way it is said.
+pub struct Morpheme {
+    pub text: String,
+    pub prefix: bool,
+    pub sounds: Vec<String>,
+}
+
+/// The morpheme table, prefixes then suffixes, each in spelling order.
+pub fn morphemes() -> Vec<Morpheme> {
+    #[derive(serde::Deserialize)]
+    struct Table {
+        prefix: std::collections::BTreeMap<String, Vec<String>>,
+        suffix: std::collections::BTreeMap<String, Vec<String>>,
+    }
+    let table: Table = toml::from_str(MORPHEMES).expect("rules/morphemes.toml parses");
+    let prefixes = table.prefix.into_iter().map(|(text, sounds)| Morpheme { text, prefix: true, sounds });
+    prefixes.chain(table.suffix.into_iter().map(|(text, sounds)| Morpheme { text, prefix: false, sounds })).collect()
+}
+
 /// Whether a word is said ending on a consonant, its final `e` silent (*dance*, not *coffee*).
 fn pron_has_no_final_vowel(variants: &[Vec<String>]) -> bool {
     variants.iter().any(|v| v.last().is_some_and(|s| !s.ends_with(|c: char| c.is_ascii_digit())))
@@ -494,18 +535,7 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                 continue;
             }
             let (runs, run_of) = align_runs(word, variant);
-            let last_vowel = variant.iter().rposition(|s| s.ends_with(|c: char| c.is_ascii_digit()));
-            let path: Vec<EdgeKey> = variant
-                .iter()
-                .zip(align(word, variant))
-                .enumerate()
-                .map(|(at, (sound, letters))| EdgeKey {
-                    mask: 1 << sounds.id(sound),
-                    letters,
-                    drop: drop_cost(sound, Some(at) == last_vowel, at + 1 == variant.len()),
-                    vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
-                })
-                .collect();
+            let path = sound_path(word, variant, sounds);
             let nodes = trie.insert_along(&path, id, 0);
             trie.sound_ends.entry(id).or_default().push(nodes[path.len()]);
             // Before each vowel spelled after the first, when every vowel sound before it is
@@ -623,7 +653,29 @@ fn write_spellings(b: &mut Blob, lexicon: &Lexicon, lexicon_words: &HashMap<&str
 pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
     let mut sounds = Sounds::new();
     let tables = Tables::new(rules, &mut sounds);
-    let (words, trie) = lexicon_trie(lexicon, &mut sounds);
+    let (words, mut trie) = lexicon_trie(lexicon, &mut sounds);
+    // The morphemes in the same trie, numbered after the words, each way it is said, every
+    // consonant struck: a morpheme is short and cheap to join, and with its consonants skippable it
+    // would match half of any stroke (`UD`, *hood*). An unstressed vowel may go, as the rules fold
+    // it (`EUFPL`, *-ism*), but not a morpheme's only vowel (`HE/+-D` is no *hood*), nor a plural's
+    // last (*-nesses* without it is *-ness* + *-s*)
+    let morphemes = morphemes();
+    for (j, m) in morphemes.iter().enumerate() {
+        for way in &m.sounds {
+            let variant: Vec<String> = way.split_whitespace().map(str::to_owned).collect();
+            let vowels = variant.iter().filter(|s| s.ends_with(|c: char| c.is_ascii_digit())).count();
+            let plural = variant.len() >= 2 && matches!(variant[variant.len() - 1].as_str(), "S" | "Z");
+            let droppable = |at: usize| {
+                variant[at].ends_with('0') && vowels > 1 && !(PLURAL_VOWEL_KEPT && plural && at + 2 == variant.len())
+            };
+            let path: Vec<EdgeKey> = sound_path(&m.text, &variant, &mut sounds)
+                .into_iter()
+                .enumerate()
+                .map(|(at, k)| EdgeKey { drop: if droppable(at) { k.drop } else { 0x7f }, ..k })
+                .collect();
+            trie.insert(&path, index(words.len() + j), 0);
+        }
+    }
     let mut b = Blob(Vec::new());
     b.0.extend_from_slice(core::MAGIC);
     b.u32(core::VERSION);
@@ -652,6 +704,11 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.u32(index(*rank));
     }
     write_spellings(&mut b, lexicon, &ids);
+    b.len(morphemes.len());
+    for m in &morphemes {
+        b.str(&m.text);
+        b.u8(u8::from(m.prefix));
+    }
     write_trie(&mut b, &trie);
     b.0
 }
@@ -939,6 +996,56 @@ mod tests {
     fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    /// A word struck piece by piece as the rules teach each piece: a lexicon word's own outline,
+    /// a morpheme's outline from its sounds in `rules/morphemes.toml`, joined.
+    fn struck_by_pieces(pieces: &[&str]) -> String {
+        let setup = crate::dictionary_fixture::setup();
+        let table = morphemes();
+        let mut strokes: Vec<Stroke> = Vec::new();
+        for piece in pieces {
+            let sounds: Vec<String> =
+                table.iter().find(|m| m.text == *piece).map_or_else(|| setup.pron[*piece][0].clone(), |m| m.sounds[0].split_whitespace().map(str::to_owned).collect());
+            strokes.extend(setup.rules.outline(piece, &sounds).unwrap_or_else(|| panic!("{piece} has an outline")));
+        }
+        setup.rules.joined(&mut strokes);
+        crate::stroke::render_outline(&strokes)
+    }
+
+    #[test]
+    fn a_giant_word_is_prefixes_then_a_word_then_suffixes() {
+        for (word, pieces) in [
+            ("antidisestablishmentarianism", &["anti", "dis", "establish", "ment", "arian", "ism"][..]),
+            ("counterrevolutionaries", &["counter", "revolutionaries"]),
+            ("hyperventilation", &["hyper", "ventilation"]),
+            ("superconductivity", &["super", "conductivity"]),
+            ("multiculturalism", &["multi", "cultural", "ism"]),
+            ("neurotransmitters", &["neuro", "transmitters"]),
+            ("psychotherapists", &["psycho", "therapists"]),
+            ("overcompensation", &["over", "compensation"]),
+            ("semiconductors", &["semi", "conductors"]),
+            ("pseudoscientific", &["pseudo", "scientific"]),
+            ("internationalization", &["international", "ization"]),
+        ] {
+            let outline = struck_by_pieces(pieces);
+            assert_eq!(model().answer(&outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn morphemes_go_only_where_they_build_a_word() {
+        for (outline, word, rule) in [
+            ("TKPWAO/+TK/+TPHESZ", "goodness", "a word you know beats one built of morphemes (goodnesses)"),
+            ("TAOLS/+HE/+-D", "toolshed", "a morpheme's only vowel is struck (tools + hood)"),
+            ("RAOURPG/+UD", "regrouped", "a morpheme's consonants are all struck (regroup + hood)"),
+            ("A/+HR/+U/+-S", "alice", "no morpheme on a word under four letters (a + less)"),
+            ("R/+EU/+-T/+EU", "righty", "no morpheme on a word under four letters (are + ity)"),
+            ("PHAOEU/+-BG/+R/+O/+-PB", "micron", "no suffix chord after a prefix (micro + en)"),
+            ("THAO*E/+TPH/+KEU/+-PBG", "thinking", "no path into a morpheme that cannot follow (the + -ness...)"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}: {rule}");
         }
     }
 

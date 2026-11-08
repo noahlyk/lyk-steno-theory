@@ -204,6 +204,13 @@ enum Command {
         /// Test against up to N compounds past the lexicon (`lookup`), each struck as its two words
         #[arg(long)]
         compounds: Option<usize>,
+        /// Test against the giant words of this word list (Monkeytype's `english_450k`) past the
+        /// lexicon that split as prefixes, a word and suffixes, each piece struck as taught
+        #[arg(long)]
+        giant: Option<PathBuf>,
+        /// How many of `--giant`'s words to test, at most
+        #[arg(long, default_value_t = 2000)]
+        giant_count: usize,
     },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
@@ -397,8 +404,9 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds } => solve::run(&setup(Some(*common))?, &solve::Options {
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count } => solve::run(&setup(Some(*common))?, &solve::Options {
             outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught, compounds: *compounds,
+            giant: giant.as_deref(), giant_count: *giant_count,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

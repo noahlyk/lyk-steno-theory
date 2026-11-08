@@ -64,6 +64,19 @@ pub const MUST_USE: u32 = 1;
 /// Joining two pieces that together spell a real word past the lexicon (*look* + *up*, *lookup*), in
 /// place of [`PIECE`].
 pub const COMPOUND_PIECE: u32 = 2;
+/// A morpheme of `rules/morphemes.toml` (*anti-*, *-ization*) read as a piece, as a word's rarity.
+pub const MORPHEME: u32 = 4;
+/// Joining a morpheme on (a prefix before what follows it, a suffix after what it follows), in place
+/// of [`PIECE`].
+pub const MORPHEME_PIECE: u32 = 1;
+/// What a morpheme counts as, at least, in the bound a half-matched path is charged ahead (the
+/// cheapest word below it): cheaper, and a prefix's paths crowd a word out of the search (at 6,
+/// *thinking* falls to *the* + *knocking*).
+pub const MORPHEME_LOOKAHEAD: u32 = 8;
+/// A reading built with morphemes that is no word the lexicon has, in place of [`NONWORD`]: a word
+/// you know, read as well, still wins (*goodness* over *goodnesses*).
+/// 4 over 0: the backups' misses as without morphemes (3,470 to 3,497), giant words 80.8% to 84.2%.
+pub const BUILT: u32 = 4;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
 /// `+EUPBG`: *canceling*).
 pub const STEM_ENTER: u32 = 1;
@@ -163,7 +176,30 @@ enum Piece {
     Slip(u32),
     /// The text a lone `+` locked in: the run's first piece, fixed, that the rest adds to
     Locked,
+    /// A prefix or suffix of `rules/morphemes.toml`, by its id among the words (after them all)
+    Morpheme(u32),
 }
+
+/// What a piece may follow: nothing yet, a prefix morpheme, a suffix morpheme, a suffix chord, a
+/// word too short for a morpheme ([`MORPHEME_WORD_LETTERS`]), or any other word.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum After {
+    Start,
+    Prefix,
+    Suffix,
+    Chord,
+    Short,
+    Other,
+}
+
+/// The word a morpheme joins, at least this many letters: shorter, and every short word with a
+/// cheap morpheme on it reads as something (*a* + *less*, *are* + *ity*).
+const MORPHEME_WORD_LETTERS: usize = 4;
+
+/// What ends at or below a trie node: a word, a prefix, a suffix (one bit each).
+const BELOW_WORD: u8 = 1;
+const BELOW_PREFIX: u8 = 2;
+const BELOW_SUFFIX: u8 = 4;
 
 const NO_BACK: u32 = u32::MAX;
 
@@ -199,6 +235,10 @@ pub struct Costs {
     pub stem_enter: u32,
     pub must_use: u32,
     pub compound_piece: u32,
+    pub morpheme: u32,
+    pub morpheme_piece: u32,
+    pub morpheme_lookahead: u32,
+    pub built: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -228,6 +268,10 @@ impl Costs {
             stem_enter: tuned("STEM_ENTER", STEM_ENTER),
             must_use: tuned("MUST_USE", MUST_USE),
             compound_piece: tuned("COMPOUND_PIECE", COMPOUND_PIECE),
+            morpheme: tuned("MORPHEME", MORPHEME),
+            morpheme_piece: tuned("MORPHEME_PIECE", MORPHEME_PIECE),
+            morpheme_lookahead: tuned("MORPHEME_LOOKAHEAD", MORPHEME_LOOKAHEAD),
+            built: tuned("BUILT", BUILT),
         }
     }
 }
@@ -338,6 +382,10 @@ pub struct Reading {
     pub exact: bool,
     /// How many word pieces after the first were joined on, each at [`PIECE`]
     pub joins: u32,
+    /// Built with morphemes (prefixes before one word, suffixes after it)
+    pub morphemic: bool,
+    /// Ends on a prefix: never the run's reading, only a way on to one
+    pub open: bool,
 }
 
 pub struct Model {
@@ -385,6 +433,11 @@ pub struct Model {
     known: HashMap<String, u32>,
     /// Real words past the lexicon, as `(spelling_hash, rank)` sorted: what pieces may spell
     spellings: Vec<(u64, u32)>,
+    /// The morphemes are `words[first_morpheme..]`, each a prefix or a suffix
+    first_morpheme: u32,
+    morpheme_prefix: Vec<bool>,
+    /// Per trie node, what ends at or below it ([`BELOW_WORD`] and the rest)
+    below: Vec<u8>,
     /// Each trie node's edges are `edges[edge_start[n]..edge_start[n + 1]]`, its words
     /// `ends[end_start[n]..end_start[n + 1]]`
     edge_start: Vec<u32>,
@@ -433,7 +486,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 
 /// `run` with each `+*` (the join key and the star alone) put on the stroke before it as its star:
 /// the star struck late, `+-T` then `+*` is `+*T`.
@@ -462,6 +515,54 @@ pub fn spelling_hash(text: &str) -> u64 {
 }
 
 impl Model {
+    /// Whether word id `w` is a morpheme, and if so whether a prefix.
+    fn morpheme(&self, w: u32) -> Option<bool> {
+        w.checked_sub(self.first_morpheme).map(|m| self.morpheme_prefix[m as usize])
+    }
+
+    /// What the piece at `back` (in `arena`) lets follow it.
+    fn after(&self, arena: &[(u32, Piece)], back: u32) -> After {
+        let short = |text: &str| if text.len() < MORPHEME_WORD_LETTERS { After::Short } else { After::Other };
+        match arena.get(back as usize) {
+            None => After::Start,
+            Some(&(_, Piece::Morpheme(w))) => if self.morpheme(w) == Some(true) { After::Prefix } else { After::Suffix },
+            Some((_, Piece::Suffix(_) | Piece::TwoSuffix(_))) => After::Chord,
+            Some(&(_, Piece::Word(w))) => short(&self.words[w as usize]),
+            Some(&(_, Piece::Stem(s) | Piece::Slip(s))) => short(&self.stem_text[s as usize]),
+            Some((_, Piece::Locked)) => After::Other,
+        }
+    }
+
+    /// The kinds of piece ([`BELOW_WORD`] and the rest) that may come after the piece at `back`: a
+    /// path into the trie only goes where one of them ends.
+    fn may_follow(&self, arena: &[(u32, Piece)], back: u32) -> u8 {
+        match self.after(arena, back) {
+            After::Start | After::Prefix => BELOW_WORD | BELOW_PREFIX,
+            After::Suffix | After::Other => BELOW_WORD | BELOW_SUFFIX,
+            After::Chord | After::Short => BELOW_WORD,
+        }
+    }
+
+    /// What joining `text` (a word or a known outline's) on costs: nothing first, a morpheme's join
+    /// after a prefix, a piece's after anything else. `None`: after a prefix, too short a word.
+    fn join_cost(&self, after: After, text: &str) -> Option<u32> {
+        match after {
+            After::Start => Some(0),
+            After::Prefix => (text.len() >= MORPHEME_WORD_LETTERS).then_some(self.c.morpheme_piece),
+            _ => Some(self.c.piece),
+        }
+    }
+
+    /// What joining morpheme `w` on costs, `None` where it may not go: a prefix starts the run or
+    /// follows a prefix, a suffix follows a word long enough or another suffix morpheme.
+    const fn morpheme_cost(&self, after: After, prefix: bool) -> Option<u32> {
+        match (prefix, after) {
+            (true, After::Start) => Some(0),
+            (true, After::Prefix) | (false, After::Other | After::Suffix) => Some(self.c.morpheme_piece),
+            _ => None,
+        }
+    }
+
     /// A real word past the lexicon's rank, when `text` is one (the table of spellings).
     fn spelled_rank(&self, text: &str) -> Option<u32> {
         let hash = spelling_hash(text);
@@ -568,6 +669,16 @@ impl Model {
         }
         let n = r.u32() as usize;
         let spellings: Vec<(u64, u32)> = (0..n).map(|_| (r.u64(), r.u32())).collect();
+        let c = Costs::new();
+        let first_morpheme = words.len() as u32;
+        let known = words.iter().enumerate().map(|(i, w)| (w.clone(), i as u32)).collect();
+        let n = r.u32() as usize;
+        let mut morpheme_prefix = Vec::with_capacity(n);
+        for _ in 0..n {
+            words.push(r.str());
+            word_cost.push(c.morpheme);
+            morpheme_prefix.push(r.u8() != 0);
+        }
         let n = r.u32() as usize;
         let edge_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
         let end_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
@@ -579,10 +690,22 @@ impl Model {
         let ends: Vec<(u32, u8)> = (0..m).map(|_| (r.u32(), r.u8())).collect();
         // Children always come after their parent, so one pass from the back fills every node
         let mut lookahead = vec![u32::MAX / 4; n];
+        let mut below = vec![0u8; n];
         for at in (0..n).rev() {
+            for &(w, _) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
+                below[at] |= match w.checked_sub(first_morpheme) {
+                    None => BELOW_WORD,
+                    Some(m) if morpheme_prefix[m as usize] => BELOW_PREFIX,
+                    Some(_) => BELOW_SUFFIX,
+                };
+            }
+            for e in &edges[edge_start[at] as usize..edge_start[at + 1] as usize] {
+                below[at] |= below[e.child as usize];
+            }
             let mut best = lookahead[at];
             for &(w, extra) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
-                best = best.min(word_cost[w as usize] + u32::from(extra));
+                let cost = if w < first_morpheme { word_cost[w as usize] } else { word_cost[w as usize].max(c.morpheme_lookahead) };
+                best = best.min(cost + u32::from(extra));
             }
             for e in &edges[edge_start[at] as usize..edge_start[at + 1] as usize] {
                 best = best.min(lookahead[e.child as usize]);
@@ -618,8 +741,11 @@ impl Model {
             max_stem,
             r_sound,
             er_sound,
-            known: words.iter().enumerate().map(|(i, w)| (w.clone(), i as u32)).collect(),
+            known,
             spellings,
+            first_morpheme,
+            morpheme_prefix,
+            below,
             words,
             word_cost,
             edge_start,
@@ -630,12 +756,12 @@ impl Model {
             lookahead,
             scratch: std::sync::Mutex::new(None),
             rel: rel(),
-            c: Costs::new(),
+            c,
         })
     }
 
     pub const fn word_count(&self) -> usize {
-        self.words.len()
+        self.first_morpheme as usize
     }
     pub const fn node_count(&self) -> usize {
         self.lookahead.len()
@@ -903,7 +1029,7 @@ impl Model {
     /// [`MAX_DELETES`] in a row (when `skips`),
     /// and only the [`BEAM`] best within [`REL`] of the leader. No sorting: a stamp per trie node
     /// says whether it is in the beam being built.
-    fn settle(&self, sc: &mut Scratch, cands: &[St], skips: bool) -> Vec<St> {
+    fn settle(&self, sc: &mut Scratch, arena: &[(u32, Piece)], cands: &[St], skips: bool) -> Vec<St> {
         sc.begin();
         let mut nodes: Vec<u32> = Vec::with_capacity(cands.len());
         let mut roots: Vec<St> = Vec::new();
@@ -937,8 +1063,9 @@ impl Model {
                         continue;
                     }
                     let here = self.lookahead[s.node as usize];
+                    let may = self.may_follow(arena, s.back);
                     for e in self.edges_of(s.node) {
-                        if s.node == 0 && e.drop() > ROOT_DROP {
+                        if (s.node == 0 && e.drop() > ROOT_DROP) || self.below[e.child as usize] & may == 0 {
                             continue;
                         }
                         let cost = s.cost + e.drop() + self.lookahead[e.child as usize] - here;
@@ -973,7 +1100,7 @@ impl Model {
         out
     }
 
-    fn step(&self, sc: &mut Scratch, states: &[St], tok: Tok) -> Vec<St> {
+    fn step(&self, sc: &mut Scratch, arena: &[(u32, Piece)], states: &[St], tok: Tok) -> Vec<St> {
         let mut out = Vec::with_capacity(states.len() * 3);
         for s in states {
             // A sound the word does not have; never before any word has started, or a stroke
@@ -982,19 +1109,23 @@ impl Model {
                 out.push(St { cost: s.cost + self.c.insert, ..*s });
             }
             let here = self.lookahead[s.node as usize];
+            let may = self.may_follow(arena, s.back);
             for e in self.edges_of(s.node) {
+                if self.below[e.child as usize] & may == 0 {
+                    continue;
+                }
                 if let Some(c) = self.match_cost(tok, *e) {
                     let cost = s.cost + c + self.lookahead[e.child as usize] - here;
                     out.push(St { node: e.child, cost, back: s.back, used: true });
                 }
             }
         }
-        self.settle(sc, &out, true)
+        self.settle(sc, arena, &out, true)
     }
 
     /// Push `states` through every reading of a stroke at once: readings that share a first few
     /// tokens share the work of matching them.
-    fn walk(&self, sc: &mut Scratch, alts: &[(Vec<Tok>, u32)], depth: usize, states: &[St], out: &mut Vec<St>) {
+    fn walk(&self, sc: &mut Scratch, arena: &[(u32, Piece)], alts: &[(Vec<Tok>, u32)], depth: usize, states: &[St], out: &mut Vec<St>) {
         let mut i = 0;
         while i < alts.len() {
             if alts[i].0.len() == depth {
@@ -1007,9 +1138,9 @@ impl Model {
             while j < alts.len() && alts[j].0.len() > depth && alts[j].0[depth] == tok {
                 j += 1;
             }
-            let next = self.step(sc, states, tok);
+            let next = self.step(sc, arena, states, tok);
             if !next.is_empty() {
-                self.walk(sc, &alts[i..j], depth + 1, &next, out);
+                self.walk(sc, arena, &alts[i..j], depth + 1, &next, out);
             }
             i = j;
         }
@@ -1019,9 +1150,13 @@ impl Model {
         for s in states {
             let n = s.node as usize;
             let ends = &self.ends[self.end_start[n] as usize..self.end_start[n + 1] as usize];
-            for &(word, extra) in ends.iter().take(EMIT_PER_NODE) {
-                let piece = if s.back == NO_BACK { 0 } else { self.c.piece };
-                arena.push((s.back, Piece::Word(word)));
+            let after = self.after(arena, s.back);
+            // The commonest words that end here, and every morpheme (they sort after the words)
+            let words = ends.iter().filter(|e| e.0 < self.first_morpheme).take(EMIT_PER_NODE);
+            for &(word, extra) in words.chain(ends.iter().filter(|e| e.0 >= self.first_morpheme)) {
+                let piece = self.morpheme(word).map_or_else(|| self.join_cost(after, &self.words[word as usize]), |prefix| self.morpheme_cost(after, prefix));
+                let Some(piece) = piece else { continue };
+                arena.push((s.back, self.morpheme(word).map_or(Piece::Word(word), |_| Piece::Morpheme(word))));
                 out.push(St {
                     node: 0,
                     cost: s.cost + piece + self.word_cost[word as usize] + u32::from(extra) - self.lookahead[s.node as usize],
@@ -1054,7 +1189,7 @@ impl Model {
         let tail = &run[at + 1..];
         if tail.is_empty() {
             let pieces = vec![locked.clone()];
-            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0 }];
+            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, open: false }];
         }
         self.solve_locked(sc, tail, keep, Some(&locked))
     }
@@ -1074,6 +1209,9 @@ impl Model {
         let mut out: Vec<Reading> = Vec::new();
         for s in ends {
             let mut reading = self.reading(arena, s, locked);
+            if reading.open {
+                continue;
+            }
             // Pieces that do not add up to a word are a guess at one the lexicon lacks: allowed,
             // but only when nothing that is a word reads as well
             // Pieces that do add up to a word are that word, and as rare as it is: `part` + `s` is
@@ -1090,6 +1228,8 @@ impl Model {
                             let refund = reading.joins * self.c.piece.saturating_sub(self.c.compound_piece);
                             reading.cost = (reading.cost.saturating_sub(reading.rarity) + rank_cost(rank).max(reading.rarity)).saturating_sub(refund);
                         }
+                        // Prefixes, one word, suffixes: a word built as English builds them
+                        None if reading.morphemic && reading.joins == 0 => reading.cost += self.c.built,
                         None => reading.cost += self.c.nonword,
                     },
                 }
@@ -1145,7 +1285,7 @@ impl Model {
             } else {
                 NO_BACK
             };
-            p.before.push(self.settle(sc, &[St { node: 0, cost: 0, back, used: true }], true));
+            p.before.push(self.settle(sc, &p.arena, &[St { node: 0, cost: 0, back, used: true }], true));
             p.arena_at.push(p.arena.len());
             p.hard_until_at.push(0);
         } else {
@@ -1208,11 +1348,11 @@ impl Model {
             // Each stroke must match at least one sound of the word it is read into
             let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
             let mut next = Vec::new();
-            self.walk(sc, &alts, 0, &starting, &mut next);
+            self.walk(sc, &p.arena, &alts, 0, &starting, &mut next);
             if self.c.must_use > 0 {
                 next.retain(|s| s.used);
             }
-            let mut next = self.settle(sc, &next, false);
+            let mut next = self.settle(sc, &p.arena, &next, false);
             let mut emitted = Vec::new();
             self.emit(&next, &mut p.arena, &mut emitted);
             next.extend(emitted);
@@ -1221,7 +1361,7 @@ impl Model {
         };
         let mut next = next;
         self.keep_ends(&p.arena, &mut next, p.locked.as_deref());
-        p.before.push(self.settle(sc, &next, true));
+        p.before.push(self.settle(sc, &p.arena, &next, true));
         p.arena_at.push(p.arena.len());
     }
 
@@ -1243,7 +1383,9 @@ impl Model {
                 continue;
             }
             for root in roots(&p.before[start]) {
-                if root.back == NO_BACK {
+                // Nor after a morpheme: a suffix morpheme has its plural its own (*-nesses*), and a
+                // prefix wants a word
+                if root.back == NO_BACK || matches!(self.after(&p.arena, root.back), After::Prefix | After::Suffix) {
                     continue;
                 }
                 let found = if two {
@@ -1270,7 +1412,7 @@ impl Model {
             let Some(&stem) = self.stems.get(&key) else { continue };
             for root in roots(&p.before[start]) {
                 let first = root.back == NO_BACK;
-                let piece = if first { 0 } else { self.c.piece };
+                let Some(piece) = self.join_cost(self.after(&p.arena, root.back), &self.stem_text[stem as usize]) else { continue };
                 let later = if first { 0 } else { self.c.stem_later };
                 p.arena.push((root.back, Piece::Stem(stem)));
                 out.push(St { node: 0, cost: root.cost + piece + self.stem_cost[stem as usize] + later, back: (p.arena.len() - 1) as u32, used: true });
@@ -1312,8 +1454,10 @@ impl Model {
             .map(|&s| {
                 let r = self.reading(arena, s, locked);
                 let text = r.text.to_lowercase();
-                let nonsense = r.pieces.len() > 1 && !self.known.contains_key(&text) && (r.joins == 0 || self.spelled_rank(&text).is_none());
-                (s.cost + if nonsense { self.c.nonword } else { 0 }, s)
+                let built = r.morphemic && r.joins == 0;
+                let nonsense = r.pieces.len() > 1 && !built && !self.known.contains_key(&text) && (r.joins == 0 || self.spelled_rank(&text).is_none());
+                let unknown_built = built && !self.known.contains_key(&text);
+                (s.cost + if nonsense { self.c.nonword } else if unknown_built { self.c.built } else { 0 }, s)
             })
             .collect();
         if ends.len() <= KEEP_ENDS {
@@ -1332,12 +1476,12 @@ impl Model {
         while at != NO_BACK {
             let (back, piece) = arena[at as usize];
             rarity += match piece {
-                Piece::Word(w) => self.word_cost[w as usize],
+                Piece::Word(w) | Piece::Morpheme(w) => self.word_cost[w as usize],
                 Piece::Stem(s) | Piece::Slip(s) => self.stem_cost[s as usize],
                 Piece::Suffix(_) | Piece::TwoSuffix(_) | Piece::Locked => 0,
             };
             let text = match piece {
-                Piece::Word(w) => self.words[w as usize].clone(),
+                Piece::Word(w) | Piece::Morpheme(w) => self.words[w as usize].clone(),
                 Piece::Suffix(s) => self.suffixes[s as usize].1.clone(),
                 Piece::TwoSuffix(s) => self.two_suffixes[s as usize].2.clone(),
                 Piece::Stem(s) | Piece::Slip(s) => self.stem_text[s as usize].clone(),
@@ -1348,10 +1492,13 @@ impl Model {
         }
         pieces.reverse();
         let mut text = String::new();
+        let suffix_morpheme = |p: &Piece| matches!(p, &Piece::Morpheme(w) if self.morpheme(w) == Some(false));
         for (i, (_, piece)) in pieces.iter().enumerate() {
             text.push_str(piece);
-            if let Some((Piece::Suffix(_) | Piece::TwoSuffix(_), next)) = pieces.get(i + 1) {
-                join_suffix(&mut text, next);
+            match pieces.get(i + 1) {
+                Some((Piece::Suffix(_) | Piece::TwoSuffix(_), next)) => join_suffix(&mut text, next),
+                Some((p, next)) if suffix_morpheme(p) => join_suffix(&mut text, next),
+                _ => {}
             }
         }
         if text == "i" {
@@ -1361,9 +1508,16 @@ impl Model {
             && matches!(pieces[0].0, Piece::Stem(_) | Piece::Locked)
             && pieces[1..].iter().all(|(p, _)| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
         let exact = pieces.len() == 1 && matches!(pieces[0].0, Piece::Stem(_));
-        // Each word piece after the first was charged a piece's join
-        let joins = pieces.iter().skip(1).filter(|(p, _)| !matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_))).count() as u32;
-        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed, exact, joins }
+        // Each word piece after the first was charged a piece's join, but after a prefix
+        let prefix = |p: &Piece| matches!(p, &Piece::Morpheme(w) if self.morpheme(w) == Some(true));
+        let joins = pieces
+            .windows(2)
+            .filter(|w| !prefix(&w[0].0) && !matches!(w[1].0, Piece::Suffix(_) | Piece::TwoSuffix(_) | Piece::Morpheme(_)))
+            .count() as u32;
+        let morphemic = pieces.iter().any(|(p, _)| matches!(p, Piece::Morpheme(_)));
+        // A prefix with nothing after it is no word yet
+        let open = pieces.last().is_some_and(|(p, _)| prefix(p));
+        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed, exact, joins, morphemic, open }
     }
 
     // --- What the plugin answers ---

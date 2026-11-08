@@ -148,7 +148,7 @@
   },
   {
    "t": "p",
-   "x": "A run can be read as several pieces, each a word, a suffix or a known outline, joined with no space:"
+   "x": "A run can be read as several pieces, each a word, a suffix, a morpheme or a known outline, joined with no space:"
   },
   {
    "t": "table",
@@ -182,6 +182,11 @@
      "a misstroke: a stroke one key more or one key fewer than a known one-stroke outline",
      "one stroke, anywhere a known outline could be",
      "5, plus the same as a known outline"
+    ],
+    [
+     "a morpheme: a prefix or suffix of the [morpheme table](#/ref/fallback/giant-words-prefixes-a-word-suffixes) (*anti-*, *-ization*), by its sounds",
+     "on whole strokes: prefixes first, then one word, then suffixes (below)",
+     "4, plus 1 to join it on (never 10); a word after a prefix joins for 1 too"
     ]
    ]
   },
@@ -197,6 +202,319 @@
     "A word piece only ends at a stroke boundary; a suffix chord is always the suffix, never its bare consonants."
    ],
    "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "Giant words: prefixes, a word, suffixes"
+  },
+  {
+   "t": "p",
+   "x": "A word no lexicon holds (most of Monkeytype's `english_450k`) is struck piece by piece, each piece by its sounds, and read as **prefixes, then one word, then suffixes**: *antidisestablishmentarianism* is *anti* + *dis* + *establish* + *ment* + *arian* + *ism*, each struck as the rules teach its sounds, every stroke after the first joined. Strike `+` alone after any piece to lock what is typed so far, as ever."
+  },
+  {
+   "t": "list",
+   "ordered": false,
+   "items": [
+    "**Order.** A prefix starts the run or follows a prefix. A suffix follows the word or another suffix. The word between is a lexicon word or a known outline of **4 letters or more** (*a* + *less* is never read). A run that ends on a prefix is no reading.",
+    "**No suffix chord after a morpheme**, and no suffix morpheme after a suffix chord: the table has the plurals itself (*-nesses*, *-isms*), and a prefix wants a word (`PHAOEU/+-BG/+R/+O/+-PB` is *micron*, not *micro* + *-en*).",
+    "**Every consonant of a morpheme is struck.** An unstressed vowel may be left out, as the rules fold it (`EUFPL` for *-ism*, `TPHUSZ` for *-nesses*), but not a morpheme's only vowel (`HE/+-D` is never *hood*) and never a stressed one.",
+    "**Spelling at the seams** is a suffix chord's: a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*).",
+    "**A word you know still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*."
+   ]
+  },
+  {
+   "t": "table",
+   "head": [
+    "Prefix",
+    "Said"
+   ],
+   "rows": [
+    [
+     "*anti-*",
+     "`AE1 N T IY0`, `AE1 N T AY2`, `AE2 N T IY0`, `AE2 N T AY0`"
+    ],
+    [
+     "*counter-*",
+     "`K AW1 N T ER0`"
+    ],
+    [
+     "*super-*",
+     "`S UW1 P ER0`"
+    ],
+    [
+     "*inter-*",
+     "`IH1 N T ER0`, `IH2 N T ER0`"
+    ],
+    [
+     "*intra-*",
+     "`IH1 N T R AH0`"
+    ],
+    [
+     "*multi-*",
+     "`M AH1 L T IY0`, `M AH1 L T AY0`, `M AH2 L T IY0`"
+    ],
+    [
+     "*micro-*",
+     "`M AY1 K R OW0`, `M AY2 K R OW0`"
+    ],
+    [
+     "*macro-*",
+     "`M AE1 K R OW0`"
+    ],
+    [
+     "*mega-*",
+     "`M EH1 G AH0`"
+    ],
+    [
+     "*mini-*",
+     "`M IH1 N IY0`"
+    ],
+    [
+     "*non-*",
+     "`N AA1 N`, `N AA2 N`"
+    ],
+    [
+     "*over-*",
+     "`OW1 V ER0`, `OW2 V ER0`"
+    ],
+    [
+     "*under-*",
+     "`AH1 N D ER0`, `AH2 N D ER0`"
+    ],
+    [
+     "*post-*",
+     "`P OW1 S T`, `P OW2 S T`"
+    ],
+    [
+     "*pseudo-*",
+     "`S UW1 D OW0`"
+    ],
+    [
+     "*semi-*",
+     "`S EH1 M IY0`, `S EH1 M AY0`, `S EH2 M IY0`"
+    ],
+    [
+     "*trans-*",
+     "`T R AE1 N Z`, `T R AE1 N S`, `T R AE2 N Z`"
+    ],
+    [
+     "*ultra-*",
+     "`AH1 L T R AH0`"
+    ],
+    [
+     "*dis-*",
+     "`D IH0 S`, `D IH1 S`, `D IH2 S`"
+    ],
+    [
+     "*mis-*",
+     "`M IH0 S`, `M IH1 S`, `M IH2 S`"
+    ],
+    [
+     "*hyper-*",
+     "`HH AY1 P ER0`, `HH AY2 P ER0`"
+    ],
+    [
+     "*hypo-*",
+     "`HH AY1 P OW0`"
+    ],
+    [
+     "*auto-*",
+     "`AO1 T OW0`, `AO2 T OW0`"
+    ],
+    [
+     "*bio-*",
+     "`B AY1 OW0`, `B AY2 OW0`"
+    ],
+    [
+     "*electro-*",
+     "`IH0 L EH1 K T R OW0`, `IH0 L EH2 K T R OW0`"
+    ],
+    [
+     "*neuro-*",
+     "`N UH1 R OW0`, `N Y UH1 R OW0`"
+    ],
+    [
+     "*photo-*",
+     "`F OW1 T OW0`, `F OW2 T OW0`"
+    ],
+    [
+     "*psycho-*",
+     "`S AY1 K OW0`, `S AY2 K OW0`"
+    ],
+    [
+     "*tele-*",
+     "`T EH1 L AH0`, `T EH1 L IY0`"
+    ],
+    [
+     "*thermo-*",
+     "`TH ER1 M OW0`"
+    ],
+    [
+     "*hydro-*",
+     "`HH AY1 D R OW0`"
+    ],
+    [
+     "*poly-*",
+     "`P AA1 L IY0`"
+    ],
+    [
+     "*mono-*",
+     "`M AA1 N OW0`"
+    ],
+    [
+     "*extra-*",
+     "`EH1 K S T R AH0`"
+    ],
+    [
+     "*infra-*",
+     "`IH1 N F R AH0`"
+    ],
+    [
+     "*cross-*",
+     "`K R AO1 S`"
+    ]
+   ]
+  },
+  {
+   "t": "table",
+   "head": [
+    "Suffix",
+    "Said"
+   ],
+   "rows": [
+    [
+     "*-ness*",
+     "`N AH0 S`, `N IH0 S`"
+    ],
+    [
+     "*-nesses*",
+     "`N AH0 S IH0 Z`, `N IH0 S IH0 Z`"
+    ],
+    [
+     "*-less*",
+     "`L AH0 S`, `L IH0 S`"
+    ],
+    [
+     "*-ment*",
+     "`M AH0 N T`"
+    ],
+    [
+     "*-ments*",
+     "`M AH0 N T S`"
+    ],
+    [
+     "*-ism*",
+     "`IH0 Z AH0 M`, `IH2 Z AH0 M`"
+    ],
+    [
+     "*-isms*",
+     "`IH0 Z AH0 M Z`"
+    ],
+    [
+     "*-ist*",
+     "`IH0 S T`"
+    ],
+    [
+     "*-ists*",
+     "`IH0 S T S`"
+    ],
+    [
+     "*-ize*",
+     "`AY2 Z`"
+    ],
+    [
+     "*-izes*",
+     "`AY2 Z IH0 Z`"
+    ],
+    [
+     "*-ization*",
+     "`AH0 Z EY1 SH AH0 N`, `IH0 Z EY1 SH AH0 N`, `AY0 Z EY1 SH AH0 N`"
+    ],
+    [
+     "*-izations*",
+     "`AH0 Z EY1 SH AH0 N Z`, `IH0 Z EY1 SH AH0 N Z`"
+    ],
+    [
+     "*-ation*",
+     "`EY1 SH AH0 N`"
+    ],
+    [
+     "*-ations*",
+     "`EY1 SH AH0 N Z`"
+    ],
+    [
+     "*-ity*",
+     "`IH0 T IY0`, `AH0 T IY0`"
+    ],
+    [
+     "*-ities*",
+     "`IH0 T IY0 Z`, `AH0 T IY0 Z`"
+    ],
+    [
+     "*-ical*",
+     "`IH0 K AH0 L`"
+    ],
+    [
+     "*-ically*",
+     "`IH0 K L IY0`, `IH0 K AH0 L IY0`"
+    ],
+    [
+     "*-ology*",
+     "`AA1 L AH0 JH IY0`"
+    ],
+    [
+     "*-ologies*",
+     "`AA1 L AH0 JH IY0 Z`"
+    ],
+    [
+     "*-ological*",
+     "`AH0 L AA1 JH IH0 K AH0 L`"
+    ],
+    [
+     "*-arian*",
+     "`EH1 R IY0 AH0 N`"
+    ],
+    [
+     "*-arians*",
+     "`EH1 R IY0 AH0 N Z`"
+    ],
+    [
+     "*-ship*",
+     "`SH IH2 P`"
+    ],
+    [
+     "*-ships*",
+     "`SH IH2 P S`"
+    ],
+    [
+     "*-hood*",
+     "`HH UH2 D`"
+    ],
+    [
+     "*-ously*",
+     "`AH0 S L IY0`"
+    ],
+    [
+     "*-iveness*",
+     "`IH0 V N AH0 S`"
+    ],
+    [
+     "*-ability*",
+     "`AH0 B IH1 L AH0 T IY0`"
+    ],
+    [
+     "*-ibility*",
+     "`IH0 B IH1 L AH0 T IY0`"
+    ],
+    [
+     "*-ification*",
+     "`IH0 F IH0 K EY1 SH AH0 N`, `AH0 F AH0 K EY1 SH AH0 N`"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The sounds are ARPAbet (the pronunciation dictionary's): a digit marks a vowel and its stress, 1 or 2 stressed, 0 not. The short endings (*-s*, *-ed*, *-ing*, *-er*, *-ly* …) are not here: they are suffix chords ([suffix table](#/ref/suffixes)). A piece of one syllable with fewer than three sounds is never a morpheme: it would start or end half the words of the language."
   },
   {
    "t": "p",
@@ -285,7 +603,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
   },
   {
    "t": "p",

@@ -27,6 +27,9 @@ pub struct Options<'a> {
     pub taught: Option<usize>,
     /// Test against compounds past the lexicon struck as two words, at most this many
     pub compounds: Option<usize>,
+    /// Test against the giant words of this word list that morphemes build, at most `giant_count`
+    pub giant: Option<&'a Path>,
+    pub giant_count: usize,
 }
 
 /// The model `build` would ship, from the dictionary already in `dir`.
@@ -90,6 +93,9 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(n) = options.compounds {
         eval_compounds(setup, &model, n, options.misses)?;
     }
+    if let Some(path) = options.giant {
+        eval_giant(setup, &model, path, options.giant_count, options.misses)?;
+    }
     if let Some(n) = options.taught {
         eval_taught(setup, &model, options.dir, n, options.misses)?;
     }
@@ -126,6 +132,96 @@ fn eval_compounds(setup: &Setup, model: &Model, n: usize, misses: Option<&Path>)
         }
     }
     println!("compounds past the lexicon, struck as two words: {}", all.line());
+    if let Some(path) = misses {
+        std::fs::write(path, wrong.join("\n") + "\n")?;
+    }
+    Ok(())
+}
+
+/// A word past the lexicon split as `rules/morphemes.toml` builds one: prefixes, one lexicon word of
+/// three letters or more, suffixes, each joined as written (no spelling change at the seams), the
+/// fewest pieces that do it, at most three of each kind.
+fn giant_pieces(word: &str, lexicon: &dyn Fn(&str) -> bool, table: &[solve::Morpheme]) -> Option<Vec<String>> {
+    fn suffixes(rest: &str, table: &[solve::Morpheme], depth: usize) -> Option<Vec<String>> {
+        if rest.is_empty() {
+            return Some(Vec::new());
+        }
+        if depth == 3 {
+            return None;
+        }
+        let tries = table.iter().filter(|m| !m.prefix && rest.starts_with(m.text.as_str()));
+        tries.filter_map(|m| suffixes(&rest[m.text.len()..], table, depth + 1).map(|mut s| (s.insert(0, m.text.clone()), s).1)).min_by_key(Vec::len)
+    }
+    fn go(rest: &str, lexicon: &dyn Fn(&str) -> bool, table: &[solve::Morpheme], depth: usize) -> Option<Vec<String>> {
+        let mut best: Option<Vec<String>> = None;
+        let mut keep = |found: Vec<String>| {
+            if best.as_ref().is_none_or(|b| found.len() < b.len()) {
+                best = Some(found);
+            }
+        };
+        for end in (3..=rest.len()).rev() {
+            if lexicon(&rest[..end])
+                && let Some(mut tail) = suffixes(&rest[end..], table, 0)
+            {
+                tail.insert(0, rest[..end].to_owned());
+                keep(tail);
+            }
+        }
+        if depth < 3 {
+            for m in table.iter().filter(|m| m.prefix && rest.starts_with(m.text.as_str())) {
+                if let Some(mut tail) = go(&rest[m.text.len()..], lexicon, table, depth + 1) {
+                    tail.insert(0, m.text.clone());
+                    keep(tail);
+                }
+            }
+        }
+        best
+    }
+    go(word, lexicon, table, 0).filter(|p| p.len() > 1)
+}
+
+/// How well the solver reads giant words past its lexicon (one a line in `path`, such as Monkeytype's
+/// `english_450k`) that split as prefixes, a word and suffixes ([`giant_pieces`]), each piece struck
+/// as the rules teach it (the word as `lookup` gives it, a morpheme by its first sounds), every
+/// stroke after the first joined. At most `n` of them.
+fn eval_giant(setup: &Setup, model: &Model, path: &Path, n: usize, misses: Option<&Path>) -> Result<()> {
+    let lexicon = |w: &str| setup.rank.get(w).is_some_and(|&r| r < 100_000) && setup.pron.contains_key(w);
+    let table = solve::morphemes();
+    let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
+    let mut sample: Vec<(String, String, Vec<u32>)> = Vec::new();
+    let mut words = 0;
+    for word in text.lines().map(str::trim).filter(|w| w.len() >= 8 && w.bytes().all(|c| c.is_ascii_lowercase()) && !lexicon(w)) {
+        words += 1;
+        if sample.len() >= n {
+            continue;
+        }
+        let Some(pieces) = giant_pieces(word, &lexicon, &table) else { continue };
+        let outlines: Option<Vec<Vec<Stroke>>> = pieces
+            .iter()
+            .map(|piece| {
+                table.iter().find(|m| m.text == *piece).map_or_else(
+                    || setup.candidates(piece).into_iter().next().and_then(|o| parse_outline(&o)),
+                    |m| setup.rules.outline(piece, &m.sounds[0].split_whitespace().map(str::to_owned).collect::<Vec<_>>()),
+                )
+            })
+            .collect();
+        let Some(outlines) = outlines else { continue };
+        let mut strokes: Vec<Stroke> = outlines.concat();
+        setup.rules.joined(&mut strokes);
+        sample.push((render_outline(&strokes), word.to_owned(), strokes.iter().map(|s| s.0).collect()));
+    }
+    let borrowed: Vec<(&str, &String, Vec<u32>)> = sample.iter().map(|(o, w, r)| (o.as_str(), w, r.clone())).collect();
+    let solved = solve_all(model, &borrowed);
+    let mut all = Tally::default();
+    let mut wrong = Vec::new();
+    for ((outline, word, _), (_, got, answer)) in borrowed.iter().zip(&solved) {
+        let top1 = answer.as_deref().is_some_and(|a| a.to_lowercase() == **word);
+        all.add(top1, got.iter().any(|r| r.text.to_lowercase() == **word));
+        if !top1 {
+            wrong.push(miss_line(outline, word, got));
+        }
+    }
+    println!("giant words past the lexicon ({words} of 8 letters or more), split as prefixes + a word + suffixes and struck piece by piece: {}", all.line());
     if let Some(path) = misses {
         std::fs::write(path, wrong.join("\n") + "\n")?;
     }

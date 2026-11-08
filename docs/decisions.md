@@ -2545,3 +2545,25 @@ blob is read on its own thread from the start, the indexes are built side by sid
 freed at exit. A lookup now takes about 0.13 s (0.16 s when it reads strokes with the solver), with
 the same answers byte for byte on 630 sampled queries. Only `lookup`, `resolve` and their
 aliases use the cache; `--rebuild` and every other command load as before.
+
+**Giant words from morphemes (2026-11-08).** Monkeytype's `english_450k` is mostly words no lexicon
+holds (79.5% have no pronunciation; of its 297,429 words of 8 letters or more, most are a known
+word with prefixes and suffixes on). `rules/morphemes.toml` lists 36 prefixes and 32 suffixes by
+their ARPAbet sounds; the solver puts them in its trie after the words and reads a run as prefixes,
+one word, suffixes. A morpheme costs 4 and joins for 1 (a piece's join is 10), and a word after a
+prefix joins for 1. Measured with the new `solve --giant FILE` (2,000 of those words that split so,
+each piece struck as the rules teach it): top1 10.8% -> 80.8%, top5 52.8% -> 92.0%; backups 88.8%
+unchanged (3,468 -> 3,470 misses), taught outlines 98.5% unchanged, compounds 40.5% -> 40.0%. Wasm
+answers identical to native, 4.0 ms a call. What it took to keep the backups whole, each found in
+their misses (`morphemes_go_only_where_they_build_a_word`):
+- every consonant of a morpheme struck, an unstressed vowel droppable but not the only one (`UD`
+  was *hood*, *toolshed* was *tools* + *hood*); keeping a plural's last vowel too cost 4.6 points of
+  giant words, since the rules fold it (`TPHUSZ` *-nesses*), and was dropped;
+- no morpheme on a word under 4 letters (*a* + *less*, *are* + *ity*), no suffix chord after a
+  morpheme or suffix morpheme after a chord (*wretched* + *ness* + *s*, *micro* + *en*);
+- a reading built of morphemes that spells no lexicon word pays 4 (0: 84.2% giant but 29 more
+  backup misses; 6: 76.5%), so *goodness* beats *goodnesses*;
+- the beam never walks into a morpheme that could not follow the piece before (each trie node
+  knows whether a word, prefix or suffix ends below it): without that, suffix paths after *the*
+  crowded *thinking* out of a four-stroke run. A morpheme's share of the per-node lookahead is
+  floored at 8 (6 lost *thinking* again; 12 cut giant words to 22%).
