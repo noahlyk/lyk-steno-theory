@@ -41,6 +41,7 @@
     "**A vowel and the consonant after it together** where the rules have that chord (`AR`, `OPBG`, `AEUR`), and a vowel whose own chord reaches into the right hand (`UR` is the ER of *turn*, `EUR` the *ir* of *bird*). A vowel key alone never stands for such a vowel.",
     "**A prefix chord, on a run's first stroke only**: the keys of a prefix entry of `rules/plover.toml` read as the prefix's sounds before the rest of the onset (`KP` is *ex-*: `KPEL` *excel*, `KPOT/+EUBG` *exotic*; also `STK` *dis-*, `TPHR` *inter-*, `TKPHR` *under-*, `SR` *over-*, `SPH` *mis-*, `TPH` *un-*). Costs 1. The keys keep their plain reading too.",
     "**The star** as part of a chord (`*T` is TH) or, when nothing claims it, as the homophone marker, which writes no sound.",
+    "**A stroke of the star alone (`+*`) that ends a run steps one word down**: the run without it reads as its best word, and each `+*` after it takes the next one. `TP/+EUT` is *fight*, `TP/+EUT/+*` *fit*; `*T/+U/+-PL` is *them*, `+*` *thumb*, a second `+*` *time*. A `+*` inside a run is the marker: it costs 1 and reads as nothing.",
     "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*)."
    ],
    "ordered": false

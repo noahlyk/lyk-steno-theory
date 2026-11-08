@@ -846,6 +846,20 @@ mod tests {
     }
 
     #[test]
+    fn each_star_stroke_ending_a_run_steps_one_word_down() {
+        // The star ladder's marker: the word after the one the run reads as, never `-F` *of*
+        for (outline, word) in [
+            ("TP/+EUT", "fight"),
+            ("TP/+EUT/+*", "fit"),
+            ("*T/+U/+-PL", "them"),
+            ("*T/+U/+-PL/+*", "thumb"),
+            ("*T/+U/+-PL/+*/+*", "time"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
     fn a_known_outline_goes_on_into_a_longer_word_spelled_from_it() {
         // *liquid* says IH where *liquidation* says AH: the letters, not the sounds, line them up
         assert_eq!(model().answer("KWEULD/+ARB/+UPB").as_deref(), Some("liquidation"));

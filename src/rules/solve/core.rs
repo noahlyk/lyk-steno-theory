@@ -61,6 +61,8 @@ pub const SLIP: u32 = 5;
 /// 1: every stroke of a run must match at least one sound of the word it is read into (or be a
 /// suffix chord or a known outline), never be explained away as sounds the word does not have.
 pub const MUST_USE: u32 = 1;
+/// 1: each `+*` ending a run steps one reading down; 0: it is only a marker, read as nothing.
+pub const STAR_NEXT: u32 = 1;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
 /// `+EUPBG`: *canceling*).
 pub const STEM_ENTER: u32 = 1;
@@ -184,6 +186,7 @@ pub struct Costs {
     pub prefix: u32,
     pub stem_enter: u32,
     pub must_use: u32,
+    pub star_next: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -212,6 +215,7 @@ impl Costs {
             prefix: tuned("PREFIX", PREFIX),
             stem_enter: tuned("STEM_ENTER", STEM_ENTER),
             must_use: tuned("MUST_USE", MUST_USE),
+            star_next: tuned("STAR_NEXT", STAR_NEXT),
         }
     }
 }
@@ -932,6 +936,14 @@ impl Model {
         if k == 0 {
             return Vec::new();
         }
+        // Each `+*` that ends the run steps one reading down: the next word that reads the same
+        let stars = run.iter().skip(1).rev().take_while(|&&s| s & !JOIN == STAR).count();
+        if stars > 0 && self.c.star_next > 0 {
+            let mut out = self.solve_with(sc, &run[..k - stars], keep + stars);
+            out.drain(..stars.min(out.len().saturating_sub(1)));
+            out.truncate(keep);
+            return out;
+        }
         let mut arena: Vec<(u32, Piece)> = Vec::new();
         let mut pending: Vec<Vec<St>> = vec![Vec::new(); k + 1];
         let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK, used: true }], true);
@@ -946,6 +958,15 @@ impl Model {
                 }
             }
             let hard = i < hard_until;
+            // A stroke of the star alone is the star ladder's marker (`+*`): it only tells a word
+            // from one that sounds the same, so it is used, at a marker's cost, and reads as nothing
+            if i > 0 && run[i] & !JOIN == STAR {
+                let mut next: Vec<St> = states.iter().map(|s| St { cost: s.cost + self.c.marker, ..*s }).collect();
+                next.append(&mut pending[i + 1]);
+                self.keep_ends(&arena, &mut next);
+                states = self.settle(sc, &next, true);
+                continue;
+            }
             // Exact pieces that start here, from the positions that just finished a piece
             let roots: Vec<St> = states.iter().filter(|s| s.node == 0).copied().collect();
             for root in &roots {
