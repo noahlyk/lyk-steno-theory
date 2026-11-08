@@ -147,6 +147,8 @@ function dropSilentE(stem, nextStartsWithVowel) {
 /** What a reserved entry such as `{.}` or `{^ing^}` does to the text around it. */
 function reserved(value) {
   const tokens = [...value.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]);
+  // `*` itself: undo (Keymux `{:undo_or:...}`, or plain `=undo`); it types nothing here
+  if (value === '=undo' || tokens.some((t) => /^:undo_or\b/.test(t))) return { kind: 'command', text: '⟨undo⟩' };
   if (!tokens.length) return { kind: 'word', text: value };
   if (tokens.some((t) => t.startsWith('#'))) return { kind: 'command', text: `⟨${tokens.find((t) => t.startsWith('#')).slice(1)}⟩` };
   let text = '';

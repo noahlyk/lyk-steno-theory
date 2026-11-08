@@ -26,6 +26,8 @@ expect('ED -D are two words', engine.translate([...strokes('ED'), ...strokes('-D
 // no entry for the run: the stem and the ending still compose, with the silent e dropped
 expect('have + ing', say('SR/+-G'), 'having');
 expect('and + er', say('SKP/+-R'), 'ander');
+// the lone star is the smart undo, a command that types nothing
+expect('* is a command', engine.translate(strokes('*')).text, '⟨undo⟩');
 // a stroke nothing reads
 expect('empty', engine.translate([]).text, '');
 
@@ -54,6 +56,7 @@ expect('prefix: wrong', engine.prefixOf('ended', strokes('KAT')), false);
 
 // what an outline is defined as, in Plover's syntax where there is one
 const def = (o) => engine.define(strokes(o));
+expect('* defined as undo_or', def('*').text, '{:undo_or:Control_L(BackSpace)}');
 expect('+-D is {^ed}', def('+-D').text, '{^ed}');
 expect('+-G is {^ing}', def('+-G').text, '{^ing}');
 expect('-FP is {.}', def('-FP').text, '{.}');

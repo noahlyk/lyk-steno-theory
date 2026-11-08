@@ -79,6 +79,8 @@
 "PHRO*TZ": "{:transparent}{:tape:clear}",
 "PHRO*B": "{:transparent}{:keyboard:toggle}",
 "R*EUD": "{:redo}",
+"*": "{:undo_or:Control_L(BackSpace)}",
+"TK*UPS": "=undo",
 "TK*UP": "{:undo_word}",
 "TKPWA*EPB": "{:again}",
 "SWA*P": "{:swap}",

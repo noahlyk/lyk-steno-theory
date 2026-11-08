@@ -298,6 +298,8 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     for (outline, value) in [
         ("R*EUD", "{:redo}"),
         ("TK*UP", "{:undo_word}"),
+        ("*", "{:undo_or:Control_L(BackSpace)}"),
+        ("TK*UPS", "=undo"),
         ("TKPWA*EPB", "{:again}"),
         ("SWA*P", "{:swap}"),
     ] {

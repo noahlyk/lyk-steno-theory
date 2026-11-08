@@ -2359,3 +2359,13 @@ goes 5.637 -> 5.658. `Rules::resolve` stays for `resolve`/`lookup`/`explain` and
 now deletes an old `05-lyk-orthographic-fallback.rs` from the keymux folder. Consequence for
 keymux: the plugin's `joins` export is what told keymux that `+` strokes belong to one word, so a
 config without it treats each stroke as its own word.
+
+**`*` is the smart undo (2026-11-08).** "In our theory, take over the basic `*` undo." The lone `*`
+was never in `rules/reserved/commands.json`: Keymux (like Plover) supplies undo for an unmapped
+`*`. It is now defined as `{:undo_or:Control_L(BackSpace)}` (Keymux 137459d): it undoes the last
+real stroke and, at a barrier or with nothing to undo, sends Ctrl+Backspace. Same fallback as the
+unmapped `*`, but now explicit and the one line to edit to change it. Plain `=undo` kept on
+`TK*UPS` (beside `TK*UP`, undo word; free of every word, backup and phrase outline and of any
+multi-stroke outline), so there is a stroke for the old behaviour. Plain Plover raises `KeyError`
+on `undo_or`, so `*` there needs the `"*": "=undo"` workaround in the Reference. The site engine
+reads both as an undo command.
