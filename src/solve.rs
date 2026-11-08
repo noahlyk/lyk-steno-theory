@@ -25,13 +25,15 @@ pub struct Options<'a> {
     pub answers: Option<&'a Path>,
     /// Test against the outlines the rules teach for this many of the commonest words
     pub taught: Option<usize>,
+    /// Test against compounds past the lexicon struck as two words, at most this many
+    pub compounds: Option<usize>,
 }
 
 /// The model `build` would ship, from the dictionary already in `dir`.
 pub fn model(setup: &Setup, dir: &Path, common: usize) -> Result<(Model, usize)> {
     let entries = crate::built::load(dir).with_context(|| format!("reading the dictionary in {}", dir.display()))?;
     let stems = solve::stems(&entries);
-    let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, common };
+    let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common };
     let blob = solve::pack(&setup.rules, &lexicon, &stems);
     let size = blob.len();
     Ok((Model::load(&blob).context("the packed blob does not load")?, size))
@@ -40,7 +42,7 @@ pub fn model(setup: &Setup, dir: &Path, common: usize) -> Result<(Model, usize)>
 pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(to) = options.plugin {
         let entries = crate::built::load(options.dir)?;
-        let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, common: options.common };
+        let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common: options.common };
         std::fs::create_dir_all(to)?;
         let size = solve::write_plugin(&setup.rules, &lexicon, &entries, to)?;
         println!("wrote {} and {} ({:.1} MB) to {}", solve::plugin::SOURCE_FILE, solve::plugin::BLOB_FILE, size.to_f64() / 1e6, to.display());
@@ -85,8 +87,47 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(tape) = options.tape {
         eval_tape(&model, tape)?;
     }
+    if let Some(n) = options.compounds {
+        eval_compounds(setup, &model, n, options.misses)?;
+    }
     if let Some(n) = options.taught {
         eval_taught(setup, &model, options.dir, n, options.misses)?;
+    }
+    Ok(())
+}
+
+/// How well the solver reads compounds past its lexicon (`Setup::spellings`) struck as two words:
+/// each word that splits into two lexicon words of three letters or more, both pieces struck as
+/// the rules teach them (`HRAOBG/+UP` *lookup*). At most `n` of them.
+fn eval_compounds(setup: &Setup, model: &Model, n: usize, misses: Option<&Path>) -> Result<()> {
+    let lexicon = |w: &str| setup.rank.get(w).is_some_and(|&r| r < 100_000) && setup.pron.contains_key(w);
+    let first_outline = |w: &str| setup.candidates(w).into_iter().next();
+    let mut sample: Vec<(String, &String, Vec<u32>)> = Vec::new();
+    for (word, _) in &setup.spellings {
+        if sample.len() >= n || !word.bytes().all(|c| c.is_ascii_lowercase()) {
+            continue;
+        }
+        let split = (3..word.len().saturating_sub(2)).find(|&at| lexicon(&word[..at]) && lexicon(&word[at..]));
+        let Some(at) = split else { continue };
+        let (Some(a), Some(b)) = (first_outline(&word[..at]), first_outline(&word[at..])) else { continue };
+        let outline = format!("{a}/+{b}");
+        let Some(strokes) = parse_outline(&outline) else { continue };
+        sample.push((outline, word, strokes.iter().map(|s| s.0).collect()));
+    }
+    let borrowed: Vec<(&str, &String, Vec<u32>)> = sample.iter().map(|(o, w, r)| (o.as_str(), *w, r.clone())).collect();
+    let solved = solve_all(model, &borrowed);
+    let mut all = Tally::default();
+    let mut wrong = Vec::new();
+    for ((outline, word, _), (_, got, _)) in borrowed.iter().zip(&solved) {
+        let top1 = got.first().is_some_and(|r| r.text.to_lowercase() == **word);
+        all.add(top1, got.iter().any(|r| r.text.to_lowercase() == **word));
+        if !top1 {
+            wrong.push(miss_line(outline, word, got));
+        }
+    }
+    println!("compounds past the lexicon, struck as two words: {}", all.line());
+    if let Some(path) = misses {
+        std::fs::write(path, wrong.join("\n") + "\n")?;
     }
     Ok(())
 }

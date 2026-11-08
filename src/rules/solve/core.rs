@@ -61,6 +61,9 @@ pub const SLIP: u32 = 5;
 /// 1: every stroke of a run must match at least one sound of the word it is read into (or be a
 /// suffix chord or a known outline), never be explained away as sounds the word does not have.
 pub const MUST_USE: u32 = 1;
+/// Joining two pieces that together spell a real word past the lexicon (*look* + *up*, *lookup*), in
+/// place of [`PIECE`].
+pub const COMPOUND_PIECE: u32 = 2;
 /// 1: each `+*` ending a run steps one reading down; 0: it is only a marker, read as nothing.
 pub const STAR_NEXT: u32 = 1;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
@@ -193,6 +196,7 @@ pub struct Costs {
     pub prefix: u32,
     pub stem_enter: u32,
     pub must_use: u32,
+    pub compound_piece: u32,
     pub star_next: u32,
 }
 
@@ -222,6 +226,7 @@ impl Costs {
             prefix: tuned("PREFIX", PREFIX),
             stem_enter: tuned("STEM_ENTER", STEM_ENTER),
             must_use: tuned("MUST_USE", MUST_USE),
+            compound_piece: tuned("COMPOUND_PIECE", COMPOUND_PIECE),
             star_next: tuned("STAR_NEXT", STAR_NEXT),
         }
     }
@@ -294,6 +299,8 @@ pub struct Reading {
     pub composed: bool,
     /// One known outline that is the whole run: the word it is, struck as taught
     pub exact: bool,
+    /// How many word pieces after the first were joined on, each at [`PIECE`]
+    pub joins: u32,
 }
 
 pub struct Model {
@@ -339,6 +346,8 @@ pub struct Model {
     word_cost: Vec<u32>,
     /// Every word's text, to tell a reading of several pieces that spells a real word from one that does not
     known: HashMap<String, u32>,
+    /// Real words past the lexicon, as `(spelling_hash, rank)` sorted: what pieces may spell
+    spellings: Vec<(u64, u32)>,
     /// Each trie node's edges are `edges[edge_start[n]..edge_start[n + 1]]`, its words
     /// `ends[end_start[n]..end_start[n + 1]]`
     edge_start: Vec<u32>,
@@ -387,7 +396,22 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
+
+/// A spelling's key in the table of real words past the lexicon (FNV-1a, 64 bits): the packer and
+/// the decoder hash alike, natively and in wasm.
+#[must_use]
+pub fn spelling_hash(text: &str) -> u64 {
+    text.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
+}
+
+impl Model {
+    /// A real word past the lexicon's rank, when `text` is one (the table of spellings).
+    fn spelled_rank(&self, text: &str) -> Option<u32> {
+        let hash = spelling_hash(text);
+        self.spellings.binary_search_by_key(&hash, |e| e.0).ok().map(|at| self.spellings[at].1)
+    }
+}
 
 fn rank_cost(rank: u32) -> u32 {
     let log2 = f64::from(rank + 2).log2();
@@ -487,6 +511,8 @@ impl Model {
             word_cost.push(rank_cost(r.u32()));
         }
         let n = r.u32() as usize;
+        let spellings: Vec<(u64, u32)> = (0..n).map(|_| (r.u64(), r.u32())).collect();
+        let n = r.u32() as usize;
         let edge_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
         let end_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
         let m = r.u32() as usize;
@@ -537,6 +563,7 @@ impl Model {
             r_sound,
             er_sound,
             known: words.iter().enumerate().map(|(i, w)| (w.clone(), i as u32)).collect(),
+            spellings,
             words,
             word_cost,
             edge_start,
@@ -1100,7 +1127,17 @@ impl Model {
             if reading.pieces.len() > 1 {
                 match self.known.get(&reading.text.to_lowercase()) {
                     Some(&word) => reading.cost = reading.cost.saturating_sub(reading.rarity) + self.word_cost[word as usize].max(reading.rarity),
-                    None => reading.cost += self.c.nonword,
+                    // Words joined that spell a real word the lexicon lacks: that word, its joins
+                    // cheap. Only words joined to words (*look* + *up*): a stem and suffix chords
+                    // must spell a lexicon word, since the list's long tail holds misspellings
+                    // (*regreting*)
+                    None => match self.spelled_rank(&reading.text.to_lowercase()).filter(|_| reading.joins > 0) {
+                        Some(rank) => {
+                            let refund = reading.joins * self.c.piece.saturating_sub(self.c.compound_piece);
+                            reading.cost = (reading.cost.saturating_sub(reading.rarity) + rank_cost(rank).max(reading.rarity)).saturating_sub(refund);
+                        }
+                        None => reading.cost += self.c.nonword,
+                    },
                 }
             }
             match out.iter_mut().find(|r| r.text == reading.text) {
@@ -1133,7 +1170,8 @@ impl Model {
             .filter(|s| s.node == 0 && s.back != NO_BACK)
             .map(|&s| {
                 let r = self.reading(arena, s);
-                let nonsense = r.pieces.len() > 1 && !self.known.contains_key(&r.text.to_lowercase());
+                let text = r.text.to_lowercase();
+                let nonsense = r.pieces.len() > 1 && !self.known.contains_key(&text) && (r.joins == 0 || self.spelled_rank(&text).is_none());
                 (s.cost + if nonsense { self.c.nonword } else { 0 }, s)
             })
             .collect();
@@ -1181,7 +1219,9 @@ impl Model {
             && matches!(pieces[0].0, Piece::Stem(_))
             && pieces[1..].iter().all(|(p, _)| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
         let exact = pieces.len() == 1 && matches!(pieces[0].0, Piece::Stem(_));
-        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed, exact }
+        // Each word piece after the first was charged a piece's join
+        let joins = pieces.iter().skip(1).filter(|(p, _)| !matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_))).count() as u32;
+        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed, exact, joins }
     }
 
     // --- What the plugin answers ---

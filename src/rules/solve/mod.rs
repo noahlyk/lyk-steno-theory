@@ -68,6 +68,9 @@ const SPELLED_FINAL_E: u8 = 2;
 const STEM_START_LETTERS: usize = 3;
 /// The most places in the trie one known outline goes on from: its own sounds' ends first.
 const STEM_NODES: usize = 8;
+/// Real words pieces may spell past the lexicon: ranked below this, and this many letters or more.
+const SPELLINGS: usize = 250_000;
+const SPELLING_LETTERS: usize = 4;
 
 /// A packing cost, or (natively, while tuning) `LYK_SOLVE_<NAME>` overriding it.
 fn tuned_pack(name: &str, default: u8) -> u8 {
@@ -326,6 +329,8 @@ impl Blob {
 pub struct Lexicon<'a> {
     pub pron: &'a Pronunciations,
     pub rank: &'a HashMap<String, usize>,
+    /// Real spellings past `rank`, with their line in the frequency list (`Setup::spellings`)
+    pub spellings: &'a [(String, usize)],
     pub common: usize,
 }
 
@@ -590,6 +595,29 @@ fn with_taught(rules: &Rules, lexicon: &Lexicon, words: &[(&String, usize)], ste
     out
 }
 
+/// Real words past the lexicon that pieces may spell (*look* + *up*, *lookup*): every word of
+/// [`SPELLING_LETTERS`] letters or more ranked below [`SPELLINGS`] in the frequency list, as a
+/// sorted table of [`core::spelling_hash`]es with their ranks. No sounds: only what a run of pieces
+/// spells is checked against it.
+fn write_spellings(b: &mut Blob, lexicon: &Lexicon, lexicon_words: &HashMap<&str, u32>) {
+    let mut table: Vec<(u64, u32)> = lexicon
+        .rank
+        .iter()
+        .chain(lexicon.spellings.iter().map(|(w, r)| (w, r)))
+        .filter(|(w, r)| {
+            **r < SPELLINGS && w.len() >= SPELLING_LETTERS && w.bytes().all(|c| c.is_ascii_lowercase()) && !lexicon_words.contains_key(w.as_str())
+        })
+        .map(|(w, r)| (core::spelling_hash(w), index(*r)))
+        .collect();
+    table.sort_unstable();
+    table.dedup_by_key(|e| e.0);
+    b.len(table.len());
+    for (hash, rank) in table {
+        b.u64(hash);
+        b.u32(rank);
+    }
+}
+
 /// Everything [`Model::load`] reads, packed.
 #[must_use]
 pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
@@ -623,6 +651,7 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.str(word);
         b.u32(index(*rank));
     }
+    write_spellings(&mut b, lexicon, &ids);
     write_trie(&mut b, &trie);
     b.0
 }
@@ -832,7 +861,7 @@ mod tests {
     fn model() -> &'static Model {
         static MODEL: std::sync::LazyLock<Model> = std::sync::LazyLock::new(|| {
             let setup = crate::dictionary_fixture::setup();
-            let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, common: 100_000 };
+            let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common: 100_000 };
             let blob = pack(&setup.rules, &lexicon, &stems(&crate::dictionary_fixture::generated().entries));
             Model::load(&blob).expect("the packed blob loads")
         });
@@ -910,6 +939,15 @@ mod tests {
     fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn pieces_that_spell_a_real_word_past_the_lexicon_are_that_word() {
+        // *lookup* is rank 121,405: no pronunciation in the lexicon, but a real spelling, so
+        // *look* + *up* is *lookup*, not *lockup* or *loop*
+        for outline in ["HRAOBG/+UP", "HRAOBG/+-P"] {
+            assert_eq!(model().answer(outline).as_deref(), Some("lookup"), "{outline}");
         }
     }
 

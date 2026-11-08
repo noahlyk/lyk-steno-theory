@@ -120,7 +120,13 @@ pub struct Setup {
     /// to rank which bigrams are worth attempting to merge into a single stroke - see
     /// `site/reference/phrases.json`.
     pub bigrams: HashMap<(String, String), u64>,
+    /// The frequency list's rows past those ranked here, down to [`SPELLINGS`], with their line:
+    /// real spellings, unranked and unpronounced, that the solver lets pieces spell (*lookup*)
+    pub spellings: Vec<(String, usize)>,
 }
+
+/// How far down the frequency list real spellings are kept for the solver (see `Setup::spellings`).
+pub const SPELLINGS: usize = 250_000;
 
 impl Setup {
     /// `common` bounds how much of the frequency list is worth ranking at all: `None` for every
@@ -143,7 +149,7 @@ impl Setup {
         // Six independent files, none needed before another: load them on their own threads
         // instead of one after another.
         let (frequency, pron, mfa, wikipron, gold, bigrams) = std::thread::scope(|scope| {
-            let frequency = scope.spawn(|| load_frequency_bounded(&freq_path, freq_limit));
+            let frequency = scope.spawn(|| load_frequency_bounded(&freq_path, freq_limit.max(SPELLINGS)));
             let pron = scope.spawn(|| load_cmudict(&pron_path));
             let mfa = scope.spawn(|| load_mfa(&mfa_path));
             let wikipron = scope.spawn(|| load_wikipron(&wikipron_path));
@@ -169,6 +175,9 @@ impl Setup {
         }
         let gold = gold?;
         let mut spoken = frequency?;
+        let spellings: Vec<(String, usize)> =
+            spoken.iter().enumerate().skip(freq_limit).map(|(line, (w, _))| (w.clone(), line)).collect();
+        spoken.truncate(freq_limit);
         // See `CONTRACTIONS`: a word CMUdict has a real pronunciation for but the frequency
         // corpus only counted under its apostrophe-stripped spelling. It is listed right after it.
         let listed: std::collections::HashSet<String> = spoken.iter().map(|(w, _)| w.clone()).collect();
@@ -195,6 +204,7 @@ impl Setup {
             rank,
             count,
             bigrams,
+            spellings,
         })
     }
 
