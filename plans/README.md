@@ -17,6 +17,7 @@ is a new scoping doc, not yet reviewed or built.**
 | [06-phrase-briefs.md](06-phrase-briefs.md) | Scope (not build) a small, lyk-native phrase-brief system — one stroke for a pronoun+verb fragment | new subsystem, TBD files | **scoping doc only**, awaiting review before any build work |
 | [07-next-phase.md](07-next-phase.md) | The plan after the family/solver work: keymux tape+undo fix, multi-file output and per-file hot reload, frequency, `+` redesign, phrasing, housekeeping | `src/`, `rules/`, `../keymux/` | **in progress**: 1, 2, 3, 4, 6, 7 done; 5 designed (see 08) |
 | [08-phrasing-grammar.md](08-phrasing-grammar.md) | Starter + auxiliary + verb in one stroke: the design, measured, with a prototype to type | `tools/phrasing_prototype.py`; later `rules/grammar.toml`, `src/phrases/` | **prototype for typing**, built into the generator once it survives typing |
+| [09-wasm-fallback-resolver.md](09-wasm-fallback-resolver.md) | A keymux WASM plugin that decodes a missed `+`-run into the word it meant (lexicon-tree beam search over the strokes' sounds), so the 3.86M-entry backups file can be thinned | `src/rules/solve/`, `src/rules/plugin.rs`, `site/reference/fallback.json` | **planned**, on branch `experiment/wasm-fallback-resolver`; gated on its own eval before anything reaches `main` |
 
 ## Order, if running them one at a time
 
