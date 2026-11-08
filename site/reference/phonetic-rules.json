@@ -23,7 +23,7 @@
   },
   {
    "t": "p",
-   "x": "The same tables are read backwards to turn a stroke back into sounds when a stroke is not in the dictionary: see [the stroke read-back](#/ref/fallback)."
+   "x": "The same tables are read backwards to turn a stroke back into sounds when a stroke is not in the dictionary, and that is how a miss still types its word: see [the solver](#/ref/fallback)."
   },
   {
    "t": "h",

@@ -3,6 +3,7 @@
 //! labelled test set millions strong) and of the tape's misses.
 
 use crate::analysis::Setup;
+use crate::num::ToF64;
 use crate::rules::solve::{self, Lexicon, Model};
 use crate::stroke::{Stroke, parse_outline, render_outline};
 use anyhow::{Context, Result};
@@ -40,7 +41,7 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
         let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, common: options.common };
         std::fs::create_dir_all(to)?;
         let size = solve::write_plugin(&setup.rules, &lexicon, &entries, to)?;
-        println!("wrote {} and {} ({:.1} MB) to {}", solve::plugin::SOURCE_FILE, solve::plugin::BLOB_FILE, size as f64 / 1e6, to.display());
+        println!("wrote {} and {} ({:.1} MB) to {}", solve::plugin::SOURCE_FILE, solve::plugin::BLOB_FILE, size.to_f64() / 1e6, to.display());
         return Ok(());
     }
     let started = Instant::now();
@@ -50,7 +51,7 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
         model.word_count(),
         model.node_count(),
         model.edge_count(),
-        size as f64 / 1e6,
+        size.to_f64() / 1e6,
         started.elapsed()
     );
     if let Some(path) = options.answers {
@@ -104,7 +105,7 @@ impl Tally {
 }
 
 fn pct(a: usize, b: usize) -> f64 {
-    100.0 * a as f64 / b.max(1) as f64
+    100.0 * a.to_f64() / b.max(1).to_f64()
 }
 
 /// Every `step`th backup: does the solver read its outline as its word?
@@ -150,7 +151,7 @@ fn eval_backups(model: &Model, dir: &Path, step: usize, misses: Option<&Path>, r
         all.add(top1, top5);
         by_len[run.len().min(8)].add(top1, top5);
         let r = rank.get(word).copied().unwrap_or(usize::MAX);
-        let weight = 1.0 / (r.min(1_000_000) as f64 + 100.0);
+        let weight = 1.0 / (r.min(1_000_000).to_f64() + 100.0);
         weighted.0 += weight;
         if top1 {
             weighted.1 += weight;
@@ -172,7 +173,7 @@ fn eval_backups(model: &Model, dir: &Path, step: usize, misses: Option<&Path>, r
         }
     }
     times.sort();
-    let at = |q: f64| times.get(((times.len() as f64 - 1.0) * q) as usize).copied().unwrap_or_default();
+    let at = |percent: usize| times.get(times.len().saturating_sub(1) * percent / 100).copied().unwrap_or_default();
     let total: Duration = times.iter().sum();
     println!("backups, every {step}th:     {}   ({skipped} shadowed by another file, skipped)", all.line());
     println!("  weighted by use (1/rank):  top1 {:>5.1}%", 100.0 * weighted.1 / weighted.0.max(1e-12));
@@ -189,9 +190,9 @@ fn eval_backups(model: &Model, dir: &Path, step: usize, misses: Option<&Path>, r
     );
     println!(
         "time per run: mean {:.0?}  p50 {:.0?}  p99 {:.0?}  max {:.0?}",
-        total / times.len().max(1) as u32,
-        at(0.5),
-        at(0.99),
+        total / u32::try_from(times.len().max(1)).unwrap_or(u32::MAX),
+        at(50),
+        at(99),
         times.last().copied().unwrap_or_default()
     );
     for line in wrong.iter().take(30) {
@@ -222,12 +223,11 @@ fn eval_tape(model: &Model, tape: &Path) -> Result<()> {
         }
         let then = lines[i + 1..]
             .iter()
-            .filter_map(|l| {
+            .find_map(|l| {
                 let mut p = l.split_whitespace();
                 let (_, s, rest) = (p.next()?, p.next()?, p.collect::<Vec<_>>().join(" "));
                 (s != "*").then(|| format!("{s} {rest}"))
             })
-            .next()
             .unwrap_or_default();
         let answer = model.answer(stroke).unwrap_or_else(|| "-".into());
         println!("  {stroke:<12} -> {answer:<16} then {then}");

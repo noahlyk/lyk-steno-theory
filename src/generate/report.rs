@@ -37,7 +37,7 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     println!(
         "  {:<24} the solver plugin, with its {:.1} MB lexicon in {}",
         crate::rules::solve::plugin::SOURCE_FILE,
-        size as f64 / 1e6,
+        crate::num::ToF64::to_f64(size) / 1e6,
         crate::rules::solve::plugin::BLOB_FILE
     );
     if !generated.stranded.is_empty() {

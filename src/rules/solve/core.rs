@@ -251,7 +251,6 @@ pub struct Reading {
 pub struct Model {
     sound_names: Vec<String>,
     sound_spelling: Vec<String>,
-    vowel_sound: u64,
     loose: u64,
     confusable: Vec<u64>,
     onset: Vec<(u32, Vec<u8>)>,
@@ -299,7 +298,7 @@ struct Reader<'a> {
 }
 
 impl Reader<'_> {
-    fn u8(&mut self) -> u8 {
+    const fn u8(&mut self) -> u8 {
         self.at += 1;
         self.b[self.at - 1]
     }
@@ -351,13 +350,11 @@ impl Model {
         let n = r.u16() as usize;
         let mut sound_names = Vec::with_capacity(n);
         let mut sound_spelling = Vec::with_capacity(n);
-        let mut vowel_sound = 0u64;
-        for i in 0..n {
+        for _ in 0..n {
             sound_names.push(r.str());
             sound_spelling.push(r.str());
-            if r.u8() != 0 {
-                vowel_sound |= 1 << i;
-            }
+            // Whether it is a vowel: the trie's edges say so already
+            r.u8();
         }
         let loose = r.u64();
         let r_sound = r.u8();
@@ -449,7 +446,6 @@ impl Model {
         Some(Self {
             sound_names,
             sound_spelling,
-            vowel_sound,
             loose,
             confusable,
             onset,
@@ -483,17 +479,14 @@ impl Model {
         })
     }
 
-    pub fn word_count(&self) -> usize {
+    pub const fn word_count(&self) -> usize {
         self.words.len()
     }
-    pub fn node_count(&self) -> usize {
+    pub const fn node_count(&self) -> usize {
         self.nodes.len()
     }
-    pub fn edge_count(&self) -> usize {
+    pub const fn edge_count(&self) -> usize {
         self.edges.len()
-    }
-    pub fn sound_name(&self, id: u8) -> &str {
-        &self.sound_names[id as usize]
     }
 
     // --- Reading strokes ---
@@ -673,12 +666,12 @@ impl Model {
         }
     }
 
-    fn vowel_cost(&self, sound: u8, letters: u8, e: &Edge) -> u32 {
+    const fn vowel_cost(&self, sound: u8, letters: u8, e: &Edge) -> u32 {
         if e.mask & (1 << sound) == 0 {
             self.c.swap_vowel
         } else if letters == 0 {
             0
-        } else if if letters.count_ones() == 1 { letters == e.letters } else { letters & !e.letters == 0 } {
+        } else if if letters.is_power_of_two() { letters == e.letters } else { letters & !e.letters == 0 } {
             // A single vowel letter only reads a vowel the word spells with that letter alone, as
             // the generator's own letter reading does (`said`'s `ai` is not an `i`)
             self.c.spelled_vowel
@@ -831,8 +824,9 @@ impl Model {
     /// first, at most `keep`.
     pub fn solve(&self, run: &[u32], keep: usize) -> Vec<Reading> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let sc = guard.get_or_insert_with(|| Scratch::new(self.nodes.len()));
-        self.solve_with(sc, run, keep)
+        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.nodes.len())), run, keep);
+        drop(guard);
+        readings
     }
 
     /// Working memory for [`Self::solve_with`], for a caller solving on several threads at once.
@@ -862,11 +856,12 @@ impl Model {
                         arena.push((root.back, Piece::Suffix(at as u32)));
                         pending[i + 1].push(St { node: 0, cost: root.cost + self.c.suffix, back: (arena.len() - 1) as u32 });
                     }
-                    if i + 1 < k {
-                        if let Some(at) = self.two_suffixes.iter().position(|(a, b, _)| *a == stroke && *b == run[i + 1]) {
-                            arena.push((root.back, Piece::TwoSuffix(at as u32)));
-                            pending[i + 2].push(St { node: 0, cost: root.cost + self.c.suffix, back: (arena.len() - 1) as u32 });
-                        }
+                    if let Some(at) = run
+                        .get(i + 1)
+                        .and_then(|&next| self.two_suffixes.iter().position(|(a, b, _)| *a == stroke && *b == next))
+                    {
+                        arena.push((root.back, Piece::TwoSuffix(at as u32)));
+                        pending[i + 2].push(St { node: 0, cost: root.cost + self.c.suffix, back: (arena.len() - 1) as u32 });
                     }
                 }
                 let mut key: Vec<u32> = Vec::new();
@@ -963,8 +958,9 @@ impl Model {
     /// keys when no reading is close enough.
     pub fn answer(&self, outline: &str) -> Option<String> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let sc = guard.get_or_insert_with(|| Scratch::new(self.nodes.len()));
-        self.answer_with(sc, outline)
+        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.nodes.len())), outline);
+        drop(guard);
+        text
     }
 
     /// [`Self::answer`] with the caller's own working memory.
@@ -994,11 +990,9 @@ impl Model {
     pub fn read_back(&self, run: &[u32]) -> Option<String> {
         let mut text = String::new();
         for (i, &stroke) in run.iter().enumerate() {
-            if i > 0 && stroke & JOIN != 0 {
-                if let Some((_, suffix)) = self.suffixes.iter().find(|(s, _)| *s == stroke) {
-                    text.push_str(suffix);
-                    continue;
-                }
+            if let Some((_, suffix)) = self.suffixes.iter().find(|(s, _)| i > 0 && stroke & JOIN != 0 && *s == stroke) {
+                text.push_str(suffix);
+                continue;
             }
             let (toks, _) = self.readings(stroke).into_iter().next()?;
             for tok in toks {
@@ -1029,19 +1023,15 @@ impl Model {
             })
             .collect()
     }
-
-    pub fn is_vowel(&self, id: u8) -> bool {
-        self.vowel_sound & (1 << id) != 0
-    }
 }
 
 /// The four vowel keys (`A O E U`) as a number 0..16.
-fn vowel_index(keys: u32) -> usize {
+const fn vowel_index(keys: u32) -> usize {
     (((keys >> 8) & 3) | (((keys >> 11) & 3) << 2)) as usize
 }
 
 /// A chord's place in key order: its lowest key that is not the star.
-fn place(keys: u32) -> u32 {
+const fn place(keys: u32) -> u32 {
     let k = keys & !STAR;
     if k == 0 { 0 } else { k.trailing_zeros() }
 }
@@ -1062,13 +1052,11 @@ fn join_suffix(text: &mut String, next_vowel: bool, next_i: bool) {
 
 /// One stroke's notation (`KAT`, `-T`, `+AO`, `~S`, `#KOPL`) as its bits.
 pub fn parse_stroke(text: &str) -> Option<u32> {
-    let (mut bits, text) = match text.strip_prefix('+') {
-        Some(rest) => (JOIN, rest),
-        None => match text.strip_prefix('~') {
-            Some(rest) => (SPELL, rest),
-            None => (0, text),
-        },
-    };
+    let (mut bits, text) = text
+        .strip_prefix('+')
+        .map(|rest| (JOIN, rest))
+        .or_else(|| text.strip_prefix('~').map(|rest| (SPELL, rest)))
+        .unwrap_or((0, text));
     let mut cursor = 0usize;
     for c in text.bytes() {
         if c == b'-' {

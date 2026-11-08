@@ -5,6 +5,16 @@
 //! known outlines) into one blob ([`pack`]), and holds the `solve` command's eval. See
 //! `plans/09-wasm-fallback-resolver.md` and `site/reference/fallback.json`.
 
+// The decoder works in `u32` indices and small `u8` sound ids that the packer bounds (a trie of
+// under a million nodes, under 64 sounds), and is spliced into a plugin that may use nothing but
+// `std`: its casts between those widths are deliberate, not a loss.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::too_many_lines
+)]
 pub mod core;
 pub mod plugin;
 
@@ -18,7 +28,7 @@ use crate::generate::{Entry, Origin};
 use crate::stroke::Stroke;
 use std::collections::HashMap;
 
-/// The ARPAbet sounds, vowels first: every sound the lexicon or the chord tables use.
+/// The `ARPAbet` sounds, vowels first: every sound the lexicon or the chord tables use.
 const VOWELS: [&str; 15] = ["AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH", "IY", "OW", "OY", "UH", "UW"];
 const CONSONANTS: [&str; 24] = [
     "B", "CH", "D", "DH", "F", "G", "HH", "JH", "K", "L", "M", "N", "NG", "P", "R", "S", "SH", "T", "TH", "V", "W", "Y", "Z", "ZH",
@@ -98,16 +108,14 @@ fn spellable(sound: &str) -> u8 {
         "AE" => "a",
         "AH" => "aeiou",
         "AO" => "aou",
-        "AW" => "ou",
-        "AY" => "iey",
+        "AW" | "UH" => "ou",
+        "AY" | "IH" => "iey",
         "EH" => "ea",
         "ER" => "eiuoy",
         "EY" => "aeiy",
-        "IH" => "iey",
         "IY" => "eiya",
         "OW" => "oeau",
         "OY" => "oiy",
-        "UH" => "ou",
         "UW" => "oeiu",
         _ => "",
     })
@@ -117,68 +125,65 @@ fn spellable(sound: &str) -> u8 {
 /// vowel no letters could be given to): the word's runs of vowel letters matched to its vowel
 /// sounds in order, a run skipped where it is silent (a final `e` freely).
 fn align(word: &str, sounds: &[String]) -> Vec<u8> {
+    /// A vowel sound left with no letters, a run of letters skipped (not a silent `e`), a sound
+    /// matched to letters that do not usually spell it.
+    const NO_LETTERS: u32 = 3;
+    const SKIP_LETTERS: u32 = 2;
+    const ODD_LETTERS: u32 = 1;
+    const UNREACHED: u32 = u32::MAX / 4;
     let chars: Vec<char> = word.chars().collect();
+    let is_vowel_letter = |at: usize| "aeiou".contains(chars[at]) || (chars[at] == 'y' && at > 0);
+    // Each run of vowel letters, and whether it is a silent final `e`
     let mut groups: Vec<(u8, bool)> = Vec::new();
-    let mut i = 0;
-    while i < chars.len() {
-        let is_v = |j: usize| {
-            let c = chars[j];
-            "aeiou".contains(c) || (c == 'y' && j > 0)
-        };
-        if is_v(i) {
-            let start = i;
-            while i < chars.len() && is_v(i) {
-                i += 1;
+    let mut at = 0;
+    while at < chars.len() {
+        if is_vowel_letter(at) {
+            let start = at;
+            while at < chars.len() && is_vowel_letter(at) {
+                at += 1;
             }
-            let text: String = chars[start..i].iter().collect();
-            let silent_e = text == "e" && i == chars.len() && start > 0;
-            groups.push((letters(&text), silent_e));
+            let text: String = chars[start..at].iter().collect();
+            groups.push((letters(&text), text == "e" && at == chars.len() && start > 0));
         } else {
-            i += 1;
+            at += 1;
         }
     }
     let vowels: Vec<usize> = (0..sounds.len()).filter(|&i| sounds[i].ends_with(|c: char| c.is_ascii_digit())).collect();
-    let (n, m) = (vowels.len(), groups.len());
-    const INF: u32 = u32::MAX / 4;
-    let mut dp = vec![vec![INF; m + 1]; n + 1];
-    dp[0][0] = 0;
-    for a in 0..=n {
-        for b in 0..=m {
-            let here = dp[a][b];
-            if here >= INF {
+    let odd = |sound: usize, group: usize| u32::from(spellable(plain(&sounds[vowels[sound]])) & groups[group].0 == 0) * ODD_LETTERS;
+    // cost[s][g]: the cheapest way to line the first `s` vowel sounds up with the first `g` runs
+    let mut cost = vec![vec![UNREACHED; groups.len() + 1]; vowels.len() + 1];
+    cost[0][0] = 0;
+    for s in 0..=vowels.len() {
+        for g in 0..=groups.len() {
+            let here = cost[s][g];
+            if here >= UNREACHED {
                 continue;
             }
-            if b < m {
-                let skip = if groups[b].1 { 0 } else { 2 };
-                dp[a][b + 1] = dp[a][b + 1].min(here + skip);
+            if g < groups.len() {
+                let skip = if groups[g].1 { 0 } else { SKIP_LETTERS };
+                cost[s][g + 1] = cost[s][g + 1].min(here + skip);
             }
-            if a < n {
-                dp[a + 1][b] = dp[a + 1][b].min(here + 3);
-                if b < m {
-                    let fits = spellable(plain(&sounds[vowels[a]])) & groups[b].0 != 0;
-                    dp[a + 1][b + 1] = dp[a + 1][b + 1].min(here + if fits { 0 } else { 1 });
+            if s < vowels.len() {
+                cost[s + 1][g] = cost[s + 1][g].min(here + NO_LETTERS);
+                if g < groups.len() {
+                    cost[s + 1][g + 1] = cost[s + 1][g + 1].min(here + odd(s, g));
                 }
             }
         }
     }
     let mut out = vec![0u8; sounds.len()];
-    let (mut a, mut b) = (n, m);
-    while a > 0 || b > 0 {
-        let here = dp[a][b];
-        if a > 0 && b > 0 {
-            let fits = spellable(plain(&sounds[vowels[a - 1]])) & groups[b - 1].0 != 0;
-            if dp[a - 1][b - 1] + if fits { 0 } else { 1 } == here {
-                out[vowels[a - 1]] = groups[b - 1].0;
-                a -= 1;
-                b -= 1;
-                continue;
-            }
+    let (mut s, mut g) = (vowels.len(), groups.len());
+    while s > 0 || g > 0 {
+        let here = cost[s][g];
+        if s > 0 && g > 0 && cost[s - 1][g - 1] + odd(s - 1, g - 1) == here {
+            out[vowels[s - 1]] = groups[g - 1].0;
+            s -= 1;
+            g -= 1;
+        } else if s > 0 && cost[s - 1][g] + NO_LETTERS == here {
+            s -= 1;
+        } else {
+            g -= 1;
         }
-        if a > 0 && dp[a - 1][b] + 3 == here {
-            a -= 1;
-            continue;
-        }
-        b -= 1;
     }
     out
 }
@@ -231,15 +236,14 @@ impl Trie {
         }
         let mut at = 0usize;
         for key in path {
-            at = match self.children[at].get(key) {
-                Some(&child) => child as usize,
-                None => {
-                    let child = self.children.len();
-                    self.children.push(HashMap::new());
-                    self.ends.push(Vec::new());
-                    self.children[at].insert(*key, child as u32);
-                    child
-                }
+            at = if let Some(&child) = self.children[at].get(key) {
+                child as usize
+            } else {
+                let child = self.children.len();
+                self.children.push(HashMap::new());
+                self.ends.push(Vec::new());
+                self.children[at].insert(*key, index(child));
+                child
             };
         }
         match self.ends[at].iter_mut().find(|(w, _)| *w == word) {
@@ -304,51 +308,89 @@ pub fn write_plugin(rules: &Rules, lexicon: &Lexicon, entries: &[Entry], dir: &s
     Ok(blob.len())
 }
 
-/// Everything [`Model::load`] reads, packed.
-#[must_use]
-pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
-    let mut sounds = Sounds::new();
-    // Bigger chords first, so the solver's capped search for covers tries them before the
-    // single keys; a chord whose sound depends on a spelling (`T.ed`) costs a little
-    let chords = |table: &[&HashMap<String, Stroke>], sounds: &mut Sounds| -> Vec<(u32, Vec<u8>, u8)> {
-        let mut out: Vec<(u32, Vec<u8>, u8)> = table
+/// A count or position as the `u32` the blob stores it as. Every table here is far below 2^32.
+fn index(n: usize) -> u32 {
+    u32::try_from(n).expect("a solver table fits in u32")
+}
+
+/// The chord tables the decoder reads strokes with, its sounds interned.
+struct Tables {
+    onset: Vec<(u32, Vec<u8>, u8)>,
+    coda: Vec<(u32, Vec<u8>, u8)>,
+    vowel_readings: Vec<(u32, u8, u8)>,
+    vowel_coda: Vec<(u32, u8, u8, u8)>,
+}
+
+impl Tables {
+    fn new(rules: &Rules, sounds: &mut Sounds) -> Self {
+        let mut vowel_readings: Vec<(u32, u8, u8)> = rules
+            .vowel
             .iter()
-            .flat_map(|t| t.iter())
+            .filter(|(label, _)| !label.ends_with(|c: char| c.is_ascii_digit()))
             .map(|(label, stroke)| {
-                let spelled = label.split_whitespace().any(|s| s.contains('.'));
-                (stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect(), u8::from(spelled) * SPELLED_CONSONANT)
+                let spelled = label.split_once('.').map_or("", |(_, s)| s);
+                (stroke.0, sounds.id(label), letters(spelled))
             })
             .collect();
-        out.sort_by(|a, b| (std::cmp::Reverse(a.0.count_ones()), a.0, &a.1, a.2).cmp(&(std::cmp::Reverse(b.0.count_ones()), b.0, &b.1, b.2)));
-        out.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
-        out
-    };
-    let onset = chords(&[&rules.onset, &rules.onset_cluster], &mut sounds);
-    let coda = chords(&[&rules.coda, &rules.coda_cluster], &mut sounds);
-    let mut vowel_readings: Vec<(u32, u8, u8)> = rules
-        .vowel
-        .iter()
-        .filter(|(label, _)| !label.ends_with(|c: char| c.is_ascii_digit()))
-        .map(|(label, stroke)| {
-            let spelled = label.split_once('.').map_or("", |(_, s)| s);
-            (stroke.0, sounds.id(label), letters(spelled))
-        })
-        .collect();
-    vowel_readings.sort();
-    vowel_readings.dedup();
-    let mut vowel_coda: Vec<(u32, u8, u8, u8)> = rules
-        .vowel_coda
-        .iter()
-        .filter_map(|(label, stroke)| {
-            let (v, c) = label.split_once(' ')?;
-            let spelled = v.split_once('.').map_or("", |(_, s)| s);
-            Some((stroke.0, sounds.id(v), letters(spelled), sounds.id(c)))
-        })
-        .collect();
-    vowel_coda.sort();
-    vowel_coda.dedup();
+        vowel_readings.sort_unstable();
+        vowel_readings.dedup();
+        let mut vowel_coda: Vec<(u32, u8, u8, u8)> = rules
+            .vowel_coda
+            .iter()
+            .filter_map(|(label, stroke)| {
+                let (vowel, coda) = label.split_once(' ')?;
+                let spelled = vowel.split_once('.').map_or("", |(_, s)| s);
+                Some((stroke.0, sounds.id(vowel), letters(spelled), sounds.id(coda)))
+            })
+            .collect();
+        vowel_coda.sort_unstable();
+        vowel_coda.dedup();
+        Self {
+            onset: chords(&[&rules.onset, &rules.onset_cluster], sounds),
+            coda: chords(&[&rules.coda, &rules.coda_cluster], sounds),
+            vowel_readings,
+            vowel_coda,
+        }
+    }
+}
 
-    // The lexicon: each word's sounds, and each reading of its spelling, as a path of the trie
+/// One side's chord tables as `(keys, sounds, cost)`: bigger chords first, so the decoder's
+/// capped search for covers tries them before the single keys; a chord whose sound depends on a
+/// spelling (`T.ed`) costs a little.
+fn chords(tables: &[&HashMap<String, Stroke>], sounds: &mut Sounds) -> Vec<(u32, Vec<u8>, u8)> {
+    let mut out: Vec<(u32, Vec<u8>, u8)> = tables
+        .iter()
+        .flat_map(|t| t.iter())
+        .map(|(label, stroke)| {
+            let spelled = label.split_whitespace().any(|s| s.contains('.'));
+            (stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect(), u8::from(spelled) * SPELLED_CONSONANT)
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        (std::cmp::Reverse(a.0.count_ones()), a.0, &a.1, a.2).cmp(&(std::cmp::Reverse(b.0.count_ones()), b.0, &b.1, b.2))
+    });
+    out.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    out
+}
+
+/// What skipping a sound of a word's pronunciation costs.
+fn drop_cost(sound: &str) -> u8 {
+    if sound.ends_with(|c: char| c.is_ascii_digit()) {
+        match sound.chars().last() {
+            Some('0') => DROP_UNSTRESSED,
+            Some('2') => DROP_SECONDARY,
+            _ => DROP_STRESSED,
+        }
+    } else if matches!(plain(sound), "HH" | "Y") {
+        DROP_WEAK_CONSONANT
+    } else {
+        DROP_CONSONANT
+    }
+}
+
+/// The lexicon's words, most common first with their ranks, and the trie over each one's
+/// pronunciations and the readings of its spelling.
+fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a String, usize)>, Trie) {
     let mut words: Vec<(&String, usize)> = lexicon
         .rank
         .iter()
@@ -358,26 +400,16 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     words.sort_by(|a, b| (a.1, a.0).cmp(&(b.1, b.0)));
     let mut trie = Trie::default();
     for (id, (word, _)) in words.iter().enumerate() {
-        let id = id as u32;
+        let id = index(id);
         for variant in &lexicon.pron[*word] {
-            let spelled = align(word, variant);
             let path: Vec<EdgeKey> = variant
                 .iter()
-                .zip(&spelled)
-                .map(|(sound, &letters)| {
-                    let vowel = sound.ends_with(|c: char| c.is_ascii_digit());
-                    let drop = if vowel {
-                        match sound.chars().last() {
-                            Some('0') => DROP_UNSTRESSED,
-                            Some('2') => DROP_SECONDARY,
-                            _ => DROP_STRESSED,
-                        }
-                    } else if matches!(plain(sound), "HH" | "Y") {
-                        DROP_WEAK_CONSONANT
-                    } else {
-                        DROP_CONSONANT
-                    };
-                    EdgeKey { mask: 1 << sounds.id(sound), letters, drop, vowel }
+                .zip(align(word, variant))
+                .map(|(sound, letters)| EdgeKey {
+                    mask: 1 << sounds.id(sound),
+                    letters,
+                    drop: drop_cost(sound),
+                    vowel: sound.ends_with(|c: char| c.is_ascii_digit()),
                 })
                 .collect();
             trie.insert(&path, id, 0);
@@ -399,11 +431,32 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
             trie.insert(&path, id, SPELLED_PATH);
         }
     }
+    (words, trie)
+}
 
+/// Everything [`Model::load`] reads, packed.
+#[must_use]
+pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
+    let mut sounds = Sounds::new();
+    let tables = Tables::new(rules, &mut sounds);
+    let (words, trie) = lexicon_trie(lexicon, &mut sounds);
     let mut b = Blob(Vec::new());
     b.0.extend_from_slice(core::MAGIC);
     b.u32(core::VERSION);
-    b.u16(sounds.names.len() as u16);
+    write_sounds(&mut b, &sounds);
+    write_tables(&mut b, &tables, rules);
+    write_stems(&mut b, stems, lexicon);
+    b.len(words.len());
+    for (word, rank) in &words {
+        b.str(word);
+        b.u32(index(*rank));
+    }
+    write_trie(&mut b, &trie);
+    b.0
+}
+
+fn write_sounds(b: &mut Blob, sounds: &Sounds) {
+    b.u16(u16::try_from(sounds.names.len()).expect("fewer than 64 sounds"));
     for name in &sounds.names {
         b.str(name);
         b.str(default_spelling(name));
@@ -413,19 +466,22 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     b.u64((1 << id("R")) | (1 << id("L")));
     b.u8(id("R"));
     b.u8(id("ER"));
-    for (i, _) in sounds.names.iter().enumerate() {
+    for i in 0..sounds.names.len() {
         let mut mask = 0u64;
-        for (a, c) in CONFUSABLE {
-            if id(a) as usize == i {
-                mask |= 1 << id(c);
+        for (one, other) in CONFUSABLE {
+            if usize::from(id(one)) == i {
+                mask |= 1 << id(other);
             }
-            if id(c) as usize == i {
-                mask |= 1 << id(a);
+            if usize::from(id(other)) == i {
+                mask |= 1 << id(one);
             }
         }
         b.u64(mask);
     }
-    for table in [&onset, &coda] {
+}
+
+fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
+    for table in [&tables.onset, &tables.coda] {
         b.len(table.len());
         for (keys, toks, cost) in table {
             b.u32(*keys);
@@ -433,21 +489,21 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
             b.u8(*cost);
         }
     }
-    b.len(vowel_readings.len());
-    for &(keys, sound, letters) in &vowel_readings {
+    b.len(tables.vowel_readings.len());
+    for &(keys, sound, letters) in &tables.vowel_readings {
         b.u32(keys);
         b.u8(sound);
         b.u8(letters);
     }
-    b.len(vowel_coda.len());
-    for &(keys, v, letters, c) in &vowel_coda {
+    b.len(tables.vowel_coda.len());
+    for &(keys, vowel, letters, coda) in &tables.vowel_coda {
         b.u32(keys);
-        b.u8(v);
+        b.u8(vowel);
         b.u8(letters);
-        b.u8(c);
+        b.u8(coda);
     }
     let mut suffixes: Vec<(&Stroke, &String)> = rules.suffixes.iter().collect();
-    suffixes.sort();
+    suffixes.sort_unstable();
     b.len(suffixes.len());
     for (stroke, text) in suffixes {
         b.u32(stroke.0);
@@ -460,47 +516,50 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.str(text);
     }
     let mut spelling: Vec<(&Stroke, &String)> = rules.spelling.iter().collect();
-    spelling.sort();
+    spelling.sort_unstable();
     b.len(spelling.len());
     for (stroke, letter) in spelling {
         b.u32(stroke.0);
         b.str(letter);
     }
+}
+
+/// The known outlines, six strokes or fewer, each with its word's rank (the lexicon's bound for a
+/// word outside it).
+fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon) {
     let mut stems: Vec<&(Vec<Stroke>, String)> = stems.iter().filter(|(o, _)| !o.is_empty() && o.len() <= 6).collect();
     stems.sort_by(|a, b| (&a.0, &a.1).cmp(&(&b.0, &b.1)));
     b.len(stems.len());
     for (outline, text) in stems {
-        b.u8(outline.len() as u8);
+        b.u8(u8::try_from(outline.len()).expect("six strokes or fewer"));
         for s in outline {
             b.u32(s.0 & !Stroke::JOIN);
         }
         b.str(text);
         let rank = lexicon.rank.get(text.as_str()).copied().unwrap_or(lexicon.common);
-        b.u32(u32::try_from(rank.min(lexicon.common)).unwrap_or(u32::MAX));
+        b.u32(index(rank.min(lexicon.common)));
     }
-    b.len(words.len());
-    for (word, rank) in &words {
-        b.str(word);
-        b.u32(*rank as u32);
-    }
-    // The trie, flattened: each node's edges and words contiguous
+}
+
+/// The trie, flattened: each node's edges and words contiguous, in a fixed order.
+fn write_trie(b: &mut Blob, trie: &Trie) {
     let n = trie.children.len();
     let mut edge_rows: Vec<(EdgeKey, u32)> = Vec::new();
     let mut end_rows: Vec<(u32, u8)> = Vec::new();
     b.len(n);
     for node in 0..n {
-        let start = edge_rows.len() as u32;
+        let start = index(edge_rows.len());
         let mut kids: Vec<(EdgeKey, u32)> = trie.children[node].iter().map(|(k, v)| (*k, *v)).collect();
         kids.sort_by_key(|(k, c)| (k.mask, k.letters, k.drop, *c));
         edge_rows.extend(kids);
-        let ends_start = end_rows.len() as u32;
+        let ends_start = index(end_rows.len());
         let mut ends = trie.ends[node].clone();
         ends.sort_by_key(|&(w, extra)| (extra, w));
         end_rows.extend(ends);
         b.u32(start);
-        b.u32(edge_rows.len() as u32);
+        b.u32(index(edge_rows.len()));
         b.u32(ends_start);
-        b.u32(end_rows.len() as u32);
+        b.u32(index(end_rows.len()));
     }
     b.len(edge_rows.len());
     for (key, child) in &edge_rows {
@@ -515,7 +574,6 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.u32(*word);
         b.u8(*extra);
     }
-    b.0
 }
 
 #[cfg(test)]
@@ -534,5 +592,80 @@ mod tests {
             align("computer", &s("K AH0 M P Y UW1 T ER0")),
             vec![0, letters("o"), 0, 0, 0, letters("u"), 0, letters("e")]
         );
+    }
+
+    /// The model `build` ships, from the full fixture dictionary, packed and loaded once.
+    fn model() -> &'static Model {
+        static MODEL: std::sync::LazyLock<Model> = std::sync::LazyLock::new(|| {
+            let setup = crate::dictionary_fixture::setup();
+            let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, common: 100_000 };
+            let blob = pack(&setup.rules, &lexicon, &stems(&crate::dictionary_fixture::generated().entries));
+            Model::load(&blob).expect("the packed blob loads")
+        });
+        &MODEL
+    }
+
+    #[test]
+    fn a_run_reads_as_the_word_its_keys_sound_like() {
+        for (outline, word) in [
+            // one syllable a stroke, and folded
+            ("KOPL/+PU/+TER", "computer"),
+            ("S/+TA/+SHUPB", "station"),
+            ("TPO/+TPHE/+TEUBG", "phonetic"),
+            ("TKE/+TER/+PHU/+TPHEUFPL", "determinism"),
+            // the `-R` key for ER, consonants out of steno order
+            ("PHART/+TPHUL", "maternal"),
+            ("TOLT", "total"),
+            // a known outline (`OER` other) and a word read by its spelling
+            ("OER/+WEU/+-S/+E", "otherwise"),
+            // a whole word beats a stem and a suffix that spell something else
+            ("HROBG/+-L", "local"),
+            // a two-stroke suffix
+            ("KUB/+EUZ/+-PL", "cubism"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn pieces_join_by_english_spelling() {
+        // a silent e drops before a vowel suffix; a known outline and a suffix that spell no word
+        // still read, as the pieces
+        assert_eq!(model().answer("SR/+-G").as_deref(), Some("having"));
+        assert_eq!(model().answer("SKP/+-R").as_deref(), Some("ander"));
+    }
+
+    #[test]
+    fn spelling_mode_is_letter_by_letter() {
+        assert_eq!(model().answer("~K/+A/+T").as_deref(), Some("kat"));
+    }
+
+    #[test]
+    fn a_run_far_from_every_word_types_its_keys_read_back() {
+        // nothing the lexicon has sounds like this: the plain read-back, not some far-off word
+        let answer = model().answer("STKPWHRAO*EUFRPBLGTSDZ/+STKPWHRAO*EUFRPBLGTSDZ");
+        let floor = model().read_back(&[core::parse_stroke("STKPWHRAO*EUFRPBLGTSDZ").unwrap(), core::parse_stroke("+STKPWHRAO*EUFRPBLGTSDZ").unwrap()]);
+        assert_eq!(answer, floor);
+    }
+
+    #[test]
+    fn the_plugin_reads_strokes_exactly_as_lyk_does() {
+        // `parse_stroke` is the plugin's own copy of `Stroke::parse`: every outline the dictionary
+        // has must read to the same bits
+        for entry in &crate::dictionary_fixture::generated().entries {
+            for stroke in &entry.outline {
+                let text = stroke.to_string();
+                assert_eq!(core::parse_stroke(&text), Stroke::parse(&text).map(|s| s.0), "{text}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_plugin_source_carries_the_decoder_and_the_interface() {
+        let source = plugin::source(b"LYKS");
+        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "include_bytes!(\"05-lyk-solver.bin\")"] {
+            assert!(source.contains(needle), "{needle}");
+        }
+        assert!(Model::load(b"nope").is_none());
     }
 }

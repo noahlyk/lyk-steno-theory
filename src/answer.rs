@@ -135,6 +135,9 @@ pub struct Lookup<'a> {
     words: Vec<&'a str>,
     /// The backups `built::load` leaves out, when the dictionary was read back from `out/lyk`
     backups: Option<&'a Backups>,
+    /// The solver keymux runs on a miss (see `site/reference/fallback.json`), when one is built:
+    /// a stroke with no entry reads as what it answers, the plain read-back otherwise
+    solver: Option<crate::rules::solve::Model>,
 }
 
 impl<'a> Lookup<'a> {
@@ -155,7 +158,15 @@ impl<'a> Lookup<'a> {
             outlines,
             words,
             backups,
+            solver: None,
         }
+    }
+
+    /// The same lookup, reading a miss as the solver does.
+    #[must_use]
+    pub fn with_solver(mut self, solver: Option<crate::rules::solve::Model>) -> Self {
+        self.solver = solver;
+        self
     }
 
     pub const fn dictionary(&self) -> &HashMap<&'a str, &'a [Stroke]> {
@@ -194,7 +205,8 @@ impl<'a> Lookup<'a> {
     fn forward_row(&self, strokes: &[Stroke], mark: Mark) -> Row {
         // Not an entry: the rules' best reading is what the stroke reads back as
         let reading = || {
-            self.setup.rules.resolve(strokes, Some(&self.stems)).map_or_else(
+            let solved = self.solver.as_ref().and_then(|solver| solver.answer(&render_outline(strokes)));
+            solved.or_else(|| self.setup.rules.resolve(strokes, Some(&self.stems))).map_or_else(
                 || ("(no translation)".to_owned(), How::Entry),
                 |reading| (format!("{reading:?}"), How::Reading),
             )

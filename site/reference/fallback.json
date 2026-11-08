@@ -1,7 +1,7 @@
 {
  "id": "fallback",
- "title": "The stroke read-back",
- "goal": "Know what `resolve` and `lookup` print for a stroke that is not in the dictionary, and the rules that reading follows.",
+ "title": "The solver: what a miss types",
+ "goal": "Know what keymux types for a stroke or `+` run the dictionary does not have, how the solver works that out, what it costs to type loosely, and the plain read-back it falls back on.",
  "blocks": [
   {
    "t": "h",
@@ -9,68 +9,163 @@
   },
   {
    "t": "p",
-   "x": "`Rules::resolve` takes a stroke (or `+`-joined run) that missed the dictionary and reads its keys back into sounds, using the same onset, vowel and coda tables the generator writes with, in reverse. It spells the sounds plainly, because no word is on record to give a real spelling. Every key means something on its own and the vowel table covers all 15 non-empty vowel-key combinations, so almost every stroke reads back as something."
+   "x": "lyk ships a keymux plugin, **the solver** (`05-lyk-solver.rs`, with its lexicon in `05-lyk-solver.bin` beside it). keymux asks it about anything every dictionary missed: a single stroke, or a `+` run, which is always one word. It answers with the word (or the word and its suffixes) those strokes most likely mean, read from the same tables the generator writes with. Nothing has to be a dictionary entry for it to type: an outline the generator never listed still types its word when its keys say that word's sounds."
   },
   {
-   "t": "p",
-   "x": "No engine runs this reading: a live steno engine types a stroke that misses the dictionary as its raw keys, and lyk ships no plugin to change that. The reading is what `resolve` and `lookup` print for a miss, and what the site's trainer shows. Treat it as a way to check that a stroke you improvised is a sensible one."
+   "t": "list",
+   "items": [
+    "**It answers again on every stroke.** A `+` run has no word boundary inside it, so keymux hands the solver the whole run after each new stroke and the new answer replaces the old one. A word can read as something else halfway through (`KOPL/+PU` reads *champa*) and settles on the right one when the run is done (`KOPL/+PU/+TER` *computer*).",
+    "**It never overrides the dictionary.** keymux asks the dictionary files first; the solver only sees what none of them has.",
+    "**It is what makes `+` a join key.** keymux itself gives no key a meaning; the solver's `joins` answer is what tells keymux that a `+` stroke continues the word before it and is never a word of its own.",
+    "**Spelling mode is unchanged.** A run that starts with `~` is read one letter a stroke from `rules/spelling.toml` ([spelling mode](#/ref/spelling-mode))."
+   ],
+   "ordered": false
   },
   {
    "t": "h",
-   "x": "The rules of the read-back"
+   "x": "How it reads a run"
   },
   {
    "t": "h3",
-   "x": "A vowelless stroke reads with no invented vowel"
+   "x": "1. Every reading of every stroke"
   },
   {
    "t": "p",
-   "x": "`-T` alone reads `t`, with no guessed vowel. A stroke with consonants and no vowel key is a bare continuation, valid as it is."
-  },
-  {
-   "t": "h3",
-   "x": "A suffix stroke always reads as that suffix"
-  },
-  {
-   "t": "p",
-   "x": "For any stroke after the first that carries the join key, `!resolve` first checks `rules/suffixes.toml`'s chords, before the ordinary read-back. So `+-D` after a stroke with no entry reads `!ed`, not the bare consonant `d`."
+   "x": "Each stroke is read back into every run of sounds its keys can write, not just one:"
   },
   {
    "t": "list",
    "items": [
-    "A two-stroke suffix is checked first, as a pair: `-ism` `+EUZ/+-PL`, `-ity` `+U/+TEU`.",
-    "This is unconditional: a suffix does not need a particular composed outline to be a dictionary entry already.",
-    "A suffix struck alone, with no stroke before it, is already a literal dictionary entry; `!resolve` is never reached for it."
-   ],
-   "ordered": false
-  },
-  {
-   "t": "p",
-   "x": "See the [suffix table](#/ref/suffixes)."
-  },
-  {
-   "t": "h3",
-   "x": "A placed single-stroke word as the stem reads as its own text"
-  },
-  {
-   "t": "p",
-   "x": "When the run's first stroke is already a single-stroke word, `!resolve` uses that word's real text instead of decoding the keys. [[and|SKP]] is a brief with no phonetic link to its spelling, so `SKP/+-R` reads `!ander`, not `sper`. Rules-derived words get the same treatment: [[build|PWHR]] plus `+-D` reads `builded`."
-  },
-  {
-   "t": "list",
-   "items": [
-    "Only the first stroke of a run longer than one stroke. A single stroke that matches a placed word is a normal dictionary hit.",
-    "Only a single-stroke stem. A multi-stroke placed word as the stem of an unmatched run is not covered yet."
+    "**Each bank, every way it splits into chords** of the onset and coda tables (`PHR` is M R or P L; `-PBLG` is JH, or N JH, or the keys one at a time), up to 48 ways a bank. Bigger chords are tried first.",
+    "**The vowel keys as any vowel they write**: as heard (`O` is the vowel of *hot*), or as a spelling the rules give them (`O` is also the *o* of *control*, `AE` the *ea* of *mean*).",
+    "**A vowel and the consonant after it together** where the rules have that chord (`AR`, `OPBG`, `AEUR`).",
+    "**The star** as part of a chord (`*T` is TH) or, when nothing claims it, as the homophone marker, which writes no sound.",
+    "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*)."
    ],
    "ordered": false
   },
   {
    "t": "h3",
-   "x": "Silent e before a vowel ending"
+   "x": "2. Matched against every word"
   },
   {
    "t": "p",
-   "x": "English spelling is not plain concatenation, so `!resolve` looks at the first letter of the next piece before it commits the stem:"
+   "x": "The lexicon is every word among the 100,000 commonest that has a pronunciation (the generator's own vocabulary), each written into one tree twice: by its pronunciation, and by a reading of its spelling (each letter a sound, a vowel letter short, long or weak, as the generator's spelled backups read it). The run's sounds are matched along that tree, and every way they differ from a word costs something:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "The run versus the word",
+    "Cost"
+   ],
+   "rows": [
+    [
+     "a sound that matches",
+     "0"
+    ],
+    [
+     "a vowel struck as the word spells it, not as it is heard (`O` for the *o* of *control*); a single vowel letter only for a vowel spelled with that letter alone (*said*'s *ai* is not an `EU`)",
+     "1"
+    ],
+    [
+     "a vowel struck as a letter the word does not spell it with",
+     "3"
+    ],
+    [
+     "a vowel struck as a different vowel",
+     "6"
+    ],
+    [
+     "`-R` for the vowel ER (`PHART`, *mat-er-nal*)",
+     "1"
+    ],
+    [
+     "a consonant read as its twin (P B, T D, K G, F V, TH DH, S Z, SH ZH, CH JH, N NG, M N)",
+     "4"
+    ],
+    [
+     "a chord whose sound the rules tie to a spelling (`-D` as the T of *-ed*, `-G` as *-ing*)",
+     "2"
+    ],
+    [
+     "two consonants of one stroke in the other order: `R` or `L` / any other",
+     "1 / 3"
+    ],
+    [
+     "the star as the homophone marker",
+     "1"
+    ],
+    [
+     "a sound of the word the run skipped: an unstressed vowel / a secondary-stressed vowel / a stressed vowel / `HH` or the `Y` glide / any other consonant",
+     "1 / 3 / 8 / 2 / 4"
+    ],
+    [
+     "a sound in the run the word does not have",
+     "6"
+    ],
+    [
+     "the word reached by its spelling rather than its sounds",
+     "3"
+    ],
+    [
+     "the word's rarity: half a point for every doubling of its rank (*the* 0, rank 1,000 about 5, rank 50,000 about 8)",
+     "0 to 8"
+    ]
+   ]
+  },
+  {
+   "t": "list",
+   "items": [
+    "At most three sounds of a word in a row are skipped, and a word starts with at most one skipped sound, a weak one (the *a-* of *about*).",
+    "The cheapest reading wins. Two words that read the same go to the commoner one: a homophone struck with no spelling cue types the commoner word."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "3. Pieces"
+  },
+  {
+   "t": "p",
+   "x": "A run can be read as several pieces, each a word, a suffix or a known outline, joined with no space:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Piece",
+    "When",
+    "Cost"
+   ],
+   "rows": [
+    [
+     "a word of the lexicon",
+     "anywhere, on whole strokes",
+     "as above, plus 10 for every piece after the first"
+    ],
+    [
+     "a suffix chord ([suffix table](#/ref/suffixes), one or two strokes)",
+     "any stroke after the first that carries `+`, unconditionally",
+     "1"
+    ],
+    [
+     "a known outline: the exact outline of any entry of the words, short, alternates or extras files",
+     "on whole strokes; the first piece, or a later one (+2)",
+     "the word's rarity, plus 10 after the first piece"
+    ]
+   ]
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Pieces that spell a word are that word.** *part* + `+-S` is *parts*, priced at the rarity of *parts*, not of *part*.",
+    "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well.",
+    "A word piece only ends at a stroke boundary; a suffix chord is always the suffix, never its bare consonants."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "p",
+   "x": "Pieces join by English spelling at a suffix:"
   },
   {
    "t": "table",
@@ -81,50 +176,63 @@
    ],
    "rows": [
     [
-     "stem ends in a silent `e`, next piece starts with a vowel",
+     "a silent `e` before a suffix starting with a vowel",
      "drop the `e`",
-     "[[have|SR]] + `+-G` reads `having`; `use` + `ing` reads `using`"
+     "[[have|SR]] + `+-G` is `!having`"
     ],
     [
-     "next piece starts with a consonant",
-     "keep the `e`",
-     "`entire` + `ly` reads `entirely`"
+     "a `y` after a consonant before a suffix not starting with `i`",
+     "`y` becomes `i`",
+     "`!happy` + `!ness` is `!happiness`; `!carry` + `!ing` is `!carrying`"
     ],
     [
-     "the `e` follows a vowel (not silent)",
-     "keep the `e`",
-     "`agree` + `ing` reads `agreeing`"
+     "otherwise",
+     "join as they are",
+     "`!agree` + `!ing` is `!agreeing`"
     ]
    ]
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "Not covered: `dye` and `singe` keep their `e` before `-ing` to stay distinct from `die` and `sing`."
+   "x": "Not covered: a doubled final consonant (`!run` + `!ing`) and the `dye`/`singe` exceptions. A word like *running* is normally read whole from its sounds, so this only shows when the stem and suffix are read as pieces."
   },
   {
    "t": "h3",
-   "x": "A true miss"
+   "x": "4. The floor: the plain read-back"
   },
   {
    "t": "p",
-   "x": "The only stroke the rules give up on is one with nothing left once the star and join keys are set aside: no onset, no vowel, no coda. A star and a join key alone carry no sound."
+   "x": "When no reading costs 40 or less, plus 6 for each stroke, the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 12 strokes is read on its first 12."
   },
   {
-   "t": "h3",
-   "x": "Vowel keys and ties"
+   "t": "h",
+   "x": "The plain read-back"
+  },
+  {
+   "t": "p",
+   "x": "Each stroke's plainest reading, its sounds spelled plainly (not real orthography: no word is on record to give one). It is what the solver types below its floor, and what `!resolve` and `!lookup` print for a miss when no solver is built."
   },
   {
    "t": "list",
    "items": [
-    "Every vowel-key combination is a different vowel: `AO` and `AOU` read differently, so `-T/+AO` and `-T/+AOU` are different words.",
-    "Two sounds can share the same keys (`Z` and the silent-glide cluster `Z Y` are both `STKPW`; a plain vowel and a spelling variant can be the same keys). The read-back resolves such a tie **the same way every time**, so a given miss always reads the same. It is consistent, not necessarily what you meant."
+    "A vowelless stroke reads with no invented vowel: `-T` alone reads `!t`.",
+    "A suffix chord after the first stroke reads as its suffix: `+-D` reads `!ed`, not `!d`.",
+    "Every key means something on its own and every one of the 15 non-empty vowel-key combinations is a vowel, so almost every stroke reads as something. The only stroke with no reading is one with no onset, vowel or coda once the star and join keys are set aside."
    ],
    "ordered": false
   },
   {
    "t": "p",
-   "x": "Bare `AO` is a three-way tie: `UH` (*book*, *put*), `UW.oo` (*too*, *moon*, *kangaroo*) and `OW.oa` (*boat*). A word's full pronunciation settles this when the dictionary is built; a miss has no word, so `!resolve` picks **`UW.oo`**, because `UH` is rare as an unreduced vowel on a continuation stroke, where \"-oo\" endings are common. The tie-break is `vowel_rank` in `src/rules/mod.rs`."
+   "x": "Where two sounds share keys, the read-back breaks the tie the same way every time (`vowel_rank` in `src/rules/mod.rs`). Bare `AO` is a three-way tie, `UH` (*book*), `UW.oo` (*moon*) and `OW.oa` (*boat*); it reads **`UW.oo`**."
+  },
+  {
+   "t": "h",
+   "x": "The backups keymux gets"
+  },
+  {
+   "t": "p",
+   "x": "`build` still writes every backup to `out/lyk` (the lookup commands and this site list them). `deploy` ships only the backups the solver does **not** already read as their word, exactly, case included; the rest it leaves to the solver. Every outline that typed a word before still types it, and the dictionary keymux holds in memory is a fraction of the size. The thinned file is cached as `out/lyk/backups-thin.json` until the solver or the backups change."
   },
   {
    "t": "h",
@@ -132,11 +240,11 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- resolve STKPW         # a stroke not in the dictionary, read back\ncargo run --release -- resolve -- \"-T/+-D\"     # a run, read back\ncargo run --release -- resolve -- \"-T/+AOU\"    # a continuation with the AOU vowel"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
   },
   {
    "t": "p",
-   "x": "`!resolve` (alias `stroke`) prints what the outline types in quotes, with a note when the dictionary has no entry and the quoted word is the rules' reading of it, then the entries nearest to it (see [the interactive session](#/ref/build-and-files/the-interactive-session)). Many `+`-joined runs are already backup entries, so the read-back only matters for runs the dictionary lacks."
+   "x": "`!resolve` (alias `stroke`) and `!lookup` print what the outline types in quotes; for a miss that is the solver's answer, marked as a reading, when `build` has written the solver to `out/lyk`."
   }
  ]
 }

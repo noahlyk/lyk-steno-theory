@@ -389,20 +389,9 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers } => {
-            let setup = setup(Some(*common))?;
-            let options = solve::Options {
-                outline: outline.as_deref(),
-                eval: *eval,
-                tape: tape.as_deref(),
-                misses: misses.as_deref(),
-                dir,
-                common: *common,
-                plugin: plugin.as_deref(),
-                answers: answers.as_deref(),
-            };
-            solve::run(&setup, &options)
-        }
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers } => solve::run(&setup(Some(*common))?, &solve::Options {
+            outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(),
+        }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };
             commands::run_lookup(&setup, outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)

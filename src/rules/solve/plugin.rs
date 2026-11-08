@@ -8,8 +8,7 @@
 
 use std::hash::{Hash, Hasher};
 
-/// The plugin's file stem: numbered after the dictionaries, so it only ever answers what they miss.
-pub const STEM: &str = "05-lyk-solver";
+/// The plugin's files: numbered after the dictionaries, so it only ever answers what they miss.
 pub const SOURCE_FILE: &str = "05-lyk-solver.rs";
 pub const BLOB_FILE: &str = "05-lyk-solver.bin";
 

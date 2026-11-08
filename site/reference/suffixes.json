@@ -386,7 +386,7 @@
   },
   {
    "t": "p",
-   "x": "Every single-stroke suffix chord above is known to the stroke read-back unconditionally, whether or not the dictionary has an entry: a continuation stroke that misses the dictionary is looked up in this table before the generic onset/vowel/coda read-back runs. So `STKPW/+-D` (*z* has no dictionary entry) still reads as *zed*, not \"zd\"."
+   "x": "Every single-stroke suffix chord above is known to the solver unconditionally, whether or not the dictionary has an entry: any continuation stroke after the first of a run is also read as its suffix, never as its bare consonants. So `+-D` after a stroke with no entry can read as *-ed*, never as a bare \"d\"; a whole word that reads better still wins (`STKPW/+-D` reads *used*)."
   },
   {
    "t": "p",
@@ -394,7 +394,7 @@
   },
   {
    "t": "p",
-   "x": "The two-stroke suffixes are read the same way: a joined stroke and the one after it that together form one of them (`+EUZ/+-PL`) read as that suffix (*ism*) before either stroke is sounded out alone. So `KUB/+EUZ/+-PL` reads \"cubism\" with or without a dictionary entry. See [the stroke read-back](#/ref/fallback)."
+   "x": "The two-stroke suffixes are read the same way: a joined stroke and the one after it that together form one of them (`+EUZ/+-PL`) read as that suffix (*ism*) before either stroke is sounded out alone. So `KUB/+EUZ/+-PL` reads \"cubism\" with or without a dictionary entry. See [the solver](#/ref/fallback)."
   },
   {
    "t": "h",

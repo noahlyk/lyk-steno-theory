@@ -56,7 +56,7 @@ rule, table and mechanism, searchable: the [cheat sheet](https://noahlyk.github.
 [how it works](https://noahlyk.github.io/lyk-steno-theory/#/ref/how-stroke-setup), the rules, the
 [briefs](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs), the
 [suffix table](https://noahlyk.github.io/lyk-steno-theory/#/ref/suffixes), punctuation and
-fingerspelling, the [stroke read-back](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback). The
+fingerspelling, [the solver](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback). The
 maintainer's logs stay here: [`docs/decisions.md`](docs/decisions.md) and [`docs/roadmap.md`](docs/roadmap.md).
 
 The numbers themselves (this page's "Where lyk stands" above, and the full breakdown at
@@ -77,8 +77,10 @@ not looked up.
   suffixes be as short as a single key.
 - **Measured, not asserted**: `build` and `score` print cost and match-rate against Plover and
   Lapwing on the same words, every time — see [the full benchmarks](#full-benchmarks).
-- **A miss can be read back**: `resolve` and `lookup` read a stroke the dictionary doesn't have as
-  something sensible, phonetically (no engine runs it; a live miss types its raw keys) — see [the stroke read-back page](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
+- **A miss types its word**: lyk ships a keymux plugin, the solver, that reads a stroke or `+` run
+  the dictionary doesn't have as the word its keys sound like (a beam search over every word's
+  pronunciation, about 2 ms a run), so `deploy` ships only the backups it would read differently —
+  see [the solver](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
 
 ## Use
 
@@ -91,7 +93,8 @@ cargo run --release -- score --write-readme   # ...and rewrite any stale one in 
 cargo run --release -- --version           # the git version baked in at compile time (also -V, or the hidden `version` command); `build` stamps a hash of the rules and generator source (not the commit) into out/lyk/.built and the query commands say once if it differs (silence: --no-stale-check or LYK_NO_STALE_NOTE=1); see the Reference, Build and files
 cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files); quiet: the files, and a warning only if a word is stranded
 cargo run --release -- build --report      # ...plus every diagnostic and the cost tables (the invariants are tests: cargo test --release)
-cargo run --release -- deploy              # build, copied straight into keymux's live config
+cargo run --release -- deploy              # build, copied straight into keymux's live config with the solver
+                                            #   plugin, the backups thinned to those it reads differently
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
 cargo run --release -- explain moon        # which rules wrote a word, next to Plover and Lapwing
 cargo run --release -- family build       # build, builds, building...: each one's outline and its stem + ending entry
@@ -101,7 +104,8 @@ cargo run --release -- learn               # which keys Plover and Lapwing use f
 cargo run --release -- build --report --against magnum.rtf   # add a third dictionary to the cost tables
 cargo run --release -- quote                        # a random quote, stroked lyk next to Plover and Lapwing
 cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, from the built dictionary (seconds)
-cargo run --release -- resolve STKPW                # a stroke not in the dictionary, read back
+cargo run --release -- resolve STKPW                # a stroke not in the dictionary: what the solver types
+cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first (--eval N: how often it is right)
 cargo run --release -- keys                         # no word: type and the answer follows every key, all three theories
 ```
 

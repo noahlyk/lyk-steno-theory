@@ -102,7 +102,7 @@
    "t": "list",
    "items": [
     "A continuation stroke (a suffix struck on its own, or the consonants of a syllable that did not fit on the stroke before) is never a word of its own, so it can be as short as one key: [[+-G]] for *-ing*, [[+-D]] for *-ed*. It cannot collide with an unrelated one- or two-key word that has the same letters. See [the suffix table](#/ref/suffixes) and [syllables and folding](#/ref/syllables).",
-    "A suffix's own chord reads correctly in the stroke read-back after *any* stroke, dictionary entry or not. See [the stroke read-back](#/ref/fallback).",
+    "A suffix's own chord reads as its suffix after *any* stroke, dictionary entry or not. See [the solver](#/ref/fallback).",
     "A stem's own outline and a continuation stroke can have the same keys with no clash: only the join key tells them apart.",
     "No vowel has to be dropped to mark a mid-word stroke, so *forget* and *forgot* style pairs never collide because of a boundary."
    ],

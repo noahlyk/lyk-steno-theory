@@ -22,7 +22,7 @@
     "**One primary outline per word, extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed, so they cost no other word anything.",
     "**An explicit join key.** Continuation strokes are never mistaken for words, which is what lets a suffix be one key.",
     "**Measured, not asserted.** `!score` and `build --report` print cost and match-rate against Plover and Lapwing on the same words. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
-    "**A miss can be read back.** A stroke the dictionary lacks still reads as something sensible in `resolve` and `lookup`; no engine runs that reading, so a live miss types its raw keys: see [the stroke read-back](#/ref/fallback)."
+    "**A miss types its word.** A stroke or `+` run the dictionary lacks is read by the solver, a keymux plugin lyk ships, as the word its keys sound like; `resolve` and `lookup` print the same answer: see [the solver](#/ref/fallback)."
    ],
    "ordered": false
   },
@@ -67,7 +67,7 @@
     ],
     [
      "`!deploy`",
-     "`!build`, copied straight into keymux's live config with the reserved stroke tables. Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
+     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, with the backups thinned to those the solver does not read as their word (see [the solver](#/ref/fallback/the-backups-keymux-gets)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
     ],
     [
      "`explain [WORD]`",
@@ -107,7 +107,7 @@
     ],
     [
      "`resolve [STROKES] [--rebuild]` (alias `stroke`)",
-     "`lookup` with every query read as a stroke (lowercase is read as capitals), as keymux's `steno stroke`: what the stroke types in lyk (the dictionary's word, or the rules' reading of it, [the stroke read-back](#/ref/fallback)), then the entries nearest to it. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`. With no stroke, the interactive session."
+     "`lookup` with every query read as a stroke (lowercase is read as capitals), as keymux's `steno stroke`: what the stroke types in lyk (the dictionary's word, or the solver's reading of a miss, [the solver](#/ref/fallback)), then the entries nearest to it. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`. With no stroke, the interactive session."
     ],
     [
      "`ergonomics [WORD|STROKES] [--rebuild]`",
@@ -176,8 +176,8 @@
     ],
     [
      "`02-lyk-backups.json`",
-     "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join))",
-     "about 3.9 million"
+     "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join)); `!deploy` ships only those the solver does not read as their word",
+     "about 3.9 million in `out/lyk`"
     ],
     [
      "`02-lyk-extras.json`",
@@ -203,11 +203,11 @@
   },
   {
    "t": "p",
-   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`)."
+   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`), and the solver plugin, `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly the first time it loads it and whenever it changes, see [the solver](#/ref/fallback))."
   },
   {
    "t": "p",
-   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy`: `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules; it holds only the source hash, see Version below)."
+   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy` (besides the thinned backups `backups-thin.json` and its stamp, which `!deploy` writes and ships as `02-lyk-backups.json`): `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules; it holds only the source hash, see Version below)."
   },
   {
    "t": "list",
@@ -315,7 +315,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, copied into ~/.config/keymux/steno/lyk"
+   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, copied into ~/.config/keymux/steno/lyk (the backups thinned, the solver plugin beside them)"
   },
   {
    "t": "p",
