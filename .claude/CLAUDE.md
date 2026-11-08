@@ -27,3 +27,7 @@ checked against `tools/phrasing_prototype.py`, not the dictionary, until the gen
 
 Learn the theory from the site (lessons in order, then the Reference), not from the repository
 files.
+
+**No pull requests.** This repo takes no PRs, ever. Finished work lands by fast-forwarding `main`:
+linear history, no merge commits, no force pushes on `main`. Do not open, suggest or leave a PR
+open. GitHub cannot delete a PR, so a stray one is closed (`gh pr close`) and its branch deleted.
