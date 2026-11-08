@@ -276,6 +276,8 @@ pub struct Reading {
     pub pieces: Vec<String>,
     /// What the pieces' rarity added to the cost
     pub rarity: u32,
+    /// A known outline followed by nothing but suffix chords: the word you know, with endings
+    pub composed: bool,
 }
 
 pub struct Model {
@@ -1021,6 +1023,7 @@ impl Model {
             self.emit(&next, &mut arena, &mut emitted);
             next.extend(emitted);
             next.append(&mut pending[i + 1]);
+            self.keep_ends(&arena, &mut next);
             states = self.settle(sc, &next, true);
         }
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
@@ -1033,7 +1036,7 @@ impl Model {
             // *parts*, no commoner than the word *parts* itself
             if reading.pieces.len() > 1 {
                 match self.known.get(&reading.text.to_lowercase()) {
-                    Some(&word) => reading.cost = reading.cost.saturating_sub(reading.rarity) + self.word_cost[word as usize],
+                    Some(&word) => reading.cost = reading.cost.saturating_sub(reading.rarity) + self.word_cost[word as usize].max(reading.rarity),
                     None => reading.cost += self.c.nonword,
                 }
             }
@@ -1042,9 +1045,33 @@ impl Model {
                 None => out.push(reading),
             }
         }
-        out.sort_by_key(|r| r.cost);
+        // Precedence, not only cost: a word you know followed by ending chords, when they spell a
+        // real word, is that word (`PROB/+-BL` *probable*); only then the cheapest reading
+        out.sort_by_key(|r| (!(r.composed && self.known.contains_key(&r.text.to_lowercase())), r.cost));
         out.truncate(keep);
         out
+    }
+
+    /// The finished readings worth carrying on, at most [`KEEP_ENDS`], ranked as the end will rank
+    /// them: pieces that spell no word cost [`NONWORD`] more there, so a heap of cheap nonsense
+    /// (*pro* + *able*, *from* + *able*) must not crowd a real word (*probable*) out before then.
+    fn keep_ends(&self, arena: &[(u32, Piece)], states: &mut Vec<St>) {
+        let mut ends: Vec<(u32, St)> = states
+            .iter()
+            .filter(|s| s.node == 0 && s.back != NO_BACK)
+            .map(|&s| {
+                let r = self.reading(arena, s);
+                let nonsense = r.pieces.len() > 1 && !self.known.contains_key(&r.text.to_lowercase());
+                (s.cost + if nonsense { self.c.nonword } else { 0 }, s)
+            })
+            .collect();
+        if ends.len() <= KEEP_ENDS {
+            return;
+        }
+        ends.sort_unstable_by_key(|e| e.0);
+        ends.truncate(KEEP_ENDS);
+        states.retain(|s| s.node != 0 || s.back == NO_BACK);
+        states.extend(ends.into_iter().map(|e| e.1));
     }
 
     fn reading(&self, arena: &[(u32, Piece)], end: St) -> Reading {
@@ -1078,7 +1105,10 @@ impl Model {
         if text == "i" {
             text = "I".into();
         }
-        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity }
+        let composed = pieces.len() > 1
+            && matches!(pieces[0].0, Piece::Stem(_))
+            && pieces[1..].iter().all(|(p, _)| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
+        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed }
     }
 
     // --- What the plugin answers ---
@@ -1183,8 +1213,9 @@ fn join_suffix(text: &mut String, next: &str) {
     } else if n > 1 && next_vowel && b[n - 1] == b'e' && !vowel(b[n - 2]) {
         text.pop();
     } else if n > 1 && !next_i && b[n - 1] == b'y' && !vowel(b[n - 2]) {
+        // `fly` + `s` is *flies*, `happy` + `ness` is *happiness*
         text.pop();
-        text.push('i');
+        text.push_str(if next == "s" { "ie" } else { "i" });
     }
 }
 

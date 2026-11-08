@@ -2446,3 +2446,16 @@ does not spell it with went 3 -> 5, the biggest win of the round (86.3 -> 87.3%)
 re-tuned with it. Top-1 87.4%, 91.2% weighted by use, the tape 10.8%. `TK*UP` (undo word) does not
 take back a whole solver run: undoing the run's translation restores the partial it replaced, so a
 whole-run undo needs keymux's `take_back` to keep going through the restored partials (not done).
+
+**Three rules, in order, for a word family (2026-11-08, from "PROB/+-BL is probable, PRO/+-BL is
+probably: inconsistent").** He asked for a table written as the design and the solver changed until
+it holds: `a_word_family_follows_three_rules` in `src/rules/solve/mod.rs`. The rules: a brief is its
+word; a known word plus ending chords that spell a real word is that word, ahead of every cost
+(neutral on the eval, 87.4 -> 87.3%); otherwise the sounds. Tried and dropped, measured per chord:
+"a run ending in a suffix chord ends in that suffix" lost on every suffix chord (`+AOE` -51, `+-L`
+-45, `+-S` -26 of 3,865), even bounded to readings within 2 of the best (-0.5 top-1, -0.9 weighted):
+lyk's own outlines use those chords as plain sounds. Two bugs found on the way: only the 16 cheapest
+finished readings were carried between strokes, ranked before the not-a-word penalty, so cheap
+nonsense (*pro* + *able*, *from* + *able*) crowded out *probable*; they are now ranked with it. And
+pieces that spell a word were priced as that word even when cheaper than the pieces (*thi* + *s* =
+*this*, beating *these*); a composition now costs at least its pieces, and *y* + *s* is *-ies*.

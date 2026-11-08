@@ -750,18 +750,29 @@ mod tests {
         assert_eq!(model().answer("SKP/+-R").as_deref(), Some("ander"));
     }
 
+    /// A word family by three rules a typist can hold in mind, in order: (a) a brief is its word;
+    /// (b) a word you know followed by ending chords, when they spell a real word, is that word;
+    /// (c) otherwise the run is read by its sounds. The table is the design: when a rule changes,
+    /// it changes here first.
     #[test]
-    fn a_family_is_reached_by_its_base_and_its_endings() {
-        // the base and a suffix chord, joined by English spelling: -le + -ly is -ly, -ble + -ity is -bility
-        for (outline, word) in [
-            ("PROB/+-BL", "probable"),
-            ("PROBL/+-L", "probably"),
-            ("PROBL/+EU", "probably"),
-            ("PROBL/+U/+TEU", "probability"),
-            ("PROB/+-BL/+EU/+TEUZ", "probabilities"),
-            ("EUPL/+PROB/+-BL", "improbable"),
+    fn a_word_family_follows_three_rules() {
+        for (outline, word, rule) in [
+            ("PROBL", "probable", "a: brief"),
+            ("PROEBL", "probably", "a: brief"),
+            ("PROB/+ABL", "probable", "c: prob-able"),
+            ("PRO/+PWABL", "probable", "c: pro-bable"),
+            ("PROB/+-BL", "probable", "b: prob + -able"),
+            ("PRO/+-BL", "probably", "c: pro + able is no word, so sounds: pro-bly"),
+            ("PROB/+-BL/+-L", "probably", "b: prob + -able + -ly"),
+            ("PROBL/+-L", "probably", "b: probable + -ly"),
+            ("PROB/+ABL/+HREU", "probably", "c: prob-ab-ly"),
+            ("PROBL/+U/+TEU", "probability", "b: probable + -ity"),
+            ("PROB/+-BL/+U/+TEU", "probability", "b: prob + -able + -ity"),
+            ("EUPL/+PROBL", "improbable", "c: im + probable's sounds"),
+            ("EUPL/+PROB/+-BL", "improbable", "c: im-prob + -able"),
+            ("EUPL/+PROBL/+-L", "improbably", "c: improbable + -ly"),
         ] {
-            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline} ({rule})");
         }
     }
 
