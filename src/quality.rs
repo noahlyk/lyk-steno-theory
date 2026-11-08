@@ -234,15 +234,29 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
         count += 1;
         let rest = value.strip_prefix("{:firstup}").unwrap_or("");
         let braces = rest.matches('{').count();
-        let ok = !outline.contains('/')
-            && rest.starts_with("{#")
-            && !rest.contains("{:firstup}")
-            && (braces == 1 || (braces == 2 && rest.ends_with("{^}")));
+        // a key command (`{:firstup}{#Left}{^}`) or a Keymux control (`{:firstup}{:transparent}{:overlay:toggle}`)
+        let key_command = rest.starts_with("{#") && (braces == 1 || (braces == 2 && rest.ends_with("{^}")));
+        let control = rest.starts_with("{:transparent}{:") && braces == 2;
+        let ok = !outline.contains('/') && !rest.contains("{:firstup}") && (key_command || control);
         if !ok {
             bad.push(format!("{outline:?}: {value:?}"));
         }
     }
     assert!(count > 0, "no first-up entries at all: the cursor strokes lost their marker");
+    // The overlay, tape, keyboard and lookup controls: toggles, show and hide repeat usefully and
+    // carry the marker; the one-shot or destructive ones (tape clear, engine unload, lookup open)
+    // must not. Every marked one is `{:firstup}{:transparent}{control}`, marker first.
+    let marked_controls: std::collections::BTreeSet<&str> = commands
+        .iter()
+        .filter(|(_, v)| v.starts_with("{:firstup}{:transparent}"))
+        .map(|(o, _)| o.as_str())
+        .collect();
+    let want: std::collections::BTreeSet<&str> =
+        ["PHRO*L", "PHRO*LS", "PHRO*LD", "PHRO*T", "PHRO*B", "PHR*UP", "PHRUPD"].into_iter().collect();
+    assert_eq!(marked_controls, want, "first-up controls changed: update the Reference too");
+    for outline in ["PHRO*TZ", "PHRUP", "PHRO*PLZ"] {
+        assert!(!commands[outline].contains("{:firstup}"), "{outline} must stay on the last key up");
+    }
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
@@ -262,14 +276,14 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     let reserved = generate::reserved_outlines().expect("reserved dictionaries parse");
     let expected = [
         ("PHRUP", "{:transparent}{PLOVER:LOOKUP}"),
-        ("PHR*UP", "{:transparent}{:lookup:toggle}"),
-        ("PHRUPD", "{:transparent}{:lookup:close}"),
-        ("PHRO*L", "{:transparent}{:overlay:toggle}"),
-        ("PHRO*LS", "{:transparent}{:overlay:show}"),
-        ("PHRO*LD", "{:transparent}{:overlay:hide}"),
-        ("PHRO*T", "{:transparent}{:tape:toggle}"),
+        ("PHR*UP", "{:firstup}{:transparent}{:lookup:toggle}"),
+        ("PHRUPD", "{:firstup}{:transparent}{:lookup:close}"),
+        ("PHRO*L", "{:firstup}{:transparent}{:overlay:toggle}"),
+        ("PHRO*LS", "{:firstup}{:transparent}{:overlay:show}"),
+        ("PHRO*LD", "{:firstup}{:transparent}{:overlay:hide}"),
+        ("PHRO*T", "{:firstup}{:transparent}{:tape:toggle}"),
         ("PHRO*TZ", "{:transparent}{:tape:clear}"),
-        ("PHRO*B", "{:transparent}{:keyboard:toggle}"),
+        ("PHRO*B", "{:firstup}{:transparent}{:keyboard:toggle}"),
         ("PHRO*PLZ", "{:transparent}{:engine:unload}"),
     ];
     for (outline, value) in expected {
@@ -279,6 +293,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     }
     let mut seen = std::collections::HashSet::new();
     for (outline, value) in &commands {
+        let value = value.strip_prefix("{:firstup}").unwrap_or(value);
         let Some(rest) = value.strip_prefix("{:transparent}") else { continue };
         assert!(seen.insert(outline.clone()), "duplicate {outline}");
         assert!(!rest.contains("{:transparent}"), "{outline}: marker twice");

@@ -32,9 +32,10 @@
     { "t": "h", "x": "Punctuation, letters and keys" },
     { "t": "table", "head": ["Need", "Page"], "rows": [
       ["Marks, capitals, cursor and editing strokes", "[Punctuation and commands](#/ref/punctuation)"],
-      ["Hold a cursor chord and tap to repeat (Keymux)", "[Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)"],
+      ["Hold a cursor chord (or an overlay control) and tap to repeat (Keymux)", "[Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)"],
       ["The alphabet, numbers, function keys, symbols, Ctrl and Alt chords", "[Fingerspelling, numbers and modifiers](#/ref/fingerspelling)"],
-      ["Show, hide or clear the Keymux overlay, tape and lookup; free the engine from RAM; redo, again, swap", "[Overlay and lookup controls](#/ref/punctuation/overlay-and-lookup-controls-keymux)"],
+      ["Undo (`*`), undo a word, plain undo", "[The undo stroke](#/ref/punctuation/the-undo-stroke)"],
+      ["Show, hide or clear the Keymux overlay, tape and lookup (toggle, show and hide send on the first key up: hold and tap); free the engine from RAM; redo, again, swap", "[Overlay and lookup controls](#/ref/punctuation/overlay-and-lookup-controls-keymux)"],
       ["What is pinned before any word", "[Reserved strokes](#/ref/reserved-strokes)"]
     ] },
     { "t": "h", "x": "How it is built" },

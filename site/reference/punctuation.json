@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "86 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "86 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 29 of them (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -659,12 +659,22 @@
      "Backspace",
      "[[PW*FP]] [[PW-FP]]",
      "hold all but one of the keys (`PW` and `-F`, then tap `-P`): delete backwards a character at a time"
+    ],
+    [
+     "Overlay, tape, keyboard",
+     "[[PHRO*L]] [[PHRO*LS]] [[PHRO*LD]] [[PHRO*T]] [[PHRO*B]]",
+     "hold `PHRO*`, tap `-L` to flip the overlay, `-T` to flip the tape, `-B` to flip the keyboard diagram. Hold `PHRO*L` and tap `S` to show, `D` to hide: the held keys wait, so show and hide can follow each other without lifting the hand"
+    ],
+    [
+     "Lookup",
+     "[[PHR*UP]] [[PHRUPD]]",
+     "hold `PHR` and `UP`, tap `*` to flip the lookup, or `D` to close it"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "**Why these:** each is a command whose natural use is to be repeated, the family shares one left-hand base so a held `STPH` is a cursor chord, and the key sets work out: hold the base plus all but one key, and the held keys plus the tapped key make exactly the next stroke of the family. Holding more keys changes the family in place: `STPH-R` to `STPH-RB` (word left) when you add `-B`, `STPH-R` to `STPH*R` (select) when you add `*`; both are first-up too, so the walk never has to stop."
+   "x": "**Why these:** each is a command whose natural use is to be repeated, the family shares one left-hand base so a held `STPH` is a cursor chord, and the key sets work out: hold the base plus all but one key, and the held keys plus the tapped key make exactly the next stroke of the family. Holding more keys changes the family in place: `STPH-R` to `STPH-RB` (word left) when you add `-B`, `STPH-R` to `STPH*R` (select) when you add `*`; both are first-up too, so the walk never has to stop. The controls follow the same idea: a toggle, a show or a hide is a state you flip and want to flip again without lifting the hand, and the overlay controls share the base `PHRO*L` the way the cursor family shares `STPH`. In their entries the marker comes first, then `{:transparent}`, then the command: `{:firstup}{:transparent}{:overlay:toggle}`. Keymux reads each marker wherever it stands in the entry, so the order is a convention that keeps the command last."
   },
   {
    "t": "p",
@@ -708,13 +718,21 @@
     [
      "`{PLOVER:...}` commands, [[TKUPT]]",
      "They are engine commands that run once."
+    ],
+    [
+     "[[PHRO*TZ]] (clear the tape), [[PHRO*PLZ]] (free the engine from RAM)",
+     "Destructive or one-shot: clearing twice is the same as once, and unloading the engine should be a deliberate stroke that has fully come up, not the first key of a chord. Both stay on the last key up."
+    ],
+    [
+     "[[PHRUP]] (open the lookup)",
+     "Opening an open lookup does nothing, so there is nothing to repeat, and the stroke is the widest of the controls: 18 of the 5,000 most common words have a stroke that contains it, and 11 more start with such a stroke, against 2 to 5 for the toggles. Use [[PHR*UP]] to flip the lookup when you want the hold-and-tap."
     ]
    ]
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "**The trap.** Keys still down when a first-up stroke goes join the next stroke. Lift the whole hand between a cursor move and the next word, as you do between any two strokes; if one finger lags, that key rides into the next stroke. Likewise, a word whose stroke is a first-up stroke plus more keys is only hit if a key of it lands after another key has already come up, which a chord struck together never does. The exposure among the 5,000 most common words is small: 3 for `STPH-R` and `STPH-RB` (*insurance*, *internal*), 15 to 19 for `STPH-P` `-B` `-G`, 0 to 6 for the rest of the family, 14 and 32 for Backspace."
+   "x": "**The trap.** Keys still down when a first-up stroke goes join the next stroke. Lift the whole hand between a cursor move and the next word, as you do between any two strokes; if one finger lags, that key rides into the next stroke. Likewise, a word whose stroke is a first-up stroke plus more keys is only hit if a key of it lands after another key has already come up, which a chord struck together never does. The exposure among the 5,000 most common words is small: 3 for `STPH-R` and `STPH-RB` (*insurance*, *internal*), 15 to 19 for `STPH-P` `-B` `-G`, 0 to 6 for the rest of the family, 14 and 32 for Backspace. The new controls, counted as the words whose single stroke contains the control's keys plus the longer words whose first stroke does: 3 for `PHRO*L`, 0 for `PHRO*LS` and `PHRO*LD`, 1 for `PHRO*T`, 5 for `PHRO*B` (*belong*, *belongs*, *belonged*, *unbelievable*, *balloon*), 4 for `PHR*UP`, 2 for `PHRUPD`; none of them is a word you type in a hurry."
   },
   {
    "t": "h3",
@@ -726,7 +744,7 @@
   },
   {
    "t": "p",
-   "x": "**Plover itself does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin and looks the name up; there is none called `firstup`, and Plover 5.4.2's lookup raises `KeyError: 'firstup'`. So in plain Plover the 22 strokes above would error instead of typing the key; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk is deployed to Keymux, so the 22 strokes carry it; a Plover user can register a one-line meta plugin named `firstup` that does nothing, or take a copy of `commands.json` with the marker removed. The strokes themselves never change either way."
+   "x": "**Plover itself does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin and looks the name up; there is none called `firstup`, and Plover 5.4.2's lookup raises `KeyError: 'firstup'`. So in plain Plover the 29 strokes above would error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk is deployed to Keymux, so the 29 strokes carry it; a Plover user can register a one-line meta plugin named `firstup` that does nothing, or take a copy of `commands.json` with the marker removed. The strokes themselves never change either way."
   },
   {
    "t": "h3",
@@ -918,59 +936,69 @@
    "head": [
     "Stroke",
     "Definition",
-    "Effect"
+    "Effect",
+    "First-up"
    ],
    "rows": [
     [
      "[[PHRO*L]]",
-     "`{:transparent}{:overlay:toggle}`",
-     "Flip the whole overlay panel"
+     "`{:firstup}{:transparent}{:overlay:toggle}`",
+     "Flip the whole overlay panel",
+     "yes"
     ],
     [
      "[[PHRO*LS]]",
-     "`{:transparent}{:overlay:show}`",
-     "Show it again (also after a click or window switch put it away)"
+     "`{:firstup}{:transparent}{:overlay:show}`",
+     "Show it again (also after a click or window switch put it away)",
+     "yes"
     ],
     [
      "[[PHRO*LD]]",
-     "`{:transparent}{:overlay:hide}`",
-     "Hide it"
+     "`{:firstup}{:transparent}{:overlay:hide}`",
+     "Hide it",
+     "yes"
     ],
     [
      "[[PHRO*T]]",
-     "`{:transparent}{:tape:toggle}`",
-     "Flip the tape only; the keyboard diagram stays"
+     "`{:firstup}{:transparent}{:tape:toggle}`",
+     "Flip the tape only; the keyboard diagram stays",
+     "yes"
     ],
     [
      "[[PHRO*TZ]]",
      "`{:transparent}{:tape:clear}`",
-     "Empty the tape on screen (the tape file and the typing history are untouched)"
+     "Empty the tape on screen (the tape file and the typing history are untouched)",
+     "no: clearing is destructive, and a repeat means nothing"
     ],
     [
      "[[PHRO*B]]",
-     "`{:transparent}{:keyboard:toggle}`",
-     "Flip the keyboard diagram only"
+     "`{:firstup}{:transparent}{:keyboard:toggle}`",
+     "Flip the keyboard diagram only",
+     "yes"
     ],
     [
      "[[PHRUP]]",
      "`{:transparent}{PLOVER:LOOKUP}`",
-     "Open the live lookup (does nothing if it is already open)"
+     "Open the live lookup (does nothing if it is already open)",
+     "no: opening an open lookup does nothing, and it is the widest stroke here"
     ],
     [
      "[[PHR*UP]]",
-     "`{:transparent}{:lookup:toggle}`",
-     "Open the lookup, or close it if open"
+     "`{:firstup}{:transparent}{:lookup:toggle}`",
+     "Open the lookup, or close it if open",
+     "yes"
     ],
     [
      "[[PHRUPD]]",
-     "`{:transparent}{:lookup:close}`",
-     "Close the lookup"
+     "`{:firstup}{:transparent}{:lookup:close}`",
+     "Close the lookup",
+     "yes"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "**How they were chosen.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above, and the last keys name the part and the verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: the plain chord opens, the star flips, `D` closes. Only toggle is given to the tape and keyboard, and show/hide only to the whole panel, to keep the layout small: a hide is a toggle when you know the state. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes are checked free of every word outline, backup and phrase in the built dictionary."
+   "x": "**How they were chosen.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above, and the last keys name the part and the verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: the plain chord opens, the star flips, `D` closes. Only toggle is given to the tape and keyboard, and show/hide only to the whole panel, to keep the layout small: a hide is a toggle when you know the state. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
   },
   {
    "t": "h3",
@@ -981,13 +1009,15 @@
    "head": [
     "Stroke",
     "Definition",
-    "Effect"
+    "Effect",
+    "First-up"
    ],
    "rows": [
     [
      "[[PHRO*PLZ]]",
      "`{:transparent}{:engine:unload}`",
-     "Free the dictionaries from RAM"
+     "Free the dictionaries from RAM",
+     "no: a one-shot that should wait for a fully struck stroke"
     ]
    ]
   },
