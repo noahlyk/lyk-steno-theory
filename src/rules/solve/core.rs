@@ -1070,11 +1070,9 @@ impl Model {
         pieces.reverse();
         let mut text = String::new();
         for (i, (_, piece)) in pieces.iter().enumerate() {
-            let suffix_next = matches!(pieces.get(i + 1), Some((Piece::Suffix(_) | Piece::TwoSuffix(_), _)));
-            let next_vowel = pieces.get(i + 1).is_some_and(|(_, t)| t.starts_with(['a', 'e', 'i', 'o', 'u', 'y']));
             text.push_str(piece);
-            if suffix_next {
-                join_suffix(&mut text, next_vowel, pieces[i + 1].1.starts_with('i'));
+            if let Some((Piece::Suffix(_) | Piece::TwoSuffix(_), next)) = pieces.get(i + 1) {
+                join_suffix(&mut text, next);
             }
         }
         if text == "i" {
@@ -1167,13 +1165,22 @@ const fn place(keys: u32) -> u32 {
     if k == 0 { 0 } else { k.trailing_zeros() }
 }
 
-/// English's spelling at a suffix: a silent `e` drops before a vowel (`make` + `ing`), a `y`
-/// after a consonant turns to `i` before anything but `i` (`happy` + `ness`).
-fn join_suffix(text: &mut String, next_vowel: bool, next_i: bool) {
+/// English's spelling at a suffix, applied to `text` before `next` is added: a consonant and `le`
+/// become `ly` with *-ly* (`probable` + `ly`, *probably*; `simple`, *simply*) and `-ble` becomes
+/// `-bil` before *-ity* (*probability*); a silent `e` drops before a vowel (`make` + `ing`); a
+/// `y` after a consonant turns to `i` before anything but `i` (`happy` + `ness`).
+fn join_suffix(text: &mut String, next: &str) {
     let b = text.as_bytes();
     let n = b.len();
     let vowel = |c: u8| matches!(c, b'a' | b'e' | b'i' | b'o' | b'u');
-    if n > 1 && next_vowel && b[n - 1] == b'e' && !vowel(b[n - 2]) {
+    let next_vowel = next.starts_with(['a', 'e', 'i', 'o', 'u', 'y']);
+    let next_i = next.starts_with('i');
+    if n > 2 && text.ends_with("le") && !vowel(b[n - 3]) && next == "ly" {
+        text.truncate(n - 2);
+    } else if text.ends_with("ble") && next.starts_with("ity") {
+        text.truncate(n - 2);
+        text.push_str("il");
+    } else if n > 1 && next_vowel && b[n - 1] == b'e' && !vowel(b[n - 2]) {
         text.pop();
     } else if n > 1 && !next_i && b[n - 1] == b'y' && !vowel(b[n - 2]) {
         text.pop();

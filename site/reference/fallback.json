@@ -193,6 +193,16 @@
    ],
    "rows": [
     [
+     "a consonant and `le` before *-ly*",
+     "`le` becomes `ly`",
+     "*probable* + `+-L` is *probably*; *simple* + *ly* is *simply*"
+    ],
+    [
+     "`-ble` before *-ity*",
+     "`-ble` becomes `-bil`",
+     "*probable* + `+U/+TEU` is *probability*"
+    ],
+    [
      "a silent `e` before a suffix starting with a vowel",
      "drop the `e`",
      "[[have|SR]] + `+-G` is `!having`"

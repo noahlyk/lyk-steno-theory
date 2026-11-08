@@ -751,6 +751,21 @@ mod tests {
     }
 
     #[test]
+    fn a_family_is_reached_by_its_base_and_its_endings() {
+        // the base and a suffix chord, joined by English spelling: -le + -ly is -ly, -ble + -ity is -bility
+        for (outline, word) in [
+            ("PROB/+-BL", "probable"),
+            ("PROBL/+-L", "probably"),
+            ("PROBL/+EU", "probably"),
+            ("PROBL/+U/+TEU", "probability"),
+            ("PROB/+-BL/+EU/+TEUZ", "probabilities"),
+            ("EUPL/+PROB/+-BL", "improbable"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
     fn spelling_mode_is_letter_by_letter() {
         assert_eq!(model().answer("~K/+A/+T").as_deref(), Some("kat"));
     }
