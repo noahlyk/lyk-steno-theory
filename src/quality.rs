@@ -246,6 +246,63 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
+/// Keymux's runtime overlay/tape/keyboard/lookup controls (`{:overlay:hide}` and friends) act on
+/// a running overlay and type nothing, so each one must carry `{:transparent}` first (a control
+/// struck in the middle of a join must not break it), name only a part/verb Keymux parses, and
+/// sit on a stroke no other entry shares and no word outline took (the collision test above
+/// covers the words; this one covers the table itself).
+// The entries are dictionary metas, not format strings.
+#[allow(clippy::literal_string_with_formatting_args)]
+#[test]
+fn overlay_controls_are_transparent_valid_unique_and_resolve() {
+    let commands: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/commands.json")).expect("commands parse");
+    let punctuation: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/punctuation.json")).expect("punctuation parse");
+    let reserved = generate::reserved_outlines().expect("reserved dictionaries parse");
+    let expected = [
+        ("PHRUP", "{:transparent}{PLOVER:LOOKUP}"),
+        ("PHR*UP", "{:transparent}{:lookup:toggle}"),
+        ("PHRUPD", "{:transparent}{:lookup:close}"),
+        ("PHRO*L", "{:transparent}{:overlay:toggle}"),
+        ("PHRO*LS", "{:transparent}{:overlay:show}"),
+        ("PHRO*LD", "{:transparent}{:overlay:hide}"),
+        ("PHRO*T", "{:transparent}{:tape:toggle}"),
+        ("PHRO*TZ", "{:transparent}{:tape:clear}"),
+        ("PHRO*B", "{:transparent}{:keyboard:toggle}"),
+    ];
+    for (outline, value) in expected {
+        assert_eq!(commands.get(outline).map(String::as_str), Some(value), "{outline}");
+        assert!(!punctuation.contains_key(outline), "{outline} is also a punctuation stroke");
+        assert!(reserved.contains_key(outline), "{outline} is not reserved");
+    }
+    let mut seen = std::collections::HashSet::new();
+    for (outline, value) in &commands {
+        let Some(rest) = value.strip_prefix("{:transparent}") else { continue };
+        assert!(seen.insert(outline.clone()), "duplicate {outline}");
+        assert!(!rest.contains("{:transparent}"), "{outline}: marker twice");
+        let body = rest.trim_start_matches(['{', ':']).trim_end_matches('}');
+        let valid = body.eq_ignore_ascii_case("PLOVER:LOOKUP")
+            || matches!(
+                body,
+                "overlay:show" | "overlay:hide" | "overlay:toggle"
+                    | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
+                    | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
+                    | "lookup:open" | "lookup:close" | "lookup:toggle"
+            );
+        assert!(valid && rest.matches('{').count() == 1, "{outline}: {value:?} is not a Keymux control");
+    }
+    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented nine");
+    for (outline, value) in [
+        ("R*EUD", "{:redo}"),
+        ("TK*UP", "{:undo_word}"),
+        ("TKPWA*EPB", "{:again}"),
+        ("SWA*P", "{:swap}"),
+    ] {
+        assert_eq!(commands.get(outline).map(String::as_str), Some(value), "{outline}");
+    }
+}
+
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and
 /// `data::fallback_pronunciations`) for any word `CMUdict` has no entry for at all - this is the
 /// regression guard that the fallback is actually wired in and still reaches a real number of

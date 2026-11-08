@@ -68,5 +68,18 @@
 "S-PD": "{*?}",
 "SP-S": "{^^}",
 "HRO*ER": "{:case:lower_first_char}",
-"HRO*ERD": "{:retro_case:lower_first_char}"
+"HRO*ERD": "{:retro_case:lower_first_char}",
+"PHRUP": "{:transparent}{PLOVER:LOOKUP}",
+"PHR*UP": "{:transparent}{:lookup:toggle}",
+"PHRUPD": "{:transparent}{:lookup:close}",
+"PHRO*L": "{:transparent}{:overlay:toggle}",
+"PHRO*LS": "{:transparent}{:overlay:show}",
+"PHRO*LD": "{:transparent}{:overlay:hide}",
+"PHRO*T": "{:transparent}{:tape:toggle}",
+"PHRO*TZ": "{:transparent}{:tape:clear}",
+"PHRO*B": "{:transparent}{:keyboard:toggle}",
+"R*EUD": "{:redo}",
+"TK*UP": "{:undo_word}",
+"TKPWA*EPB": "{:again}",
+"SWA*P": "{:swap}"
 }

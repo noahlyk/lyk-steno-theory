@@ -34,6 +34,7 @@
       ["Marks, capitals, cursor and editing strokes", "[Punctuation and commands](#/ref/punctuation)"],
       ["Hold a cursor chord and tap to repeat (Keymux)", "[Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)"],
       ["The alphabet, numbers, function keys, symbols, Ctrl and Alt chords", "[Fingerspelling, numbers and modifiers](#/ref/fingerspelling)"],
+      ["Show, hide or clear the Keymux overlay, tape and lookup; redo, again, swap", "[Overlay and lookup controls](#/ref/punctuation/overlay-and-lookup-controls-keymux)"],
       ["What is pinned before any word", "[Reserved strokes](#/ref/reserved-strokes)"]
     ] },
     { "t": "h", "x": "How it is built" },

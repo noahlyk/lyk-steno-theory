@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **70 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **83 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "70 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "83 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 22 of them (the cursor and selection family and Backspace) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -904,6 +904,128 @@
   {
    "t": "p",
    "x": "These are reserved like any command: a word can never take a stroke the steno engine itself depends on."
+  },
+  {
+   "t": "h3",
+   "x": "Overlay and lookup controls (Keymux)"
+  },
+  {
+   "t": "p",
+   "x": "Keymux's overlay (the keyboard diagram and the tape) and its live lookup can be shown, hidden and flipped from a stroke. Each stroke below types nothing, keeps the spacing and capitals around it, runs once and stays off the tape. **They act only on an overlay that is already running, and only for now:** nothing is written to the config, and they never start the overlay or change how it starts. Restart it and it comes back as the config says. With no overlay running (or `enabled: false`) they do nothing, with no error."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Definition",
+    "Effect"
+   ],
+   "rows": [
+    [
+     "[[PHRO*L]]",
+     "`{:transparent}{:overlay:toggle}`",
+     "Flip the whole overlay panel"
+    ],
+    [
+     "[[PHRO*LS]]",
+     "`{:transparent}{:overlay:show}`",
+     "Show it again (also after a click or window switch put it away)"
+    ],
+    [
+     "[[PHRO*LD]]",
+     "`{:transparent}{:overlay:hide}`",
+     "Hide it"
+    ],
+    [
+     "[[PHRO*T]]",
+     "`{:transparent}{:tape:toggle}`",
+     "Flip the tape only; the keyboard diagram stays"
+    ],
+    [
+     "[[PHRO*TZ]]",
+     "`{:transparent}{:tape:clear}`",
+     "Empty the tape on screen (the tape file and the typing history are untouched)"
+    ],
+    [
+     "[[PHRO*B]]",
+     "`{:transparent}{:keyboard:toggle}`",
+     "Flip the keyboard diagram only"
+    ],
+    [
+     "[[PHRUP]]",
+     "`{:transparent}{PLOVER:LOOKUP}`",
+     "Open the live lookup (does nothing if it is already open)"
+    ],
+    [
+     "[[PHR*UP]]",
+     "`{:transparent}{:lookup:toggle}`",
+     "Open the lookup, or close it if open"
+    ],
+    [
+     "[[PHRUPD]]",
+     "`{:transparent}{:lookup:close}`",
+     "Close the lookup"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "**How they were chosen.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above, and the last keys name the part and the verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: the plain chord opens, the star flips, `D` closes. Only toggle is given to the tape and keyboard, and show/hide only to the whole panel, to keep the layout small: a hide is a toggle when you know the state. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine strokes are checked free of every word outline, backup and phrase in the built dictionary."
+  },
+  {
+   "t": "h3",
+   "x": "The transparent marker"
+  },
+  {
+   "t": "p",
+   "x": "A stroke that carries `{:transparent}` is invisible to the translation history. A lookup in the middle of a multi-stroke join no longer breaks it: `THAS`, [[PHRUP]], then `+EUFG` still joins as if the lookup had not been struck, and `*` after the lookup skips straight past it. Keymux treats an entry that is exactly `{plover:lookup}` as transparent already; the marker makes it explicit, and the other controls need it. The marker sits **in front of** the command, like `{:firstup}`, types nothing and changes no spacing. Related markers Keymux defines, not used by any lyk stroke: `{:barrier}` (end any join here), `{:nobarrier}`, and `{:back}` (erase and let undo bring it back)."
+  },
+  {
+   "t": "h3",
+   "x": "History helpers"
+  },
+  {
+   "t": "p",
+   "x": "Four more Keymux-only commands act on the typing history. None needs the overlay."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Definition",
+    "Effect"
+   ],
+   "rows": [
+    [
+     "[[R*EUD]]",
+     "`{:redo}`",
+     "Put back what `*` took back (`{:redo:2}` for two)"
+    ],
+    [
+     "[[TK*UP]]",
+     "`{:undo_word}`",
+     "Take back a whole word: a stem and the suffixes glued to it"
+    ],
+    [
+     "[[TKPWA*EPB]]",
+     "`{:again}`",
+     "Say the last thing once more"
+    ],
+    [
+     "[[SWA*P]]",
+     "`{:swap}`",
+     "Swap the last two words"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "In plain Plover"
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 13 strokes would error instead of acting; every other stroke is unaffected. Workarounds: register no-op meta plugins with those names (nothing to do, since the overlay does not exist there), or use a copy of `commands.json` with these 13 entries removed (for [[PHRUP]] only the `{:transparent}` marker: `{PLOVER:LOOKUP}` is plain Plover). The theory is not changed for Plover; Keymux is the target engine."
   }
  ]
 }
