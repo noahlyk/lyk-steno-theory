@@ -43,6 +43,7 @@
     "**The star** as part of a chord (`*T` is TH) or, when nothing claims it, as the homophone marker, which writes no sound.",
     "**A stroke of the star alone (`+*`) that ends a run steps one word down**: the run without it reads as its best word, and each `+*` after it takes the next one. `TP/+EUT` is *fight*, `TP/+EUT/+*` *fit*; `*T/+U/+-PL` is *them*, `+*` *thumb*, a second `+*` *time*. A `+*` inside a run is the marker: it costs 1 and reads as nothing.",
     "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*).",
+    "**A chord that shares the vowel's `R` key** (`V.rv` `-FRB`, `CH.rch` `-FRPB`) is also that R and its consonant, free: `-S/+TAFRBZ` is *starves*, `-BG/+AFRBD` *carved*.",
     "**A left-hand stroke alone, after the first, is the word's next consonants in any order, free**: the left bank can only strike them in steno order (`KUR/+STKPWHR` is *curls*, its L Z struck Z then L).",
     "Of a stroke's readings, the 40 cheapest within 4 of the best are tried; of equal cost, those with the fewest sounds first (`STKPWHR` as Z L before J DH P)."
    ],

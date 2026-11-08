@@ -421,9 +421,18 @@ fn chords(tables: &[&HashMap<String, Stroke>], sounds: &mut Sounds) -> Vec<(u32,
     let mut out: Vec<(u32, Vec<u8>, u8)> = tables
         .iter()
         .flat_map(|t| t.iter())
-        .map(|(label, stroke)| {
+        .flat_map(|(label, stroke)| {
             let spelled = label.split_whitespace().any(|s| s.contains('.'));
-            (stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect(), u8::from(spelled) * SPELLED_CONSONANT)
+            let mut ways = vec![(stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect::<Vec<u8>>(), u8::from(spelled) * SPELLED_CONSONANT)];
+            // A chord that shares the vowel's R key (`V.rv` `-FRB`, *carve*): also the R it holds
+            if let Some((sound, spelling)) = label.split_once('.')
+                && spelling.starts_with('r')
+                && plain(sound) != "R"
+                && !label.contains(' ')
+            {
+                ways.push((stroke.0, vec![sounds.id("R"), sounds.id(sound)], 0));
+            }
+            ways
         })
         .collect();
     out.sort_by(|a, b| {
@@ -900,6 +909,14 @@ mod tests {
     #[test]
     fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn a_chord_that_shares_the_vowels_r_says_the_r() {
+        // `-FRB` is `V.rv`: the R of *starve*, *curve* struck with the V, not left out
+        for (outline, word) in [("-S/+TAFRBZ", "starves"), ("-FT/+AFRBZ", "starves")] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
     }
