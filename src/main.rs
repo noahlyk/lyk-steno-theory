@@ -146,6 +146,12 @@ enum Command {
         /// Another dictionary (JSON or RTF/CRE, such as Magnum's) to put in the cost tables
         #[arg(long)]
         against: Option<PathBuf>,
+        /// Also print the full diagnostics: entries per source, words the rules could not place,
+        /// collision and phrase counts, what a word costs next to Plover and Lapwing, keys by
+        /// frequency band, the commonest words on a star, and the words costing the most extra
+        /// keys over Plover. Off by default; the same conditions are asserted by `cargo test`
+        #[arg(long)]
+        report: bool,
     },
     /// Grab a random quote off the web and stroke it out, lyk next to Plover and Lapwing
     Quote {
@@ -339,6 +345,7 @@ fn main() -> Result<()> {
             common,
             briefs,
             against,
+            report,
         } => {
             let setup = setup(Some(*common))?;
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
@@ -349,7 +356,7 @@ fn main() -> Result<()> {
                     Ok((name, data::load_words(path)?))
                 })
                 .transpose()?;
-            generate::build(&setup, &briefs, *common, out, against.as_ref())
+            generate::build(&setup, &briefs, *common, out, against.as_ref(), *report)
         }
         Command::Quote {
             common,

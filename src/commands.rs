@@ -47,7 +47,7 @@ pub fn deploy(
     std::fs::create_dir_all(&to).with_context(|| to.display().to_string())?;
 
     let words_out = PathBuf::from("out/lyk");
-    generate::build(setup, briefs, common, &words_out, None)?;
+    generate::build(setup, briefs, common, &words_out, None, false)?;
     let plugin_out = PathBuf::from("out/lyk-orthographic-fallback.rs");
     write_plugin(setup, briefs, common, rules_path, &plugin_out)?;
 

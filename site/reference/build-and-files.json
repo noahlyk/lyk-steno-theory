@@ -21,7 +21,7 @@
     "**Optimized for speed, not for being guessable.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs the least to type. Nothing has to be derivable from the word's sound or spelling.",
     "**One primary outline per word, extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed, so they cost no other word anything.",
     "**An explicit join key.** Continuation strokes are never mistaken for words, which is what lets a suffix be one key.",
-    "**Measured, not asserted.** `!build` and `!score` print cost and match-rate against Plover and Lapwing on the same words every time. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
+    "**Measured, not asserted.** `!score` and `build --report` print cost and match-rate against Plover and Lapwing on the same words. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
     "**A miss always resolves.** A stroke the dictionary lacks still reads back as something sensible, as a real engine's last resort: see [the fallback](#/ref/fallback)."
    ],
    "ordered": false
@@ -63,7 +63,7 @@
     ],
     [
      "`!build`",
-     "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)), and print the cost."
+     "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)), and print what was written: the total and one line per file, with `(unchanged)` on a file whose bytes did not change. One extra warning line appears only when a word is stranded on a worse outline than its own plain reading. See [build output](#/ref/build-and-files/build-output)."
     ],
     [
      "`plugin [--out FILE]`",
@@ -94,8 +94,12 @@
      "Which keys Plover and Lapwing use for each sound group. This is how most rules were found: it counts the keys they use where they agree."
     ],
     [
+     "`build --report`",
+     "Everything `build` leaves out by default: entries per source, words the rules could not place (with the commonest), backup entries skipped as collisions, words still contested after peeling, phrase and extra counts, stranded words, what a word costs next to Plover and Lapwing (strokes and keys), keys by frequency band, the commonest words on a star because another word holds their outline, and the words that cost the most extra keys over Plover."
+    ],
+    [
      "`build --against FILE`",
-     "Add a third dictionary to the cost tables. Example: `build --against magnum.rtf`."
+     "Add a third dictionary to the cost tables of `build --report`. Example: `build --report --against magnum.rtf`."
     ],
     [
      "`quote [--words N] [--rebuild]`",
@@ -263,11 +267,32 @@
   },
   {
    "t": "h3",
+   "x": "Build output"
+  },
+  {
+   "t": "p",
+   "x": "`!build` and `!deploy` are quiet: the `wrote N entries` line, one line per file (`(unchanged)` when nothing changed), and a `warning:` line only if a word is stranded on a worse outline. The diagnostics are `build --report`; the health conditions they showed are asserted by tests that stay silent unless one fails (`cargo test --release`; skipped with a message if `data/` is missing)."
+  },
+  {
+   "t": "table",
+   "head": ["Test (file)", "Invariant", "Threshold"],
+   "rows": [
+    ["`no_word_is_stranded_on_a_worse_outline` (`src/generate/report.rs`)", "No word sits on a worse outline than its unclaimed plain reading", "0"],
+    ["`no_two_words_share_the_same_deployed_outline` (`src/quality.rs`)", "No collisions among primary outlines", "0"],
+    ["`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`", "Words the rules cannot place", "at most 450 (410 measured)"],
+    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 18,000 (16,566 measured); at most 35% of the dictionary"],
+    ["`phrase_and_extra_passes_each_add_entries`", "Phrase and extra passes add entries", "each above 0"],
+    ["`what_a_word_costs_has_not_regressed`", "Weighted keys and strokes per word", "at most 2% over 3.272 keys and 1.009 strokes; below Plover on both"],
+    ["`readme_tables_match_score` (ignored; `cargo test --release readme_tables -- --ignored`)", "README tables match `score`", "exact (same as `score --check-readme`)"]
+   ]
+  },
+  {
+   "t": "h3",
    "x": "Building and deploying"
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- deploy    # build + plugin, copied into ~/.config/keymux/steno/lyk"
+   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build + plugin, copied into ~/.config/keymux/steno/lyk"
   },
   {
    "t": "p",

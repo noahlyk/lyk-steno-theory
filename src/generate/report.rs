@@ -24,11 +24,25 @@ const BANDS: [(usize, &str); 8] = [
 type Against = (String, HashMap<String, String>);
 
 /// Build the dictionary, write it as one file per role into the folder `out` (see
-/// [`crate::output`]), and say what it costs to type next to Plover and Lapwing.
-pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against: Option<&Against>) -> Result<()> {
+/// [`crate::output`]), and say what was written. Quiet by default: the files, and one warning line
+/// only when something is wrong. With `report`, the whole diagnostic dump as well: pass counts,
+/// what it costs to type next to Plover and Lapwing, and the star and extra-key lists. The health
+/// conditions themselves are guarded by the `quality` and `report` tests, not by eyeballing this.
+pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against: Option<&Against>, report: bool) -> Result<()> {
     let generated = generate(setup, briefs, common)?;
     let files = crate::output::write_dictionary(&generated, out)?;
-    print_summary(setup, &generated, &files, out);
+    print_files(&generated, &files, out);
+    if !generated.stranded.is_empty() {
+        println!(
+            "warning: {} words are stranded on a worse outline than their own plain reading: {} (build --report for the rest)",
+            generated.stranded.len(),
+            generated.stranded.iter().take(8).cloned().collect::<Vec<_>>().join(", ")
+        );
+    }
+    if !report {
+        return Ok(());
+    }
+    print_summary(setup, &generated);
     let (total, bands, worse) = tally(setup, &generated, against);
     print_costs(&total, &bands, against.map(|(name, _)| name.as_str()));
     print_lost(setup, &generated);
@@ -36,17 +50,22 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     Ok(())
 }
 
-/// What was written and how each pass went.
-fn print_summary(setup: &Setup, generated: &Generated, files: &[Written], out: &Path) {
-    let mut by_origin: BTreeMap<String, usize> = BTreeMap::new();
-    for entry in &generated.entries {
-        *by_origin.entry(format!("{:?}", entry.origin)).or_default() += 1;
-    }
+/// What was written: the total and one line per file, with unchanged ones marked.
+fn print_files(generated: &Generated, files: &[Written], out: &Path) {
     println!("wrote {} entries to {} ({} files)", generated.entries.len(), out.display(), files.len());
     for file in files {
         let unchanged = if file.changed { "" } else { "  (unchanged)" };
         println!("  {:<24} {:>7} entries{unchanged}", file.role.file_name(), file.entries);
     }
+}
+
+/// How each pass went (`build --report`).
+fn print_summary(setup: &Setup, generated: &Generated) {
+    let mut by_origin: BTreeMap<String, usize> = BTreeMap::new();
+    for entry in &generated.entries {
+        *by_origin.entry(format!("{:?}", entry.origin)).or_default() += 1;
+    }
+    println!();
     for (origin, n) in &by_origin {
         println!("  {origin:<12} {n:>7}");
     }
@@ -225,5 +244,96 @@ fn print_worse(setup: &Setup, generated: &Generated, mut worse: Vec<Worse>) {
         let outline = best.get(word).map_or_else(String::new, |o| render_outline(o));
         let plover = setup.gold.plover.get(*word).and_then(|o| o.first()).map_or("", String::as_str);
         println!("  {word:<12} {ours_keys} vs {plover_keys} keys   ours {outline:<24} plover {plover}");
+    }
+}
+
+/// The health conditions `build --report` used to leave to the eye, asserted on the real build and
+/// silent unless one fails. Each skips with a message when the `data` folder is missing.
+#[cfg(test)]
+mod tests {
+    use super::{Total, tally};
+    use crate::dictionary_fixture;
+    use std::path::Path;
+
+    fn have_data() -> bool {
+        let ok = Path::new("data").exists();
+        if !ok {
+            eprintln!("skipped: no data folder (run `cargo run --release -- fetch`)");
+        }
+        ok
+    }
+
+    /// Measured 2026-11-08: 410 unplaced (name-like and interjection words). A rise means the rules
+    /// or briefs started losing words; lower the ceiling when it falls.
+    const UNRESOLVED_MAX: usize = 450;
+    /// Measured 2026-11-08: 16,566 contested after peeling.
+    const CONTESTED_MAX: usize = 18_000;
+
+    #[test]
+    fn no_word_is_stranded_on_a_worse_outline() {
+        if !have_data() {
+            return;
+        }
+        let stranded = &dictionary_fixture::generated().stranded;
+        assert!(stranded.is_empty(), "{} stranded words: {stranded:?}", stranded.len());
+    }
+
+    #[test]
+    fn words_the_rules_could_not_place_stay_under_the_recorded_ceiling() {
+        if !have_data() {
+            return;
+        }
+        let n = dictionary_fixture::generated().unresolved.len();
+        assert!(n <= UNRESOLVED_MAX, "{n} unplaced words, ceiling {UNRESOLVED_MAX} (measured 410)");
+    }
+
+    #[test]
+    fn the_contested_count_after_peeling_is_bounded_and_nonempty() {
+        if !have_data() {
+            return;
+        }
+        let n = dictionary_fixture::generated().contested;
+        assert!(n > 0 && n <= CONTESTED_MAX, "{n} contested after peeling, want 1..={CONTESTED_MAX} (measured 16566)");
+    }
+
+    #[test]
+    fn phrase_and_extra_passes_each_add_entries() {
+        if !have_data() {
+            return;
+        }
+        let g = dictionary_fixture::generated();
+        assert!(g.phrases_added > 0, "the phrase pass added nothing");
+        assert!(g.extras_added > 0, "the extras pass added nothing");
+    }
+
+    /// The headline cost numbers: measured 3.272 keys and 1.009 strokes per word against Plover's
+    /// 3.721 and 1.040. Allow 2% drift upward before failing; being cheaper than Plover on both is
+    /// the hard floor.
+    #[test]
+    fn what_a_word_costs_has_not_regressed() {
+        if !have_data() {
+            return;
+        }
+        let (setup, generated) = (dictionary_fixture::setup(), dictionary_fixture::generated());
+        let (total, _, _): (Total, _, _) = tally(setup, generated, None);
+        let (keys, strokes) = (total.ours.1 / total.weight, total.ours.0 / total.weight);
+        let (plover_keys, plover_strokes) = (total.plover.1 / total.weight, total.plover.0 / total.weight);
+        assert!(keys <= 3.272 * 1.02, "keys per word rose to {keys:.3} (measured 3.272)");
+        assert!(strokes <= 1.009 * 1.02, "strokes per word rose to {strokes:.3} (measured 1.009)");
+        assert!(keys < plover_keys && strokes < plover_strokes, "no longer cheaper than Plover");
+    }
+
+    /// `score --check-readme` as a test: README's tables match what `score` computes (default
+    /// `--common 20000`). Rebuilds a 20k dictionary, so it is slow: run it with
+    /// `cargo test --release readme_tables -- --ignored`.
+    #[test]
+    #[ignore = "slow: cargo test --release readme_tables -- --ignored"]
+    fn readme_tables_match_score() {
+        if !have_data() {
+            return;
+        }
+        let setup = crate::analysis::Setup::load(Path::new("data"), None, Some(20_000)).expect("setup");
+        let briefs = super::Briefs::built_in().expect("briefs");
+        crate::analysis::check_readme(&setup, &briefs, 20_000, Path::new("README.md"), false).expect("README tables stale");
     }
 }

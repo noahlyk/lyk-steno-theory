@@ -88,7 +88,8 @@ cargo run --release -- report              # what was loaded
 cargo run --release -- score               # how often the rules match Plover or Lapwing
 cargo run --release -- score --check-readme   # do this README's tables still match?
 cargo run --release -- score --write-readme   # ...and rewrite any stale one in place
-cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files), with the cost
+cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files); quiet: the files, and a warning only if a word is stranded
+cargo run --release -- build --report      # ...plus every diagnostic and the cost tables (the invariants are tests: cargo test --release)
 cargo run --release -- plugin              # generate keymux's WASM fallback plugin from the rules
 cargo run --release -- deploy              # build + plugin, copied straight into keymux's live config
                                             #   (~/.config/keymux/steno/lyk by default; override with --to)
@@ -97,7 +98,7 @@ cargo run --release -- family build       # build, builds, building...: each one
 cargo run --release -- paths complete     # every way to write a word as joined strokes, and what became of each
 cargo run --release -- mismatches --syllables 2 --after 500    # where the rules differ
 cargo run --release -- learn               # which keys Plover and Lapwing use for each sound group
-cargo run --release -- build --against magnum.rtf   # add a third dictionary to the cost tables
+cargo run --release -- build --report --against magnum.rtf   # add a third dictionary to the cost tables
 cargo run --release -- quote                        # a random quote, stroked lyk next to Plover and Lapwing
 cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, from the built dictionary (seconds)
 cargo run --release -- resolve STKPW                # a stroke not in the dictionary, read back
