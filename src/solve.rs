@@ -237,34 +237,53 @@ fn solve_all(model: &Model, sample: &[(&str, &String, Vec<u32>)]) -> Vec<(Durati
     })
 }
 
-/// The tape's misses (`?` lines), each beside the next stroke struck (usually its correction).
+/// The tape's misses (`?` lines), each against what was struck next once the miss was undone: the
+/// first later stroke that typed a word (a weak label: usually the correction). A miss one key
+/// from that stroke was a misstroke, not a word the dictionary lacked.
 fn eval_tape(model: &Model, tape: &Path) -> Result<()> {
     let text = std::fs::read_to_string(tape).with_context(|| tape.display().to_string())?;
     let lines: Vec<&str> = text.lines().collect();
+    let (mut n, mut labelled, mut right) = (0usize, 0usize, 0usize);
+    let (mut slips, mut slips_right) = (0usize, 0usize);
     let mut shown = 0;
-    let mut n = 0;
     for (i, line) in lines.iter().enumerate() {
         let mut parts = line.split_whitespace();
-        let (Some(_), Some(stroke), Some(out)) = (parts.next(), parts.next(), parts.next()) else { continue };
-        if out != "?" {
-            continue;
-        }
+        let (Some(_), Some(stroke), Some("?")) = (parts.next(), parts.next(), parts.next()) else { continue };
         n += 1;
-        if shown >= 200 {
+        // The next stroke within a few lines that typed a word, past undos and repeated misses
+        let Some((next_stroke, word)) = lines[i + 1..lines.len().min(i + 8)].iter().find_map(|l| {
+            let mut p = l.split_whitespace();
+            let (_, s) = (p.next()?, p.next()?);
+            let out = p.collect::<Vec<_>>().join(" ");
+            let word = out.strip_prefix('"')?.strip_suffix('"')?.trim().to_lowercase();
+            (s != "*" && !word.is_empty() && word.chars().all(|c| c.is_alphabetic() || c == '\'')).then(|| (s.to_owned(), word))
+        }) else {
             continue;
+        };
+        labelled += 1;
+        let answer = model.answer(stroke).unwrap_or_else(|| "-".into()).to_lowercase();
+        let ok = answer == word;
+        right += usize::from(ok);
+        let one_key = match (Stroke::parse(stroke), Stroke::parse(&next_stroke)) {
+            (Some(a), Some(b)) => (a.0 ^ b.0).is_power_of_two(),
+            _ => false,
+        };
+        if one_key {
+            slips += 1;
+            slips_right += usize::from(ok);
         }
-        let then = lines[i + 1..]
-            .iter()
-            .find_map(|l| {
-                let mut p = l.split_whitespace();
-                let (_, s, rest) = (p.next()?, p.next()?, p.collect::<Vec<_>>().join(" "));
-                (s != "*").then(|| format!("{s} {rest}"))
-            })
-            .unwrap_or_default();
-        let answer = model.answer(stroke).unwrap_or_else(|| "-".into());
-        println!("  {stroke:<12} -> {answer:<16} then {then}");
-        shown += 1;
+        if shown < 60 && !ok {
+            shown += 1;
+            let note = if one_key { "  (one key off)" } else { "" };
+            println!("  {stroke:<12} -> {answer:<16} then {next_stroke} {word:?}{note}");
+        }
     }
-    println!("{n} misses on the tape");
+    println!(
+        "{n} misses on the tape, {labelled} with a word struck next: the solver types that word for {right} ({:.1}%); \
+         {slips} were one key from it ({slips_right} right), {} were not ({} right)",
+        pct(right, labelled),
+        labelled - slips,
+        right - slips_right
+    );
     Ok(())
 }

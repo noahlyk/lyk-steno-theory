@@ -313,12 +313,17 @@ fn index(n: usize) -> u32 {
     u32::try_from(n).expect("a solver table fits in u32")
 }
 
+/// One way of saying a prefix: each sound, and whether it is a vowel.
+type PrefixSounds = Vec<(u8, bool)>;
+
 /// The chord tables the decoder reads strokes with, its sounds interned.
 struct Tables {
     onset: Vec<(u32, Vec<u8>, u8)>,
     coda: Vec<(u32, Vec<u8>, u8)>,
     vowel_readings: Vec<(u32, u8, u8)>,
     vowel_coda: Vec<(u32, u8, u8, u8)>,
+    /// `[[prefix]]` keys and each distinct way of saying the prefix
+    prefixes: Vec<(u32, Vec<PrefixSounds>)>,
 }
 
 impl Tables {
@@ -345,7 +350,22 @@ impl Tables {
             .collect();
         vowel_coda.sort_unstable();
         vowel_coda.dedup();
+        let prefixes = rules
+            .prefixes
+            .iter()
+            .map(|(prefix, keys)| {
+                let mut ways: Vec<PrefixSounds> = prefix
+                    .sounds
+                    .iter()
+                    .map(|way| way.split_whitespace().map(|s| (sounds.id(s), s.ends_with(|c: char| c.is_ascii_digit()))).collect())
+                    .collect();
+                ways.sort_unstable();
+                ways.dedup();
+                (keys.0, ways)
+            })
+            .collect();
         Self {
+            prefixes,
             onset: chords(&[&rules.onset, &rules.onset_cluster], sounds),
             coda: chords(&[&rules.coda, &rules.coda_cluster], sounds),
             vowel_readings,
@@ -521,6 +541,18 @@ fn write_tables(b: &mut Blob, tables: &Tables, rules: &Rules) {
     for (stroke, letter) in spelling {
         b.u32(stroke.0);
         b.str(letter);
+    }
+    b.len(tables.prefixes.len());
+    for (keys, ways) in &tables.prefixes {
+        b.u32(*keys);
+        b.u8(u8::try_from(ways.len()).expect("few ways to say a prefix"));
+        for way in ways {
+            b.u8(u8::try_from(way.len()).expect("a short prefix"));
+            for &(sound, vowel) in way {
+                b.u8(sound);
+                b.u8(u8::from(vowel));
+            }
+        }
     }
 }
 

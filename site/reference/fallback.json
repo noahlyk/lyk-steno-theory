@@ -38,7 +38,8 @@
    "items": [
     "**Each bank, every way it splits into chords** of the onset and coda tables (`PHR` is M R or P L; `-PBLG` is JH, or N JH, or the keys one at a time), up to 48 ways a bank. Bigger chords are tried first.",
     "**The vowel keys as any vowel they write**: as heard (`O` is the vowel of *hot*), or as a spelling the rules give them (`O` is also the *o* of *control*, `AE` the *ea* of *mean*).",
-    "**A vowel and the consonant after it together** where the rules have that chord (`AR`, `OPBG`, `AEUR`).",
+    "**A vowel and the consonant after it together** where the rules have that chord (`AR`, `OPBG`, `AEUR`), and a vowel whose own chord reaches into the right hand (`UR` is the ER of *turn*, `EUR` the *ir* of *bird*). A vowel key alone never stands for such a vowel.",
+    "**A prefix chord, on a run's first stroke only**: the keys of a prefix entry of `rules/plover.toml` read as the prefix's sounds before the rest of the onset (`KP` is *ex-*: `KPEL` *excel*, `KPOT/+EUBG` *exotic*; also `STK` *dis-*, `TPHR` *inter-*, `TKPHR` *under-*, `SR` *over-*, `SPH` *mis-*, `TPH` *un-*). Costs 1. The keys keep their plain reading too.",
     "**The star** as part of a chord (`*T` is TH) or, when nothing claims it, as the homophone marker, which writes no sound.",
     "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*)."
    ],
@@ -151,6 +152,11 @@
      "a known outline: the exact outline of any entry of the words, short, alternates or extras files",
      "on whole strokes; the first piece, or a later one (+2)",
      "the word's rarity, plus 10 after the first piece"
+    ],
+    [
+     "a misstroke: a stroke one key more or one key fewer than a known one-stroke outline",
+     "one stroke, anywhere a known outline could be",
+     "4, plus the same as a known outline"
     ]
    ]
   },
@@ -240,7 +246,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
   },
   {
    "t": "p",

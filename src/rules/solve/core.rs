@@ -55,6 +55,11 @@ pub const PIECE: u32 = 10;
 pub const SUFFIX: u32 = 1;
 /// A known word's exact outline as a piece after the first.
 pub const STEM_LATER: u32 = 2;
+/// A stroke read as a known single-stroke outline one key away (a key too many or one missed): a
+/// misstroke. 0 turns the reading off.
+pub const SLIP: u32 = 4;
+/// A prefix chord (`KP` for *ex-*) read as the prefix's sounds, on a run's first stroke.
+pub const PREFIX: u32 = 1;
 /// A reading of several pieces whose text is not itself a word.
 pub const NONWORD: u32 = 6;
 /// The star down with nothing to write: the generator's homophone marker.
@@ -139,6 +144,10 @@ enum Piece {
 
 const NO_BACK: u32 = u32::MAX;
 
+/// A vowel chord's keys, the sound it writes, and the letters of the spelling it stands for (0:
+/// as heard).
+type VowelReading = (u32, u8, u8);
+
 /// The costs above, as one decoder uses them: the constants, or (natively, while tuning) an
 /// environment override of any of them, `LYK_SOLVE_<NAME>`. A plugin has no environment, so it
 /// always runs on the constants.
@@ -159,6 +168,8 @@ pub struct Costs {
     pub order: u32,
     pub reading_slack: u32,
     pub max_readings: u32,
+    pub slip: u32,
+    pub prefix: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -183,6 +194,8 @@ impl Costs {
             order: tuned("ORDER", ORDER),
             reading_slack: tuned("READING_SLACK", READING_SLACK),
             max_readings: tuned("MAX_READINGS", MAX_READINGS),
+            slip: tuned("SLIP", SLIP),
+            prefix: tuned("PREFIX", PREFIX),
         }
     }
 }
@@ -267,6 +280,11 @@ pub struct Model {
     onset_cost: Vec<u32>,
     coda_cost: Vec<u32>,
     vowel_readings: Vec<(u32, u8, u8)>,
+    /// Vowel entries whose keys reach into the right hand (`ER` is `UR`): keys, sound, letters
+    vowel_right: Vec<(u32, u8, u8)>,
+    /// `[[prefix]]` chords (`ex-` is `KP`), read on a run's first stroke: keys, and each way of
+    /// saying the prefix as tokens
+    prefixes: Vec<(u32, Vec<Vec<Tok>>)>,
     /// By the vowel keys ([`vowel_index`]): the sounds they write as heard, the sounds they
     /// write only as some spelling, and (by keys and sound) those spellings' letters
     heard: [u64; 16],
@@ -336,7 +354,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 fn rank_cost(rank: u32) -> u32 {
     let log2 = f64::from(rank + 2).log2();
@@ -378,7 +396,10 @@ impl Model {
         let (onset, onset_cost) = chords(&mut r);
         let (coda, coda_cost) = chords(&mut r);
         let n = r.u32() as usize;
-        let vowel_readings: Vec<(u32, u8, u8)> = (0..n).map(|_| (r.u32(), r.u8(), r.u8())).collect();
+        // A vowel entry with right-hand keys in it (`ER` is `UR`) is read like a vowel and coda
+        // chord, never by its vowel keys alone
+        let (vowel_right, vowel_readings): (Vec<VowelReading>, Vec<VowelReading>) =
+            (0..n).map(|_| (r.u32(), r.u8(), r.u8())).partition(|v| v.0 & (RIGHT | STAR) != 0);
         let mut heard = [0u64; 16];
         let mut spelled_any = [0u64; 16];
         let mut spelled = vec![Vec::new(); 16 * 64];
@@ -399,6 +420,16 @@ impl Model {
         let two_suffixes = (0..n).map(|_| (r.u32(), r.u32(), r.str())).collect();
         let n = r.u32() as usize;
         let spelling = (0..n).map(|_| (r.u32(), r.str())).collect();
+        let n = r.u32() as usize;
+        let prefixes = (0..n)
+            .map(|_| {
+                let keys = r.u32();
+                let ways = (0..r.u8())
+                    .map(|_| (0..r.u8()).map(|_| (r.u8(), r.u8())).map(|(sound, vowel)| if vowel != 0 { Tok::S(sound, 0) } else { Tok::C(sound) }).collect())
+                    .collect();
+                (keys, ways)
+            })
+            .collect();
         let n = r.u32() as usize;
         let mut stems = HashMap::with_capacity(n);
         let mut stem_text = Vec::with_capacity(n);
@@ -453,6 +484,8 @@ impl Model {
             onset_cost,
             coda_cost,
             vowel_readings,
+            vowel_right,
+            prefixes,
             heard,
             spelled_any,
             spelled,
@@ -553,6 +586,18 @@ impl Model {
                     }
                 }
             }
+            // A vowel whose own keys reach into the right hand (`UR` for ER)
+            for &(combo, v, letters) in &self.vowel_right {
+                let combo_right = combo & (RIGHT | STAR);
+                if combo & VOWELS == vowel_bits && right & combo_right == combo_right {
+                    for cover in Self::covers(right & !combo_right, &self.coda, COVERS) {
+                        let cost: u32 = cover.iter().map(|&i| self.coda_cost[i]).sum();
+                        let mut toks = vec![Tok::S(v, letters)];
+                        toks.extend(cover.iter().flat_map(|&i| self.coda[i].1.iter().map(|&s| Tok::C(s))));
+                        out.push((toks, extra + cost));
+                    }
+                }
+            }
             if vowel_bits != 0 && !self.vowel_letters_of(vowel_bits) {
                 continue;
             }
@@ -571,18 +616,35 @@ impl Model {
     }
 
     /// Every reading of one stroke as sound tokens, with what each costs, cheapest first.
-    fn readings(&self, stroke: u32) -> Vec<(Vec<Tok>, u32)> {
+    fn readings(&self, stroke: u32, first: bool) -> Vec<(Vec<Tok>, u32)> {
         let bits = stroke & !(JOIN | SPELL | NUMBER);
         let left = bits & LEFT;
         let vowel_bits = bits & VOWELS;
         let right_all = bits & (RIGHT | STAR);
-        let onsets: Vec<(Vec<u8>, u32)> = Self::covers(left, &self.onset, COVERS)
-            .into_iter()
-            .map(|cover| {
-                let cost = cover.iter().map(|&i| self.onset_cost[i]).sum();
-                (cover.iter().flat_map(|&i| self.onset[i].1.iter().copied()).collect(), cost)
-            })
-            .collect();
+        let onset_of = |left: u32| -> Vec<(Vec<Tok>, u32)> {
+            Self::covers(left, &self.onset, COVERS)
+                .into_iter()
+                .map(|cover| {
+                    let cost = cover.iter().map(|&i| self.onset_cost[i]).sum();
+                    (cover.iter().flat_map(|&i| self.onset[i].1.iter().map(|&s| Tok::C(s))).collect(), cost)
+                })
+                .collect()
+        };
+        let mut onsets = onset_of(left);
+        // A prefix chord in the first stroke of a run, its sounds before the rest of the onset
+        if first {
+            for (keys, ways) in &self.prefixes {
+                if left & keys == *keys {
+                    for (rest, cost) in onset_of(left & !keys) {
+                        for way in ways {
+                            let mut toks = way.clone();
+                            toks.extend_from_slice(&rest);
+                            onsets.push((toks, cost + self.c.prefix));
+                        }
+                    }
+                }
+            }
+        }
         let rights = self.right_readings(vowel_bits, right_all);
         let mut out: Vec<(Vec<Tok>, u32)> = Vec::new();
         for (onset, onset_cost) in &onsets {
@@ -591,7 +653,7 @@ impl Model {
                 // say it does: the keys are in steno order, the sounds need not be
                 let at = right.iter().position(|t| !matches!(t, Tok::C(_))).map_or(0, |p| p + 1);
                 for (coda, order_cost) in self.orders(&right[at..]) {
-                    let mut toks: Vec<Tok> = onset.iter().map(|&s| Tok::C(s)).collect();
+                    let mut toks: Vec<Tok> = onset.clone();
                     toks.extend_from_slice(&right[..at]);
                     toks.extend(coda);
                     if !toks.is_empty() {
@@ -881,8 +943,23 @@ impl Model {
                         pending[j + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32 });
                     }
                 }
+                // A misstroke: one key more or fewer than a known single-stroke outline
+                if self.c.slip > 0 {
+                    let bits = run[i] & !JOIN;
+                    for key in 0..23 {
+                        let near = bits ^ (1 << key);
+                        if near & !(SPELL | NUMBER) == 0 {
+                            continue;
+                        }
+                        if let Some(&stem) = self.stems.get(&[near][..]) {
+                            arena.push((root.back, Piece::Stem(stem)));
+                            let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
+                            pending[i + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32 });
+                        }
+                    }
+                }
             }
-            let mut alts = self.readings(run[i]);
+            let mut alts = self.readings(run[i], i == 0);
             // Only the readings near the stroke's plainest: the rest never win
             let cheapest = alts.first().map_or(0, |a| a.1);
             alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
@@ -999,7 +1076,7 @@ impl Model {
                 text.push_str(suffix);
                 continue;
             }
-            let (toks, _) = self.readings(stroke).into_iter().next()?;
+            let (toks, _) = self.readings(stroke, false).into_iter().next()?;
             for tok in toks {
                 let sound = match tok {
                     Tok::C(s) | Tok::S(s, _) => s,
@@ -1013,7 +1090,7 @@ impl Model {
 
     /// A stroke's readings, written out: what the solver thinks its keys can say.
     pub fn describe(&self, stroke: u32) -> Vec<String> {
-        self.readings(stroke)
+        self.readings(stroke, true)
             .into_iter()
             .map(|(toks, cost)| {
                 let names: Vec<String> = toks
