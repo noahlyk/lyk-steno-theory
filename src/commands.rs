@@ -175,7 +175,7 @@ pub fn run_lookup(
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
     let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver());
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let session = Session::new(options.show_keys, options.fast, options.stroke_mode);
     match query {
         Some(query) => {
@@ -232,7 +232,7 @@ pub fn run_explain(
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
     let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver());
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let dictionary = lookup.dictionary();
     if let Some(word) = word {
         analysis::explain(&setup, dictionary, word);
@@ -265,7 +265,7 @@ pub fn run_ergonomics(
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
     let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver());
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let report = |query: &str| {
         if let Some(strokes) = stroke::parse_outline(query) {
             report_ergonomics(&strokes, query, false);
@@ -314,7 +314,7 @@ pub fn run_paths(
     }
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
     let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver());
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let mut generated: Option<generate::Generated> = None;
     run_report_session(&lookup, "paths", &mut |word| {
         if generated.is_none() {
@@ -351,7 +351,7 @@ pub fn run_family(
     }
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
     let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver());
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let mut generated: Option<generate::Generated> = None;
     run_report_session(&lookup, "family", &mut |word| {
         if generated.is_none() {

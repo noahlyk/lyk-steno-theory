@@ -136,8 +136,10 @@ pub struct Lookup<'a> {
     /// The backups `built::load` leaves out, when the dictionary was read back from `out/lyk`
     backups: Option<&'a Backups>,
     /// The solver keymux runs on a miss (see `site/reference/fallback.json`), when one is built:
-    /// a stroke with no entry reads as what it answers, the plain read-back otherwise
-    solver: Option<crate::rules::solve::Model>,
+    /// a stroke with no entry reads as what it answers, the plain read-back otherwise. Loaded on
+    /// the first miss that needs it, so a lookup that never misses never pays for it
+    solver: std::sync::OnceLock<Option<crate::rules::solve::Model>>,
+    load_solver: Option<fn() -> Option<crate::rules::solve::Model>>,
 }
 
 impl<'a> Lookup<'a> {
@@ -158,15 +160,21 @@ impl<'a> Lookup<'a> {
             outlines,
             words,
             backups,
-            solver: None,
+            solver: std::sync::OnceLock::new(),
+            load_solver: None,
         }
     }
 
-    /// The same lookup, reading a miss as the solver does.
+    /// The same lookup, reading a miss as the solver does: `load` reads the solver in when a miss
+    /// first needs it.
     #[must_use]
-    pub fn with_solver(mut self, solver: Option<crate::rules::solve::Model>) -> Self {
-        self.solver = solver;
+    pub fn with_solver(mut self, load: fn() -> Option<crate::rules::solve::Model>) -> Self {
+        self.load_solver = Some(load);
         self
+    }
+
+    fn solver(&self) -> Option<&crate::rules::solve::Model> {
+        self.solver.get_or_init(|| self.load_solver.and_then(|load| load())).as_ref()
     }
 
     pub const fn dictionary(&self) -> &HashMap<&'a str, &'a [Stroke]> {
@@ -205,7 +213,7 @@ impl<'a> Lookup<'a> {
     fn forward_row(&self, strokes: &[Stroke], mark: Mark) -> Row {
         // Not an entry: the rules' best reading is what the stroke reads back as
         let reading = || {
-            let solved = self.solver.as_ref().and_then(|solver| solver.answer(&render_outline(strokes)));
+            let solved = self.solver().and_then(|solver| solver.answer(&render_outline(strokes)));
             solved.or_else(|| self.setup.rules.resolve(strokes, Some(&self.stems))).map_or_else(
                 || ("(no translation)".to_owned(), How::Entry),
                 |reading| (format!("{reading:?}"), How::Reading),
