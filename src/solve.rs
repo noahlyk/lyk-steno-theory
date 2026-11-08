@@ -168,12 +168,7 @@ fn eval_backups(model: &Model, dir: &Path, step: usize, misses: Option<&Path>, r
             fell_back += 1;
         }
         if !top1 {
-            let said = got.first().map_or("-", |r| r.text.as_str());
-            let mut line = format!("{outline}\t{word}\t{said}");
-            if let Some(best) = got.first() {
-                let _ = write!(line, "\t{}\t{}", best.cost, best.pieces.join("+"));
-            }
-            wrong.push(line);
+            wrong.push(miss_line(outline, word, &got));
         }
     }
     times.sort();
@@ -211,6 +206,24 @@ fn eval_backups(model: &Model, dir: &Path, step: usize, misses: Option<&Path>, r
 
 /// Every run of `sample` solved (its five best readings, the plugin's answer, the time the
 /// readings took), on every core, each thread with its own working memory.
+/// One line of the misses file: the outline, its word, what the solver said and at what cost and
+/// from which pieces, then where the word itself came and at what cost (`2:7`), or `-` past the
+/// top five: a near tie, or far behind.
+fn miss_line(outline: &str, word: &str, got: &[solve::Reading]) -> String {
+    let said = got.first().map_or("-", |r| r.text.as_str());
+    let mut line = format!("{outline}\t{word}\t{said}");
+    if let Some(best) = got.first() {
+        let _ = write!(line, "\t{}\t{}", best.cost, best.pieces.join("+"));
+    }
+    match got.iter().position(|r| r.text.to_lowercase() == word) {
+        Some(at) => {
+            let _ = write!(line, "\t{}:{}", at + 1, got[at].cost);
+        }
+        None => line.push_str("\t-"),
+    }
+    line
+}
+
 fn solve_all(model: &Model, sample: &[(&str, &String, Vec<u32>)]) -> Vec<(Duration, Vec<solve::Reading>, Option<String>)> {
     let threads = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
     let chunk = sample.len().div_ceil(threads).max(1);

@@ -674,6 +674,12 @@ impl Model {
                 }
             }
         }
+        // A left-hand stroke alone after the first goes on with the word's consonants, which the
+        // left bank can strike in steno order only (`STKPWHR`, Z then L, for *curls*' L Z): any
+        // order, free, since the keys' order says nothing there
+        if !first && vowel_bits == 0 && right_all == 0 {
+            onsets = onsets.iter().flat_map(|(toks, cost)| self.orders(toks).into_iter().map(move |(t, _)| (t, *cost))).collect();
+        }
         let rights = self.right_readings(vowel_bits, right_all);
         let mut out: Vec<(Vec<Tok>, u32)> = Vec::new();
         for (onset, onset_cost) in &onsets {
@@ -693,7 +699,9 @@ impl Model {
         }
         out.sort();
         out.dedup_by(|a, b| a.0 == b.0);
-        out.sort_by_key(|a| a.1);
+        // Cheapest first, and of equal cost the fewest sounds: a big chord read as its plainest
+        // (`STKPWHR` Z L before J DH P), so the cap on readings keeps those
+        out.sort_by_key(|a| (a.1, a.0.len()));
         out
     }
 

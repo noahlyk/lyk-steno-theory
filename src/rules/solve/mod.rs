@@ -883,6 +883,14 @@ mod tests {
     }
 
     #[test]
+    fn a_left_hand_stroke_ending_a_word_is_its_consonants_in_any_order() {
+        // The left bank strikes Z before L (`STKPW` then `HR`): *curls* ends L Z all the same
+        for (outline, word) in [("KUR/+STKPWHR", "curls"), ("KOEU/+STKPWHR", "coils")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
     fn a_tie_goes_to_the_more_common_word() {
         // Each pair costs the same once rarity is rounded to whole points: the commoner word wins
         for (outline, word, over) in [("AEU/+T", "eight", "ate"), ("PWO/+-R/+-G", "boring", "baring"), ("TA/+P", "tape", "tap")] {

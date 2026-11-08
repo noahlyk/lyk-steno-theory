@@ -2489,3 +2489,13 @@ data also says as *television*, took that word's sounds: a pronunciation with mo
 twice the word's letters plus one is an abbreviation said in full and is not matched. Tried and
 reverted: *c* read only as K where English keeps it hard (`SO/+UP` was *couple*, "so-up"):
 87.7 -> 87.0%, since the generator's spelled backups write hard *c* as `S` too (`SOPL/+E` *come*).
+
+**A big chord's plainest readings first; a left-hand stroke's consonants in any order (2026-11-08).**
+The misses file now says where the word itself came (`2:7`, or `-` past the top five): 27% of
+misses were exact ties, 21% one point behind, 32% not in the top five at all. In that last group,
+outlines ending in a left-hand stroke (`KUR/+STKPWHR` *curls*): a big chord has hundreds of readings
+of equal cost (`STKPWHR` as J DH P, J F HH, ...), ordered among themselves by sound id, so the cap
+of 40 cut the plain Z L. Readings of equal cost now go fewest sounds first, and a left-hand stroke
+alone after the first is the word's consonants in any order, free (the left bank strikes Z before L
+whatever the word says). 346 fixed, 39 lost: top-1 87.7 -> 88.7%, weighted 91.1 -> 92.2%, the
+2,000 commonest 93.7 -> 94.9%, top-5 96.0 -> 96.9%.
