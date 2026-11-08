@@ -516,3 +516,51 @@ fn a_sound_alike_word_holds_the_star_and_the_plain_stroke_before_a_short_form_or
         assert_eq!(lyk.get(word).map(|o| render_outline(o)).as_deref(), Some(want), "{word}");
     }
 }
+
+/// A suffix stroke attaches to whatever word precedes it, even when no joined outline for that
+/// word exists (`TEST/+-D`): Keymux looks a continuation stroke up on its own when nothing longer
+/// matches, so the entry has to be a pure attach, `{^ed}`, on strokes that all carry the join key.
+/// Checks every suffix the generator made, as the file would write it, and every suffix stroke the
+/// Reference's suffix page lists.
+#[test]
+fn every_suffix_is_a_join_key_stroke_defined_as_a_pure_attach_and_every_listed_one_exists() {
+    let suffixes: Vec<&generate::Entry> =
+        dictionary_fixture::generated().entries.iter().filter(|e| e.origin == generate::Origin::Suffix).collect();
+    let table: std::collections::BTreeMap<String, String> =
+        toml::from_str(include_str!("../rules/suffixes.toml")).expect("rules/suffixes.toml parses");
+    let mut problems = Vec::new();
+    if suffixes.len() != table.len() {
+        problems.push(format!("{} suffix entries generated for {} in rules/suffixes.toml", suffixes.len(), table.len()));
+    }
+    let mut made = std::collections::BTreeSet::new();
+    for entry in &suffixes {
+        let outline = render_outline(&entry.outline);
+        let definition = crate::output::definition(entry);
+        if !entry.outline.iter().all(|s| s.0 & crate::stroke::Stroke::JOIN != 0) {
+            problems.push(format!("{outline:?} has a stroke without the join key"));
+        }
+        let pure = definition
+            .strip_prefix("{^")
+            .and_then(|d| d.strip_suffix('}'))
+            .is_some_and(|text| !text.is_empty() && !text.starts_with(' ') && !text.contains(['{', '}', '^']));
+        if !pure {
+            problems.push(format!("{outline:?} is defined as {definition:?}, not a pure {{^text}} attach"));
+        }
+        made.insert(outline);
+    }
+    // every suffix stroke the Reference lists is a stroke the dictionary holds
+    let page = include_str!("../site/reference/suffixes.json");
+    let mut listed = 0;
+    for piece in page.split("[[").skip(1) {
+        let Some((inside, _)) = piece.split_once("]]") else { continue };
+        let outline = inside.rsplit('|').next().unwrap_or(inside);
+        if outline.starts_with('+') && !outline.contains(' ') {
+            listed += 1;
+            if !made.contains(outline) {
+                problems.push(format!("the Reference lists {outline:?}, which the dictionary has no suffix entry for"));
+            }
+        }
+    }
+    assert!(listed >= table.len(), "the Reference lists {listed} suffix strokes, fewer than the {} in the table", table.len());
+    assert!(problems.is_empty(), "suffix entries that would not attach: {problems:#?}");
+}

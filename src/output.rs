@@ -101,6 +101,13 @@ pub struct Written {
     pub changed: bool,
 }
 
+/// What an entry is defined as in the file. A suffix is an attach, `{^ed}`, so its stroke glues
+/// its text onto whatever word came before it even when no joined outline (`TEST/+-D`) exists;
+/// every other entry is its word as written. [`crate::built`] strips the attach on the way back in.
+pub fn definition(entry: &crate::generate::Entry) -> String {
+    if entry.origin == Origin::Suffix { format!("{{^{}}}", entry.word) } else { written(&entry.word) }
+}
+
 /// The dictionary in `dir`, one file per role, each sorted by outline so that the same entries
 /// always give the same bytes. A file that would come out as it already is, is left alone; a
 /// generated file in `dir` that no role writes (an earlier layout's) is removed.
@@ -110,7 +117,7 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
         by_role
             .entry(Role::of(entry.origin))
             .or_default()
-            .insert(render_outline(&entry.outline), written(&entry.word));
+            .insert(render_outline(&entry.outline), definition(entry));
     }
     std::fs::create_dir_all(dir).with_context(|| dir.display().to_string())?;
     let mut done = Vec::new();

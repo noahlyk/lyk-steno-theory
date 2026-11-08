@@ -9,6 +9,19 @@
   },
   {
    "t": "h",
+   "x": "Every suffix attaches on its own"
+  },
+  {
+   "t": "p",
+   "x": "Every suffix in this table is a **standalone dictionary entry**: an outline whose strokes all carry the join key `+`, defined as a pure attach, `{^ed}` for [[+-D]], `{^'s}` for [[+-PBTS]], `{^ing}` for [[+-G]] and so on (`out/lyk/02-lyk-suffixes.json`). Strike any word, then the suffix stroke, and the ending glues onto it **even when the dictionary has no joined outline for that pair**: *test* then [[+-D]] types *tested* whether or not `TEST/+-D` exists. A longer joined outline (the stem's own backup, or a word's own `X/+-D`) always wins over the bare suffix entry. A two-stroke suffix is one two-stroke entry (`+EUZ/+-PL` is `{^ism}`)."
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "The engine must treat `+` as a join key and fall back to a continuation stroke's own entry: Keymux 1b9cf76 or later, with `extra_keys: ['+']` and `join_keys: ['+']` in the steno layer config (see [The join key](#/ref/join-key)). An older Keymux types a bare suffix stroke as its own word."
+  },
+  {
+   "t": "h",
    "x": "The rule"
   },
   {
@@ -354,7 +367,7 @@
   {
    "t": "list",
    "items": [
-    "**-ious, -eous**: the extra vowel before *-ous* is the plain IY that *-y* uses, so the whole ending is [[+AOE/+US]] struck in sequence: [[serious|S/+AOER/+AOE/+US]], [[various|SR/+AEUR/+AOE/+US]]. With no extra vowel (*gorgeous*, *courageous*, *religious*) it is plain [[+US]]: [[courageous|K-R/+AEUPBLG/+US]].",
+    "**-ious, -eous**: the extra vowel before *-ous* is the plain IY that *-y* uses, so the whole ending is the two-stroke entry [[+AOE/+US]] (`{^ious}`; the two strokes apart would attach *y* then *ous*, \"yous\"): [[serious|S/+AOER/+AOE/+US]], [[various|SR/+AEUR/+AOE/+US]]. With no extra vowel (*gorgeous*, *courageous*, *religious*) it is plain [[+US]]: [[courageous|K-R/+AEUPBLG/+US]].",
     "**-or, -ible** are the same sounds as *-er* and *-able*, so they are the same strokes ([[+-R]], [[+-BL]]).",
     "**-ence** shares [[+UPBS]] with *-ance*."
    ]

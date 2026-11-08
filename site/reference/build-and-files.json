@@ -197,7 +197,7 @@
     [
      "`02-lyk-suffixes.json`",
      "the standalone suffix strokes (see [suffixes](#/ref/suffixes))",
-     "41"
+     "42, each defined as an attach `{^text}`"
     ]
    ]
   },

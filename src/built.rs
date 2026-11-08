@@ -92,7 +92,12 @@ pub fn load(dir: &Path) -> Result<Vec<Entry>> {
             } else {
                 origin_of(role)
             };
-            let word = word.to_lowercase();
+            // A suffix is written as an attach, `{^ed}`; the generator keeps its bare text
+            let word = if role == Role::Suffixes {
+                word.strip_prefix("{^").and_then(|w| w.strip_suffix('}')).unwrap_or(&word).to_lowercase()
+            } else {
+                word.to_lowercase()
+            };
             if matches!(role, Role::Words | Role::Short) {
                 let held = fewest.entry(word.clone()).or_insert(usize::MAX);
                 *held = (*held).min(strokes.len());
@@ -190,7 +195,7 @@ mod tests {
         write(&dir, Role::Words, "{\n  \"KAT\": \"cat\",\n  \"S\": \"I\"\n}");
         write(&dir, Role::Backups, "{\n  \"KA/+T\": \"cat\"\n}");
         write(&dir, Role::Extras, "{\n  \"KAT*\": \"cat\"\n}");
-        write(&dir, Role::Suffixes, "{\n  \"+-PBTS\": \"'s\"\n}");
+        write(&dir, Role::Suffixes, "{\n  \"+-PBTS\": \"{^'s}\"\n}");
         assert!(exists(&dir));
 
         let entries = load(&dir).unwrap();

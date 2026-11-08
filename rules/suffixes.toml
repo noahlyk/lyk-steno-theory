@@ -126,3 +126,8 @@
 # `identify` AOEU/TKEPBT/+U/+TPAOEU — "U" then "TPAOEU" is the invariant tail, the same two-stroke
 # shape as "-ism" above.
 "+U/+TPAOEU" = "ify"
+
+# "-ious" ("ser-ious", "var-ious", "obv-ious"): the plain-IY "+AOE" ("y" above) then "+US" ("ous"
+# above), struck in sequence. Struck as two standalone attaches they would type "yous", so the
+# pair is its own entry; the longer joined outline always wins over the two strokes alone.
+"+AOE/+US" = "ious"

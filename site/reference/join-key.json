@@ -110,6 +110,14 @@
   },
   {
    "t": "h",
+   "x": "Telling the engine"
+  },
+  {
+   "t": "p",
+   "x": "Keymux learns the join key from the steno layer's config: `extra_keys: ['+']` adds the key and `join_keys: ['+']` marks it as a join key (Keymux 1b9cf76 or later; the key's physical position goes in `layout_overrides`). A stroke with it down is only ever looked up glued onto the strokes before it. When no joined outline matches (`TEST/+-D` does not exist), it falls back to its own entry, and every suffix has one, defined as `{^text}`, so the ending still attaches to the previous word. See [the suffix table](#/ref/suffixes)."
+  },
+  {
+   "t": "h",
    "x": "Where you meet it"
   },
   {
