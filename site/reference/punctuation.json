@@ -1057,7 +1057,7 @@
     [
      "[[TK*UP]]",
      "`{:undo_word}`",
-     "Take back a whole word: a stem and the suffixes glued to it"
+     "Take back a whole word: a stem and the suffixes glued to it, and every stroke of a `+` run the solver read (`*` takes one stroke back at a time). Needs keymux `d5c96dc` or later; an older keymux takes back only the run's last stroke"
     ],
     [
      "[[TKPWA*EPB]]",
