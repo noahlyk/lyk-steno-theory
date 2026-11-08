@@ -45,7 +45,7 @@
     "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*).",
     "**A chord that shares the vowel's `R` key** (`V.rv` `-FRB`, `CH.rch` `-FRPB`) is also that R and its consonant, free: `-S/+TAFRBZ` is *starves*, `-BG/+AFRBD` *carved*.",
     "**A left-hand stroke alone, after the first, is the word's next consonants in any order, free**: the left bank can only strike them in steno order (`KUR/+STKPWHR` is *curls*, its L Z struck Z then L).",
-    "Of a stroke's readings, the 40 cheapest within 4 of the best are tried; of equal cost, those with the fewest sounds first (`STKPWHR` as Z L before J DH P)."
+    "Of a stroke's readings, the 40 cheapest within 4 of the best are tried; of equal cost, those with the fewest sounds first (`STKPWHR` as Z L before J DH P). A first stroke's 3 best readings with a prefix chord in it are tried as well, cap or not (`STKERT/+AEU/+-GS` *dissertation*, `STPHAOUT/+UBL` *unsuitable*)."
    ],
    "ordered": false
   },

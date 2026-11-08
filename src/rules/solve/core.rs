@@ -83,6 +83,8 @@ pub const READING_SLACK: u32 = 4;
 pub const MAX_READINGS: u32 = 40;
 /// Ways to cover one bank's keys with chords, at most (the tables list bigger chords first).
 const COVERS: usize = 48;
+/// The readings of a first stroke with a prefix chord in it kept past the cap on readings.
+const PREFIX_READINGS: usize = 3;
 /// Positions kept per step, and how far behind the best a position may fall before it is dropped.
 /// 512 over 256: +0.6 points for +1 ms a run (3 ms mean, 8 ms p99); 1024 adds 0.1 for 13 ms more.
 const BEAM: usize = 512;
@@ -158,6 +160,9 @@ enum Piece {
 }
 
 const NO_BACK: u32 = u32::MAX;
+
+/// One reading of a stroke: its sounds, in order, and what reading them so costs.
+type StrokeReading = (Vec<Tok>, u32);
 
 /// A vowel chord's keys, the sound it writes, and the letters of the spelling it stands for (0:
 /// as heard).
@@ -648,6 +653,11 @@ impl Model {
 
     /// Every reading of one stroke as sound tokens, with what each costs, cheapest first.
     fn readings(&self, stroke: u32, first: bool) -> Vec<(Vec<Tok>, u32)> {
+        self.readings_kept(stroke, first).0
+    }
+
+    /// [`Self::readings`], and the few with a prefix chord that are kept past the cap on them.
+    fn readings_kept(&self, stroke: u32, first: bool) -> (Vec<StrokeReading>, Vec<StrokeReading>) {
         let bits = stroke & !(JOIN | SPELL | NUMBER);
         let left = bits & LEFT;
         let vowel_bits = bits & VOWELS;
@@ -662,6 +672,7 @@ impl Model {
                 .collect()
         };
         let mut onsets = onset_of(left);
+        let plain_onsets = onsets.len();
         // A prefix chord in the first stroke of a run, its sounds before the rest of the onset
         if first {
             for (keys, ways) in &self.prefixes {
@@ -682,9 +693,11 @@ impl Model {
         if !first && vowel_bits == 0 && right_all == 0 {
             onsets = onsets.iter().flat_map(|(toks, cost)| self.orders(toks).into_iter().map(move |(t, _)| (t, *cost))).collect();
         }
+        let plain_onsets = if first { plain_onsets } else { onsets.len() };
         let rights = self.right_readings(vowel_bits, right_all);
         let mut out: Vec<(Vec<Tok>, u32)> = Vec::new();
-        for (onset, onset_cost) in &onsets {
+        let mut with_prefix: Vec<(Vec<Tok>, u32)> = Vec::new();
+        for (i, (onset, onset_cost)) in onsets.iter().enumerate() {
             for (right, cost) in &rights {
                 // The consonants after the vowel in every order, a swap costing what the rules
                 // say it does: the keys are in steno order, the sounds need not be
@@ -694,17 +707,26 @@ impl Model {
                     toks.extend_from_slice(&right[..at]);
                     toks.extend(coda);
                     if !toks.is_empty() {
-                        out.push((toks, cost + order_cost + onset_cost));
+                        let into = if i < plain_onsets { &mut out } else { &mut with_prefix };
+                        into.push((toks, cost + order_cost + onset_cost));
                     }
                 }
             }
         }
-        out.sort();
-        out.dedup_by(|a, b| a.0 == b.0);
         // Cheapest first, and of equal cost the fewest sounds: a big chord read as its plainest
         // (`STKPWHR` Z L before J DH P), so the cap on readings keeps those
-        out.sort_by_key(|a| (a.1, a.0.len()));
-        out
+        let order = |v: &mut Vec<(Vec<Tok>, u32)>| {
+            v.sort();
+            v.dedup_by(|a, b| a.0 == b.0);
+            v.sort_by_key(|a| (a.1, a.0.len()));
+        };
+        order(&mut with_prefix);
+        // The prefix chord's best readings are kept past the cap on readings: a stroke with dozens
+        // of free readings (`STKPAOER`) would otherwise cut *dis-* altogether
+        let kept: Vec<(Vec<Tok>, u32)> = with_prefix.iter().take(PREFIX_READINGS).cloned().collect();
+        out.extend(with_prefix);
+        order(&mut out);
+        (out, kept)
     }
 
     /// `coda` as struck, and (for three consonants or fewer) in every other order with what the
@@ -1037,11 +1059,16 @@ impl Model {
                     }
                 }
             }
-            let mut alts = self.readings(run[i], i == 0);
+            let (mut alts, kept) = self.readings_kept(run[i], i == 0);
             // Only the readings near the stroke's plainest: the rest never win
             let cheapest = alts.first().map_or(0, |a| a.1);
             alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
             alts.truncate(self.c.max_readings as usize);
+            for k in kept {
+                if !alts.contains(&k) {
+                    alts.push(k);
+                }
+            }
             alts.sort();
             if hard {
                 alts.clear();

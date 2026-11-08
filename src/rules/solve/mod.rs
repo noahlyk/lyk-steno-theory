@@ -914,6 +914,14 @@ mod tests {
     }
 
     #[test]
+    fn a_prefix_chord_in_the_first_stroke_is_always_read() {
+        // `STK` *dis-* in a stroke with dozens of free readings: never cut by the cap on them
+        for (outline, word) in [("STKPAOER/+UT/+-D", "dispirited"), ("STKERT/+AEU/+-GS", "dissertation"), ("STKPHEPL/+ED", "dismembered")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
     fn a_chord_that_shares_the_vowels_r_says_the_r() {
         // `-FRB` is `V.rv`: the R of *starve*, *curve* struck with the V, not left out
         for (outline, word) in [("-S/+TAFRBZ", "starves"), ("-FT/+AFRBZ", "starves")] {
