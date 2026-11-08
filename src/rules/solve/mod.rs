@@ -8,7 +8,7 @@
 pub mod core;
 pub mod plugin;
 
-pub use self::core::{Model, Reading};
+pub use self::core::Model;
 
 use super::orthography::{self, Phone};
 use super::resolve::default_spelling;
@@ -45,7 +45,9 @@ const DROP_CONSONANT: u8 = 4;
 /// `HH` and the `Y` glide are often not struck at all.
 const DROP_WEAK_CONSONANT: u8 = 2;
 /// A word reached through its spelling rather than its sounds.
-const SPELLED_PATH: u8 = 2;
+const SPELLED_PATH: u8 = 3;
+/// A consonant chord whose sound the rules tie to a spelling (`T.ed` on `-D`).
+const SPELLED_CONSONANT: u8 = 2;
 
 struct Sounds {
     ids: HashMap<String, u8>,
@@ -293,18 +295,32 @@ pub fn stems(entries: &[Entry]) -> Vec<(Vec<Stroke>, String)> {
         .collect()
 }
 
+/// Write the keymux plugin, its source and its blob, into `dir` beside the dictionary files.
+/// Returns the blob's size in bytes.
+pub fn write_plugin(rules: &Rules, lexicon: &Lexicon, entries: &[Entry], dir: &std::path::Path) -> anyhow::Result<usize> {
+    let blob = pack(rules, lexicon, &stems(entries));
+    crate::output::write_if_different(&dir.join(plugin::BLOB_FILE), &blob)?;
+    crate::output::write_if_different(&dir.join(plugin::SOURCE_FILE), plugin::source(&blob).as_bytes())?;
+    Ok(blob.len())
+}
+
 /// Everything [`Model::load`] reads, packed.
 #[must_use]
 pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
     let mut sounds = Sounds::new();
-    let chords = |table: &[(&HashMap<String, Stroke>)], sounds: &mut Sounds| -> Vec<(u32, Vec<u8>)> {
-        let mut out: Vec<(u32, Vec<u8>)> = table
+    // Bigger chords first, so the solver's capped search for covers tries them before the
+    // single keys; a chord whose sound depends on a spelling (`T.ed`) costs a little
+    let chords = |table: &[&HashMap<String, Stroke>], sounds: &mut Sounds| -> Vec<(u32, Vec<u8>, u8)> {
+        let mut out: Vec<(u32, Vec<u8>, u8)> = table
             .iter()
             .flat_map(|t| t.iter())
-            .map(|(label, stroke)| (stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect()))
+            .map(|(label, stroke)| {
+                let spelled = label.split_whitespace().any(|s| s.contains('.'));
+                (stroke.0, label.split_whitespace().map(|s| sounds.id(s)).collect(), u8::from(spelled) * SPELLED_CONSONANT)
+            })
             .collect();
-        out.sort();
-        out.dedup();
+        out.sort_by(|a, b| (std::cmp::Reverse(a.0.count_ones()), a.0, &a.1, a.2).cmp(&(std::cmp::Reverse(b.0.count_ones()), b.0, &b.1, b.2)));
+        out.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
         out
     };
     let onset = chords(&[&rules.onset, &rules.onset_cluster], &mut sounds);
@@ -395,6 +411,8 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     }
     let id = |s: &str| sounds.ids[s];
     b.u64((1 << id("R")) | (1 << id("L")));
+    b.u8(id("R"));
+    b.u8(id("ER"));
     for (i, _) in sounds.names.iter().enumerate() {
         let mut mask = 0u64;
         for (a, c) in CONFUSABLE {
@@ -409,9 +427,10 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     }
     for table in [&onset, &coda] {
         b.len(table.len());
-        for (keys, toks) in table {
+        for (keys, toks, cost) in table {
             b.u32(*keys);
             b.bytes(toks);
+            b.u8(*cost);
         }
     }
     b.len(vowel_readings.len());
@@ -456,6 +475,8 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
             b.u32(s.0 & !Stroke::JOIN);
         }
         b.str(text);
+        let rank = lexicon.rank.get(text.as_str()).copied().unwrap_or(lexicon.common);
+        b.u32(u32::try_from(rank.min(lexicon.common)).unwrap_or(u32::MAX));
     }
     b.len(words.len());
     for (word, rank) in &words {

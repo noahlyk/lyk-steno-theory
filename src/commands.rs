@@ -49,9 +49,17 @@ pub fn deploy(
     generate::build(setup, briefs, common, &words_out, None, false)?;
 
     // Plain overwrite of every generated file; files an earlier layout left behind are removed.
+    // The backups keymux gets are only those the solver plugin does not already read as their
+    // word (see `crate::solve::thin_backups`); `out/lyk` keeps them all for the lookup commands.
+    let thin = crate::solve::thin_backups(&words_out)?;
     let mut copied = Vec::new();
     for role in output::Role::ALL {
-        copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
+        let from = if role == output::Role::Backups { thin.path.clone() } else { words_out.join(role.file_name()) };
+        copied.push((from, to.join(role.file_name())));
+    }
+    // The solver plugin: keymux compiles the source, which reads the blob beside it
+    for name in [crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE] {
+        copied.push((words_out.join(name), to.join(name)));
     }
     for (from, dest) in &copied {
         std::fs::copy(from, dest).with_context(|| dest.display().to_string())?;

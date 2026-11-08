@@ -190,6 +190,12 @@ enum Command {
         /// Words in the solver's lexicon, most common first
         #[arg(long, default_value_t = 100_000)]
         common: usize,
+        /// Write the keymux plugin (source and blob) to this folder instead
+        #[arg(long)]
+        plugin: Option<PathBuf>,
+        /// Print each outline of this file (one a line) with the plugin's answer for it
+        #[arg(long)]
+        answers: Option<PathBuf>,
     },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
@@ -383,7 +389,7 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common } => {
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers } => {
             let setup = setup(Some(*common))?;
             let options = solve::Options {
                 outline: outline.as_deref(),
@@ -392,6 +398,8 @@ fn main() -> Result<()> {
                 misses: misses.as_deref(),
                 dir,
                 common: *common,
+                plugin: plugin.as_deref(),
+                answers: answers.as_deref(),
             };
             solve::run(&setup, &options)
         }
