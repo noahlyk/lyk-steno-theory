@@ -88,6 +88,7 @@ cargo run --release -- report              # what was loaded
 cargo run --release -- score               # how often the rules match Plover or Lapwing
 cargo run --release -- score --check-readme   # do this README's tables still match?
 cargo run --release -- score --write-readme   # ...and rewrite any stale one in place
+cargo run --release -- --version           # the git version baked in at compile time (also -V, or the hidden `version` command); `build` stamps it into out/lyk/.built and the query commands say once if it differs (silence: --no-stale-check or LYK_NO_STALE_NOTE=1); see the Reference, Build and files
 cargo run --release -- build               # briefs + rules -> out/lyk/02-lyk-*.json (see the Reference, Build and files); quiet: the files, and a warning only if a word is stranded
 cargo run --release -- build --report      # ...plus every diagnostic and the cost tables (the invariants are tests: cargo test --release)
 cargo run --release -- plugin              # generate keymux's WASM fallback plugin from the rules

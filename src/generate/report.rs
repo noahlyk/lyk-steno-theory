@@ -52,6 +52,7 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
 
 /// What was written: the total and one line per file, with unchanged ones marked.
 fn print_files(generated: &Generated, files: &[Written], out: &Path) {
+    println!("{}", crate::version::version_line());
     println!("wrote {} entries to {} ({} files)", generated.entries.len(), out.display(), files.len());
     for file in files {
         let unchanged = if file.changed { "" } else { "  (unchanged)" };

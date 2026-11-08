@@ -9,14 +9,13 @@
 //! briefs that `build` has not been run on yet.
 
 use crate::generate::{Entry, Origin};
-use crate::output::{BUILT_STAMP, FAMILY_FILE, Role};
+use crate::output::{FAMILY_FILE, Role};
 use crate::rules::Step;
 use crate::stroke::parse_outline;
 use anyhow::{Context, Result};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
-use std::time::SystemTime;
 
 /// The origin an entry read from a role's file stands in for. Only the distinctions the pickers
 /// make matter: another pronunciation and an extra never win against anything else
@@ -164,44 +163,6 @@ impl Backups {
             .filter_map(|&(from, to)| parse_outline(&self.text[from as usize..to as usize]))
             .collect()
     }
-}
-
-/// A warning when something the dictionary is made from is newer than the files read back
-/// (`rules/`, `src/generate/`, `src/rules/`), so a stale answer is never silent. `None` when the
-/// files are at least as new as everything checked.
-pub fn stale_note(dir: &Path) -> Option<String> {
-    // The stamp is rewritten by every `build`; a dictionary from before it existed has only the
-    // words file's own time to go by, which an unchanged rebuild leaves alone.
-    let built = std::fs::metadata(dir.join(BUILT_STAMP))
-        .or_else(|_| std::fs::metadata(dir.join(Role::Words.file_name())))
-        .ok()?
-        .modified()
-        .ok()?;
-    let newest = ["rules", "src/generate", "src/rules"]
-        .iter()
-        .filter_map(|folder| newest_in(Path::new(folder)))
-        .max()?;
-    (newest > built).then(|| {
-        format!(
-            "note: the rules or generator changed after {} was built; run `build` (or pass --rebuild) \
-             for answers from the current code",
-            dir.display()
-        )
-    })
-}
-
-fn newest_in(folder: &Path) -> Option<SystemTime> {
-    let mut newest = None;
-    for entry in std::fs::read_dir(folder).ok()?.flatten() {
-        let path = entry.path();
-        let modified = if path.is_dir() {
-            newest_in(&path)
-        } else {
-            entry.metadata().ok().and_then(|m| m.modified().ok())
-        };
-        newest = newest.max(modified);
-    }
-    newest
 }
 
 #[cfg(test)]

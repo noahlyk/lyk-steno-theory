@@ -31,6 +31,7 @@ mod family;
 mod reverse;
 mod rules;
 mod stroke;
+mod version;
 mod view;
 
 use anyhow::Result;
@@ -38,7 +39,7 @@ use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(version, about)]
+#[command(version = version::VERSION, about)]
 struct Cli {
     /// Where the downloaded data lives
     #[arg(long, global = true, default_value = "data")]
@@ -46,12 +47,19 @@ struct Cli {
     /// Rules to use instead of the built-in ones
     #[arg(long, global = true)]
     rules: Option<PathBuf>,
+    /// Do not note when `out/lyk` was built by other code or rules than these (also
+    /// `LYK_NO_STALE_NOTE=1`)
+    #[arg(long, global = true)]
+    no_stale_check: bool,
     #[command(subcommand)]
     command: Command,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Print the version (the same as `--version`)
+    #[command(hide = true)]
+    Version,
     /// Download the pronunciation, frequency and Plover/Lapwing data (American English)
     Fetch,
     /// Say what was loaded, and how well the pronunciations cover Plover and Lapwing
@@ -300,9 +308,14 @@ enum Command {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    version::silence_stale_note(cli.no_stale_check || std::env::var_os("LYK_NO_STALE_NOTE").is_some_and(|v| !v.is_empty() && v != "0"));
     let setup =
         |common: Option<usize>| analysis::Setup::load(&cli.data, cli.rules.as_deref(), common);
     match &cli.command {
+        Command::Version => {
+            println!("{}", version::version_line());
+            Ok(())
+        }
         Command::Fetch => fetch::run(&cli.data),
         Command::Report => data::report(&cli.data),
         Command::Score {
@@ -391,5 +404,29 @@ fn main() -> Result<()> {
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
             commands::deploy(&setup, &briefs, *common, cli.rules.as_deref(), to)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn the_version_subcommand_works_but_is_in_no_help() {
+        let mut command = Cli::command();
+        assert!(Cli::try_parse_from(["lyk-steno-theory", "version"]).is_ok());
+        let top = command.render_help().to_string();
+        let long = command.render_long_help().to_string();
+        for help in [top, long] {
+            assert!(!help.lines().any(|l| l.trim_start().starts_with("version")), "{help}");
+        }
+        assert!(command.get_subcommands().any(|c| c.get_name() == "version" && c.is_hide_set()));
+    }
+
+    #[test]
+    fn the_version_flag_prints_the_baked_in_version() {
+        let err = Cli::try_parse_from(["lyk-steno-theory", "-V"]).err().unwrap();
+        assert_eq!(err.to_string().trim(), version::version_line());
     }
 }

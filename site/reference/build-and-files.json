@@ -229,7 +229,7 @@
   },
   {
    "t": "p",
-   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the rules or generator changed after the last `!build`, a note says so; `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before."
+   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the stamp in `out/lyk` says another version or other rules made it, a dim note says so (see Version below); `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before."
   },
   {
    "t": "list",
@@ -267,11 +267,38 @@
   },
   {
    "t": "h3",
+   "x": "Version"
+  },
+  {
+   "t": "p",
+   "x": "The version is not written anywhere: `build.rs` asks git when the program is compiled and bakes the answer into the binary, the way keymux does. `lyk-steno-theory --version` (or `-V`) and the hidden `version` command (in no help or menu) print the same line: `lyk-steno-theory <version>`. `build` prints it as the first line of its output too (also with `--report`)."
+  },
+  {
+   "t": "table",
+   "head": ["Where the checkout is", "Version printed"],
+   "rows": [
+    ["Exactly on a tag `v1.2.0`", "`1.2.0`"],
+    ["8 commits past that tag", "`1.2.0+8.g0587d41`"],
+    ["Either, with uncommitted changes to tracked files", "`1.2.0+dirty`, `1.2.0+8.g0587d41.dirty`"],
+    ["No version tag (there are none yet)", "Cargo.toml's version and the short hash: `0.1.0+g0587d41`, `0.1.0+g0587d41.dirty`"],
+    ["Not a git checkout, or git missing (a tarball)", "`0.1.0+unknown`"]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Tags are read only when named `v` and a number (`git describe --match 'v[0-9]*'`); `LYK_VERSION=1.2.0` in the environment at compile time overrides everything. A plain `cargo build` or `cargo run` after a commit, a checkout or an edit to `src/`, `rules/` or `Cargo.toml` shows the new version with no `cargo clean`; it works inside a linked worktree."
+  },
+  {
+   "t": "p",
+   "x": "**The stale check.** `build` writes `out/lyk/.built`: the exact source the binary was compiled from (the hash, and for a dirty tree also a hash of its uncommitted changes, so two different edits never look alike) and a hash of every file in `rules/`. `lookup`, `resolve`, `explain`, `quote`, `ergonomics`, `paths` and `family` compare both with the running binary when they read `out/lyk` back, and print one dim line on stderr if either differs: `note: out/lyk may not match this code: it was built by abc1234, and this is def5678; run build (or pass --rebuild)` (or `the rules changed after it was built`). It prints once per run (the interactive session checks once at the start), never when stdout is not a terminal, and never when either side is `unknown`. `--no-stale-check` or `LYK_NO_STALE_NOTE=1` silences it; `--rebuild` generates from scratch instead of reading `out/lyk`. `build` and `deploy` always generate, so they never check."
+  },
+  {
+   "t": "h3",
    "x": "Build output"
   },
   {
    "t": "p",
-   "x": "`!build` and `!deploy` are quiet: the `wrote N entries` line, one line per file (`(unchanged)` when nothing changed), and a `warning:` line only if a word is stranded on a worse outline. The diagnostics are `build --report`; the health conditions they showed are asserted by tests that stay silent unless one fails (`cargo test --release`; skipped with a message if `data/` is missing)."
+   "x": "`!build` and `!deploy` are quiet: the version line, the `wrote N entries` line, one line per file (`(unchanged)` when nothing changed), and a `warning:` line only if a word is stranded on a worse outline. The diagnostics are `build --report`; the health conditions they showed are asserted by tests that stay silent unless one fails (`cargo test --release`; skipped with a message if `data/` is missing)."
   },
   {
    "t": "table",

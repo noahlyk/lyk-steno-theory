@@ -101,7 +101,7 @@ pub const BUILT_DIR: &str = "out/lyk";
 /// Every entry of lyk's dictionary. Read back from what `build` already wrote to [`BUILT_DIR`]
 /// (milliseconds) unless `rebuild` is set or nothing is built yet, then generated from scratch
 /// (tens of seconds): the answers are the same, so a query never needs the slow path just to know
-/// a word's outline. A note on stderr says when the rules changed after the files were written.
+/// a word's outline. A dim note on stderr (terminal only) says when the files came from other code or rules (`crate::version`).
 pub fn dictionary_entries(
     setup: &analysis::Setup,
     briefs_path: Option<&Path>,
@@ -110,7 +110,7 @@ pub fn dictionary_entries(
 ) -> Result<Vec<generate::Entry>> {
     let dir = Path::new(BUILT_DIR);
     if !rebuild && built::exists(dir) {
-        if let Some(note) = built::stale_note(dir) {
+        if let Some(note) = crate::version::stale_note(dir) {
             eprintln!("{note}");
         }
         return built::load(dir);

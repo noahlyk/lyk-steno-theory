@@ -85,7 +85,7 @@ impl Role {
 pub const FAMILY_FILE: &str = "family.json";
 
 /// Rewritten by every `build`, even when no dictionary file changed, so its time says when the
-/// dictionary was last checked against the rules (`crate::built::stale_note`).
+/// dictionary was last checked; holds the version that built it and a hash of `rules/` (`crate::version`).
 pub const BUILT_STAMP: &str = ".built";
 
 /// Whether `name` is one of the files this module writes, current or from an earlier layout.
@@ -131,7 +131,7 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
         .map(|e| (render_outline(&e.outline), written(&e.word)))
         .collect();
     write_if_different(&dir.join(FAMILY_FILE), serde_json::to_string_pretty(&family)?.as_bytes())?;
-    std::fs::write(dir.join(BUILT_STAMP), "").with_context(|| dir.join(BUILT_STAMP).display().to_string())?;
+    std::fs::write(dir.join(BUILT_STAMP), crate::version::stamp_text(crate::version::GIT_ID, &crate::version::inputs_hash(Path::new("rules")))).with_context(|| dir.join(BUILT_STAMP).display().to_string())?;
     remove_stale(dir)?;
     Ok(done)
 }
