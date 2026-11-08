@@ -172,7 +172,7 @@
      "0"
     ],
     [
-     "a known outline: the exact outline of any entry of the words, short, alternates or extras files",
+     "a known outline: the exact outline of any entry of the words, short, alternates or extras files, or one the rules teach a word (`explain`'s \"ours\", two strokes or more: `WAUT/+-R` *water*)",
      "on whole strokes; the first piece, or a later one (+2)",
      "the word's rarity, plus 10 after the first piece"
     ],
@@ -187,7 +187,8 @@
    "t": "list",
    "items": [
     "**A known outline can carry on into a longer word.** After a known outline, the strokes that follow may go on with the same word's sounds instead of starting a new piece: `AUGS` is *audition*, so `AUGS/+AOEUPBG` reads *auditioning*, priced as *auditioning* plus 1. It also carries on into any longer word **spelled** from it, however that word says those letters, when the outline's word is 3 letters or more and the longer word goes on with a vowel letter: `KWEULD` is *liquid*, so `KWEULD/+ARB/+UPB` reads *liquidation* (said *liquad-*), and *inc* goes on into *incorporate*. At most 8 such places per outline, its own word's sounds first, then the most common longer words.",
-    "**A word you know plus ending chords, when they spell a real word, is that word, before anything else.** `PROB/+-BL` is *prob* + *-able*: *probable*, whatever the sounds might also say. When they spell no word (`PRO/+-BL`, *pro* + *able*), the run is read by its sounds (*pro-bly*: *probably*). Only an outline you struck counts, never a misstroke guess one key off it: `SKRAEPL/+-Z` is *screams*, not *cream* + *s*. Three rules, in order: a brief is its word; a known word plus endings is that word; otherwise the sounds decide.",
+    "**An outline the rules teach a word, struck whole, is that word, before anything else**: `WAUT/+-R` is *water*, never *wait* + *-er*. The plugin carries every lexicon word's taught outlines (its outline and its homophone variant), the ones the lessons have you strike syllable by syllable; an outline a dictionary entry holds stays that entry's, and two words taught the same outline give it to the commoner (*theater* over *theatre*).",
+    "**Then a word you know plus ending chords, when they spell a real word, is that word.** `PROB/+-BL` is *prob* + *-able*: *probable*, whatever the sounds might also say. When they spell no word (`PRO/+-BL`, *pro* + *able*), the run is read by its sounds (*pro-bly*: *probably*). Only an outline you struck counts, never a misstroke guess one key off it: `SKRAEPL/+-Z` is *screams*, not *cream* + *s*. Three rules, in order: a brief or a taught outline, struck whole, is its word; a known word plus endings is that word; otherwise the sounds decide.",
     "**Pieces that spell a word are that word**, never cheaper than the pieces themselves: *part* + `+-S` is as rare as *parts*, and a rare piece does not become a common word by spelling one. *part* + `+-S` is *parts*, priced at the rarity of *parts*, not of *part*.",
     "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well.",
     "A word piece only ends at a stroke boundary; a suffix chord is always the suffix, never its bare consonants."

@@ -23,6 +23,8 @@ pub struct Options<'a> {
     pub plugin: Option<&'a Path>,
     /// Print `outline<TAB>answer` for every outline in this file (one a line) and stop
     pub answers: Option<&'a Path>,
+    /// Test against the outlines the rules teach for this many of the commonest words
+    pub taught: Option<usize>,
 }
 
 /// The model `build` would ship, from the dictionary already in `dir`.
@@ -82,6 +84,50 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     }
     if let Some(tape) = options.tape {
         eval_tape(&model, tape)?;
+    }
+    if let Some(n) = options.taught {
+        eval_taught(setup, &model, options.dir, n, options.misses)?;
+    }
+    Ok(())
+}
+
+/// How well the solver reads the outlines the rules teach (`explain`'s "ours") for the `n`
+/// commonest words: the runs a writer strikes syllable by syllable, as the lessons have them. An
+/// outline a dictionary entry holds is skipped (keymux types the entry, the solver never sees it),
+/// and so is one of a single stroke.
+fn eval_taught(setup: &Setup, model: &Model, dir: &Path, n: usize, misses: Option<&Path>) -> Result<()> {
+    let held: HashSet<String> = crate::built::load(dir)?
+        .iter()
+        .filter(|e| e.origin != crate::generate::Origin::Backup)
+        .map(|e| render_outline(&e.outline))
+        .collect();
+    let mut words: Vec<(&String, usize)> = setup.rank.iter().map(|(w, r)| (w, *r)).filter(|(_, r)| *r < n).collect();
+    words.sort_by(|a, b| (a.1, a.0).cmp(&(b.1, b.0)));
+    let mut sample: Vec<(String, &String, Vec<u32>)> = Vec::new();
+    for (word, _) in words {
+        for outline in setup.candidates(word) {
+            let Some(strokes) = parse_outline(&outline) else { continue };
+            if strokes.len() < 2 || held.contains(&outline) {
+                continue;
+            }
+            sample.push((outline, word, strokes.iter().map(|s| s.0).collect()));
+        }
+    }
+    let borrowed: Vec<(&str, &String, Vec<u32>)> = sample.iter().map(|(o, w, r)| (o.as_str(), *w, r.clone())).collect();
+    let solved = solve_all(model, &borrowed);
+    let mut all = Tally::default();
+    let mut wrong = Vec::new();
+    for ((outline, word, _), (_, got, _)) in borrowed.iter().zip(&solved) {
+        let top1 = got.first().is_some_and(|r| r.text.to_lowercase() == **word);
+        all.add(top1, got.iter().any(|r| r.text.to_lowercase() == **word));
+        if !top1 {
+            wrong.push(miss_line(outline, word, got));
+        }
+    }
+    println!("taught outlines, {n} commonest words: {}", all.line());
+    if let Some(path) = misses {
+        std::fs::write(path, wrong.join("\n") + "\n")?;
+        println!("{} misses written to {}", wrong.len(), path.display());
     }
     Ok(())
 }

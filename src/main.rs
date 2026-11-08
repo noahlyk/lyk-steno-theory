@@ -196,6 +196,10 @@ enum Command {
         /// Print each outline of this file (one a line) with the plugin's answer for it
         #[arg(long)]
         answers: Option<PathBuf>,
+        /// Test against the outlines the rules teach (`explain`'s "ours") for the N commonest
+        /// words: every one of two strokes or more that no dictionary entry already holds
+        #[arg(long)]
+        taught: Option<usize>,
     },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
@@ -389,8 +393,8 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers } => solve::run(&setup(Some(*common))?, &solve::Options {
-            outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(),
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught } => solve::run(&setup(Some(*common))?, &solve::Options {
+            outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

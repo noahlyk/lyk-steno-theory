@@ -26,7 +26,7 @@ use super::{Rules, plain};
 use crate::data::Pronunciations;
 use crate::generate::{Entry, Origin};
 use crate::stroke::Stroke;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// The `ARPAbet` sounds, vowels first: every sound the lexicon or the chord tables use.
 const VOWELS: [&str; 15] = ["AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH", "IY", "OW", "OY", "UH", "UW"];
@@ -560,6 +560,27 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
     (words, trie)
 }
 
+/// The known outlines, and then the outlines the rules teach each lexicon word (`explain`'s "ours":
+/// its outline and its homophone variant, the join key on every stroke after the first) when two
+/// strokes or more: what the lessons have a writer strike syllable by syllable, which the shipped
+/// dictionary no longer holds now the backups are gone. An outline an entry holds stays that
+/// entry's; two words taught the same outline give it to the commoner.
+fn with_taught(rules: &Rules, lexicon: &Lexicon, words: &[(&String, usize)], stems: &[(Vec<Stroke>, String)]) -> Vec<(Vec<Stroke>, String)> {
+    let bare = |outline: &[Stroke]| outline.iter().map(|s| s.0 & !Stroke::JOIN).collect::<Vec<u32>>();
+    let mut held: HashSet<Vec<u32>> = stems.iter().map(|(o, _)| bare(o)).collect();
+    let mut out = stems.to_vec();
+    for (word, _) in words {
+        for sounds in &lexicon.pron[*word] {
+            for outline in [rules.outline(word, sounds), rules.variant(word, sounds)].into_iter().flatten() {
+                if outline.len() >= 2 && held.insert(bare(&outline)) {
+                    out.push((outline, (*word).clone()));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Everything [`Model::load`] reads, packed.
 #[must_use]
 pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
@@ -572,7 +593,8 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     write_sounds(&mut b, &sounds);
     write_tables(&mut b, &tables, rules);
     let ids: HashMap<&str, u32> = words.iter().enumerate().map(|(i, (w, _))| (w.as_str(), index(i))).collect();
-    write_stems(&mut b, stems, lexicon, |text| {
+    let stems = with_taught(rules, lexicon, &words, stems);
+    write_stems(&mut b, &stems, lexicon, |text| {
         let mut ends = ids.get(text).and_then(|id| trie.sound_ends.get(id)).cloned().unwrap_or_default();
         // Then where longer words spelled the same way go on from it, most common first
         let mut starts = trie.spelled_starts.get(text).cloned().unwrap_or_default();
@@ -878,6 +900,21 @@ mod tests {
     #[test]
     fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn the_outline_the_rules_teach_for_a_word_types_it() {
+        // `explain`'s "ours": struck syllable by syllable as the lessons teach, never a near word
+        // (*wait* + *-er*), however a known word plus an ending might also spell it
+        for (outline, word) in [
+            ("WAUT/+-R", "water"),
+            ("PWRAEBG/+-G", "breaking"),
+            ("TKAEUPBLG/+-S", "dangerous"),
+            ("TKPWRAET/+-R", "greater"),
+            ("A/+PAEURPBLT", "apparently"),
+        ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
     }

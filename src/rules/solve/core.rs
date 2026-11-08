@@ -286,6 +286,8 @@ pub struct Reading {
     pub rarity: u32,
     /// A known outline followed by nothing but suffix chords: the word you know, with endings
     pub composed: bool,
+    /// One known outline that is the whole run: the word it is, struck as taught
+    pub exact: bool,
 }
 
 pub struct Model {
@@ -1074,17 +1076,21 @@ impl Model {
                 }
             }
             match out.iter_mut().find(|r| r.text == reading.text) {
-                Some(seen) => seen.cost = seen.cost.min(reading.cost),
+                Some(seen) => {
+                    seen.cost = seen.cost.min(reading.cost);
+                    seen.exact |= reading.exact;
+                }
                 None => out.push(reading),
             }
         }
-        // Precedence, not only cost: a word you know followed by ending chords, when they spell a
-        // real word, is that word (`PROB/+-BL` *probable*); only then the cheapest reading
+        // Precedence, not only cost: an outline a word is known or taught by, the whole run, is that
+        // word (`WAUT/+-R` *water*); then a word you know followed by ending chords, when they
+        // spell a real word, is that word (`PROB/+-BL` *probable*); only then the cheapest reading.
         // A tie goes to the commoner word (ids run most common first): rarity is rounded to whole
         // points, so *eight* and *ate* cost the same
         out.sort_by_key(|r| {
             let id = self.known.get(&r.text.to_lowercase()).copied();
-            (!(r.composed && id.is_some()), r.cost, id.unwrap_or(u32::MAX))
+            (!r.exact, !(r.composed && id.is_some()), r.cost, id.unwrap_or(u32::MAX))
         });
         out.truncate(keep);
         out
@@ -1146,7 +1152,8 @@ impl Model {
         let composed = pieces.len() > 1
             && matches!(pieces[0].0, Piece::Stem(_))
             && pieces[1..].iter().all(|(p, _)| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
-        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed }
+        let exact = pieces.len() == 1 && matches!(pieces[0].0, Piece::Stem(_));
+        Reading { text, cost: end.cost, pieces: pieces.into_iter().map(|(_, t)| t).collect(), rarity, composed, exact }
     }
 
     // --- What the plugin answers ---

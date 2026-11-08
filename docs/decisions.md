@@ -2499,3 +2499,14 @@ of 40 cut the plain Z L. Readings of equal cost now go fewest sounds first, and 
 alone after the first is the word's consonants in any order, free (the left bank strikes Z before L
 whatever the word says). 346 fixed, 39 lost: top-1 87.7 -> 88.7%, weighted 91.1 -> 92.2%, the
 2,000 commonest 93.7 -> 94.9%, top-5 96.0 -> 96.9%.
+
+**The plugin carries every word's taught outlines (2026-11-08).** A new eval, `solve --taught N`,
+reads the outlines the rules teach the N commonest words (`explain`'s "ours", two strokes or more,
+not an entry's): 93.3% for 10,000 words, and the misses were a regression against the old backups,
+which held every one of them: `WAUT/+-R` taught for *water* read *wait* + *-er*, *breaking*
+*braking*, *greater* *grater*. The blob now holds each lexicon word's taught outline and homophone
+variant as known outlines (an entry's outline stays the entry's; a shared one goes to the commoner
+word), and the first rule widens: a brief or a taught outline struck whole is its word, ahead of a
+known word plus endings. Taught outlines 93.3 -> 98.6% (the rest share an outline with a spelling
+variant, *theatre* and *theater*); backups 88.7 -> 88.8%. Blob 20.2 -> 21.4 MB, wasm 78 MB,
+3.4 ms mean / 9.6 ms p99, identical to native.
