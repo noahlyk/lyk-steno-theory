@@ -131,7 +131,29 @@ exactly today's, never worse. Below threshold: join the pieces with the spelling
 generator already uses for compositions (`drop_silent_e` in `resolve.rs`; the family link rules in
 `src/family.rs:104` for *make→making*, *run→running*, *y→i*) — reuse, do not reinvent.
 
-### 3c. Why this beats the list
+### 3c. Spelled strokes: the orthographic third of the dictionary
+
+`49a3660`'s own measurement: 1.31M of the 3.86M backups come from `orthography.rs`, which reads a
+word's **spelling as a pseudo-pronunciation** (each letter a sound; a vowel letter offered
+short, long and weak; `c`/`g` both ways) and runs the same lattice over it. The solver covers this
+in three layers:
+
+1. **A vowel struck by its letter inside a phonetic stroke** (`O` for *control*): already cost 0,
+   because 3a inverts the `letter_vowel` variants `Rules::parse` adds to the forward table.
+2. **A piece spelled as it looks** (`con/+tem/+pla/+tion`): every word gets a second path in the
+   trie, its pseudo-pronunciation, built by the *same* `orthography.rs` reading so the two can
+   never disagree. Edges on that path are letter classes, not phonemes — `a` matches `AE`/`EY`/
+   `AH0` at cost 0, `c` matches K or S — a richer edge symbol, nothing more. Trie roughly doubles
+   (~300k nodes, ~4 MB). Because pieces are independent segments of the run, a phonetic stem plus
+   a spelled remainder (what `spelled_remainder` / `REST_QUOTAS` generate today) decodes with no
+   extra machinery. **In v1.**
+3. **Switching mid-piece** (*con* by sound, *tem* by letters, inside one word): nothing in the
+   current dictionary does this, so the eval cannot test it. It needs each word's letters aligned
+   to its phonemes at pack time (grapheme–phoneme DP) so the two paths share positions and the
+   beam can hop between them at cost 0; maybe +50% trie. **Deferred** until the tape shows the
+   user actually strikes this way — the one open question typing has to answer.
+
+### 3d. Why this beats the list
 
 The list answers "is this exact outline one of the 63 I wrote down". The solver answers "which
 word's sounds are closest to the sounds these keys write", which covers every outline the list
