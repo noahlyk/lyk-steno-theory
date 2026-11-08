@@ -58,6 +58,9 @@ const DROP_WEAK_CONSONANT: u8 = 2;
 const DROP_LAST: u8 = 2;
 /// A word reached through its spelling rather than its sounds.
 const SPELLED_PATH: u8 = 3;
+/// A word reached through its spelling with its silent final `e` struck as a vowel (`TKA/+-PB/+SE`
+/// *dance*): the stroke says which word on purpose.
+const SPELLED_FINAL_E: u8 = 2;
 /// A known outline goes on into a longer word spelled from it (*liquid*, *liquidation*) when it is
 /// at least this many letters: a shorter one starts too many words to mean any.
 const STEM_START_LETTERS: usize = 3;
@@ -448,6 +451,11 @@ fn drop_cost(sound: &str, last: bool) -> u8 {
     }
 }
 
+/// Whether a word is said ending on a consonant, its final `e` silent (*dance*, not *coffee*).
+fn pron_has_no_final_vowel(variants: &[Vec<String>]) -> bool {
+    variants.iter().any(|v| v.last().is_some_and(|s| !s.ends_with(|c: char| c.is_ascii_digit())))
+}
+
 /// The lexicon's words, most common first with their ranks, and the trie over each one's
 /// pronunciations and the readings of its spelling.
 fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a String, usize)>, Trie) {
@@ -522,6 +530,22 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                 })
                 .collect();
             trie.insert(&path, id, tuned_pack("SPELLED_PATH", SPELLED_PATH));
+            // A silent final `e` struck as an *e* (EH or IY, not a schwa any vowel key reads as) is
+            // the word's spelling on purpose (*dance*'s, not *dancer*'s ER): a cheaper spelled path
+            let chars: Vec<char> = word.chars().collect();
+            let silent_e_struck = chars.len() >= 3
+                && chars[chars.len() - 1] == 'e'
+                && !"aeiouy".contains(chars[chars.len() - 2])
+                && Some(reading.len() - 1) == last_vowel
+                && pron_has_no_final_vowel(&lexicon.pron[*word]);
+            if silent_e_struck {
+                let e = &reading[reading.len() - 1];
+                let mut path = path;
+                if let Some(last) = path.last_mut() {
+                    last.mask = (1u64 << sounds.id(&e.heard)) | (1 << sounds.id(&e.long));
+                }
+                trie.insert(&path, id, tuned_pack("SPELLED_FINAL_E", SPELLED_FINAL_E));
+            }
         }
     }
     (words, trie)
@@ -845,6 +869,14 @@ mod tests {
     #[test]
     fn star_t_ending_a_run_is_the_th_sound_or_the_th_ending_whichever_spells_the_word() {
         for (outline, word) in [("H/+E/+HR/+*T", "health"), ("TPOUR/+*T", "fourth"), ("WARPL/+*T", "warmth")] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
+        }
+    }
+
+    #[test]
+    fn striking_a_words_silent_final_e_spells_that_word() {
+        // The written *e* struck as a vowel: *dance*, not the *-er* word that sounds the same
+        for (outline, word) in [("TKA/+-PB/+SE", "dance"), ("PW/+EU/+K/+E", "bike"), ("HA*PB/+TK/+HRE", "handle")] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
     }
