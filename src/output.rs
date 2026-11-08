@@ -80,6 +80,14 @@ impl Role {
     }
 }
 
+/// The outlines (to their words) that are a family's shape: `build` writes it beside the
+/// dictionary files so a dictionary read back ranks them as the generator did.
+pub const FAMILY_FILE: &str = "family.json";
+
+/// Rewritten by every `build`, even when no dictionary file changed, so its time says when the
+/// dictionary was last checked against the rules (`crate::built::stale_note`).
+pub const BUILT_STAMP: &str = ".built";
+
 /// Whether `name` is one of the files this module writes, current or from an earlier layout.
 pub fn is_generated_name(name: &str) -> bool {
     name.starts_with("02-lyk-") && Path::new(name).extension().is_some_and(|ext| ext == "json")
@@ -113,6 +121,17 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
         let changed = write_if_different(&path, content.as_bytes())?;
         done.push(Written { role, entries: map.len(), changed });
     }
+    // Which of the words file's entries are family shapes, so reading the files back
+    // (`crate::built`) can rank them as the generator did. Not a dictionary file: it is not
+    // `02-lyk-*`, so `deploy` never ships it and `remove_stale` never removes it.
+    let family: BTreeMap<String, String> = generated
+        .entries
+        .iter()
+        .filter(|e| e.origin == Origin::Family)
+        .map(|e| (render_outline(&e.outline), written(&e.word)))
+        .collect();
+    write_if_different(&dir.join(FAMILY_FILE), serde_json::to_string_pretty(&family)?.as_bytes())?;
+    std::fs::write(dir.join(BUILT_STAMP), "").with_context(|| dir.join(BUILT_STAMP).display().to_string())?;
     remove_stale(dir)?;
     Ok(done)
 }

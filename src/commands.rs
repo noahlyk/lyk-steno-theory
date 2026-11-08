@@ -2,7 +2,7 @@
 //! looking words up, family reports, the plugin, and the ergonomics query. `main` only parses
 //! the command line and dispatches here.
 
-use crate::{analysis, ergonomics, family, generate, output, reverse, rules, stroke};
+use crate::{analysis, built, ergonomics, family, generate, output, reverse, rules, stroke};
 use anyhow::{Context, Result};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -91,21 +91,59 @@ pub fn expand_home(path: &Path) -> Result<PathBuf> {
     Ok(PathBuf::from(home).join(rest))
 }
 
+/// Where `build` writes the dictionary, and so where the query commands read it back from.
+pub const BUILT_DIR: &str = "out/lyk";
+
+/// Every entry of lyk's dictionary. Read back from what `build` already wrote to [`BUILT_DIR`]
+/// (milliseconds) unless `rebuild` is set or nothing is built yet, then generated from scratch
+/// (tens of seconds): the answers are the same, so a query never needs the slow path just to know
+/// a word's outline. A note on stderr says when the rules changed after the files were written.
+pub fn dictionary_entries(
+    setup: &analysis::Setup,
+    briefs_path: Option<&Path>,
+    common: usize,
+    rebuild: bool,
+) -> Result<Vec<generate::Entry>> {
+    let dir = Path::new(BUILT_DIR);
+    if !rebuild && built::exists(dir) {
+        if let Some(note) = built::stale_note(dir) {
+            eprintln!("{note}");
+        }
+        return built::load(dir);
+    }
+    let briefs = generate::Briefs::from_path(briefs_path)?;
+    Ok(generate::generate(setup, &briefs, common)?.entries)
+}
+
+/// `resolve`: what a stroke outline types, from the dictionary or the rules' best reading.
+pub fn run_resolve(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    outline: &str,
+    common: usize,
+    briefs_path: Option<&Path>,
+    rebuild: bool,
+) -> Result<()> {
+    let setup = setup(Some(common))?;
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let strokes = stroke::parse_outline(outline).with_context(|| format!("{outline:?} is not a stroke outline"))?;
+    print_resolve(&setup, &entries, &strokes);
+    Ok(())
+}
+
 /// The one lookup, forward or backward: see `reverse::classify`.
 pub fn run_lookup(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
     query: &str,
     common: usize,
     briefs_path: Option<&Path>,
+    rebuild: bool,
 ) -> Result<()> {
     match reverse::classify(query) {
         reverse::Query::Stroke(strokes) => {
             let setup = setup(Some(common))?;
-            let briefs = match briefs_path {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
-            print_resolve(&setup, &briefs, &strokes, common)
+            let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+            print_resolve(&setup, &entries, &strokes);
+            Ok(())
         }
         reverse::Query::Text(phrase) => {
             if phrase.is_empty() {
@@ -113,27 +151,28 @@ pub fn run_lookup(
                 return Ok(());
             }
             let setup = setup(Some(common))?;
-            let briefs = match briefs_path {
-                Some(path) => generate::Briefs::load(path)?,
-                None => generate::Briefs::built_in()?,
-            };
-            let generated = generate::generate(&setup, &briefs, common)?;
-            let dictionary = generate::cheapest(&generated.entries);
+            let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+            let dictionary = generate::cheapest(&entries);
             for found in reverse::reverse_phrase(&setup, &dictionary, &phrase) {
-                let lyk_label = if found.lyk_deployed {
-                    "lyk"
-                } else {
-                    "lyk (not deployed - rules' own reading)"
+                let lyk_label = match (&found.composed_of, found.lyk_deployed) {
+                    (_, true) => "lyk".to_owned(),
+                    (Some(pieces), false) => format!("lyk (composed: {})", pieces.join(" + ")),
+                    (None, false) => "lyk (not deployed - rules' own reading)".to_owned(),
                 };
+                let label = |name: &str, pieces: &Option<Vec<String>>| {
+                    pieces
+                        .as_ref()
+                        .map_or_else(|| name.to_owned(), |p| format!("{name} (composed: {})", p.join(" + ")))
+                };
+                let plover_label = label("plover", &found.plover_composed_of);
+                let lapwing_label = label("lapwing", &found.lapwing_composed_of);
+                let width = lyk_label.len().max(plover_label.len()).max(lapwing_label.len());
                 println!(
-                    "{}\n  {lyk_label:<width$} {}\n  {:<width$} {}\n  {:<width$} {}",
+                    "{}\n  {lyk_label:<width$} {}\n  {plover_label:<width$} {}\n  {lapwing_label:<width$} {}",
                     found.word,
                     found.lyk.as_deref().unwrap_or("?"),
-                    "plover",
                     found.plover.as_deref().unwrap_or("?"),
-                    "lapwing",
                     found.lapwing.as_deref().unwrap_or("?"),
-                    width = lyk_label.len().max(7),
                 );
             }
             Ok(())
@@ -174,23 +213,16 @@ pub fn run_ergonomics(
 
 /// What a stroke outline resolves to: a real dictionary entry, the rules' best phonetic reading
 /// of a miss, or a true miss nothing can read. Shared by `resolve` and `lookup`'s stroke mode.
-pub fn print_resolve(
-    setup: &analysis::Setup,
-    briefs: &generate::Briefs,
-    strokes: &[stroke::Stroke],
-    common: usize,
-) -> Result<()> {
+pub fn print_resolve(setup: &analysis::Setup, entries: &[generate::Entry], strokes: &[stroke::Stroke]) {
     let text = stroke::render_outline(strokes);
-    let generated = generate::generate(setup, briefs, common)?;
-    let index = generate::index(&generated);
+    let index = generate::index_of(entries);
     if let Some(word) = index.get(&text) {
         println!("{text}  ->  {word}  (in the dictionary)");
-    } else if let Some(reading) = setup.rules.resolve(strokes, Some(&generate::single_stroke_stems(&generated))) {
+    } else if let Some(reading) = setup.rules.resolve(strokes, Some(&generate::single_stroke_stems_of(entries))) {
         println!("{text}  ->  {reading}  (not in the dictionary; the rules' best reading)");
     } else {
         println!("{text}  ->  no reading the rules allow: a true miss");
     }
-    Ok(())
 }
 
 /// How many of the commonest words get their own stem row in the deployed plugin.

@@ -405,8 +405,12 @@ pub fn cheapest(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
 
 /// Every outline in a generated dictionary, by its rendered text, to the word it writes.
 pub fn index(generated: &Generated) -> HashMap<String, &str> {
-    generated
-        .entries
+    index_of(&generated.entries)
+}
+
+/// [`index`] over bare entries, such as a dictionary read back from disk (`crate::built`).
+pub fn index_of(entries: &[Entry]) -> HashMap<String, &str> {
+    entries
         .iter()
         .map(|e| (render_outline(&e.outline), e.word.as_str()))
         .collect()
@@ -433,8 +437,13 @@ const fn is_primary_origin(origin: Origin) -> bool {
 /// alternates: the same word under four strokes made the deployed plugin's table twice the size
 /// for no reading it could not already give.
 pub fn single_stroke_stems(generated: &Generated) -> HashMap<Stroke, String> {
-    generated
-        .entries
+    single_stroke_stems_of(&generated.entries)
+}
+
+/// [`single_stroke_stems`] over bare entries, such as a dictionary read back from disk
+/// (`crate::built`), where every word file entry stands in as a primary.
+pub fn single_stroke_stems_of(entries: &[Entry]) -> HashMap<Stroke, String> {
+    entries
         .iter()
         .filter(|e| is_primary_origin(e.origin))
         .filter_map(|e| match e.outline[..] {

@@ -2,7 +2,9 @@
 //! and Lapwing, so the dictionaries can be compared on text nobody picked to flatter one of them.
 
 use crate::analysis::Setup;
-use crate::generate::{self, Briefs, Generated, Origin};
+use crate::gold::Theory;
+use crate::generate::{self, Entry, Origin};
+use crate::reverse;
 use crate::stroke::{Stroke, render_outline};
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
@@ -60,22 +62,67 @@ fn outline_of(
     lyk: &std::collections::HashMap<&str, &[Stroke]>,
     word: &str,
 ) -> String {
-    lyk.get(word)
-        .map(|o| render_outline(o))
-        .or_else(|| {
-            setup
-                .pron
-                .get(word)
-                .into_iter()
-                .flatten()
-                .find_map(|sounds| setup.rules.outline(word, sounds))
-                .map(|o| render_outline(&o))
-        })
+    outline_and_pieces(setup, lyk, word).0
+}
+
+/// lyk's outline for `word` and, when it was composed from other dictionary entries rather than
+/// being an entry itself, the pieces it was composed from (`["everybody", "'s"]`).
+///
+/// A word the dictionary lacks (`everybody's`) is often a dictionary word plus a suffix, or two
+/// words; that beats the rules' syllable-by-syllable reading whenever it is no longer. Every stroke
+/// after a word's first carries the join key, written out: the dictionary files do, and a bare
+/// continuation stroke would type as a new word.
+fn outline_and_pieces(
+    setup: &Setup,
+    lyk: &std::collections::HashMap<&str, &[Stroke]>,
+    word: &str,
+) -> (String, Option<Vec<String>>) {
+    if let Some(outline) = lyk.get(word) {
+        return (render_outline(outline), None);
+    }
+    let reading = setup
+        .pron
+        .get(word)
+        .into_iter()
+        .flatten()
+        .find_map(|sounds| setup.rules.outline(word, sounds))
+        .map(|mut o| {
+            setup.rules.joined(&mut o);
+            render_outline(&o)
+        });
+    if let Some(composed) = reverse::compose(
+        |w| lyk.get(w).map(|o| o.to_vec()),
+        &setup.rules.suffix_outlines(),
+        reverse::Glue::JoinKey,
+        word,
+    ) && reverse::composition_wins(&composed, reading.as_deref())
+    {
+        return (render_outline(&composed.strokes), Some(composed.pieces));
+    }
+    let outline = reading
         // No pronunciation on record anywhere at all - not CMUdict, nor MFA or WikiPron's
         // translated fallback (`crate::ipa`; `aboveground`-class words): spell it out letter by
         // letter rather than reporting the word as simply untypeable.
         .or_else(|| setup.rules.spell_word(word).map(|o| render_outline(&o)))
-        .unwrap_or_else(|| "-".to_owned())
+        .unwrap_or_else(|| "-".to_owned());
+    (outline, None)
+}
+
+/// What `theory` writes for `word`: its own shortest outline, or else one composed from its own
+/// words and suffix strokes (the same idea lyk gets), `"-"` only when neither works. The pieces
+/// are returned when it was composed.
+fn gold_outline(setup: &Setup, theory: Theory, word: &str) -> (String, Option<Vec<String>>) {
+    let table = match theory {
+        Theory::Plover => &setup.gold.plover,
+        Theory::Lapwing => &setup.gold.lapwing,
+    };
+    if let Some(outline) = table.get(word).and_then(|o| generate::shortest(o)) {
+        return (render_outline(&outline), None);
+    }
+    setup
+        .gold
+        .compose(theory, word)
+        .map_or_else(|| ("-".to_owned(), None), |c| (render_outline(&c.strokes), Some(c.pieces)))
 }
 
 /// One word of a passage, next to what Plover and Lapwing would write for it: `"-"` for a theory
@@ -87,6 +134,9 @@ pub struct Row {
     pub lyk: String,
     pub plover: String,
     pub lapwing: String,
+    /// Which columns were composed from other entries instead of looked up whole, and from what:
+    /// `("lyk", ["everybody", "'s"])`
+    pub composed: Vec<(&'static str, Vec<String>)>,
 }
 
 /// `text`'s plain words, each next to lyk's, Plover's, and Lapwing's own outline for it. `lyk` is
@@ -96,20 +146,14 @@ pub fn rows_for(setup: &Setup, lyk: &std::collections::HashMap<&str, &[Stroke]>,
     text.split_whitespace()
         .filter_map(clean)
         .map(|word| {
-            let plover = setup
-                .gold
-                .plover
-                .get(&word)
-                .and_then(|o| generate::shortest(o))
-                .map_or_else(|| "-".to_owned(), |o| render_outline(&o));
-            let lapwing = setup
-                .gold
-                .lapwing
-                .get(&word)
-                .and_then(|o| generate::shortest(o))
-                .map_or_else(|| "-".to_owned(), |o| render_outline(&o));
-            let lyk = outline_of(setup, lyk, &word);
-            Row { word, lyk, plover, lapwing }
+            let (plover, plover_pieces) = gold_outline(setup, Theory::Plover, &word);
+            let (lapwing, lapwing_pieces) = gold_outline(setup, Theory::Lapwing, &word);
+            let (lyk, lyk_pieces) = outline_and_pieces(setup, lyk, &word);
+            let composed = [("lyk", lyk_pieces), ("plover", plover_pieces), ("lapwing", lapwing_pieces)]
+                .into_iter()
+                .filter_map(|(name, pieces)| pieces.map(|p| (name, p)))
+                .collect();
+            Row { word, lyk, plover, lapwing, composed }
         })
         .collect()
 }
@@ -118,9 +162,8 @@ pub fn rows_for(setup: &Setup, lyk: &std::collections::HashMap<&str, &[Stroke]>,
 /// to the single stroke that writes it - built once per `Generated` and shared across every
 /// passage scored, the same way `lyk` (`generate::cheapest`) already is. See
 /// `total_keys_with_phrases`, the only consumer.
-pub fn phrase_map(generated: &Generated) -> HashMap<(String, String), Vec<Stroke>> {
-    generated
-        .entries
+pub fn phrase_map(entries: &[Entry]) -> HashMap<(String, String), Vec<Stroke>> {
+    entries
         .iter()
         .filter(|e| e.origin == Origin::Phrase)
         .filter_map(|e| {
@@ -197,12 +240,11 @@ pub fn cost(outline: &str) -> Option<(usize, u32)> {
 
 /// Grab a random quote, build the dictionary, and print it stroke by stroke next to Plover and
 /// Lapwing: the keys each theory spends on the same, unpicked text.
-pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> Result<()> {
+pub fn run(setup: &Setup, entries: &[Entry], max_words: usize) -> Result<()> {
     let (quote, author) = fetch(max_words, 5)?;
     println!("\"{quote}\"\n  — {author}\n");
 
-    let generated = generate::generate(setup, briefs, common)?;
-    let lyk = generate::cheapest(&generated.entries);
+    let lyk = generate::cheapest(entries);
     let rows = rows_for(setup, &lyk, &quote);
     if rows.is_empty() {
         bail!("the quote had no plain words to stroke");
@@ -236,6 +278,11 @@ pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> R
         }
         println!("{:<width$}  {:<12}  {:<12}  {:<12}", row.word, row.lyk, row.plover, row.lapwing);
     }
+    for row in rows.iter().filter(|r| !r.composed.is_empty()) {
+        let how: Vec<String> =
+            row.composed.iter().map(|(name, pieces)| format!("{name}: {}", pieces.join(" + "))).collect();
+        println!("  {} was not a whole entry - composed ({})", row.word, how.join("; "));
+    }
     println!(
         "\nkeys (shared vocabulary only, fair comparison): lyk-vs-plover {lyk_vs_plover} plover {plover_total}   \
          lyk-vs-lapwing {lyk_vs_lapwing} lapwing {lapwing_total}"
@@ -247,7 +294,7 @@ pub fn run(setup: &Setup, briefs: &Briefs, common: usize, max_words: usize) -> R
     // Phrase-aware: did this quote happen to contain any of the dictionary's own real phrase
     // entries back to back? See `total_cost_with_phrases`'s own doc for why strokes, not keys, are
     // the number that actually matters here.
-    let phrases = phrase_map(&generated);
+    let phrases = phrase_map(entries);
     let (phrase_strokes, phrase_keys, phrase_hits) = total_cost_with_phrases(setup, &lyk, &phrases, &quote);
     if phrase_hits > 0 {
         let word_by_word_strokes: u64 = rows.iter().filter_map(|r| cost(&r.lyk)).map(|(s, _)| s as u64).sum();

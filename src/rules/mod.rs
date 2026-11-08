@@ -944,6 +944,16 @@ impl Rules {
         Some((sounds.len() - 1 - last.coda.len(), stroke))
     }
 
+    /// Every standalone suffix of `rules/suffixes.toml`, one-stroke and two-stroke, as the text it
+    /// writes and the continuation strokes (join key set) that strike it: what a word the
+    /// dictionary lacks is composed from (`everybody's` is `everybody` plus `'s`).
+    #[must_use]
+    pub fn suffix_outlines(&self) -> Vec<(&str, Vec<Stroke>)> {
+        let single = self.suffixes.iter().map(|(stroke, text)| (text.as_str(), vec![*stroke]));
+        let double = self.two_stroke_suffixes.iter().map(|(text, strokes)| (text.as_str(), strokes.clone()));
+        single.chain(double).collect()
+    }
+
     /// Whether `word` ends in one of `rules/suffixes.toml`'s two-stroke suffixes (`-ism`,
     /// `-ary`/`-ery`/`-ory`, `-ical`, `-logy`, `-cy`/`-sy`, `-ify`/`-fy`) - found by spelling
     /// (`word` ends with the suffix's own letters), unlike [`Self::suffix_split`]'s sound-driven

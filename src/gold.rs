@@ -1,7 +1,8 @@
 //! What Plover and Lapwing write for each word: the answers the rules are scored against.
 
 use crate::data::load_dictionary;
-use crate::stroke::parse_outline;
+use crate::reverse::{Composition, Glue, compose};
+use crate::stroke::{Stroke, parse_outline};
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -35,9 +36,55 @@ fn capitalized(dict: &BTreeMap<String, String>) -> impl Iterator<Item = String> 
     })
 }
 
+/// Which of the two gold dictionaries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Theory {
+    Plover,
+    Lapwing,
+}
+
+/// What a gold dictionary offers to write a word it lacks: its standalone suffix strokes
+/// (`{^'s}`, `{^ing}`) by the text they add, and its `{^}` attach stroke. The same pieces lyk
+/// composes from, so a word missing from all three is judged the same way in each.
+#[derive(Default)]
+struct Pieces {
+    suffixes: Vec<(String, Vec<Stroke>)>,
+    glue: Option<Vec<Stroke>>,
+}
+
+/// The shortest (strokes, then keys) of `a` and `b`.
+fn cheaper(a: Vec<Stroke>, b: &[Stroke]) -> Vec<Stroke> {
+    let cost = |o: &[Stroke]| (o.len(), crate::generate::keys(o));
+    if cost(b) < cost(&a) { b.to_vec() } else { a }
+}
+
+fn pieces(dict: &BTreeMap<String, String>) -> Pieces {
+    let mut suffixes: HashMap<String, Vec<Stroke>> = HashMap::new();
+    let mut glue: Option<Vec<Stroke>> = None;
+    for (outline, word) in dict {
+        let Some(strokes) = parse_outline(outline) else { continue };
+        if word == "{^}" {
+            glue = Some(match glue {
+                Some(held) => cheaper(held, &strokes),
+                None => strokes,
+            });
+            continue;
+        }
+        let Some(text) = word.strip_prefix("{^").and_then(|w| w.strip_suffix('}')) else { continue };
+        if text.is_empty() || !text.chars().all(|c| c.is_ascii_lowercase() || c == '\'') {
+            continue;
+        }
+        let held = suffixes.remove(text);
+        suffixes.insert(text.to_owned(), held.map_or_else(|| strokes.clone(), |h| cheaper(h, &strokes)));
+    }
+    Pieces { suffixes: suffixes.into_iter().collect(), glue }
+}
+
 pub struct Gold {
     pub plover: HashMap<String, Vec<String>>,
     pub lapwing: HashMap<String, Vec<String>>,
+    plover_pieces: Pieces,
+    lapwing_pieces: Pieces,
     /// Words either dictionary writes capitalized and neither writes lowercase: names
     names: HashSet<String>,
 }
@@ -47,7 +94,13 @@ impl Gold {
         let dicts = root.join("dictionaries");
         let (plover, lapwing) =
             (load_dictionary(&dicts.join("plover-main.json"))?, load_dictionary(&dicts.join("lapwing-base.json"))?);
-        let mut gold = Self { plover: all_outlines(&plover), lapwing: all_outlines(&lapwing), names: HashSet::new() };
+        let mut gold = Self {
+            plover: all_outlines(&plover),
+            lapwing: all_outlines(&lapwing),
+            plover_pieces: pieces(&plover),
+            lapwing_pieces: pieces(&lapwing),
+            names: HashSet::new(),
+        };
         gold.names = capitalized(&plover)
             .chain(capitalized(&lapwing))
             .filter(|word| !gold.plover.contains_key(word) && !gold.lapwing.contains_key(word))
@@ -80,6 +133,20 @@ impl Gold {
                 .is_some_and(|all| all.iter().any(|o| shape(o) == wanted))
         };
         (has(&self.plover), has(&self.lapwing))
+    }
+
+    /// A word `theory` lacks, written from the pieces it does have: one of its words plus a
+    /// `{^suffix}` stroke, or two of its words with its `{^}` attach stroke between. The same
+    /// idea as lyk's composition (`reverse::compose`), so no theory is judged on a word only the
+    /// others were allowed to compose.
+    pub fn compose(&self, theory: Theory, word: &str) -> Option<Composition> {
+        let (words, pieces) = match theory {
+            Theory::Plover => (&self.plover, &self.plover_pieces),
+            Theory::Lapwing => (&self.lapwing, &self.lapwing_pieces),
+        };
+        let suffixes: Vec<(&str, Vec<Stroke>)> = pieces.suffixes.iter().map(|(t, s)| (t.as_str(), s.clone())).collect();
+        let glue = pieces.glue.as_deref().map_or(Glue::Unavailable, Glue::Stroke);
+        compose(|w| words.get(w).and_then(|all| crate::generate::shortest(all)), &suffixes, glue, word)
     }
 
     pub fn shortest(&self, word: &str) -> (Option<&str>, Option<&str>) {

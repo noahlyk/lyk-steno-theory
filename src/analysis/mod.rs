@@ -203,13 +203,15 @@ impl Setup {
     pub fn candidates(&self, word: &str) -> Vec<String> {
         let mut found: Vec<String> = Vec::new();
         for sounds in self.pron.get(word).into_iter().flatten() {
-            for outline in [
+            for mut outline in [
                 self.rules.outline(word, sounds),
                 self.rules.variant(word, sounds),
             ]
             .into_iter()
             .flatten()
             {
+                // The join key written out on every continuation stroke, as the dictionary files do
+                self.rules.joined(&mut outline);
                 let text = render_outline(&outline);
                 if !found.contains(&text) {
                     found.push(text);

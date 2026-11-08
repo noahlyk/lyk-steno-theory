@@ -98,11 +98,15 @@
      "Add a third dictionary to the cost tables. Example: `build --against magnum.rtf`."
     ],
     [
-     "`quote`",
-     "A random quote, stroked in lyk next to Plover and Lapwing."
+     "`quote [--words N] [--rebuild]`",
+     "A random quote, stroked in lyk next to Plover and Lapwing, a word that is not an entry composed from entries (see [how these commands answer](#/ref/build-and-files/how-quote-lookup-and-resolve-answer))."
     ],
     [
-     "`resolve STROKES`",
+     "`lookup WORD|PHRASE|STROKES [--rebuild]`",
+     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary. Example: `lookup \"everybody's\"`."
+    ],
+    [
+     "`resolve STROKES [--rebuild]`",
      "Read a stroke or `+`-joined run back as a word, as [the fallback](#/ref/fallback) does. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`."
     ]
    ]
@@ -198,12 +202,34 @@
    "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`) and `05-lyk-orthographic-fallback.rs` (the [fallback](#/ref/fallback) plugin)."
   },
   {
+   "t": "p",
+   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy`: `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules)."
+  },
+  {
    "t": "list",
    "items": [
     "The generator keeps exactly one word per outline, so **no outline appears in two files** and the load order never changes what a stroke types. `!build` checks this.",
     "Which file an entry goes in is decided in one place, `Role::of` in `src/output.rs`, from the entry's `Origin`.",
     "The file name tells you what kind of outline you are looking at: a `+` outline in `backups` is a fallback, and the same word's primary is in `!words`.",
     "keymux caches and reloads per file. A change that moves only some entries rewrites only those files, and `!build` compares bytes first, so a file whose content did not change is not rewritten and keymux sees nothing to do for it."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "How quote, lookup and resolve answer"
+  },
+  {
+   "t": "p",
+   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the rules or generator changed after the last `!build`, a note says so; `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**A word that is not an entry is composed from entries.** `everybody's` is not in the dictionary as one word, but `everybody` (`EFB`) is, and `'s` is a standalone suffix stroke (`+-PBTS`), so the answer is `EFB/+-PBTS`, two strokes, and is labelled `composed`. A word of two dictionary words (`noone`: `no` then `+one`) works the same way. The fewest strokes win, then the fewest keys, then the fewest pieces; the rules' syllable-by-syllable reading is used only if it costs less, and a tie goes to the pieces.",
+    "**The join key is written out.** Every stroke after a word's first carries `+`, in the rules' own readings too, as it does in the dictionary files.",
+    "**Plover and Lapwing get the same treatment.** Where a theory has no entry for a word, `quote` and `lookup` compose one from that theory's own words and its own suffix strokes (`{^s}`, `{^'s}`, `{^ing}`), with its `{^}` stroke between two words, since neither has a join key. A `-` in their column now means they genuinely cannot write the word that way.",
+    "A composition needs both pieces to be dictionary words of at least two letters (or a suffix after the first piece), so no stray letter is ever a \"word\"."
    ],
    "ordered": false
   },

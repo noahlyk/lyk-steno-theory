@@ -258,7 +258,7 @@ impl Stats {
 fn score(passages: &[&str]) -> Stats {
     let setup = dictionary_fixture::setup();
     let lyk = dictionary_fixture::cheapest();
-    let phrases = crate::quote::phrase_map(dictionary_fixture::generated());
+    let phrases = crate::quote::phrase_map(&dictionary_fixture::generated().entries);
     let mut stats = Stats::default();
 
     for &passage in passages {

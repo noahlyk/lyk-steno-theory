@@ -4,6 +4,7 @@
 //! They are judged by how many of the words Plover and Lapwing write they reproduce.
 
 mod analysis;
+mod built;
 mod commands;
 #[cfg(test)]
 mod corpus_extract;
@@ -29,7 +30,7 @@ mod reverse;
 mod rules;
 mod stroke;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
@@ -152,6 +153,10 @@ enum Command {
         /// Try for a quote with at most this many words
         #[arg(long, default_value_t = 20)]
         words: usize,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Read a stroke outline back into sounds, as the engine's last resort when it misses the
     /// dictionary: the word if it's one the dictionary writes, otherwise the rules' best
@@ -166,6 +171,9 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch instead of reading back `out/lyk`
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Look a word, phrase, or stroke up, whichever it is: `lookup cat` finds lyk's outline next
     /// to Plover's and Lapwing's, `lookup "tell me how"` does the same word by word for a whole
@@ -182,6 +190,10 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Every way a word can be written as joined strokes (the lattice over its sounds, cheapest
     /// first), and what became of each: in the dictionary, taken by another word, or rejected.
@@ -308,27 +320,24 @@ fn main() -> Result<()> {
             common,
             briefs,
             words,
+            rebuild,
         } => {
             let setup = setup(Some(*common))?;
-            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            quote::run(&setup, &briefs, *common, *words)
+            let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
+            quote::run(&setup, &entries, *words)
         }
         Command::Resolve {
             outline,
             common,
             briefs,
-        } => {
-            let setup = setup(Some(*common))?;
-            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            let strokes = stroke::parse_outline(outline)
-                .with_context(|| format!("{outline:?} is not a stroke outline"))?;
-            commands::print_resolve(&setup, &briefs, &strokes, *common)
-        }
+            rebuild,
+        } => commands::run_resolve(&setup, outline, *common, briefs.as_deref(), *rebuild),
         Command::Lookup {
             query,
             common,
             briefs,
-        } => commands::run_lookup(&setup, query, *common, briefs.as_deref()),
+            rebuild,
+        } => commands::run_lookup(&setup, query, *common, briefs.as_deref(), *rebuild),
         Command::Paths { word, limit, common, briefs } => commands::run_paths(&setup, word, *limit, *common, briefs.as_deref()),
         Command::Family { word, common, briefs } => commands::run_family(&setup, word.as_deref(), *common, briefs.as_deref()),
         Command::Ergonomics { query, common, briefs } => {
