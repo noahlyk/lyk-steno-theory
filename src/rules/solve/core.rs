@@ -246,11 +246,45 @@ pub struct Scratch {
     back: Vec<u32>,
     used: Vec<bool>,
     generation: u32,
+    /// The run read last, step by step: keymux asks again on every stroke, and the next run
+    /// usually is this one and one stroke more
+    progress: Progress,
+    steps: usize,
+}
+
+/// Where reading a run stands after each of its strokes, to go on from.
+#[derive(Default)]
+struct Progress {
+    run: Vec<u32>,
+    /// `before[i]`: the beam before stroke `i` (so `before[run.len()]` is the end)
+    before: Vec<Vec<St>>,
+    /// The pieces found so far, and how many there were before each stroke
+    arena: Vec<(u32, Piece)>,
+    arena_at: Vec<usize>,
+    /// Whether each stroke is a hard suffix chord's, never read as sounds
+    hard: Vec<bool>,
+    hard_until_at: Vec<usize>,
 }
 
 impl Scratch {
     fn new(nodes: usize) -> Self {
-        Self { stamp: vec![0; nodes], cost: vec![0; nodes], back: vec![0; nodes], used: vec![false; nodes], generation: 0 }
+        Self {
+            stamp: vec![0; nodes],
+            cost: vec![0; nodes],
+            back: vec![0; nodes],
+            used: vec![false; nodes],
+            generation: 0,
+            progress: Progress::default(),
+            steps: 0,
+        }
+    }
+
+    /// How many strokes this working memory has read in all (each stroke of each run once,
+    /// except the ones read again because the run changed under them).
+    #[cfg(test)]
+    #[must_use]
+    pub const fn steps_taken(&self) -> usize {
+        self.steps
     }
     fn begin(&mut self) {
         self.generation = self.generation.wrapping_add(1);
@@ -1005,121 +1039,13 @@ impl Model {
             out.truncate(keep);
             return out;
         }
-        let mut arena: Vec<(u32, Piece)> = Vec::new();
-        let mut pending: Vec<Vec<St>> = vec![Vec::new(); k + 1];
-        let mut states = self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK, used: true }], true);
-        // A hard suffix chord is only ever its suffix: the strokes it covers are not read as sounds
-        let mut hard_until = 0;
-        for i in 0..k {
-            if i > 0 && run[i] & JOIN != 0 && i >= hard_until {
-                if self.suffixes.iter().any(|&(s, _, hard)| hard && s == run[i]) {
-                    hard_until = i + 1;
-                } else if run.get(i + 1).is_some_and(|&next| self.two_suffixes.iter().any(|&(a, b, _, hard)| hard && a == run[i] && b == next)) {
-                    hard_until = i + 2;
-                }
-            }
-            let hard = i < hard_until;
-            // A stroke of the star alone is the star ladder's marker (`+*`): it only tells a word
-            // from one that sounds the same, so it is used, at a marker's cost, and reads as nothing
-            if i > 0 && run[i] & !JOIN == STAR {
-                let mut next: Vec<St> = states.iter().map(|s| St { cost: s.cost + self.c.marker, ..*s }).collect();
-                next.append(&mut pending[i + 1]);
-                self.keep_ends(&arena, &mut next);
-                states = self.settle(sc, &next, true);
-                continue;
-            }
-            // Exact pieces that start here, from the positions that just finished a piece
-            let roots: Vec<St> = states.iter().filter(|s| s.node == 0).copied().collect();
-            for root in &roots {
-                let first = root.back == NO_BACK;
-                let piece = if first { 0 } else { self.c.piece };
-                let stroke = run[i];
-                if !first && stroke & JOIN != 0 {
-                    if let Some(at) = self.suffixes.iter().position(|(s, _, _)| *s == stroke) {
-                        let cost = if self.suffixes[at].2 { 0 } else { self.c.suffix };
-                        arena.push((root.back, Piece::Suffix(at as u32)));
-                        pending[i + 1].push(St { node: 0, cost: root.cost + cost, back: (arena.len() - 1) as u32, used: true });
-                    }
-                    if let Some(at) = run
-                        .get(i + 1)
-                        .and_then(|&next| self.two_suffixes.iter().position(|(a, b, _, _)| *a == stroke && *b == next))
-                    {
-                        let cost = if self.two_suffixes[at].3 { 0 } else { self.c.suffix };
-                        arena.push((root.back, Piece::TwoSuffix(at as u32)));
-                        pending[i + 2].push(St { node: 0, cost: root.cost + cost, back: (arena.len() - 1) as u32, used: true });
-                    }
-                }
-                if hard {
-                    continue;
-                }
-                let mut key: Vec<u32> = Vec::new();
-                for j in i..k.min(i + self.max_stem) {
-                    key.push(run[j] & !JOIN);
-                    if j > i && run[j] & JOIN == 0 {
-                        break;
-                    }
-                    if let Some(&stem) = self.stems.get(&key) {
-                        arena.push((root.back, Piece::Stem(stem)));
-                        let later = if first { 0 } else { self.c.stem_later };
-                        let cost = root.cost + piece + self.stem_cost[stem as usize] + later;
-                        pending[j + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32, used: true });
-                        // The same word's sounds, for the strokes after to carry on into a longer
-                        // word: its rarity and its piece are charged when that word ends
-                        for &node in &self.stem_nodes[stem as usize] {
-                            let cost = root.cost + later + self.c.stem_enter + self.lookahead[node as usize];
-                            pending[j + 1].push(St { node, cost, back: root.back, used: true });
-                        }
-                    }
-                }
-                // A misstroke: one key more or fewer than a known single-stroke outline
-                if self.c.slip > 0 {
-                    let bits = run[i] & !JOIN;
-                    for key in 0..23 {
-                        let near = bits ^ (1 << key);
-                        if near & !(SPELL | NUMBER) == 0 {
-                            continue;
-                        }
-                        if let Some(&stem) = self.stems.get(&[near][..]) {
-                            arena.push((root.back, Piece::Slip(stem)));
-                            let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
-                            pending[i + 1].push(St { node: 0, cost, back: (arena.len() - 1) as u32, used: true });
-                        }
-                    }
-                }
-            }
-            let (mut alts, kept) = self.readings_kept(run[i], i == 0);
-            // Only the readings near the stroke's plainest: the rest never win
-            let cheapest = alts.first().map_or(0, |a| a.1);
-            alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
-            alts.truncate(self.c.max_readings as usize);
-            for k in kept {
-                if !alts.contains(&k) {
-                    alts.push(k);
-                }
-            }
-            alts.sort();
-            if hard {
-                alts.clear();
-            }
-            // Each stroke must match at least one sound of the word it is read into
-            let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
-            let mut next = Vec::new();
-            self.walk(sc, &alts, 0, &starting, &mut next);
-            if self.c.must_use > 0 {
-                next.retain(|s| s.used);
-            }
-            let mut next = self.settle(sc, &next, false);
-            let mut emitted = Vec::new();
-            self.emit(&next, &mut arena, &mut emitted);
-            next.extend(emitted);
-            next.append(&mut pending[i + 1]);
-            self.keep_ends(&arena, &mut next);
-            states = self.settle(sc, &next, true);
-        }
+        self.advance(sc, run);
+        let arena = &sc.progress.arena;
+        let states = sc.progress.before[k].clone();
         let ends: Vec<St> = states.into_iter().filter(|s| s.node == 0 && s.back != NO_BACK).collect();
         let mut out: Vec<Reading> = Vec::new();
         for s in ends {
-            let mut reading = self.reading(&arena, s);
+            let mut reading = self.reading(arena, s);
             // Pieces that do not add up to a word are a guess at one the lexicon lacks: allowed,
             // but only when nothing that is a word reads as well
             // Pieces that do add up to a word are that word, and as rare as it is: `part` + `s` is
@@ -1159,6 +1085,175 @@ impl Model {
         });
         out.truncate(keep);
         out
+    }
+
+    /// Read `run` into `sc`'s progress stroke by stroke, going on from the run read before as far
+    /// as the two agree: keymux asks again on every stroke, so most calls read one stroke. After
+    /// it, `sc.progress.before[run.len()]` is the beam at the run's end.
+    fn advance(&self, sc: &mut Scratch, run: &[u32]) {
+        let mut p = std::mem::take(&mut sc.progress);
+        let same = p.run.iter().zip(run).take_while(|(a, b)| a == b).count();
+        // The last stroke both share is read again only when it may start a hard two-stroke
+        // suffix: that depends on the stroke after it, which has changed
+        let from = match same.checked_sub(1) {
+            Some(last) if self.two_suffixes.iter().any(|&(a, _, _, hard)| hard && a == run[last]) => last,
+            _ => same,
+        };
+        if from == 0 || p.before.is_empty() {
+            p = Progress::default();
+            p.before.push(self.settle(sc, &[St { node: 0, cost: 0, back: NO_BACK, used: true }], true));
+            p.arena_at.push(0);
+            p.hard_until_at.push(0);
+        } else {
+            p.before.truncate(from + 1);
+            p.arena.truncate(p.arena_at[from]);
+            p.arena_at.truncate(from + 1);
+            p.hard.truncate(from);
+            p.hard_until_at.truncate(from + 1);
+        }
+        for i in p.hard.len()..run.len() {
+            self.read_stroke(sc, &mut p, run, i);
+            sc.steps += 1;
+        }
+        p.run = run.to_vec();
+        sc.progress = p;
+    }
+
+    /// Read stroke `i` of `run`: the beam before it is `p.before[i]`, the one after it is pushed.
+    fn read_stroke(&self, sc: &mut Scratch, p: &mut Progress, run: &[u32], i: usize) {
+        // A hard suffix chord is only ever its suffix: the strokes it covers are not read as sounds
+        let mut hard_until = p.hard_until_at[i];
+        if i > 0 && run[i] & JOIN != 0 && i >= hard_until {
+            if self.suffixes.iter().any(|&(s, _, hard)| hard && s == run[i]) {
+                hard_until = i + 1;
+            } else if run.get(i + 1).is_some_and(|&next| self.two_suffixes.iter().any(|&(a, b, _, hard)| hard && a == run[i] && b == next)) {
+                hard_until = i + 2;
+            }
+        }
+        let hard = i < hard_until;
+        p.hard.push(hard);
+        p.hard_until_at.push(hard_until);
+        let states = p.before[i].clone();
+        // Exact pieces that end with this stroke, each from the positions that had just finished
+        // a piece where it starts
+        let mut arrived = Vec::new();
+        self.pieces_ending(run, i, p, &mut arrived);
+        let next = if Self::is_marker(run, i) {
+            // A stroke of the star alone is the star ladder's marker (`+*`): it only tells a word
+            // from one that sounds the same, so it is used, at a marker's cost, and reads as nothing
+            let mut next: Vec<St> = states.iter().map(|s| St { cost: s.cost + self.c.marker, ..*s }).collect();
+            next.append(&mut arrived);
+            next
+        } else {
+            let (mut alts, kept) = self.readings_kept(run[i], i == 0);
+            // Only the readings near the stroke's plainest: the rest never win
+            let cheapest = alts.first().map_or(0, |a| a.1);
+            alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
+            alts.truncate(self.c.max_readings as usize);
+            for k in kept {
+                if !alts.contains(&k) {
+                    alts.push(k);
+                }
+            }
+            alts.sort();
+            if hard {
+                alts.clear();
+            }
+            // Each stroke must match at least one sound of the word it is read into
+            let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
+            let mut next = Vec::new();
+            self.walk(sc, &alts, 0, &starting, &mut next);
+            if self.c.must_use > 0 {
+                next.retain(|s| s.used);
+            }
+            let mut next = self.settle(sc, &next, false);
+            let mut emitted = Vec::new();
+            self.emit(&next, &mut p.arena, &mut emitted);
+            next.extend(emitted);
+            next.append(&mut arrived);
+            next
+        };
+        let mut next = next;
+        self.keep_ends(&p.arena, &mut next);
+        p.before.push(self.settle(sc, &next, true));
+        p.arena_at.push(p.arena.len());
+    }
+
+    /// Whether stroke `i` is the star ladder's marker, a stroke of the star alone after the first.
+    const fn is_marker(run: &[u32], i: usize) -> bool {
+        i > 0 && run[i] & !JOIN == STAR
+    }
+
+    /// The exact pieces that end with stroke `j`: a suffix chord, a two-stroke suffix, a known
+    /// outline of one stroke or several joined, a misstroke of a one-stroke one. Each starts where
+    /// a piece had just finished, never on a marker, and a known outline never on a hard suffix's
+    /// stroke.
+    fn pieces_ending(&self, run: &[u32], j: usize, p: &mut Progress, out: &mut Vec<St>) {
+        let roots = |before: &[St]| -> Vec<St> { before.iter().filter(|s| s.node == 0).copied().collect() };
+        // A suffix chord, and a two-stroke suffix ending here
+        for (start, two) in [(Some(j), false), (j.checked_sub(1), true)] {
+            let Some(start) = start else { continue };
+            if Self::is_marker(run, start) || run[start] & JOIN == 0 {
+                continue;
+            }
+            for root in roots(&p.before[start]) {
+                if root.back == NO_BACK {
+                    continue;
+                }
+                let found = if two {
+                    self.two_suffixes
+                        .iter()
+                        .position(|(a, b, _, _)| *a == run[start] && *b == run[j])
+                        .map(|at| (Piece::TwoSuffix(at as u32), self.two_suffixes[at].3))
+                } else {
+                    self.suffixes.iter().position(|(s, _, _)| *s == run[start]).map(|at| (Piece::Suffix(at as u32), self.suffixes[at].2))
+                };
+                if let Some((piece, hard)) = found {
+                    p.arena.push((root.back, piece));
+                    let cost = if hard { 0 } else { self.c.suffix };
+                    out.push(St { node: 0, cost: root.cost + cost, back: (p.arena.len() - 1) as u32, used: true });
+                }
+            }
+        }
+        // A known outline: one stroke, or several joined, ending here
+        for start in (j + 1).saturating_sub(self.max_stem)..=j {
+            if p.hard[start] || Self::is_marker(run, start) || run[start + 1..=j].iter().any(|s| s & JOIN == 0) {
+                continue;
+            }
+            let key: Vec<u32> = run[start..=j].iter().map(|s| s & !JOIN).collect();
+            let Some(&stem) = self.stems.get(&key) else { continue };
+            for root in roots(&p.before[start]) {
+                let first = root.back == NO_BACK;
+                let piece = if first { 0 } else { self.c.piece };
+                let later = if first { 0 } else { self.c.stem_later };
+                p.arena.push((root.back, Piece::Stem(stem)));
+                out.push(St { node: 0, cost: root.cost + piece + self.stem_cost[stem as usize] + later, back: (p.arena.len() - 1) as u32, used: true });
+                // The same word's sounds, for the strokes after to carry on into a longer word:
+                // its rarity and its piece are charged when that word ends
+                for &node in &self.stem_nodes[stem as usize] {
+                    out.push(St { node, cost: root.cost + later + self.c.stem_enter + self.lookahead[node as usize], back: root.back, used: true });
+                }
+            }
+        }
+        // A misstroke: one key more or fewer than a known single-stroke outline
+        if self.c.slip > 0 && !p.hard[j] && !Self::is_marker(run, j) {
+            let bits = run[j] & !JOIN;
+            for root in roots(&p.before[j]) {
+                let first = root.back == NO_BACK;
+                let piece = if first { 0 } else { self.c.piece };
+                for key in 0..23 {
+                    let near = bits ^ (1 << key);
+                    if near & !(SPELL | NUMBER) == 0 {
+                        continue;
+                    }
+                    if let Some(&stem) = self.stems.get(&[near][..]) {
+                        p.arena.push((root.back, Piece::Slip(stem)));
+                        let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
+                        out.push(St { node: 0, cost, back: (p.arena.len() - 1) as u32, used: true });
+                    }
+                }
+            }
+        }
     }
 
     /// The finished readings worth carrying on, at most [`KEEP_ENDS`], ranked as the end will rank

@@ -943,6 +943,49 @@ mod tests {
     }
 
     #[test]
+    fn a_run_read_stroke_by_stroke_reads_as_it_does_from_scratch() {
+        // keymux asks again on every stroke: the solver goes on from the run it read last, and must
+        // answer exactly as it would reading the whole run fresh
+        let runs = [
+            "KOPL/+PU/+TER",
+            "PROB/+-BL/+-L",
+            "TPHRAGS/+-L/+AOEUZ/+AEUGS",
+            "EUPL/+PROB/+-BL",
+            "TP/+EUT/+*",
+            "PROB/+AEUGS/+-L/+EUZ/+-L",
+            "KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT/+KAT",
+        ];
+        let mut going = model().scratch();
+        for run in runs {
+            let strokes: Vec<u32> = run.split('/').map(|s| core::parse_stroke(s).unwrap()).collect();
+            for n in 1..=strokes.len() {
+                let fresh = model().solve_with(&mut model().scratch(), &strokes[..n], 5);
+                let stepped = model().solve_with(&mut going, &strokes[..n], 5);
+                let texts = |r: &[Reading]| r.iter().map(|r| (r.text.clone(), r.cost)).collect::<Vec<_>>();
+                assert_eq!(texts(&stepped), texts(&fresh), "{run} at {n} strokes");
+            }
+        }
+        // and going back: a stroke undone, then another struck
+        let a: Vec<u32> = "KOPL/+PU/+TER".split('/').map(|s| core::parse_stroke(s).unwrap()).collect();
+        let b: Vec<u32> = "KOPL/+PU/+TEUPBG".split('/').map(|s| core::parse_stroke(s).unwrap()).collect();
+        model().solve_with(&mut going, &a, 5);
+        let fresh = model().solve_with(&mut model().scratch(), &b, 5);
+        let stepped = model().solve_with(&mut going, &b, 5);
+        assert_eq!(stepped.first().map(|r| &r.text), fresh.first().map(|r| &r.text));
+    }
+
+    #[test]
+    fn a_long_run_costs_one_stroke_s_work_per_stroke() {
+        // Re-reading a 12-stroke run from scratch on every stroke is 78 steps; going on is 12
+        let strokes: Vec<u32> = std::iter::repeat_n("KAT", 12).map(|s| core::parse_stroke(s).unwrap()).collect();
+        let mut going = model().scratch();
+        for n in 1..=strokes.len() {
+            model().solve_with(&mut going, &strokes[..n], 1);
+        }
+        assert_eq!(going.steps_taken(), 12);
+    }
+
+    #[test]
     fn pieces_that_spell_a_real_word_past_the_lexicon_are_that_word() {
         // *lookup* is rank 121,405: no pronunciation in the lexicon, but a real spelling, so
         // *look* + *up* is *lookup*, not *lockup* or *loop*
