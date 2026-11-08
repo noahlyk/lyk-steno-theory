@@ -101,8 +101,11 @@ cargo run --release -- build --against magnum.rtf   # add a third dictionary to 
 cargo run --release -- quote                        # a random quote, stroked lyk next to Plover and Lapwing
 cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, from the built dictionary (seconds)
 cargo run --release -- resolve STKPW                # a stroke not in the dictionary, read back
+cargo run --release -- lookup                       # no word: type and the answer follows every key, all three theories
 ```
 
+`lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` with no word open an interactive
+session like keymux's `steno keys`: type, and all three theories' answers update on every key.
 `--rules FILE` and `--briefs FILE` use your own rules and briefs. `learn` is how most rules were
 found: it counts what keys Plover and Lapwing use where they agree. [`tools/`](tools/README.md)
 has the scripts for measuring what a change did to the built dictionary.

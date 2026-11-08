@@ -270,10 +270,10 @@
     { "t": "p", "x": "A family offer counts **two keys cheaper** than its raw cost (`FAMILY_DISCOUNT`). Without it, cost alone kept a shorter unrelated brief (*building* stayed Plover's 4-key `PW-LG` over the 5-key `PWHR-G`). With it, a member takes its family's shape unless that costs more than two extra keys." },
     { "t": "note", "kind": "rule", "x": "The discount never buys a stroke: a stroke weighs 25 keys. The same two-key preference applies when choosing which of a word's entries to call its outline (`!cheapest`, used by `lookup`, `!quote` and phrases), so a family shape is not shadowed by a bonus short form that only ties it: [[talked|TAUBGD]], not the bonus `TO*BGT`." },
     { "t": "h3", "x": "Checking a family" },
-    { "t": "pre", "x": "cargo run --release -- family build\ncargo run --release -- family" },
+    { "t": "pre", "x": "cargo run --release -- family build\ncargo run --release -- family --report" },
     { "t": "list", "items": [
       "`family WORD` prints one family: every member, its stem and ending, its own outline, its stem-plus-ending entry, and whether its own outline follows the family (one of the rule shapes above, or keeping every key of its stem's outline).",
-      "`!family` with no word prints the numbers for the whole dictionary by ending, and the commonest members that do not follow the family: one-stroke briefs that beat the family shape by more than two keys, such as [[guys|AOEUS]] against [[guy|TKPAOEU]] and [[needs|AOEDZ]] against [[need|TPHAED]]. The stem-plus-ending entry is always there for them as the predictable way in."
+      "`!family --report` prints the numbers for the whole dictionary by ending, and the commonest members that do not follow the family: one-stroke briefs that beat the family shape by more than two keys, such as [[guys|AOEUS]] against [[guy|TKPAOEU]] and [[needs|AOEDZ]] against [[need|TPHAED]]. The stem-plus-ending entry is always there for them as the predictable way in."
     ] },
     { "t": "h", "x": "Collisions within one backup pass" },
     { "t": "p", "x": "Two different words (or one word by two different directions) can compose the exact same text in the same pass. The pass does not keep whichever it visits first. It first collects every direction's every candidate for every word, then, text by text, keeps only the one minimizing `weight(word) * cost(outline)`, the same formula and frequency weighting the solver uses for every primary (see [collisions](#/ref/collisions)). Only then are the pass's winners committed." },

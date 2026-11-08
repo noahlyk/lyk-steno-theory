@@ -74,16 +74,16 @@
      "`!build` plus `plugin`, copied straight into keymux's live config. Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
     ],
     [
-     "`explain WORD`",
-     "Which rules wrote a word, next to Plover and Lapwing. Example: `explain moon`."
+     "`explain [WORD]`",
+     "Which rules wrote a word, next to Plover and Lapwing. Example: `explain moon`. With no word, the interactive session (see [the interactive session](#/ref/build-and-files/the-interactive-session)); Enter explains the line."
     ],
     [
-     "`family WORD`",
-     "A word's family (`build`, `builds`, `building`...): each one's outline and its stem-plus-ending entry."
+     "`family [WORD] [--report]`",
+     "A word's family (`build`, `builds`, `building`...): each one's outline and its stem-plus-ending entry. With no word, the interactive session; Enter shows the family of the line (it generates the dictionary the first time). `--report` prints the numbers for the whole dictionary instead."
     ],
     [
-     "`paths WORD`",
-     "Every way to write a word as joined strokes, and what became of each. Example: `paths complete`."
+     "`paths [WORD]`",
+     "Every way to write a word as joined strokes, and what became of each. Example: `paths complete`. With no word, the interactive session; Enter shows the paths of the line (it generates the dictionary the first time)."
     ],
     [
      "`mismatches --syllables N --after R`",
@@ -102,12 +102,16 @@
      "A random quote, stroked in lyk next to Plover and Lapwing, a word that is not an entry composed from entries (see [how these commands answer](#/ref/build-and-files/how-quote-lookup-and-resolve-answer))."
     ],
     [
-     "`lookup WORD|PHRASE|STROKES [--rebuild]`",
-     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary. Example: `lookup \"everybody's\"`."
+     "`lookup [WORD|PHRASE|STROKES] [--rebuild]`",
+     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key."
     ],
     [
-     "`resolve STROKES [--rebuild]`",
-     "Read a stroke or `+`-joined run back as a word, as [the fallback](#/ref/fallback) does. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`."
+     "`resolve [STROKES] [--rebuild]`",
+     "Read a stroke or `+`-joined run back as a word, as [the fallback](#/ref/fallback) does. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`. With no stroke, the interactive session, reading every line as a stroke."
+    ],
+    [
+     "`ergonomics [WORD|STROKES] [--rebuild]`",
+     "Score a stroke or a word's built outline finger by finger. With nothing after it, the interactive session; Enter scores the line."
     ]
    ]
   },
@@ -230,6 +234,24 @@
     "**The join key is written out.** Every stroke after a word's first carries `+`, in the rules' own readings too, as it does in the dictionary files.",
     "**Plover and Lapwing get the same treatment.** Where a theory has no entry for a word, `quote` and `lookup` compose one from that theory's own words and its own suffix strokes (`{^s}`, `{^'s}`, `{^ing}`), with its `{^}` stroke between two words, since neither has a join key. A `-` in their column now means they genuinely cannot write the word that way.",
     "A composition needs both pieces to be dictionary words of at least two letters (or a suffix after the first piece), so no stray letter is ever a \"word\"."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h3",
+   "x": "The interactive session"
+  },
+  {
+   "t": "p",
+   "x": "`lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` take a word or a stroke. Run with one, they print their answer and exit, as before. Run with **nothing** after the name, each opens the same session, the way keymux's `steno keys` and `steno lookup` do: a `›` prompt, and under it the answer for what is typed so far, redrawn on every key. It reads the built dictionary in `out/lyk`, so it starts in a second or two and each key is instant; `--rebuild` generates from scratch instead."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**The answer is the `lookup` view, all three theories.** Each word of the line gets its `lyk`, `plover` and `lapwing` rows, labelled `composed` when built from entries and `not deployed` for the rules' own reading; a line in capitals that parses as a stroke is answered like `resolve`. Under it, a table of up to eight more words (columns word, lyk, plover, lapwing), most common first: the words that start like the last word typed, or, for a stroke, the words whose outline starts with it. A last word that is only the start of other words is listed by its matches and not looked up as if it were whole.",
+    "**Colour, where the terminal has it.** Each key of an outline takes its finger's colour (pinky red, ring yellow, middle green, index cyan, thumbs magenta), and the two keys of a finger pair (`TK`, `PW`, `HR`, `-FR`, `-PB`, `-LG`, `-TS`, `-DZ`, `AO`, `EU`) are underlined when both are held. No colour when output is piped or `NO_COLOR` is set.",
+    "**Keys.** Type to search; Backspace; Ctrl-W deletes a word, Ctrl-U the line. Enter keeps the answer in the scrollback and opens a fresh prompt; in `explain`, `ergonomics`, `paths` and `family` it runs that command's full report for the line instead. Esc clears the line, and quits when it is already empty. Ctrl-D, Ctrl-C and Enter on an empty line quit.",
+    "**Piped.** With input or output not a terminal there is no redrawing: each line read prints its answer, a blank line ends it. `printf 'cat\\nKAT\\n' | lookup`."
    ],
    "ordered": false
   },

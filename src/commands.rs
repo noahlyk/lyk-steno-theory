@@ -2,7 +2,7 @@
 //! looking words up, family reports, the plugin, and the ergonomics query. `main` only parses
 //! the command line and dispatches here.
 
-use crate::{analysis, built, ergonomics, family, generate, output, reverse, rules, stroke};
+use crate::{analysis, built, ergonomics, family, generate, lookup_view, output, reverse, rules, session, stroke};
 use anyhow::{Context, Result};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -115,114 +115,134 @@ pub fn dictionary_entries(
     Ok(generate::generate(setup, &briefs, common)?.entries)
 }
 
-/// `resolve`: what a stroke outline types, from the dictionary or the rules' best reading.
+/// Print a view the way a terminal or a pipe wants it: coloured by finger on a terminal that
+/// has colour, plain otherwise.
+fn print_view(lines: &[lookup_view::Line]) {
+    let style = lookup_view::Style { colour: lookup_view::terminal_colour(), columns: None };
+    for text in lookup_view::render_all(lines, style) {
+        println!("{text}");
+    }
+}
+
+/// `resolve`: what a stroke outline types, from the dictionary or the rules' best reading. With
+/// no outline, the interactive session (see [`session`]).
 pub fn run_resolve(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
-    outline: &str,
+    outline: Option<&str>,
+    common: usize,
+    briefs_path: Option<&Path>,
+    rebuild: bool,
+) -> Result<()> {
+    let strokes = outline
+        .map(|o| stroke::parse_outline(o).with_context(|| format!("{o:?} is not a stroke outline")))
+        .transpose()?;
+    let setup = setup(Some(common))?;
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    match strokes {
+        Some(strokes) => print_view(&[lookup.resolve(&strokes)]),
+        None => session::run(&lookup, session::Mode::Resolve)?,
+    }
+    Ok(())
+}
+
+/// The one lookup, forward or backward: see `reverse::classify`. With no query, the interactive
+/// session (see [`session`]).
+pub fn run_lookup(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    query: Option<&str>,
+    common: usize,
+    briefs_path: Option<&Path>,
+    rebuild: bool,
+) -> Result<()> {
+    if let Some(query) = query
+        && matches!(reverse::classify(query), reverse::Query::Text(ref phrase) if phrase.is_empty())
+    {
+        println!("Nothing to look up");
+        return Ok(());
+    }
+    let setup = setup(Some(common))?;
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    match query {
+        Some(query) => print_view(&lookup.view(query, false)),
+        None => session::run(&lookup, session::Mode::Lookup)?,
+    }
+    Ok(())
+}
+
+/// `explain`: how the rules write a word, step by step. With no word, the interactive session,
+/// which runs this on Enter.
+pub fn run_explain(
+    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    word: Option<&str>,
     common: usize,
     briefs_path: Option<&Path>,
     rebuild: bool,
 ) -> Result<()> {
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let strokes = stroke::parse_outline(outline).with_context(|| format!("{outline:?} is not a stroke outline"))?;
-    print_resolve(&setup, &entries, &strokes);
-    Ok(())
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let dictionary = lookup.dictionary();
+    if let Some(word) = word {
+        analysis::explain(&setup, dictionary, word);
+        return Ok(());
+    }
+    let mut run = |word: &str| {
+        analysis::explain(&setup, dictionary, word);
+        Ok(())
+    };
+    session::run(&lookup, session::Mode::Report { name: "explain", run: &mut run })
 }
 
-/// The one lookup, forward or backward: see `reverse::classify`.
-pub fn run_lookup(
+/// `ergonomics`: a stroke outline is scored directly, with no dictionary needed - the fast path
+/// for just trying a chord shape. A word is looked up against the built dictionary's own chosen
+/// outline first, the same lookup `lookup`/`resolve` use, so what's explained is the real,
+/// deployed stroke for that word, not a guess at one. With no query, the interactive session,
+/// which runs this on Enter.
+pub fn run_ergonomics(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
-    query: &str,
+    query: Option<&str>,
     common: usize,
     briefs_path: Option<&Path>,
     rebuild: bool,
 ) -> Result<()> {
-    match reverse::classify(query) {
-        reverse::Query::Stroke(strokes) => {
-            let setup = setup(Some(common))?;
-            let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-            print_resolve(&setup, &entries, &strokes);
-            Ok(())
-        }
-        reverse::Query::Text(phrase) => {
-            if phrase.is_empty() {
-                println!("Nothing to look up");
-                return Ok(());
-            }
-            let setup = setup(Some(common))?;
-            let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-            let dictionary = generate::cheapest(&entries);
-            for found in reverse::reverse_phrase(&setup, &dictionary, &phrase) {
-                let lyk_label = match (&found.composed_of, found.lyk_deployed) {
-                    (_, true) => "lyk".to_owned(),
-                    (Some(pieces), false) => format!("lyk (composed: {})", pieces.join(" + ")),
-                    (None, false) => "lyk (not deployed - rules' own reading)".to_owned(),
-                };
-                let label = |name: &str, pieces: &Option<Vec<String>>| {
-                    pieces
-                        .as_ref()
-                        .map_or_else(|| name.to_owned(), |p| format!("{name} (composed: {})", p.join(" + ")))
-                };
-                let plover_label = label("plover", &found.plover_composed_of);
-                let lapwing_label = label("lapwing", &found.lapwing_composed_of);
-                let width = lyk_label.len().max(plover_label.len()).max(lapwing_label.len());
-                println!(
-                    "{}\n  {lyk_label:<width$} {}\n  {plover_label:<width$} {}\n  {lapwing_label:<width$} {}",
-                    found.word,
-                    found.lyk.as_deref().unwrap_or("?"),
-                    found.plover.as_deref().unwrap_or("?"),
-                    found.lapwing.as_deref().unwrap_or("?"),
-                );
-            }
-            Ok(())
-        }
-    }
-}
-
-/// `ergonomics`: a stroke outline is scored directly, with no dictionary needed - the fast path
-/// for just trying a chord shape. A word is looked up against the generated dictionary's own
-/// chosen outline first, the same lookup `lookup`/`resolve` use, so what's explained is the real,
-/// deployed stroke for that word, not a guess at one.
-pub fn run_ergonomics(
-    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
-    query: &str,
-    common: usize,
-    briefs_path: Option<&Path>,
-) -> Result<()> {
-    if let Some(strokes) = stroke::parse_outline(query) {
-        println!("{query} (a stroke outline):");
-        println!("{}", ergonomics::explain_outline(&strokes));
+    if let Some(query) = query
+        && let Some(strokes) = stroke::parse_outline(query)
+    {
+        report_ergonomics(&strokes, query, false);
         return Ok(());
     }
     let setup = setup(Some(common))?;
-    let briefs = match briefs_path {
-        Some(path) => generate::Briefs::load(path)?,
-        None => generate::Briefs::built_in()?,
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let report = |query: &str| {
+        if let Some(strokes) = stroke::parse_outline(query) {
+            report_ergonomics(&strokes, query, false);
+        } else if let Some(outline) = lookup.dictionary().get(query) {
+            report_ergonomics(outline, query, true);
+        } else {
+            println!("{query:?} is not a stroke outline and not a word in the built dictionary");
+        }
     };
-    let generated = generate::generate(&setup, &briefs, common)?;
-    let dictionary = generate::cheapest(&generated.entries);
-    let Some(outline) = dictionary.get(query) else {
-        println!("{query:?} is not a stroke outline and not a word in the generated dictionary");
+    if let Some(query) = query {
+        report(query);
         return Ok(());
+    }
+    let mut run = |query: &str| {
+        report(query);
+        Ok(())
     };
-    println!("{query}  ->  {}:", stroke::render_outline(outline));
-    println!("{}", ergonomics::explain_outline(outline));
-    Ok(())
+    session::run(&lookup, session::Mode::Report { name: "ergonomics", run: &mut run })
 }
 
-/// What a stroke outline resolves to: a real dictionary entry, the rules' best phonetic reading
-/// of a miss, or a true miss nothing can read. Shared by `resolve` and `lookup`'s stroke mode.
-pub fn print_resolve(setup: &analysis::Setup, entries: &[generate::Entry], strokes: &[stroke::Stroke]) {
-    let text = stroke::render_outline(strokes);
-    let index = generate::index_of(entries);
-    if let Some(word) = index.get(&text) {
-        println!("{text}  ->  {word}  (in the dictionary)");
-    } else if let Some(reading) = setup.rules.resolve(strokes, Some(&generate::single_stroke_stems_of(entries))) {
-        println!("{text}  ->  {reading}  (not in the dictionary; the rules' best reading)");
+fn report_ergonomics(strokes: &[stroke::Stroke], query: &str, is_word: bool) {
+    if is_word {
+        println!("{query}  ->  {}:", stroke::render_outline(strokes));
     } else {
-        println!("{text}  ->  no reading the rules allow: a true miss");
+        println!("{query} (a stroke outline):");
     }
+    println!("{}", ergonomics::explain_outline(strokes));
 }
 
 /// How many of the commonest words get their own stem row in the deployed plugin.
@@ -260,40 +280,75 @@ pub fn write_plugin(
     Ok(())
 }
 
-/// `paths`: every way the lattice writes a word, and what became of each.
+/// `paths`: every way the lattice writes a word, and what became of each. With no word, the
+/// interactive session, which runs this on Enter (generating the dictionary the first time,
+/// since the lattice is not in the built files).
 pub fn run_paths(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
-    word: &str,
+    word: Option<&str>,
     limit: usize,
     common: usize,
     briefs_path: Option<&Path>,
+    rebuild: bool,
 ) -> Result<()> {
     let setup = setup(Some(common))?;
     let briefs = generate::Briefs::from_path(briefs_path)?;
-    let generated = generate::generate(&setup, &briefs, common)?;
-    generate::print_paths(&setup, &generated, word, limit);
-    Ok(())
+    if let Some(word) = word {
+        let generated = generate::generate(&setup, &briefs, common)?;
+        generate::print_paths(&setup, &generated, word, limit);
+        return Ok(());
+    }
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let mut generated: Option<generate::Generated> = None;
+    let mut run = |word: &str| {
+        if generated.is_none() {
+            eprintln!("generating the dictionary for the lattice (tens of seconds, once) ...");
+            generated = Some(generate::generate(&setup, &briefs, common)?);
+        }
+        if let Some(generated) = &generated {
+            generate::print_paths(&setup, generated, &word.to_lowercase(), limit);
+        }
+        Ok(())
+    };
+    session::run(&lookup, session::Mode::Report { name: "paths", run: &mut run })
 }
 
-/// `family`: one word's family, or the whole dictionary's family report.
+/// `family`: one word's family, the whole dictionary's family report (`report`), or with
+/// neither the interactive session, which runs a word's family on Enter (generating the
+/// dictionary the first time, since the family links are not in the built files).
 pub fn run_family(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
     word: Option<&str>,
+    report: bool,
     common: usize,
     briefs_path: Option<&Path>,
+    rebuild: bool,
 ) -> Result<()> {
     let setup = setup(Some(common))?;
-    let briefs = match briefs_path {
-        Some(path) => generate::Briefs::load(path)?,
-        None => generate::Briefs::built_in()?,
-    };
-    let generated = generate::generate(&setup, &briefs, common)?;
-    if let Some(word) = word {
-        print_family(&setup, &generated, word);
-    } else {
-        print!("{}", family_report(&setup, &generated, 25));
+    let briefs = generate::Briefs::from_path(briefs_path)?;
+    if word.is_some() || report {
+        let generated = generate::generate(&setup, &briefs, common)?;
+        match word {
+            Some(word) => print_family(&setup, &generated, word),
+            None => print!("{}", family_report(&setup, &generated, 25)),
+        }
+        return Ok(());
     }
-    Ok(())
+    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let mut generated: Option<generate::Generated> = None;
+    let mut run = |word: &str| {
+        if generated.is_none() {
+            eprintln!("generating the dictionary for the family links (tens of seconds, once) ...");
+            generated = Some(generate::generate(&setup, &briefs, common)?);
+        }
+        if let Some(generated) = &generated {
+            print_family(&setup, generated, &word.to_lowercase());
+        }
+        Ok(())
+    };
+    session::run(&lookup, session::Mode::Report { name: "family", run: &mut run })
 }
 
 /// Every member of `word`'s family, root first, then by frequency: see `Command::Family`.

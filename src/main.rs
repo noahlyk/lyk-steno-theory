@@ -19,6 +19,7 @@ mod output;
 mod phrases;
 mod gold;
 mod ipa;
+mod lookup_view;
 mod quote;
 #[cfg(test)]
 mod quote_corpus;
@@ -28,6 +29,7 @@ mod ergonomics;
 mod family;
 mod reverse;
 mod rules;
+mod session;
 mod stroke;
 
 use anyhow::Result;
@@ -92,9 +94,11 @@ enum Command {
         #[arg(long, default_value_t = 60)]
         limit: usize,
     },
-    /// Show how the rules write a word, next to the real dictionary's own settled answer
+    /// Show how the rules write a word, next to the real dictionary's own settled answer. With no
+    /// word, opens the interactive lookup (all three theories, live as you type); Enter explains
+    /// the line
     Explain {
-        word: String,
+        word: Option<String>,
         /// Words to cover when building the real dictionary to compare against, most common
         /// first. Matches `build`'s own default so the comparison reflects what's actually
         /// deployed.
@@ -103,6 +107,10 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Generate the keymux WASM plugin that reads a stroke back the way these rules would,
     /// for whatever a dictionary misses: the single source of this logic, so the deployed
@@ -160,10 +168,11 @@ enum Command {
     },
     /// Read a stroke outline back into sounds, as the engine's last resort when it misses the
     /// dictionary: the word if it's one the dictionary writes, otherwise the rules' best
-    /// phonetic reading of the keys, or a true miss if no reading fits them at all
+    /// phonetic reading of the keys, or a true miss if no reading fits them at all. With no outline,
+    /// opens the interactive lookup, reading what is typed as a stroke outline
     Resolve {
         /// A stroke outline, such as `KAT` or `TPAEU/+HR`
-        outline: String,
+        outline: Option<String>,
         /// Words to cover when building the dictionary, most common first. Matches `build`'s own
         /// default so a resolved reading matches what the real, deployed dictionary would do.
         #[arg(long, default_value_t = 100_000)]
@@ -178,10 +187,11 @@ enum Command {
     /// Look a word, phrase, or stroke up, whichever it is: `lookup cat` finds lyk's outline next
     /// to Plover's and Lapwing's, `lookup "tell me how"` does the same word by word for a whole
     /// phrase, and `lookup KAT` (all caps, a valid outline) finds what that stroke resolves to
-    /// instead, the same as `resolve`. Mirrors keymux's own `steno lookup`.
+    /// instead, the same as `resolve`. With no query, opens the interactive lookup: type to search
+    /// live, all three theories side by side. Mirrors keymux's own `steno lookup` / `steno keys`.
     Lookup {
-        /// The word, phrase, or stroke to look up
-        query: String,
+        /// The word, phrase, or stroke to look up; leave it out for the interactive lookup
+        query: Option<String>,
         /// Words to cover when building the dictionary, most common first (only matters for a
         /// stroke query, which has to generate the dictionary to tell a real entry from a miss).
         /// Matches `build`'s own default so a lookup matches the real, deployed dictionary.
@@ -197,8 +207,9 @@ enum Command {
     },
     /// Every way a word can be written as joined strokes (the lattice over its sounds, cheapest
     /// first), and what became of each: in the dictionary, taken by another word, or rejected.
+    /// With no word, opens the interactive lookup; Enter shows the paths of the line.
     Paths {
-        word: String,
+        word: Option<String>,
         /// How many paths to list
         #[arg(long, default_value_t = 200)]
         limit: usize,
@@ -208,26 +219,39 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Show a word's whole family (`build`, `builds`, `building`, `buildings`, ...): each member's
     /// stem and ending, its outline, its stem-plus-ending backup, and whether its outline starts
-    /// from the stem's own keys. With no word, prints the family report for the whole dictionary.
+    /// from the stem's own keys. With no word, opens the interactive lookup; Enter shows the family
+    /// of the line. `--report` prints the family report for the whole dictionary instead.
     Family {
         word: Option<String>,
+        /// Print the family report for the whole dictionary (what `family` with no word used to do)
+        #[arg(long, conflicts_with = "word")]
+        report: bool,
         /// Words to cover when building the dictionary, most common first
         #[arg(long, default_value_t = 100_000)]
         common: usize,
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Score a stroke outline or word's physical comfort, term by term: which finger reaches
     /// where, which pairs cost a transition, which finger is a gap, and the pinky tax - not just
     /// the one number `score`/`build` otherwise sum into `candidate_cost`. See `src/ergonomics.rs`.
+    /// With no query, opens the interactive lookup; Enter scores the line.
     Ergonomics {
         /// A stroke outline (`KAT`, `TPAEU/+HR`) or a word (`cat`); a word is looked up against
-        /// the generated dictionary's own chosen outline
-        query: String,
+        /// the built dictionary's own chosen outline
+        query: Option<String>,
         /// Words to cover when building the dictionary, most common first (only matters for a
         /// word query). Matches `build`'s own default so the outline explained is the real,
         /// deployed one.
@@ -236,6 +260,10 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Generate the dictionary from scratch (tens of seconds) instead of reading back the one
+        /// `build` wrote to `out/lyk`: only for a change to the rules or briefs not built yet
+        #[arg(long)]
+        rebuild: bool,
     },
     /// Build the dictionary and the plugin, then copy both straight into the live keymux config:
     /// the one command for everything `build` and `plugin` otherwise leave as a manual copy/paste
@@ -286,13 +314,8 @@ fn main() -> Result<()> {
             analysis::learn(&setup(None)?, *min, *limit);
             Ok(())
         }
-        Command::Explain { word, common, briefs } => {
-            let setup = setup(Some(*common))?;
-            let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            let generated = generate::generate(&setup, &briefs, *common)?;
-            let dictionary = generate::cheapest(&generated.entries);
-            analysis::explain(&setup, &dictionary, word);
-            Ok(())
+        Command::Explain { word, common, briefs, rebuild } => {
+            commands::run_explain(&setup, word.as_deref(), *common, briefs.as_deref(), *rebuild)
         }
         Command::Plugin { out, common, briefs } => {
             let setup = setup(Some(*common))?;
@@ -331,17 +354,21 @@ fn main() -> Result<()> {
             common,
             briefs,
             rebuild,
-        } => commands::run_resolve(&setup, outline, *common, briefs.as_deref(), *rebuild),
+        } => commands::run_resolve(&setup, outline.as_deref(), *common, briefs.as_deref(), *rebuild),
         Command::Lookup {
             query,
             common,
             briefs,
             rebuild,
-        } => commands::run_lookup(&setup, query, *common, briefs.as_deref(), *rebuild),
-        Command::Paths { word, limit, common, briefs } => commands::run_paths(&setup, word, *limit, *common, briefs.as_deref()),
-        Command::Family { word, common, briefs } => commands::run_family(&setup, word.as_deref(), *common, briefs.as_deref()),
-        Command::Ergonomics { query, common, briefs } => {
-            commands::run_ergonomics(&setup, query, *common, briefs.as_deref())
+        } => commands::run_lookup(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild),
+        Command::Paths { word, limit, common, briefs, rebuild } => {
+            commands::run_paths(&setup, word.as_deref(), *limit, *common, briefs.as_deref(), *rebuild)
+        }
+        Command::Family { word, report, common, briefs, rebuild } => {
+            commands::run_family(&setup, word.as_deref(), *report, *common, briefs.as_deref(), *rebuild)
+        }
+        Command::Ergonomics { query, common, briefs, rebuild } => {
+            commands::run_ergonomics(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild)
         }
         Command::Deploy { to, common, briefs } => {
             let setup = setup(Some(*common))?;
