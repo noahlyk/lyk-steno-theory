@@ -4,6 +4,7 @@
 //! They are judged by how many of the words Plover and Lapwing write they reproduce.
 
 mod analysis;
+mod answer;
 mod built;
 mod commands;
 #[cfg(test)]
@@ -14,12 +15,12 @@ mod dictionary_fixture;
 mod fetch;
 mod frequency;
 mod generate;
+mod interactive;
 mod num;
 mod output;
 mod phrases;
 mod gold;
 mod ipa;
-mod lookup_view;
 mod quote;
 #[cfg(test)]
 mod quote_corpus;
@@ -29,8 +30,8 @@ mod ergonomics;
 mod family;
 mod reverse;
 mod rules;
-mod session;
 mod stroke;
+mod view;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -168,8 +169,10 @@ enum Command {
     },
     /// Read a stroke outline back into sounds, as the engine's last resort when it misses the
     /// dictionary: the word if it's one the dictionary writes, otherwise the rules' best
-    /// phonetic reading of the keys, or a true miss if no reading fits them at all. With no outline,
-    /// opens the interactive lookup, reading what is typed as a stroke outline
+    /// phonetic reading of the keys, or a true miss if no reading fits them at all. Keymux's
+    /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
+    /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
+    #[command(visible_alias = "stroke")]
     Resolve {
         /// A stroke outline, such as `KAT` or `TPAEU/+HR`
         outline: Option<String>,
@@ -184,17 +187,26 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
-    /// Look a word, phrase, or stroke up, whichever it is: `lookup cat` finds lyk's outline next
-    /// to Plover's and Lapwing's, `lookup "tell me how"` does the same word by word for a whole
-    /// phrase, and `lookup KAT` (all caps, a valid outline) finds what that stroke resolves to
-    /// instead, the same as `resolve`. With no query, opens the interactive lookup: type to search
-    /// live, all three theories side by side. Mirrors keymux's own `steno lookup` / `steno keys`.
+    /// Look a word, phrase, or stroke up, whichever it is: `lookup cat` lists every outline that
+    /// types it in lyk, Plover and Lapwing side by side, best first, then longer words that start
+    /// with it; `lookup "tell me how"` does each word of a phrase; and `lookup KAT/-D` (all caps,
+    /// valid notation) finds what that stroke types instead. A word with no entry is composed
+    /// from entries or spelled out, and marked (quotes, or a note). With no query, opens the
+    /// interactive lookup: type, and the answer follows live. Keymux's `steno lookup` / `steno
+    /// keys`, which are the same command, for its one engine setup instead of three theories.
+    #[command(visible_alias = "keys")]
     Lookup {
-        /// The word, phrase, or stroke to look up; leave it out for the interactive lookup
-        query: Option<String>,
-        /// Words to cover when building the dictionary, most common first (only matters for a
-        /// stroke query, which has to generate the dictionary to tell a real entry from a miss).
-        /// Matches `build`'s own default so a lookup matches the real, deployed dictionary.
+        /// The word, phrase, or stroke to look up, split on spaces; leave it out for the
+        /// interactive lookup
+        query: Vec<String>,
+        /// Also show the physical keys that press each of lyk's strokes
+        #[arg(long)]
+        show_keys: bool,
+        /// Show only the fastest outline for each word, not every outline
+        #[arg(long)]
+        fast: bool,
+        /// Words to cover when building the dictionary, most common first. Matches `build`'s own
+        /// default so a lookup matches the real, deployed dictionary.
         #[arg(long, default_value_t = 100_000)]
         common: usize,
         /// Briefs to use instead of the built-in ones
@@ -349,18 +361,15 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Resolve {
-            outline,
-            common,
-            briefs,
-            rebuild,
-        } => commands::run_resolve(&setup, outline.as_deref(), *common, briefs.as_deref(), *rebuild),
-        Command::Lookup {
-            query,
-            common,
-            briefs,
-            rebuild,
-        } => commands::run_lookup(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild),
+        Command::Resolve { outline, common, briefs, rebuild } => {
+            let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };
+            commands::run_lookup(&setup, outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+        }
+        Command::Lookup { query, show_keys, fast, common, briefs, rebuild } => {
+            let query = (!query.is_empty()).then(|| query.join(" "));
+            let options = commands::LookupOptions { show_keys: *show_keys, fast: *fast, stroke_mode: false };
+            commands::run_lookup(&setup, query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+        }
         Command::Paths { word, limit, common, briefs, rebuild } => {
             commands::run_paths(&setup, word.as_deref(), *limit, *common, briefs.as_deref(), *rebuild)
         }

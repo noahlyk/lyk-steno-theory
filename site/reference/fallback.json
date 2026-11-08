@@ -136,7 +136,7 @@
   },
   {
    "t": "p",
-   "x": "`!resolve` prints the reading and whether the outline is already in the dictionary. Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
+   "x": "`!resolve` (alias `stroke`) prints what the outline types in quotes, with a note when the dictionary has no entry and the quoted word is the rules' reading of it, then the entries nearest to it (see [the interactive session](#/ref/build-and-files/the-interactive-session)). Many `+`-joined runs are already backup entries, so the fallback is only reached for runs the dictionary lacks."
   },
   {
    "t": "h",

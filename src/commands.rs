@@ -2,9 +2,13 @@
 //! looking words up, family reports, the plugin, and the ergonomics query. `main` only parses
 //! the command line and dispatches here.
 
-use crate::{analysis, built, ergonomics, family, generate, lookup_view, output, reverse, rules, session, stroke};
+use crate::answer::{Ask, Lookup};
+use crate::interactive::{self, Session};
+use crate::view::{View, terminal_colour};
+use crate::{analysis, built, ergonomics, family, generate, output, rules, stroke};
 use anyhow::{Context, Result};
 use std::fmt::Write as _;
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
 
 /// Every file lyk's keymux config is made of, besides the two this binary generates fresh each
@@ -115,58 +119,89 @@ pub fn dictionary_entries(
     Ok(generate::generate(setup, &briefs, common)?.entries)
 }
 
-/// Print a view the way a terminal or a pipe wants it: coloured by finger on a terminal that
-/// has colour, plain otherwise.
-fn print_view(lines: &[lookup_view::Line]) {
-    let style = lookup_view::Style { colour: lookup_view::terminal_colour(), columns: None };
-    for text in lookup_view::render_all(lines, style) {
-        println!("{text}");
-    }
+/// The backups the lookup lists as further ways to type a word, when the dictionary is read
+/// back from `out/lyk` (a rebuilt one already has them all as entries).
+fn read_back_backups(rebuild: bool) -> Option<built::Backups> {
+    let dir = Path::new(BUILT_DIR);
+    (!rebuild && built::exists(dir)).then(|| built::Backups::load(dir).ok()).flatten()
 }
 
-/// `resolve`: what a stroke outline types, from the dictionary or the rules' best reading. With
-/// no outline, the interactive session (see [`session`]).
-pub fn run_resolve(
-    setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
-    outline: Option<&str>,
-    common: usize,
-    briefs_path: Option<&Path>,
-    rebuild: bool,
-) -> Result<()> {
-    let strokes = outline
-        .map(|o| stroke::parse_outline(o).with_context(|| format!("{o:?} is not a stroke outline")))
-        .transpose()?;
-    let setup = setup(Some(common))?;
-    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
-    match strokes {
-        Some(strokes) => print_view(&[lookup.resolve(&strokes)]),
-        None => session::run(&lookup, session::Mode::Resolve)?,
-    }
-    Ok(())
+/// What `lookup`, `keys`, `resolve` and `stroke` take besides the query.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct LookupOptions {
+    /// Show the physical keys that press each stroke
+    pub show_keys: bool,
+    /// Only the best outline of each word
+    pub fast: bool,
+    /// The query is stroke notation whatever its case (`resolve`, `stroke`)
+    pub stroke_mode: bool,
 }
 
-/// The one lookup, forward or backward: see `reverse::classify`. With no query, the interactive
-/// session (see [`session`]).
+/// The one lookup, forward or backward, for `lookup`, `keys`, `resolve` and `stroke`: keymux's
+/// `steno lookup`, with all three theories.
+///
+/// With a query, print its answer. With none, open the interactive session: type, and the
+/// answer follows. Without a terminal that reads one query per line from standard input
+/// instead. See [`crate::answer`] for what the answer holds and [`crate::interactive`] for the
+/// keys.
 pub fn run_lookup(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
     query: Option<&str>,
+    options: LookupOptions,
     common: usize,
     briefs_path: Option<&Path>,
     rebuild: bool,
 ) -> Result<()> {
     if let Some(query) = query
-        && matches!(reverse::classify(query), reverse::Query::Text(ref phrase) if phrase.is_empty())
+        && query.trim().is_empty()
     {
         println!("Nothing to look up");
         return Ok(());
     }
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let backups = read_back_backups(rebuild);
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref());
+    let session = Session::new(options.show_keys, options.fast, options.stroke_mode);
     match query {
-        Some(query) => print_view(&lookup.view(query, false)),
-        None => session::run(&lookup, session::Mode::Lookup)?,
+        Some(query) => {
+            let ask = Ask { fast: options.fast, stroke_mode: options.stroke_mode, extra: 8 };
+            let answer = lookup.answer(query, ask);
+            for line in (View { show_keys: options.show_keys, color: terminal_colour() }).lines(&answer) {
+                println!("{line}");
+            }
+            if answer.rows.is_empty() && answer.problem.is_none() {
+                println!("No stroke for \"{}\"", query.trim());
+            }
+        }
+        None if interactive::is_interactive() => {
+            interactive::run(&lookup, session)?;
+        }
+        None => interactive::run_lines(&lookup, &session, &mut std::io::stdin().lock(), &mut std::io::stdout().lock())?,
+    }
+    Ok(())
+}
+
+/// The interactive form of the commands that explain more than a lookup (`explain`,
+/// `ergonomics`, `paths`, `family`): the same session and answer as `lookup`, and Enter leaves
+/// the answer on screen and runs `report` for the line. Piped, `report` runs for each line read.
+fn run_report_session(lookup: &Lookup<'_>, name: &'static str, report: &mut dyn FnMut(&str) -> Result<()>) -> Result<()> {
+    let session = Session { enter: name, ..Session::new(false, false, false) };
+    if interactive::is_interactive() {
+        if let Some(query) = interactive::run(lookup, session)?
+            && !query.trim().is_empty()
+        {
+            report(query.trim())?;
+        }
+        return Ok(());
+    }
+    for line in std::io::stdin().lock().lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            break;
+        }
+        report(line.trim())?;
+        println!();
     }
     Ok(())
 }
@@ -182,17 +217,17 @@ pub fn run_explain(
 ) -> Result<()> {
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let backups = read_back_backups(rebuild);
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref());
     let dictionary = lookup.dictionary();
     if let Some(word) = word {
         analysis::explain(&setup, dictionary, word);
         return Ok(());
     }
-    let mut run = |word: &str| {
+    run_report_session(&lookup, "explain", &mut |word| {
         analysis::explain(&setup, dictionary, word);
         Ok(())
-    };
-    session::run(&lookup, session::Mode::Report { name: "explain", run: &mut run })
+    })
 }
 
 /// `ergonomics`: a stroke outline is scored directly, with no dictionary needed - the fast path
@@ -215,7 +250,8 @@ pub fn run_ergonomics(
     }
     let setup = setup(Some(common))?;
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let backups = read_back_backups(rebuild);
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref());
     let report = |query: &str| {
         if let Some(strokes) = stroke::parse_outline(query) {
             report_ergonomics(&strokes, query, false);
@@ -229,11 +265,10 @@ pub fn run_ergonomics(
         report(query);
         return Ok(());
     }
-    let mut run = |query: &str| {
+    run_report_session(&lookup, "ergonomics", &mut |query| {
         report(query);
         Ok(())
-    };
-    session::run(&lookup, session::Mode::Report { name: "ergonomics", run: &mut run })
+    })
 }
 
 fn report_ergonomics(strokes: &[stroke::Stroke], query: &str, is_word: bool) {
@@ -299,9 +334,10 @@ pub fn run_paths(
         return Ok(());
     }
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let backups = read_back_backups(rebuild);
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref());
     let mut generated: Option<generate::Generated> = None;
-    let mut run = |word: &str| {
+    run_report_session(&lookup, "paths", &mut |word| {
         if generated.is_none() {
             eprintln!("generating the dictionary for the lattice (tens of seconds, once) ...");
             generated = Some(generate::generate(&setup, &briefs, common)?);
@@ -310,8 +346,7 @@ pub fn run_paths(
             generate::print_paths(&setup, generated, &word.to_lowercase(), limit);
         }
         Ok(())
-    };
-    session::run(&lookup, session::Mode::Report { name: "paths", run: &mut run })
+    })
 }
 
 /// `family`: one word's family, the whole dictionary's family report (`report`), or with
@@ -336,9 +371,10 @@ pub fn run_family(
         return Ok(());
     }
     let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let lookup = lookup_view::Lookup::new(&setup, &entries);
+    let backups = read_back_backups(rebuild);
+    let lookup = Lookup::new(&setup, &entries, backups.as_ref());
     let mut generated: Option<generate::Generated> = None;
-    let mut run = |word: &str| {
+    run_report_session(&lookup, "family", &mut |word| {
         if generated.is_none() {
             eprintln!("generating the dictionary for the family links (tens of seconds, once) ...");
             generated = Some(generate::generate(&setup, &briefs, common)?);
@@ -347,8 +383,7 @@ pub fn run_family(
             print_family(&setup, generated, &word.to_lowercase());
         }
         Ok(())
-    };
-    session::run(&lookup, session::Mode::Report { name: "family", run: &mut run })
+    })
 }
 
 /// Every member of `word`'s family, root first, then by frequency: see `Command::Family`.

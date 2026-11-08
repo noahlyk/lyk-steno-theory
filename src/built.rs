@@ -124,6 +124,48 @@ pub fn load(dir: &Path) -> Result<Vec<Entry>> {
     Ok(entries)
 }
 
+/// Every backup in `out/lyk`'s backups file, by word, for the lookup commands to list the ways
+/// to type a word that `load` leaves out (it drops a backup with more strokes than its word's
+/// best, which can never be the word's cheapest outline but is still an outline that types it).
+/// The text is kept and indexed, not parsed: only the few outlines of the word asked about are.
+pub struct Backups {
+    text: String,
+    /// Lowercase word to the byte ranges of its outlines in `text`
+    index: HashMap<String, Vec<(u32, u32)>>,
+}
+
+impl Backups {
+    /// Index the backups file of the dictionary `build` wrote to `dir`.
+    pub fn load(dir: &Path) -> Result<Self> {
+        let text = read(dir, Role::Backups)?;
+        let base = text.as_ptr() as usize;
+        let mut index: HashMap<String, Vec<(u32, u32)>> = HashMap::new();
+        for (outline, word) in pairs(&text) {
+            let start = outline.as_ptr() as usize - base;
+            let (Ok(from), Ok(to)) = (u32::try_from(start), u32::try_from(start + outline.len())) else { continue };
+            let range = (from, to);
+            if word.bytes().any(|b| b.is_ascii_uppercase()) {
+                index.entry(word.to_lowercase()).or_default().push(range);
+            } else if let Some(held) = index.get_mut(&*word) {
+                held.push(range);
+            } else {
+                index.insert(word.into_owned(), vec![range]);
+            }
+        }
+        Ok(Self { text, index })
+    }
+
+    /// Every backup outline of `word` (lowercase), parsed.
+    pub fn outlines(&self, word: &str) -> Vec<Vec<crate::stroke::Stroke>> {
+        self.index
+            .get(word)
+            .into_iter()
+            .flatten()
+            .filter_map(|&(from, to)| parse_outline(&self.text[from as usize..to as usize]))
+            .collect()
+    }
+}
+
 /// A warning when something the dictionary is made from is newer than the files read back
 /// (`rules/`, `src/generate/`, `src/rules/`), so a stale answer is never silent. `None` when the
 /// files are at least as new as everything checked.
@@ -211,6 +253,19 @@ mod tests {
         let cheapest = generate::cheapest(&entries);
         assert_eq!(cheapest["dog"], parse_outline("TKOG").unwrap().as_slice(), "a longer backup loses");
         assert_eq!(cheapest["cant"], parse_outline("KA/+PBT").unwrap().as_slice(), "the shorter backup wins");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_backups_index_lists_every_outline_of_a_word_including_the_long_ones() {
+        let dir = fresh_dir("backups-index");
+        write(&dir, Role::Words, "{\n  \"TKOG\": \"dog\"\n}");
+        write(&dir, Role::Backups, "{\n  \"TKO/+G\": \"dog\",\n  \"TK/+O/+G\": \"dog\",\n  \"S\": \"I\"\n}");
+        let backups = Backups::load(&dir).unwrap();
+        let dog: Vec<String> = backups.outlines("dog").iter().map(|o| crate::stroke::render_outline(o)).collect();
+        assert_eq!(dog, ["TKO/+-G", "TK/+O/+-G"]);
+        assert_eq!(backups.outlines("i").len(), 1, "keyed lowercase");
+        assert!(backups.outlines("cat").is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

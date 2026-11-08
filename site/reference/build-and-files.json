@@ -75,15 +75,15 @@
     ],
     [
      "`explain [WORD]`",
-     "Which rules wrote a word, next to Plover and Lapwing. Example: `explain moon`. With no word, the interactive session (see [the interactive session](#/ref/build-and-files/the-interactive-session)); Enter explains the line."
+     "Which rules wrote a word, next to Plover and Lapwing. Example: `explain moon`. With no word, the interactive session (see [the interactive session](#/ref/build-and-files/the-interactive-session)); Enter leaves the answer on screen and explains the line."
     ],
     [
      "`family [WORD] [--report]`",
-     "A word's family (`build`, `builds`, `building`...): each one's outline and its stem-plus-ending entry. With no word, the interactive session; Enter shows the family of the line (it generates the dictionary the first time). `--report` prints the numbers for the whole dictionary instead."
+     "A word's family (`build`, `builds`, `building`...): each one's outline and its stem-plus-ending entry. With no word, the interactive session; Enter leaves the answer on screen and shows the family of the line (it generates the dictionary the first time). `--report` prints the numbers for the whole dictionary instead."
     ],
     [
      "`paths [WORD]`",
-     "Every way to write a word as joined strokes, and what became of each. Example: `paths complete`. With no word, the interactive session; Enter shows the paths of the line (it generates the dictionary the first time)."
+     "Every way to write a word as joined strokes, and what became of each. Example: `paths complete`. With no word, the interactive session; Enter leaves the answer on screen and shows the paths of the line (it generates the dictionary the first time)."
     ],
     [
      "`mismatches --syllables N --after R`",
@@ -102,16 +102,16 @@
      "A random quote, stroked in lyk next to Plover and Lapwing, a word that is not an entry composed from entries (see [how these commands answer](#/ref/build-and-files/how-quote-lookup-and-resolve-answer))."
     ],
     [
-     "`lookup [WORD|PHRASE|STROKES] [--rebuild]`",
-     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key."
+     "`lookup [WORD|PHRASE|STROKES] [--show-keys] [--fast] [--rebuild]` (alias `keys`)",
+     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
     ],
     [
-     "`resolve [STROKES] [--rebuild]`",
-     "Read a stroke or `+`-joined run back as a word, as [the fallback](#/ref/fallback) does. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`. With no stroke, the interactive session, reading every line as a stroke."
+     "`resolve [STROKES] [--rebuild]` (alias `stroke`)",
+     "`lookup` with every query read as a stroke (lowercase is read as capitals), as keymux's `steno stroke`: what the stroke types in lyk (the dictionary's word, or the rules' reading of it as [the fallback](#/ref/fallback) does), then the entries nearest to it. Example: `resolve STKPW`. Use `--` before a run that starts with `-` or `~`: `resolve -- \"-T/+-D\"`. With no stroke, the interactive session."
     ],
     [
      "`ergonomics [WORD|STROKES] [--rebuild]`",
-     "Score a stroke or a word's built outline finger by finger. With nothing after it, the interactive session; Enter scores the line."
+     "Score a stroke or a word's built outline finger by finger. With nothing after it, the interactive session; Enter leaves the answer on screen and scores the line."
     ]
    ]
   },
@@ -243,15 +243,21 @@
   },
   {
    "t": "p",
-   "x": "`lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` take a word or a stroke. Run with one, they print their answer and exit, as before. Run with **nothing** after the name, each opens the same session, the way keymux's `steno keys` and `steno lookup` do: a `›` prompt, and under it the answer for what is typed so far, redrawn on every key. It reads the built dictionary in `out/lyk`, so it starts in a second or two and each key is instant; `--rebuild` generates from scratch instead."
+   "x": "`lookup` (alias `keys`), `resolve` (alias `stroke`), `explain`, `ergonomics`, `paths` and `family` take a word or a stroke. Run with one, they print their answer and exit. Run with **nothing** after the name, each opens the same session: a `›` prompt, and under it the answer for what is typed so far, redrawn in place on every key. It is keymux's `steno lookup` / `keys` / `stroke` line for line (`src/answer.rs`, `src/view.rs` and `src/interactive.rs` mirror keymux's `steno/answer.rs`, `view.rs` and `interactive.rs`), with one difference: keymux resolves its one engine setup, and this shows all three theories. It reads the built dictionary in `out/lyk`, so it starts in a second or two and each key is instant; `--rebuild` generates from scratch instead."
   },
   {
    "t": "list",
    "items": [
-    "**The answer is the `lookup` view, all three theories.** Each word of the line gets its `lyk`, `plover` and `lapwing` rows, labelled `composed` when built from entries and `not deployed` for the rules' own reading; a line in capitals that parses as a stroke is answered like `resolve`. Under it, a table of up to eight more words (columns word, lyk, plover, lapwing), most common first: the words that start like the last word typed, or, for a stroke, the words whose outline starts with it. A last word that is only the start of other words is listed by its matches and not looked up as if it were whole.",
-    "**Colour, where the terminal has it.** Each key of an outline takes its finger's colour (pinky red, ring yellow, middle green, index cyan, thumbs magenta), and the two keys of a finger pair (`TK`, `PW`, `HR`, `-FR`, `-PB`, `-LG`, `-TS`, `-DZ`, `AO`, `EU`) are underlined when both are held. No colour when output is piped or `NO_COLOR` is set.",
-    "**Keys.** Type to search; Backspace; Ctrl-W deletes a word, Ctrl-U the line. Enter keeps the answer in the scrollback and opens a fresh prompt; in `explain`, `ergonomics`, `paths` and `family` it runs that command's full report for the line instead. Esc clears the line, and quits when it is already empty. Ctrl-D, Ctrl-C and Enter on an empty line quit.",
-    "**Piped.** With input or output not a terminal there is no redrawing: each line read prints its answer, a blank line ends it. `printf 'cat\\nKAT\\n' | lookup`."
+    "**The screen.** One line is the prompt (`› ` and your query); under it the answer, and a dim line of hints closes it. It never switches screens, so what you keep stays in your scrollback, and it never grows past the terminal's height (a line `… N more lines` says what was cut). A burst of keys (a paste, a held Backspace) costs one search.",
+    "**The table.** Columns `word`, `lyk`, `plover`, `lapwing` (each outline column at least 12 wide, as in `quote`), and `keys` when shown. A word's first row has its best outline in each theory; each row after it (the word column blank) is another outline that types it, fewest strokes first, backups included: all of lyk's, and all of Plover's and Lapwing's. A `-` is a theory with no outline there. A single word of two letters or more is followed by up to eight longer words that start with it (dimmed; shortest first, then alphabetical), each with its best outline in the three theories.",
+    "**A word that is not an entry** is composed from entries when that takes no more strokes than the rules' reading, with a note under the table: `everybody's was not a whole entry - composed (lyk: everybody + 's; plover: everybody + 's; lapwing: everybody + 's)`, naming each theory that composed it. Otherwise lyk shows the rules' own phonetic reading, or spelling mode for a word with no pronunciation, in quotes with a note (`has no dictionary entry - shown ...`). A word nothing can write shows `no stroke`. A real entry always wins.",
+    "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading of it with a note when it is not an entry, or `(no translation)`. Under it are the dimmed entries nearest to it (same number of strokes, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column.",
+    "**Totals.** Under the table: `keys (best outline of each word): N in S strokes` for lyk, then `keys (shared vocabulary only, fair comparison): lyk-vs-plover ... lyk-vs-lapwing ...` as `quote` prints it, counting only the words both theories write. Completions and nearby entries are not counted.",
+    "**Colour, where the terminal has it** (`NO_COLOR` and a pipe turn it off): each key is coloured by part of the keyboard (green left hand, yellow vowels, red right hand, cyan `*`, `#` and the `+`/`~` marks), the `/` between strokes is dim, and keys one finger plays together (`T K`, `P W`, `H R`, `A O`, `E U`, `F R`, `P B`, `L G`, `T S`, `D Z`) are underlined as one run. Colour never changes the text.",
+    "**Keys.** Any character adds to the query (lookups are case-sensitive for the stroke test: capitals with no lowercase read as a stroke). Backspace, Ctrl-W, Ctrl-U delete a character, a word, the whole query. Tab shows or hides the `keys` column: the QWERTY keys that press lyk's outline, the join key `+` on `Q`. Ctrl-F toggles the best outline of each word only. Enter leaves and keeps the answer on screen (and, in `explain`, `ergonomics`, `paths` and `family`, then runs that command's report for the line; `family` and `paths` generate the dictionary the first time). Esc, Ctrl-C, Ctrl-D leave and clear the screen it used.",
+    "**Flags.** `--show-keys` starts with the keys column shown and `--fast` with only best outlines, on `lookup` and `keys`; `resolve`/`stroke` have neither.",
+    "**Bare or with an argument.** Bare opens the session (it needs a terminal at both ends). With an argument the same table prints once, plain when piped. With input piped in and nothing after the name, one query is read per line, each answer is printed followed by a blank line, and an empty line or the end of the input stops it. A query that is only whitespace prints `Nothing to look up`.",
+    "**Where it differs from keymux** (all because lyk has three theories and no keyboard config): a column per theory; the second totals line; the composed note names the theory; one `keys` column, for lyk; the keys column uses the default QWERTY layout and the author's `+` on `Q` rather than reading a keymux config; a stroke query fills lyk's column alone; lookups are on lowercased words (the dictionary has no capitalized entries); a word the dictionary lacks can be shown as the rules' reading, which keymux has no notion of."
    ],
    "ordered": false
   },

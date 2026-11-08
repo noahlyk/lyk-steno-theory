@@ -149,7 +149,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- resolve -- \"~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK\"\n  ->  aboveground"
+   "x": "cargo run --release -- resolve -- \"~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK\"\n  \"aboveground\"  ~A/+PW/+O/+SR/+E/+TKPW/+R/+O/+U/+TPH/+TK"
   },
   {
    "t": "h",
