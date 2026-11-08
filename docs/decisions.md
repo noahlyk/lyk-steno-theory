@@ -2369,3 +2369,34 @@ unmapped `*`, but now explicit and the one line to edit to change it. Plain `=un
 multi-stroke outline), so there is a stroke for the old behaviour. Plain Plover raises `KeyError`
 on `undo_or`, so `*` there needs the `"*": "=undo"` workaround in the Reference. The site engine
 reads both as an undo command.
+
+**A solver plugin is back, and it is a different thing (experiment, branch
+`experiment/wasm-fallback-resolver`, plan `plans/09-wasm-fallback-resolver.md`).** The removed
+plugin re-spelled a miss's sounds; this one finds the word. `src/rules/solve/core.rs` is a
+self-contained decoder spliced verbatim into `05-lyk-solver.rs` (no keymux change: the existing
+`alloc`/`fallback`/`joins` ABI): every reading of every stroke (all chord covers, the vowel keys as
+heard or as spelled, vowel+coda chords, the star as sound or marker, coda orders), pushed as a beam
+through a trie of every word's pronunciation and spelling-reading, with lookahead (each node carries
+its cheapest word's rarity) and a dense stamped scratch per trie node (no sorting in the beam). Why
+each piece is there, measured on `solve --eval` (every Nth backup, outline -> word, as a labelled
+set): readings of every bank cover, not the greedy one (`-PBLG` as JH was being skipped: +20
+points); a single vowel letter reads only a vowel spelled by that letter alone, as the generator's
+`vowel_letters` does (*said*'s *ai* is no `EU`); a spelling-tied chord (`T.ed`) costs 2; finished
+readings are thresholded against each other, not against half-matched words (a known outline plus a
+second word, `OER/+WEU/+-S/+E` *otherwise*, was pruned); pieces that spell a word are priced as that
+word (*part* + *s* is as rare as *parts*). The beam threshold `REL` went 26 -> 10 with no accuracy
+change and 26 ms -> 1-2 ms a run; fewer stroke readings (slack 2, 16) loses 3 points, so 4/40 stays.
+Rarity 0.5 a doubling and a wrong vowel 6 came out of a coordinate search on `uniform + usage-weighted`
+top-1. Result: top-1 85.2% (88.4% weighted by use, 93.9% top-5) over 15,458 backups; in wasmtime
+the answers are byte-identical to native on 3,865 outlines, 2.0 ms mean / 6 ms p99, 62 MB of wasm
+memory (17.5 MB blob: edges packed to 8 bytes against a table of the few distinct sound masks).
+**What it saves, honestly:** keymux already memory-maps a packed cache of each dictionary, so the
+3.86M backups were never 0.5-1 GB resident as plan 09 §1 assumed (the live daemon is ~61 MB); the
+solver *adds* ~62 MB resident. What it does save: `deploy` ships only the 557,081 backups the solver
+does not read as their word (3,307,330, 85.6%, are left to it): 131 MB -> 17.5 MB of JSON, keymux's
+backups cache 88 MB -> 12.7 MB. What it adds: any outline that sounds like a word now types it, not
+just the 63-or-so per word the generator listed (`TOLT` *total*, `KWEBG` *quick*, both `?` on the
+tape before). Known cost: a misstroke with a key missing now reads as some real word (`TAOEPG`
+*teabag* for *typing*) instead of its raw keys; reading a stroke one key from an entry is the next
+layer. **Undoing the thinning while keeping the solver is safe; undoing the solver while keeping
+the thinned backups is not:** 3.3M outlines would go back to typing their raw keys.

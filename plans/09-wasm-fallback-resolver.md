@@ -1,7 +1,14 @@
 # 09 — The solver plugin: read a missed run as the word it meant, without a table of every outline
 
-**Status: planned, not built. Experimental branch `experiment/wasm-fallback-resolver-v2`; nothing
-here lands on `main` until the numbers in §6 say it should.**
+**Status: built, on the experimental branch `experiment/wasm-fallback-resolver` (not on `main`).**
+Measured (see `docs/decisions.md`, the last entry, for the why of each piece): top-1 85.2% on 15,458
+backups (88.4% weighted by use, 93.9% top-5), below §6's 97%/93% bar; wasm answers identical to
+native, 2.0 ms mean / 6 ms p99, 62 MB wasm memory. §6's bar was set for thinning blind; the thinning
+as built keeps every backup the solver reads differently (557,081 of 3,864,411), so no outline that
+typed a word before types anything else, whatever the solver's accuracy. §1's RAM figure was wrong:
+keymux memory-maps its dictionary caches, so the saving is on disk and in the cache (131 -> 17.5 MB
+JSON, 88 -> 12.7 MB cache), and the solver adds ~62 MB resident. §3c layer 3 (switching mid-piece)
+and a key-typo layer (a stroke one key from an entry) are not built.
 
 ## 1. The problem, measured
 

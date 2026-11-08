@@ -66,8 +66,8 @@ pub const ORDER: u32 = 3;
 /// A word's rarity: `RANK_WEIGHT * log2(rank + 2)`, in tenths: 0.5 a doubling, tuned on the eval.
 pub const RANK_WEIGHT_TENTHS: u32 = 5;
 /// A stroke's readings tried: those within this of its cheapest, at most this many.
-const READING_SLACK: u32 = 4;
-const MAX_READINGS: usize = 40;
+pub const READING_SLACK: u32 = 4;
+pub const MAX_READINGS: u32 = 40;
 /// Ways to cover one bank's keys with chords, at most (the tables list bigger chords first).
 const COVERS: usize = 48;
 /// Positions kept per step, and how far behind the best a position may fall before it is dropped.
@@ -101,22 +101,25 @@ enum Tok {
     S(u8, u8),
 }
 
+/// One edge of the trie, in eight bytes: the node it leads to, which sounds it accepts (an index
+/// into [`Model::masks`], since a handful of masks serve every edge), the vowel letters the word
+/// spells it with (`a e i o u y`, one bit each), and what skipping it costs with, in the top bit,
+/// whether it is a vowel.
 #[derive(Clone, Copy)]
 struct Edge {
-    /// The sounds this edge accepts, one bit each
-    mask: u64,
     child: u32,
-    /// The vowel letters the word spells this sound with (`a e i o u y`, one bit each)
+    class: u16,
     letters: u8,
-    /// What skipping it costs
-    drop: u8,
-    vowel: bool,
+    flags: u8,
 }
 
-#[derive(Clone, Copy)]
-struct Node {
-    edges: (u32, u32),
-    ends: (u32, u32),
+impl Edge {
+    const fn drop(self) -> u32 {
+        (self.flags & 0x7f) as u32
+    }
+    const fn vowel(self) -> bool {
+        self.flags & 0x80 != 0
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -154,6 +157,8 @@ pub struct Costs {
     pub r_for_er: u32,
     pub order_loose: u32,
     pub order: u32,
+    pub reading_slack: u32,
+    pub max_readings: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -176,6 +181,8 @@ impl Costs {
             r_for_er: tuned("R_FOR_ER", R_FOR_ER),
             order_loose: tuned("ORDER_LOOSE", ORDER_LOOSE),
             order: tuned("ORDER", ORDER),
+            reading_slack: tuned("READING_SLACK", READING_SLACK),
+            max_readings: tuned("MAX_READINGS", MAX_READINGS),
         }
     }
 }
@@ -281,7 +288,11 @@ pub struct Model {
     word_cost: Vec<u32>,
     /// Every word's text, to tell a reading of several pieces that spells a real word from one that does not
     known: HashMap<String, u32>,
-    nodes: Vec<Node>,
+    /// Each trie node's edges are `edges[edge_start[n]..edge_start[n + 1]]`, its words
+    /// `ends[end_start[n]..end_start[n + 1]]`
+    edge_start: Vec<u32>,
+    end_start: Vec<u32>,
+    masks: Vec<u64>,
     edges: Vec<Edge>,
     ends: Vec<(u32, u8)>,
     scratch: std::sync::Mutex<Option<Scratch>>,
@@ -325,7 +336,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 fn rank_cost(rank: u32) -> u32 {
     let log2 = f64::from(rank + 2).log2();
@@ -409,33 +420,22 @@ impl Model {
             word_cost.push(rank_cost(r.u32()));
         }
         let n = r.u32() as usize;
-        let mut nodes = Vec::with_capacity(n);
-        for _ in 0..n {
-            let edges = (r.u32(), r.u32());
-            let ends = (r.u32(), r.u32());
-            nodes.push(Node { edges, ends });
-        }
-        let n = r.u32() as usize;
-        let mut edges = Vec::with_capacity(n);
-        for _ in 0..n {
-            let mask = r.u64();
-            let child = r.u32();
-            let letters = r.u8();
-            let drop = r.u8();
-            let vowel = r.u8() != 0;
-            edges.push(Edge { mask, child, letters, drop, vowel });
-        }
-        let n = r.u32() as usize;
-        let ends: Vec<(u32, u8)> = (0..n).map(|_| (r.u32(), r.u8())).collect();
+        let edge_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
+        let end_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
+        let m = r.u32() as usize;
+        let masks: Vec<u64> = (0..m).map(|_| r.u64()).collect();
+        let m = r.u32() as usize;
+        let edges: Vec<Edge> = (0..m).map(|_| Edge { child: r.u32(), class: r.u16(), letters: r.u8(), flags: r.u8() }).collect();
+        let m = r.u32() as usize;
+        let ends: Vec<(u32, u8)> = (0..m).map(|_| (r.u32(), r.u8())).collect();
         // Children always come after their parent, so one pass from the back fills every node
-        let mut lookahead = vec![u32::MAX / 4; nodes.len()];
-        for at in (0..nodes.len()).rev() {
-            let node: Node = nodes[at];
+        let mut lookahead = vec![u32::MAX / 4; n];
+        for at in (0..n).rev() {
             let mut best = lookahead[at];
-            for &(w, extra) in &ends[node.ends.0 as usize..node.ends.1 as usize] {
+            for &(w, extra) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
                 best = best.min(word_cost[w as usize] + u32::from(extra));
             }
-            for e in &edges[node.edges.0 as usize..node.edges.1 as usize] {
+            for e in &edges[edge_start[at] as usize..edge_start[at + 1] as usize] {
                 best = best.min(lookahead[e.child as usize]);
             }
             lookahead[at] = best;
@@ -469,7 +469,9 @@ impl Model {
             known: words.iter().enumerate().map(|(i, w)| (w.clone(), i as u32)).collect(),
             words,
             word_cost,
-            nodes,
+            edge_start,
+            end_start,
+            masks,
             edges,
             ends,
             lookahead,
@@ -483,7 +485,7 @@ impl Model {
         self.words.len()
     }
     pub const fn node_count(&self) -> usize {
-        self.nodes.len()
+        self.lookahead.len()
     }
     pub const fn edge_count(&self) -> usize {
         self.edges.len()
@@ -630,30 +632,32 @@ impl Model {
 
     // --- Matching ---
 
-    fn match_cost(&self, tok: Tok, e: &Edge) -> Option<u32> {
+    fn match_cost(&self, tok: Tok, e: Edge) -> Option<u32> {
         match tok {
             Tok::C(s) => {
-                if e.vowel {
-                    (s == self.r_sound && e.mask & (1 << self.er_sound) != 0).then_some(self.c.r_for_er)
-                } else if e.mask & (1 << s) != 0 {
+                let mask = self.masks[e.class as usize];
+                if e.vowel() {
+                    (s == self.r_sound && mask & (1 << self.er_sound) != 0).then_some(self.c.r_for_er)
+                } else if mask & (1 << s) != 0 {
                     Some(0)
-                } else if e.mask & self.confusable[s as usize] != 0 {
+                } else if mask & self.confusable[s as usize] != 0 {
                     Some(self.c.sub_consonant)
                 } else {
                     None
                 }
             }
-            Tok::S(s, letters) => e.vowel.then(|| self.vowel_cost(s, letters, e)),
+            Tok::S(s, letters) => e.vowel().then(|| self.vowel_cost(s, letters, e)),
             Tok::V(keys) => {
-                if !e.vowel {
+                if !e.vowel() {
                     return None;
                 }
+                let mask = self.masks[e.class as usize];
                 let k = vowel_index(keys);
-                if e.mask & self.heard[k] != 0 {
+                if mask & self.heard[k] != 0 {
                     return Some(0);
                 }
                 let mut best = self.c.swap_vowel;
-                let mut sounds = e.mask & self.spelled_any[k];
+                let mut sounds = mask & self.spelled_any[k];
                 while sounds != 0 {
                     let s = sounds.trailing_zeros() as usize;
                     for &letters in &self.spelled[k * 64 + s] {
@@ -666,8 +670,8 @@ impl Model {
         }
     }
 
-    const fn vowel_cost(&self, sound: u8, letters: u8, e: &Edge) -> u32 {
-        if e.mask & (1 << sound) == 0 {
+    fn vowel_cost(&self, sound: u8, letters: u8, e: Edge) -> u32 {
+        if self.masks[e.class as usize] & (1 << sound) == 0 {
             self.c.swap_vowel
         } else if letters == 0 {
             0
@@ -683,8 +687,8 @@ impl Model {
     // --- The beam ---
 
     fn edges_of(&self, node: u32) -> &[Edge] {
-        let (a, b) = self.nodes[node as usize].edges;
-        &self.edges[a as usize..b as usize]
+        let n = node as usize;
+        &self.edges[self.edge_start[n] as usize..self.edge_start[n + 1] as usize]
     }
 
     /// The candidates as a beam: each trie position once, at its cheapest (the root keeps several,
@@ -729,10 +733,10 @@ impl Model {
                     }
                     let here = self.lookahead[s.node as usize];
                     for e in self.edges_of(s.node) {
-                        if s.node == 0 && u32::from(e.drop) > ROOT_DROP {
+                        if s.node == 0 && e.drop() > ROOT_DROP {
                             continue;
                         }
-                        let cost = s.cost + u32::from(e.drop) + self.lookahead[e.child as usize] - here;
+                        let cost = s.cost + e.drop() + self.lookahead[e.child as usize] - here;
                         if cost <= limit {
                             match sc.offer_new(e.child, cost, s.back) {
                                 Offer::New => {
@@ -773,7 +777,7 @@ impl Model {
             }
             let here = self.lookahead[s.node as usize];
             for e in self.edges_of(s.node) {
-                if let Some(c) = self.match_cost(tok, e) {
+                if let Some(c) = self.match_cost(tok, *e) {
                     let cost = s.cost + c + self.lookahead[e.child as usize] - here;
                     out.push(St { node: e.child, cost, back: s.back });
                 }
@@ -807,8 +811,9 @@ impl Model {
 
     fn emit(&self, states: &[St], arena: &mut Vec<(u32, Piece)>, out: &mut Vec<St>) {
         for s in states {
-            let (a, b) = self.nodes[s.node as usize].ends;
-            for &(word, extra) in self.ends[a as usize..b as usize].iter().take(EMIT_PER_NODE) {
+            let n = s.node as usize;
+            let ends = &self.ends[self.end_start[n] as usize..self.end_start[n + 1] as usize];
+            for &(word, extra) in ends.iter().take(EMIT_PER_NODE) {
                 let piece = if s.back == NO_BACK { 0 } else { self.c.piece };
                 arena.push((s.back, Piece::Word(word)));
                 out.push(St {
@@ -824,14 +829,14 @@ impl Model {
     /// first, at most `keep`.
     pub fn solve(&self, run: &[u32], keep: usize) -> Vec<Reading> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.nodes.len())), run, keep);
+        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.lookahead.len())), run, keep);
         drop(guard);
         readings
     }
 
     /// Working memory for [`Self::solve_with`], for a caller solving on several threads at once.
     pub fn scratch(&self) -> Scratch {
-        Scratch::new(self.nodes.len())
+        Scratch::new(self.lookahead.len())
     }
 
     /// [`Self::solve`] with the caller's own working memory.
@@ -880,8 +885,8 @@ impl Model {
             let mut alts = self.readings(run[i]);
             // Only the readings near the stroke's plainest: the rest never win
             let cheapest = alts.first().map_or(0, |a| a.1);
-            alts.retain(|a| a.1 <= cheapest + READING_SLACK);
-            alts.truncate(MAX_READINGS);
+            alts.retain(|a| a.1 <= cheapest + self.c.reading_slack);
+            alts.truncate(self.c.max_readings as usize);
             alts.sort();
             let mut next = Vec::new();
             self.walk(sc, &alts, 0, &states, &mut next);
@@ -958,7 +963,7 @@ impl Model {
     /// keys when no reading is close enough.
     pub fn answer(&self, outline: &str) -> Option<String> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.nodes.len())), outline);
+        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.lookahead.len())), outline);
         drop(guard);
         text
     }

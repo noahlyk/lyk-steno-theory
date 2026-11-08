@@ -541,33 +541,46 @@ fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon)
     }
 }
 
-/// The trie, flattened: each node's edges and words contiguous, in a fixed order.
+/// The trie, flattened: each node's edges and words contiguous, in a fixed order, as offset
+/// arrays (`n + 1` each, so a node's range ends where the next one's starts); each edge eight
+/// bytes, its sounds an index into a table of the few distinct masks.
 fn write_trie(b: &mut Blob, trie: &Trie) {
     let n = trie.children.len();
     let mut edge_rows: Vec<(EdgeKey, u32)> = Vec::new();
     let mut end_rows: Vec<(u32, u8)> = Vec::new();
-    b.len(n);
+    let mut edge_start = Vec::with_capacity(n + 1);
+    let mut end_start = Vec::with_capacity(n + 1);
     for node in 0..n {
-        let start = index(edge_rows.len());
+        edge_start.push(index(edge_rows.len()));
         let mut kids: Vec<(EdgeKey, u32)> = trie.children[node].iter().map(|(k, v)| (*k, *v)).collect();
         kids.sort_by_key(|(k, c)| (k.mask, k.letters, k.drop, *c));
         edge_rows.extend(kids);
-        let ends_start = index(end_rows.len());
+        end_start.push(index(end_rows.len()));
         let mut ends = trie.ends[node].clone();
         ends.sort_by_key(|&(w, extra)| (extra, w));
         end_rows.extend(ends);
-        b.u32(start);
-        b.u32(index(edge_rows.len()));
-        b.u32(ends_start);
-        b.u32(index(end_rows.len()));
+    }
+    edge_start.push(index(edge_rows.len()));
+    end_start.push(index(end_rows.len()));
+    let mut masks: Vec<u64> = edge_rows.iter().map(|(k, _)| k.mask).collect();
+    masks.sort_unstable();
+    masks.dedup();
+    b.len(n);
+    for at in edge_start.iter().chain(&end_start) {
+        b.u32(*at);
+    }
+    b.len(masks.len());
+    for mask in &masks {
+        b.u64(*mask);
     }
     b.len(edge_rows.len());
     for (key, child) in &edge_rows {
-        b.u64(key.mask);
+        let class = masks.binary_search(&key.mask).expect("every mask is listed");
         b.u32(*child);
+        b.u16(u16::try_from(class).expect("fewer than 65,536 distinct masks"));
         b.u8(key.letters);
-        b.u8(key.drop);
-        b.u8(u8::from(key.vowel));
+        assert!(key.drop < 0x80, "a drop cost fits in seven bits");
+        b.u8(key.drop | if key.vowel { 0x80 } else { 0 });
     }
     b.len(end_rows.len());
     for (word, extra) in &end_rows {
