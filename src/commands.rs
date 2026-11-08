@@ -105,10 +105,27 @@ pub fn expand_home(path: &Path) -> Result<PathBuf> {
     Ok(PathBuf::from(home).join(rest))
 }
 
-/// The solver `build` wrote beside the dictionary, if there is one.
+/// The solver `build` wrote beside the dictionary, if there is one: the one [`read_solver_early`]
+/// started reading, when it did.
 fn built_solver() -> Option<crate::rules::solve::Model> {
+    let early = SOLVER_READ.lock().ok().and_then(|mut early| early.take());
+    early.and_then(|reading| reading.join().ok()).unwrap_or_else(read_solver)
+}
+
+fn read_solver() -> Option<crate::rules::solve::Model> {
     let blob = std::fs::read(Path::new(BUILT_DIR).join(crate::rules::solve::plugin::BLOB_FILE)).ok()?;
     crate::rules::solve::Model::load(&blob)
+}
+
+static SOLVER_READ: std::sync::Mutex<Option<std::thread::JoinHandle<Option<crate::rules::solve::Model>>>> =
+    std::sync::Mutex::new(None);
+
+/// Start reading the solver on its own thread while the rest of a lookup loads, so the first miss
+/// finds it read (a tenth of a second) rather than waiting for it.
+fn read_solver_early() {
+    if let Ok(mut early) = SOLVER_READ.lock() {
+        *early = Some(std::thread::spawn(read_solver));
+    }
 }
 
 /// Where `build` writes the dictionary, and so where the query commands read it back from.
@@ -160,8 +177,13 @@ pub struct LookupOptions {
 /// answer follows. Without a terminal that reads one query per line from standard input
 /// instead. See [`crate::answer`] for what the answer holds and [`crate::interactive`] for the
 /// keys.
+///
+/// `sources` is the data folder and `--rules`: with a dictionary built and no `--rebuild`, what
+/// the lookup reads comes from its cache (`crate::lookup_cache`), made again whenever a file it was
+/// made from changes, so a lookup takes milliseconds rather than seconds.
 pub fn run_lookup(
     setup: &impl Fn(Option<usize>) -> Result<analysis::Setup>,
+    sources: (&Path, Option<&Path>),
     query: Option<&str>,
     options: LookupOptions,
     common: usize,
@@ -174,10 +196,20 @@ pub fn run_lookup(
         println!("Nothing to look up");
         return Ok(());
     }
-    let setup = setup(Some(common))?;
-    let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
-    let backups = read_back_backups(rebuild);
-    let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
+    let dir = Path::new(BUILT_DIR);
+    let crate::lookup_cache::Loaded { setup, entries, backups, cheapest } = if !rebuild && built::exists(dir) {
+        read_solver_early();
+        if let Some(note) = crate::version::stale_note(dir) {
+            eprintln!("{note}");
+        }
+        crate::lookup_cache::load(sources.0, sources.1, common, dir, Path::new(crate::lookup_cache::DIR))?
+    } else {
+        let setup = setup(Some(common))?;
+        let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;
+        crate::lookup_cache::Loaded { setup, entries, backups: read_back_backups(rebuild), cheapest: None }
+    };
+    let lookup =
+        Lookup::with_cheapest(&setup, &entries, backups.as_ref(), cheapest.as_deref()).with_solver(built_solver);
     let session = Session::new(options.show_keys, options.fast, options.stroke_mode);
     match query {
         Some(query) => {
@@ -195,6 +227,9 @@ pub fn run_lookup(
         }
         None => interactive::run_lines(&lookup, &session, &mut std::io::stdin().lock(), &mut std::io::stdout().lock())?,
     }
+    // Freeing a few million strings takes longer than the lookup did, and the process is ending
+    std::mem::forget(lookup);
+    std::mem::forget((setup, entries, backups, cheapest));
     Ok(())
 }
 

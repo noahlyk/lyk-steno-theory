@@ -9,6 +9,7 @@
 //! briefs that `build` has not been run on yet.
 
 use crate::generate::{Entry, Origin};
+use crate::lookup_cache::SortedBackups;
 use crate::output::{FAMILY_FILE, Role};
 use crate::rules::Step;
 use crate::stroke::parse_outline;
@@ -132,10 +133,16 @@ pub fn load(dir: &Path) -> Result<Vec<Entry>> {
 /// to type a word that `load` leaves out (it drops a backup with more strokes than its word's
 /// best, which can never be the word's cheapest outline but is still an outline that types it).
 /// The text is kept and indexed, not parsed: only the few outlines of the word asked about are.
-pub struct Backups {
-    text: String,
-    /// Lowercase word to the byte ranges of its outlines in `text`
-    index: HashMap<String, Vec<(u32, u32)>>,
+/// `lookup` reads them from its cache instead, sorted by word (see `crate::lookup_cache`).
+pub struct Backups(Source);
+
+enum Source {
+    Text {
+        text: String,
+        /// Lowercase word to the byte ranges of its outlines in `text`
+        index: HashMap<String, Vec<(u32, u32)>>,
+    },
+    Sorted(SortedBackups),
 }
 
 impl Backups {
@@ -156,17 +163,33 @@ impl Backups {
                 index.insert(word.into_owned(), vec![range]);
             }
         }
-        Ok(Self { text, index })
+        Ok(Self(Source::Text { text, index }))
+    }
+
+    /// The backups as `lookup`'s cache keeps them.
+    pub const fn sorted(sorted: SortedBackups) -> Self {
+        Self(Source::Sorted(sorted))
+    }
+
+    /// The cache file of these backups (see [`SortedBackups::bytes`]); `None` for backups already
+    /// read from one.
+    pub fn sorted_bytes(&self, key: &str) -> Option<Vec<u8>> {
+        let Source::Text { text, index } = &self.0 else { return None };
+        let outlines = |ranges: &[(u32, u32)]| ranges.iter().map(|&(from, to)| &text[from as usize..to as usize]).collect();
+        SortedBackups::bytes(key, index.iter().map(|(word, ranges)| (word.as_str(), outlines(ranges))))
     }
 
     /// Every backup outline of `word` (lowercase), parsed.
     pub fn outlines(&self, word: &str) -> Vec<Vec<crate::stroke::Stroke>> {
-        self.index
-            .get(word)
-            .into_iter()
-            .flatten()
-            .filter_map(|&(from, to)| parse_outline(&self.text[from as usize..to as usize]))
-            .collect()
+        match &self.0 {
+            Source::Text { text, index } => index
+                .get(word)
+                .into_iter()
+                .flatten()
+                .filter_map(|&(from, to)| parse_outline(&text[from as usize..to as usize]))
+                .collect(),
+            Source::Sorted(sorted) => sorted.outlines(word).iter().filter_map(|o| parse_outline(o)).collect(),
+        }
     }
 }
 

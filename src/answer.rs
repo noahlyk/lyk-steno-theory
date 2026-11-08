@@ -126,7 +126,7 @@ pub struct Lookup<'a> {
     setup: &'a Setup,
     entries: &'a [Entry],
     dictionary: HashMap<&'a str, &'a [Stroke]>,
-    by_outline: HashMap<String, &'a str>,
+    by_outline: HashMap<&'a [Stroke], &'a str>,
     stems: HashMap<Stroke, String>,
     /// Every outline that types each word properly (suffix entries, which glue to the word
     /// before them, left out)
@@ -144,19 +144,52 @@ pub struct Lookup<'a> {
 
 impl<'a> Lookup<'a> {
     pub fn new(setup: &'a Setup, entries: &'a [Entry], backups: Option<&'a Backups>) -> Self {
-        let dictionary = generate::cheapest(entries);
-        let mut outlines: HashMap<&str, Vec<&[Stroke]>> = HashMap::new();
-        for entry in entries.iter().filter(|e| e.origin != Origin::Suffix) {
-            outlines.entry(entry.word.as_str()).or_default().push(&entry.outline);
-        }
-        let mut words: Vec<&str> = dictionary.keys().copied().collect();
-        words.sort_unstable_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+        Self::with_cheapest(setup, entries, backups, None)
+    }
+
+    /// The same lookup, given each word's cheapest entry (`generate::cheapest`) by its place in
+    /// `entries` when it is already known (`crate::lookup_cache` keeps it).
+    pub fn with_cheapest(
+        setup: &'a Setup,
+        entries: &'a [Entry],
+        backups: Option<&'a Backups>,
+        cheapest: Option<&[u32]>,
+    ) -> Self {
+        // Four indexes of the same entries, a few tens of milliseconds each: side by side
+        let (dictionary, words, by_outline, stems, outlines) = std::thread::scope(|scope| {
+            // `generate::index_of`, keyed by the strokes rather than their notation
+            let by_outline = scope.spawn(|| entries.iter().map(|e| (e.outline.as_slice(), e.word.as_str())).collect::<HashMap<_, _>>());
+            let stems = scope.spawn(|| generate::single_stroke_stems_of(entries));
+            let outlines = scope.spawn(|| {
+                let mut outlines: HashMap<&str, Vec<&[Stroke]>> = HashMap::new();
+                for entry in entries.iter().filter(|e| e.origin != Origin::Suffix) {
+                    outlines.entry(entry.word.as_str()).or_default().push(&entry.outline);
+                }
+                outlines
+            });
+            let dictionary: HashMap<&str, &[Stroke]> = cheapest.map_or_else(
+                || generate::cheapest(entries),
+                |cheapest| {
+                    let entry = |at: u32| &entries[at as usize];
+                    cheapest.iter().map(|&at| (entry(at).word.as_str(), entry(at).outline.as_slice())).collect()
+                },
+            );
+            let mut words: Vec<&str> = dictionary.keys().copied().collect();
+            words.sort_unstable_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+            (
+                dictionary,
+                words,
+                by_outline.join().expect("outline index panicked"),
+                stems.join().expect("stem index panicked"),
+                outlines.join().expect("word index panicked"),
+            )
+        });
         Self {
             setup,
             entries,
             dictionary,
-            by_outline: generate::index_of(entries),
-            stems: generate::single_stroke_stems_of(entries),
+            by_outline,
+            stems,
             outlines,
             words,
             backups,
@@ -221,7 +254,7 @@ impl<'a> Lookup<'a> {
         };
         let (word, how) = self
             .by_outline
-            .get(&render_outline(strokes))
+            .get(strokes)
             .map_or_else(reading, |word| (format!("{word:?}"), How::Entry));
         Row { word, cells: [Some(Cell { strokes: strokes.to_vec(), how }), None, None], mark }
     }

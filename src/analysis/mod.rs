@@ -128,6 +128,11 @@ pub struct Setup {
 /// How far down the frequency list real spellings are kept for the solver (see `Setup::spellings`).
 pub const SPELLINGS: usize = 250_000;
 
+/// The rules `--rules` names, else the built-in ones.
+pub fn load_rules(rules: Option<&Path>) -> Result<Rules> {
+    rules.map_or_else(Rules::built_in, Rules::load)
+}
+
 impl Setup {
     /// `common` bounds how much of the frequency list is worth ranking at all: `None` for every
     /// command that needs a real rank for any word regardless of commonness (`explain`,
@@ -135,10 +140,7 @@ impl Setup {
     /// words anyway (`build`, `score`, `quote`, `resolve`), padded past `n` so nothing a caller
     /// still reads near that edge comes up unranked that would not have been before.
     pub fn load(data: &Path, rules: Option<&Path>, common: Option<usize>) -> Result<Self> {
-        let rules = match rules {
-            Some(path) => Rules::load(path)?,
-            None => Rules::built_in()?,
-        };
+        let rules = load_rules(rules)?;
         let freq_limit =
             common.map_or(usize::MAX, |c| c.saturating_add(c / 5).max(c.saturating_add(10_000)));
         let freq_path = data.join("frequency/en_full.txt");
@@ -206,6 +208,21 @@ impl Setup {
             bigrams,
             spellings,
         })
+    }
+
+    /// The setup `lookup` reads from its cache (`crate::lookup_cache`): the rules, every
+    /// pronunciation and the gold dictionaries, all a lookup reads. The frequency list and the
+    /// bigrams are left empty, so nothing else may be asked of it.
+    pub fn for_lookup(rules: Rules, pron: Pronunciations, gold: Gold) -> Self {
+        Self {
+            rules,
+            pron,
+            gold,
+            rank: HashMap::new(),
+            count: HashMap::new(),
+            bigrams: HashMap::new(),
+            spellings: Vec::new(),
+        }
     }
 
     /// Every outline the rules give a word, one per pronunciation that can be written, and the

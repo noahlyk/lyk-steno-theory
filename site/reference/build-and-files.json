@@ -225,7 +225,7 @@
   },
   {
    "t": "p",
-   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the stamp in `out/lyk` says other rules or another generator made it, a dim note says so (see Version below); `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before."
+   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the stamp in `out/lyk` says other rules or another generator made it, a dim note says so (see Version below); `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before. `lookup` and `resolve` also keep what they read in `out/cache/` (the gold dictionaries, the pronunciations, the read-back entries, the backups sorted by word), made again on the first lookup after the program or any file it came from changes, so a lookup takes about a tenth of a second rather than two."
   },
   {
    "t": "list",

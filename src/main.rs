@@ -16,6 +16,7 @@ mod fetch;
 mod frequency;
 mod generate;
 mod interactive;
+mod lookup_cache;
 mod num;
 mod output;
 mod phrases;
@@ -401,12 +402,12 @@ fn main() -> Result<()> {
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };
-            commands::run_lookup(&setup, outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+            commands::run_lookup(&setup, (&cli.data, cli.rules.as_deref()), outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)
         }
         Command::Lookup { query, show_keys, fast, common, briefs, rebuild } => {
             let query = (!query.is_empty()).then(|| query.join(" "));
             let options = commands::LookupOptions { show_keys: *show_keys, fast: *fast, stroke_mode: false };
-            commands::run_lookup(&setup, query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+            commands::run_lookup(&setup, (&cli.data, cli.rules.as_deref()), query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
         }
         Command::Paths { word, limit, common, briefs, rebuild } => {
             commands::run_paths(&setup, word.as_deref(), *limit, *common, briefs.as_deref(), *rebuild)

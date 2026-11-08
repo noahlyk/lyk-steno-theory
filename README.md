@@ -103,7 +103,7 @@ cargo run --release -- mismatches --syllables 2 --after 500    # where the rules
 cargo run --release -- learn               # which keys Plover and Lapwing use for each sound group
 cargo run --release -- build --report --against magnum.rtf   # add a third dictionary to the cost tables
 cargo run --release -- quote                        # a random quote, stroked lyk next to Plover and Lapwing
-cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, from the built dictionary (seconds)
+cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, from the built dictionary (a tenth of a second; seconds the first time after a build)
 cargo run --release -- resolve STKPW                # a stroke not in the dictionary: what the solver types
 cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first (--eval N: how often it is right)
 cargo run --release -- keys                         # no word: type and the answer follows every key, all three theories

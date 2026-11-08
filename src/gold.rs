@@ -1,6 +1,7 @@
 //! What Plover and Lapwing write for each word: the answers the rules are scored against.
 
 use crate::data::load_dictionary;
+use crate::lookup_cache::{Reader, Writer};
 use crate::reverse::{Composition, Glue, compose};
 use crate::stroke::{Stroke, parse_outline};
 use anyhow::Result;
@@ -160,6 +161,44 @@ impl Gold {
                 .and_then(|v| v.first())
                 .map(String::as_str),
         )
+    }
+
+    /// Both dictionaries as `lookup`'s cache keeps them (see `crate::lookup_cache`).
+    pub fn write(&self, w: &mut Writer) {
+        for words in [&self.plover, &self.lapwing] {
+            w.map(words, |w, outlines| w.strs(outlines));
+        }
+        for pieces in [&self.plover_pieces, &self.lapwing_pieces] {
+            w.len(pieces.suffixes.len());
+            for (text, strokes) in &pieces.suffixes {
+                w.str(text);
+                w.strokes(strokes);
+            }
+            w.len(usize::from(pieces.glue.is_some()));
+            w.strokes(pieces.glue.as_deref().unwrap_or_default());
+        }
+        let mut names: Vec<&String> = self.names.iter().collect();
+        names.sort_unstable();
+        w.len(names.len());
+        for name in names {
+            w.str(name);
+        }
+    }
+
+    /// What [`Gold::write`] wrote.
+    pub fn read(r: &mut Reader<'_>) -> Option<Self> {
+        let plover = r.map(Reader::strings)?;
+        let lapwing = r.map(Reader::strings)?;
+        let mut pieces = || -> Option<Pieces> {
+            let n = r.count()?;
+            let suffixes = (0..n).map(|_| Some((r.string()?, r.strokes()?))).collect::<Option<_>>()?;
+            let has_glue = r.len()? == 1;
+            let glue = r.strokes()?;
+            Some(Pieces { suffixes, glue: has_glue.then_some(glue) })
+        };
+        let (plover_pieces, lapwing_pieces) = (pieces()?, pieces()?);
+        let names = r.strings()?.into_iter().collect();
+        Some(Self { plover, lapwing, plover_pieces, lapwing_pieces, names })
     }
 }
 

@@ -2531,3 +2531,17 @@ scored as what it spells: a known word, a real spelling (`HRAOBG/+/+UP` *lookup*
 and endings (`PROB/+/+-BL` *probable*), or neither. Locks stack. The incremental reading is keyed
 by the locked text too. `Stroke::parse` and the plugin's parser now take `+` alone (keymux renders
 the join key alone so). Backups 88.8% unchanged. Retroactive join was considered and left out.
+
+**`lookup` from a cache (2026-11-08).** A lookup took about 2.1 s, and the solver was not why: the
+data load was. It went to the pronunciations and gold dictionaries (0.6 s with the frequency list
+and bigrams, which a lookup never reads), reading `out/lyk` back (0.6 s, mostly the 130 MB backups
+file) and reading that same file again for the backups list (0.5 s), indexing 283,605 entries
+(0.2 s) and freeing it all at exit (0.1 s). Now the first lookup after any of those files changes,
+or after the program is rebuilt, loads them as before and writes `out/cache/` (`src/lookup_cache.rs`):
+gold, pronunciations, entries and each word's cheapest entry in one binary file, the backups sorted
+by word in another that a lookup reads a word at a time. The key is the size and modification time
+of the program and of every file the data came from, so a stale cache is never read. The solver's
+blob is read on its own thread from the start, the indexes are built side by side, and nothing is
+freed at exit. A lookup now takes about 0.13 s (0.16 s when it reads strokes with the solver), with
+the same answers byte for byte on 630 sampled queries. Only `lookup`, `resolve` and their
+aliases use the cache; `--rebuild` and every other command load as before.
