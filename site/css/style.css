@@ -40,6 +40,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #15161a; --panel: #1b1d23; --raised: #22252d; --line: #2e323d;
+  --key: #23262e; --key-line: #343846; --key-text: #7b8090;
   --text: #dedbd3; --muted: #9296a1; --heading: #f3f0e8; --link: #8fb8e6;
   --left: #e8a24a; --left-bg: #3c2c17; --vowel: #5b9bd5; --vowel-bg: #1d3046;
   --right: #a98be0; --right-bg: #2c2342; --join: #5fbf8a; --join-bg: #183326;
@@ -172,6 +173,26 @@ button.key { cursor: pointer; }
   background: var(--bad-bg); border: 2px dashed var(--bad); color: var(--bad); animation: missing 1s ease-in-out infinite;
 }
 @keyframes missing { 50% { opacity: 0.45; } }
+/* merged keys (js/merge.js): a chord such as T P H lit as one shape on an svg layer under the keys; the
+   fused keys are hidden. Same look per state as a single key. */
+.key.is-fused { visibility: hidden; }
+.mlayer { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.mkey--left { --kc: var(--c-left); }
+.mkey--vowel { --kc: var(--c-vowel); }
+.mkey--right { --kc: var(--c-right); }
+.mkey--misc { --kc: var(--c-misc); }
+.mkey path { vector-effect: non-scaling-stroke; stroke-width: 2px; }
+.mkey text { font-family: var(--key-font); font-weight: 700; font-size: 0.56px; text-anchor: middle; dominant-baseline: central; }
+.mkey .mark { font-size: 0.4px; text-anchor: end; }
+.mk-target path { fill: color-mix(in srgb, var(--kc) 24%, var(--key)); stroke: var(--kc); }
+.mk-target text { fill: var(--kc); }
+.mk-down path, .mk-down-ok path { fill: var(--kc); stroke: var(--kc); filter: drop-shadow(0 0 calc(var(--u) * 0.3) color-mix(in srgb, var(--kc) 65%, transparent)); }
+.mk-down text, .mk-down-ok text { fill: #0b0d12; }
+.mk-wrong path { fill: var(--bad); stroke: var(--bad); }
+.mk-wrong text { fill: #fff; }
+.mk-miss path { fill: var(--bad-bg); stroke: var(--bad); stroke-dasharray: 5 3; }
+.mk-miss text { fill: var(--bad); }
+.mk-miss { animation: missing 1s ease-in-out infinite; }
 .keylegend { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; justify-content: center; margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted); }
 .keylegend span { display: inline-flex; align-items: center; gap: 0.4em; }
 .sw { --kc: var(--c-left); --u: 1.2rem; display: inline-block; width: 1.1em; height: 1.1em; border-radius: 4px; background: var(--key); border: 1px solid var(--key-line); }

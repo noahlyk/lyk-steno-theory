@@ -12,6 +12,7 @@
     ] },
     { "t": "p", "x": "The left `S` key is split in two: `+` on top, `S-` below. The `*` is one tall key. The bar across the top is the `#` number bar, which lyk strokes do not use. Keys are grey until they are part of a stroke: colour only ever means *held*. The rest are top and bottom pairs. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
     { "t": "explore", "x": "Strike keys on your keyboard. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
+    { "t": "note", "x": "The board draws some keys held together as one bigger key, the way a steno typist reads them: `T P H` lights as a single `N`, `P H` as `M`, `A O` as `AO`. It is only the picture; the stroke is the same keys. The full list is in the [cheat sheet](#/ref/cheatsheet)." },
     { "t": "h", "x": "Steno order" },
     { "t": "p", "x": "However you press them, keys are always written left to right in the same order:" },
     { "t": "table", "rows": [["`S T K P W H R`", "`A O * E U`", "`F R P B L G T S D Z`"]] },

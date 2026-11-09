@@ -7,6 +7,7 @@ import { createEngine } from './js/engine.js';
 import { parseOutline } from './js/steno.js';
 import { classify, classifyList } from './js/hovermatch.js';
 import { store } from './js/store.js';
+import { mergeTests } from './merge.test.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
@@ -124,6 +125,9 @@ store.recordRun('t-peek', { accuracy: 80, wpm: 30, pass: 90 });
 const peeked = store.recordRun('t-peek', { accuracy: 100, wpm: 60, pass: 90, assisted: true });
 expect('assisted run: best untouched', JSON.stringify([peeked.best, peeked.wpm, peeked.runs]), "[80,30,2]");
 expect('assisted run: still passes', store.recordRun('t-peek', { accuracy: 95, wpm: 20, pass: 90, assisted: true }).passed, true);
+
+// merged keys on the board (js/merge.js, its tests in merge.test.mjs)
+errors.push(...mergeTests());
 
 for (const e of errors) console.error('FAIL', e);
 console.log(`engine: ${total} outlines read back (${wrong} differ), ${errors.length} failures`);

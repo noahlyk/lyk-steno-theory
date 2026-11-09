@@ -10,6 +10,24 @@
       ["Right hand", "`F R P B L G T S D Z`", "the sounds a syllable ends with"],
       ["Join key", "`+` (the top half of the left `S` key)", "this stroke continues the previous one: no space between"]
     ] },
+    { "t": "h3", "x": "Merged keys on the diagram" },
+    { "t": "p", "x": "Every board on this site (lessons, drills, the Try it pad, the hover preview) draws the keys of a steno letter chord as one bigger key while **all** of them are lit; a partly lit group lights its keys one by one, and the stroke itself never changes. These 24 groups, and only these, merge (left hand, then right hand, then thumbs):" },
+    { "t": "table", "head": ["Left keys", "Label", "Right keys", "Label", "Thumbs", "Label"], "rows": [
+      ["`T P H`", "N", "`-P -B`", "N", "`A O`", "AO"],
+      ["`P H`", "M", "`-P -L`", "M", "`E U`", "EU"],
+      ["`K W R`", "Y", "`-B -G`", "K", "", ""],
+      ["`T K`", "D", "`-F -P`", "CH", "", ""],
+      ["`P W`", "B", "`-R -B`", "SH", "", ""],
+      ["`H R`", "L", "`-P -B -L -G`", "J", "", ""],
+      ["`T P`", "F", "`-G -S`", "SHUN", "", ""],
+      ["`T K P W`", "G", "`-B -G -S`", "X", "", ""],
+      ["`S K W R`", "J", "`-F -R -P -B`", "NCH", "", ""],
+      ["`S T K P W`", "Z", "", "", "", ""],
+      ["`K W`", "Q", "", "", "", ""],
+      ["`S R` (bridged)", "V", "", "", "", ""],
+      ["`K R` (bridged)", "C", "", "", "", ""]
+    ] },
+    { "t": "p", "x": "Where groups overlap, the picture takes the choice that covers the most lit keys, then the one holding the single biggest group, then the fewest groups, then the earliest in the table above: `S T K P W H R` is `Z` + `L`, not `J` + `N`; `T K P H` is `D` + `M`. A bridged group (`S R`, `K R`) is two pieces joined by a thin bar behind the unlit keys between them, labelled on the bigger piece. Keys outside a chosen group light on their own. The hover preview draws the same shapes at its smaller size." },
     { "t": "p", "x": "Every sound and its keys: the [Key chart](#/chart). How a syllable is built from them: [Phonetic rules](#/ref/phonetic-rules). Which strokes a pinky cannot press: [Strokes you can type](#/ref/typable)." },
     { "t": "h", "x": "A word is one stroke when it can be" },
     { "t": "table", "head": ["Kind", "Examples", "Full rules"], "rows": [
