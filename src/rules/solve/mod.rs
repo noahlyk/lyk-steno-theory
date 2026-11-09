@@ -296,6 +296,31 @@ impl Trie {
         }
         nodes
     }
+
+    /// A node's children, in the order the packed trie keeps them.
+    fn kids(&self, node: usize) -> Vec<(EdgeKey, u32)> {
+        let mut kids: Vec<(EdgeKey, u32)> = self.children[node].iter().map(|(k, v)| (*k, *v)).collect();
+        kids.sort_by_key(|(k, c)| (k.mask, k.letters, k.drop, *c));
+        kids
+    }
+
+    /// The nodes breadth first, each node's children numbered together as its edges are laid out:
+    /// `(order, id)`, `order[new]` the node numbered `new` and `id[old]` its new number. Packed so,
+    /// edge `k` leads to node `k + 1`, and what the decoder reads about a node's children (their
+    /// lookahead, what ends below them, its working memory for them) sits side by side.
+    fn breadth_first(&self) -> (Vec<u32>, Vec<u32>) {
+        let mut order = vec![0u32];
+        let mut id = vec![0u32; self.children.len()];
+        let mut at = 0;
+        while at < order.len() {
+            for (_, child) in self.kids(order[at] as usize) {
+                id[child as usize] = index(order.len());
+                order.push(child);
+            }
+            at += 1;
+        }
+        (order, id)
+    }
 }
 
 struct Blob(Vec<u8>);
@@ -683,6 +708,7 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
     write_tables(&mut b, &tables, rules);
     let ids: HashMap<&str, u32> = words.iter().enumerate().map(|(i, (w, _))| (w.as_str(), index(i))).collect();
     let stems = with_taught(rules, lexicon, &words, stems);
+    let (order, id) = trie.breadth_first();
     write_stems(&mut b, &stems, lexicon, |text| {
         let mut ends = ids.get(text).and_then(|id| trie.sound_ends.get(id)).cloned().unwrap_or_default();
         // Then where longer words spelled the same way go on from it, most common first
@@ -696,7 +722,7 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
                 ends.push(node);
             }
         }
-        ends
+        ends.iter().map(|&node| id[node as usize]).collect()
     });
     b.len(words.len());
     for (word, rank) in &words {
@@ -709,7 +735,7 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.str(&m.text);
         b.u8(u8::from(m.prefix));
     }
-    write_trie(&mut b, &trie);
+    write_trie(&mut b, &trie, &order, &id);
     b.0
 }
 
@@ -850,18 +876,18 @@ fn write_stems(b: &mut Blob, stems: &[(Vec<Stroke>, String)], lexicon: &Lexicon,
 
 /// The trie, flattened: each node's edges and words contiguous, in a fixed order, as offset
 /// arrays (`n + 1` each, so a node's range ends where the next one's starts); each edge eight
-/// bytes, its sounds an index into a table of the few distinct masks.
-fn write_trie(b: &mut Blob, trie: &Trie) {
+/// bytes, its sounds an index into a table of the few distinct masks. The nodes are numbered
+/// [`Trie::breadth_first`] (`order`, `id`).
+fn write_trie(b: &mut Blob, trie: &Trie, order: &[u32], id: &[u32]) {
     let n = trie.children.len();
     let mut edge_rows: Vec<(EdgeKey, u32)> = Vec::new();
     let mut end_rows: Vec<(u32, u8)> = Vec::new();
     let mut edge_start = Vec::with_capacity(n + 1);
     let mut end_start = Vec::with_capacity(n + 1);
-    for node in 0..n {
+    for &node in order {
+        let node = node as usize;
         edge_start.push(index(edge_rows.len()));
-        let mut kids: Vec<(EdgeKey, u32)> = trie.children[node].iter().map(|(k, v)| (*k, *v)).collect();
-        kids.sort_by_key(|(k, c)| (k.mask, k.letters, k.drop, *c));
-        edge_rows.extend(kids);
+        edge_rows.extend(trie.kids(node).into_iter().map(|(k, child)| (k, id[child as usize])));
         end_start.push(index(end_rows.len()));
         let mut ends = trie.ends[node].clone();
         ends.sort_by_key(|&(w, extra)| (extra, w));

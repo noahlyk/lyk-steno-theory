@@ -134,19 +134,24 @@ enum Tok {
     S(u8, u8),
 }
 
-/// One edge of the trie, in eight bytes: the node it leads to, which sounds it accepts (an index
-/// into [`Model::masks`], since a handful of masks serve every edge), the vowel letters the word
-/// spells it with (`a e i o u y`, one bit each), and what skipping it costs with, in the top bit,
-/// whether it is a vowel.
-#[derive(Clone, Copy)]
-struct Edge {
-    child: u32,
+/// One trie node, in sixteen bytes, with all a step reads about it: its first child (a node's
+/// children are numbered together, breadth first, so they run to the next node's first child),
+/// the cheapest word at or below it ([`Model::load`]), what ends at or below it ([`BELOW_WORD`] and
+/// the rest), and the edge into it: which sounds that accepts (an index into [`Model::masks`],
+/// since a handful of masks serve every edge), the vowel letters the word spells it with
+/// (`a e i o u y`, one bit each), and what skipping it costs with, in the top bit, whether it is a
+/// vowel. Children side by side, so stepping a position through them reads one stretch of memory.
+#[derive(Clone, Copy, Default)]
+struct Node {
+    first: u32,
+    lookahead: u32,
     class: u16,
     letters: u8,
     flags: u8,
+    below: u8,
 }
 
-impl Edge {
+impl Node {
     const fn drop(self) -> u32 {
         (self.flags & 0x7f) as u32
     }
@@ -282,13 +287,19 @@ enum Offer {
     Worse,
 }
 
-/// The decoder's working memory, one slot per trie node, reused from run to run: which beam a
-/// node was last put in (`stamp`), and its cost and back-pointer there.
+/// One trie node's slot in the working memory: which beam it was last put in (`stamp`), and its
+/// state there. One slot together, so putting a node in the beam touches one place in memory.
+#[derive(Clone, Copy, Default)]
+struct Slot {
+    stamp: u32,
+    cost: u32,
+    back: u32,
+    used: bool,
+}
+
+/// The decoder's working memory, one [`Slot`] per trie node, reused from run to run.
 pub struct Scratch {
-    stamp: Vec<u32>,
-    cost: Vec<u32>,
-    back: Vec<u32>,
-    used: Vec<bool>,
+    slots: Vec<Slot>,
     generation: u32,
     /// The runs read last, step by step, most recent first: keymux asks again on every stroke, and
     /// the next run usually is one of these and one stroke more (it also asks for the newest
@@ -316,10 +327,7 @@ struct Progress {
 impl Scratch {
     fn new(nodes: usize) -> Self {
         Self {
-            stamp: vec![0; nodes],
-            cost: vec![0; nodes],
-            back: vec![0; nodes],
-            used: vec![false; nodes],
+            slots: vec![Slot::default(); nodes],
             generation: 0,
             runs: Vec::new(),
             steps: 0,
@@ -336,7 +344,7 @@ impl Scratch {
     fn begin(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         if self.generation == 0 {
-            self.stamp.fill(0);
+            self.slots.fill(Slot::default());
             self.generation = 1;
         }
     }
@@ -346,25 +354,19 @@ impl Scratch {
     }
     /// A state that has used the stroke beats one that has not at the same cost.
     fn offer_new(&mut self, s: St) -> Offer {
-        let n = s.node as usize;
-        if self.stamp[n] != self.generation {
-            self.stamp[n] = self.generation;
-            self.cost[n] = s.cost;
-            self.back[n] = s.back;
-            self.used[n] = s.used;
-            Offer::New
-        } else if s.cost < self.cost[n] || (s.cost == self.cost[n] && s.used && !self.used[n]) {
-            self.cost[n] = s.cost;
-            self.back[n] = s.back;
-            self.used[n] = s.used;
-            Offer::Better
+        let generation = self.generation;
+        let slot = &mut self.slots[s.node as usize];
+        let fresh = slot.stamp != generation;
+        if fresh || s.cost < slot.cost || (s.cost == slot.cost && s.used && !slot.used) {
+            *slot = Slot { stamp: generation, cost: s.cost, back: s.back, used: s.used };
+            if fresh { Offer::New } else { Offer::Better }
         } else {
             Offer::Worse
         }
     }
     fn state(&self, node: u32) -> St {
-        let n = node as usize;
-        St { node, cost: self.cost[n], back: self.back[n], used: self.used[n] }
+        let slot = self.slots[node as usize];
+        St { node, cost: slot.cost, back: slot.back, used: slot.used }
     }
 }
 
@@ -436,21 +438,15 @@ pub struct Model {
     /// The morphemes are `words[first_morpheme..]`, each a prefix or a suffix
     first_morpheme: u32,
     morpheme_prefix: Vec<bool>,
-    /// Per trie node, what ends at or below it ([`BELOW_WORD`] and the rest)
-    below: Vec<u8>,
-    /// Each trie node's edges are `edges[edge_start[n]..edge_start[n + 1]]`, its words
-    /// `ends[end_start[n]..end_start[n + 1]]`
-    edge_start: Vec<u32>,
+    /// The trie's nodes and one past the last, whose `first` ends the last node's children ([`Node`]);
+    /// node `n`'s words are `ends[end_start[n]..end_start[n + 1]]`
+    nodes: Vec<Node>,
     end_start: Vec<u32>,
     masks: Vec<u64>,
-    edges: Vec<Edge>,
     ends: Vec<(u32, u8)>,
     scratch: std::sync::Mutex<Option<Scratch>>,
     rel: u32,
     c: Costs,
-    /// Per trie node, the cheapest word at or below it: charged as soon as a path enters the node,
-    /// so a half-matched word competes in the beam on what finishing it will cost at least
-    lookahead: Vec<u32>,
 }
 
 struct Reader<'a> {
@@ -486,7 +482,7 @@ impl Reader<'_> {
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 
 /// `run` with each `+*` (the join key and the star alone) put on the stroke before it as its star:
 /// the star struck late, `+-T` then `+*` is `+*T`.
@@ -684,37 +680,46 @@ impl Model {
         let end_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
         let m = r.u32() as usize;
         let masks: Vec<u64> = (0..m).map(|_| r.u64()).collect();
+        // Numbered breadth first, edge `k` leads to node `k + 1`: the edge's sounds go with the node
         let m = r.u32() as usize;
-        let edges: Vec<Edge> = (0..m).map(|_| Edge { child: r.u32(), class: r.u16(), letters: r.u8(), flags: r.u8() }).collect();
+        if n == 0 || m + 1 != n || edge_start[n] as usize != m {
+            return None;
+        }
+        let mut nodes = vec![Node { lookahead: u32::MAX / 4, ..Node::default() }; n + 1];
+        for (at, node) in nodes.iter_mut().enumerate() {
+            node.first = edge_start[at] + 1;
+        }
+        for k in 0..m {
+            if r.u32() as usize != k + 1 {
+                return None;
+            }
+            let node = &mut nodes[k + 1];
+            (node.class, node.letters, node.flags) = (r.u16(), r.u8(), r.u8());
+        }
         let m = r.u32() as usize;
         let ends: Vec<(u32, u8)> = (0..m).map(|_| (r.u32(), r.u8())).collect();
         // Children always come after their parent, so one pass from the back fills every node
-        let mut lookahead = vec![u32::MAX / 4; n];
-        let mut below = vec![0u8; n];
         for at in (0..n).rev() {
-            for &(w, _) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
-                below[at] |= match w.checked_sub(first_morpheme) {
+            let kids = nodes[at].first as usize..nodes[at + 1].first as usize;
+            let mut below = 0;
+            let mut best = nodes[at].lookahead;
+            for &(w, extra) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
+                below |= match w.checked_sub(first_morpheme) {
                     None => BELOW_WORD,
                     Some(m) if morpheme_prefix[m as usize] => BELOW_PREFIX,
                     Some(_) => BELOW_SUFFIX,
                 };
-            }
-            for e in &edges[edge_start[at] as usize..edge_start[at + 1] as usize] {
-                below[at] |= below[e.child as usize];
-            }
-            let mut best = lookahead[at];
-            for &(w, extra) in &ends[end_start[at] as usize..end_start[at + 1] as usize] {
                 let cost = if w < first_morpheme { word_cost[w as usize] } else { word_cost[w as usize].max(c.morpheme_lookahead) };
                 best = best.min(cost + u32::from(extra));
             }
-            for e in &edges[edge_start[at] as usize..edge_start[at + 1] as usize] {
-                best = best.min(lookahead[e.child as usize]);
+            for kid in &nodes[kids] {
+                below |= kid.below;
+                best = best.min(kid.lookahead);
             }
-            lookahead[at] = best;
+            nodes[at].below = below;
+            nodes[at].lookahead = best;
         }
-        if let Some(root) = lookahead.first_mut() {
-            *root = 0;
-        }
+        nodes[0].lookahead = 0;
         Some(Self {
             sound_names,
             sound_spelling,
@@ -745,15 +750,12 @@ impl Model {
             spellings,
             first_morpheme,
             morpheme_prefix,
-            below,
             words,
             word_cost,
-            edge_start,
+            nodes,
             end_start,
             masks,
-            edges,
             ends,
-            lookahead,
             scratch: std::sync::Mutex::new(None),
             rel: rel(),
             c,
@@ -764,10 +766,11 @@ impl Model {
         self.first_morpheme as usize
     }
     pub const fn node_count(&self) -> usize {
-        self.lookahead.len()
+        self.nodes.len() - 1
     }
+    /// A trie's edges, one into each node but the root.
     pub const fn edge_count(&self) -> usize {
-        self.edges.len()
+        self.nodes.len() - 2
     }
 
     // --- Reading strokes ---
@@ -965,7 +968,7 @@ impl Model {
 
     // --- Matching ---
 
-    fn match_cost(&self, tok: Tok, e: Edge) -> Option<u32> {
+    fn match_cost(&self, tok: Tok, e: &Node) -> Option<u32> {
         match tok {
             Tok::C(s) => {
                 let mask = self.masks[e.class as usize];
@@ -1003,7 +1006,7 @@ impl Model {
         }
     }
 
-    fn vowel_cost(&self, sound: u8, letters: u8, e: Edge) -> u32 {
+    fn vowel_cost(&self, sound: u8, letters: u8, e: &Node) -> u32 {
         if self.masks[e.class as usize] & (1 << sound) == 0 {
             self.c.swap_vowel
         } else if letters == 0 {
@@ -1019,9 +1022,10 @@ impl Model {
 
     // --- The beam ---
 
-    fn edges_of(&self, node: u32) -> &[Edge] {
-        let n = node as usize;
-        &self.edges[self.edge_start[n] as usize..self.edge_start[n + 1] as usize]
+    /// A node's children, each with its id.
+    fn children(&self, node: u32) -> impl Iterator<Item = (u32, &Node)> {
+        let (first, end) = (self.nodes[node as usize].first, self.nodes[node as usize + 1].first);
+        (first..end).zip(&self.nodes[first as usize..end as usize])
     }
 
     /// The candidates as a beam: each trie position once, at its cheapest (the root keeps several,
@@ -1062,18 +1066,18 @@ impl Model {
                     if s.node == 0 && round > 0 {
                         continue;
                     }
-                    let here = self.lookahead[s.node as usize];
+                    let here = self.nodes[s.node as usize].lookahead;
                     let may = self.may_follow(arena, s.back);
-                    for e in self.edges_of(s.node) {
-                        if (s.node == 0 && e.drop() > ROOT_DROP) || self.below[e.child as usize] & may == 0 {
+                    for (child, e) in self.children(s.node) {
+                        if (s.node == 0 && e.drop() > ROOT_DROP) || e.below & may == 0 {
                             continue;
                         }
-                        let cost = s.cost + e.drop() + self.lookahead[e.child as usize] - here;
+                        let cost = s.cost + e.drop() + e.lookahead - here;
                         if cost <= limit {
-                            let skipped = St { node: e.child, cost, ..*s };
+                            let skipped = St { node: child, cost, ..*s };
                             match sc.offer_new(skipped) {
                                 Offer::New => {
-                                    nodes.push(e.child);
+                                    nodes.push(child);
                                     next.push(skipped);
                                 }
                                 Offer::Better => next.push(skipped),
@@ -1108,15 +1112,15 @@ impl Model {
             if s.node != 0 {
                 out.push(St { cost: s.cost + self.c.insert, ..*s });
             }
-            let here = self.lookahead[s.node as usize];
+            let here = self.nodes[s.node as usize].lookahead;
             let may = self.may_follow(arena, s.back);
-            for e in self.edges_of(s.node) {
-                if self.below[e.child as usize] & may == 0 {
+            for (child, e) in self.children(s.node) {
+                if e.below & may == 0 {
                     continue;
                 }
-                if let Some(c) = self.match_cost(tok, *e) {
-                    let cost = s.cost + c + self.lookahead[e.child as usize] - here;
-                    out.push(St { node: e.child, cost, back: s.back, used: true });
+                if let Some(c) = self.match_cost(tok, e) {
+                    let cost = s.cost + c + e.lookahead - here;
+                    out.push(St { node: child, cost, back: s.back, used: true });
                 }
             }
         }
@@ -1159,7 +1163,7 @@ impl Model {
                 arena.push((s.back, self.morpheme(word).map_or(Piece::Word(word), |_| Piece::Morpheme(word))));
                 out.push(St {
                     node: 0,
-                    cost: s.cost + piece + self.word_cost[word as usize] + u32::from(extra) - self.lookahead[s.node as usize],
+                    cost: s.cost + piece + self.word_cost[word as usize] + u32::from(extra) - self.nodes[s.node as usize].lookahead,
                     back: (arena.len() - 1) as u32,
                     used: true,
                 });
@@ -1171,14 +1175,14 @@ impl Model {
     /// first, at most `keep`.
     pub fn solve(&self, run: &[u32], keep: usize) -> Vec<Reading> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.lookahead.len())), run, keep);
+        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, keep);
         drop(guard);
         readings
     }
 
     /// Working memory for [`Self::solve_with`], for a caller solving on several threads at once.
     pub fn scratch(&self) -> Scratch {
-        Scratch::new(self.lookahead.len())
+        Scratch::new(self.node_count())
     }
 
     /// [`Self::solve`] with the caller's own working memory.
@@ -1419,7 +1423,7 @@ impl Model {
                 // The same word's sounds, for the strokes after to carry on into a longer word:
                 // its rarity and its piece are charged when that word ends
                 for &node in &self.stem_nodes[stem as usize] {
-                    out.push(St { node, cost: root.cost + later + self.c.stem_enter + self.lookahead[node as usize], back: root.back, used: true });
+                    out.push(St { node, cost: root.cost + later + self.c.stem_enter + self.nodes[node as usize].lookahead, back: root.back, used: true });
                 }
             }
         }
@@ -1526,7 +1530,7 @@ impl Model {
     /// keys when no reading is close enough.
     pub fn answer(&self, outline: &str) -> Option<String> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.lookahead.len())), outline);
+        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.node_count())), outline);
         drop(guard);
         text
     }

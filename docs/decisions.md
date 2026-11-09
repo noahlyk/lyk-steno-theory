@@ -2567,3 +2567,15 @@ their misses (`morphemes_go_only_where_they_build_a_word`):
   knows whether a word, prefix or suffix ends below it): without that, suffix paths after *the*
   crowded *thinking* out of a four-stroke run. A morpheme's share of the per-node lookahead is
   floored at 8 (6 lost *thinking* again; 12 cut giant words to 22%).
+
+**A faster solver, the same answers (2026-11-08).** Profiled on 3,683 outlines (backups' misses,
+giant words, locks, late stars), nearly all the solver's time went to stepping beam positions
+through the trie's edges, and that was waiting on memory: each edge read its child's lookahead and
+what ends below it from arrays indexed by a node number that had nothing to do with where the edge
+sat, and the working memory kept four arrays per node. The packer now numbers the nodes breadth
+first, a node's children together in edge order (edge `k` leads to node `k + 1`; blob version 10),
+and the decoder keeps one sixteen-byte record per node (its first child, its lookahead, what ends
+below it, the edge into it) and one slot of working memory per node, so stepping a position reads
+one stretch of memory. Answers byte for byte the same (native and wasm), backups 88.8% unchanged.
+Native 3.3 -> 1.9 ms a run; wasm 4.3 -> 2.7 ms a call (p50 3.6 -> 2.3, p99 13.0 -> 7.8, max 18.8 ->
+11.6), 84 -> 88 MB of wasm memory.
