@@ -43,7 +43,7 @@
       ["a prefix and a stem", "the prefix stroke, then the stem with `+`", "[Prefixes](#/ref/prefixes)"],
       ["any word, a syllable at a time", "each syllable a stroke, every one after the first with `+`", "[Syllables and folding](#/ref/syllables)"],
       ["every way in, one sheet", "stem + ending, prefix + stem, two words, syllables", "[Every way to join a word](#/ref/ways-to-join)"],
-      ["a name, capitalized, in one go", "`#` then the name struck as its word: `#/TKAPBL` is *Daniel*; a name the dictionary lacks is read from the names alone", "[The name lane](#/ref/names)"],
+      ["a name, capitalized, in one go", "`#` (types nothing), then the name struck as its word: `#`, `TKAPBL` is *Daniel*; a name the dictionary lacks is read from the names alone", "[The name lane](#/ref/names)"],
       ["a word that is not in the dictionary", "strike it as it sounds, a syllable at a time if need be: the solver reads the run as the word; or type letters in spelling mode. `solve` shows how a run reads", "[Syllables and folding](#/ref/syllables), [Spelling mode](#/ref/spelling-mode), [The solver](#/ref/fallback)"]
     ] },
     { "t": "h", "x": "When two words sound the same" },

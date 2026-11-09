@@ -564,3 +564,18 @@ fn every_suffix_is_a_join_key_stroke_defined_as_a_pure_attach_and_every_listed_o
     assert!(listed >= table.len(), "the Reference lists {listed} suffix strokes, fewer than the {} in the table", table.len());
     assert!(problems.is_empty(), "suffix entries that would not attach: {problems:#?}");
 }
+
+/// The name lane's opener: `#` alone is a built-in, silent entry (the plugin reads it from keymux's
+/// stroke history, so nothing may type before the name). Reserved like every command, and the
+/// `#/...` name entries that begin with it are longer matches that win over it.
+#[test]
+fn the_lone_number_bar_is_a_silent_reserved_entry() {
+    let commands: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/commands.json")).expect("commands parse");
+    let punctuation: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/punctuation.json")).expect("punctuation parse");
+    assert_eq!(commands.get("#").map(String::as_str), Some("{}"));
+    assert!(!punctuation.contains_key("#"));
+    let reserved = generate::reserved_outlines().expect("reserved dictionaries parse");
+    assert!(reserved.contains_key("#"), "no word may take the lone # stroke");
+}

@@ -31,6 +31,61 @@ use std::borrow::Cow;
 pub const JOIN: u32 = 1 << 23;
 pub const SPELL: u32 = 1 << 24;
 pub const NUMBER: u32 = 1;
+/// The number bar in keymux's own stroke bits (what `joins` and `history_stroke` carry; the
+/// solver's own layout above puts it at bit 0).
+pub const HOST_NUMBER: i64 = 1 << 22;
+
+/// The plugin's memory of its last answer: keymux asks about the same run several times while it
+/// searches for the longest match. The answer is the same only for the same run, the same text
+/// before it and the same lane, so all three are the key: `#` then a run and the run alone never
+/// share an answer.
+#[allow(dead_code)] // used by the plugin interface, which is compiled apart from this crate
+pub struct AnswerCache {
+    outline: String,
+    context: String,
+    lane: bool,
+    answer: Option<String>,
+    full: bool,
+}
+
+#[allow(dead_code)]
+impl AnswerCache {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { outline: String::new(), context: String::new(), lane: false, answer: None, full: false }
+    }
+
+    /// The remembered answer when it is for exactly this run, context and lane.
+    /// `Some(None)` is a remembered "no answer", `None` is not remembered.
+    #[must_use]
+    #[allow(clippy::option_option)]
+    pub fn get(&self, outline: &str, context: &str, lane: bool) -> Option<Option<String>> {
+        (self.full && self.lane == lane && self.outline == outline && self.context == context).then(|| self.answer.clone())
+    }
+
+    pub fn put(&mut self, outline: &str, context: &str, lane: bool, answer: Option<String>) {
+        outline.clone_into(&mut self.outline);
+        context.clone_into(&mut self.context);
+        self.lane = lane;
+        self.answer = answer;
+        self.full = true;
+    }
+}
+
+impl Default for AnswerCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Whether the run about to be read is a name: the stroke struck just before it (keymux's
+/// `history_stroke(0)`, -1 when there is none) was the number bar alone, `#`. No other stroke,
+/// `#` held with other keys included, opens the lane.
+#[must_use]
+#[allow(dead_code)]
+pub const fn in_name_lane(prev_stroke_bits: i64) -> bool {
+    prev_stroke_bits == HOST_NUMBER
+}
 pub const LEFT: u32 = 0b1111_1110;
 pub const VOWELS: u32 = (0b11 << 8) | (0b11 << 11);
 pub const STAR: u32 = 1 << 10;
@@ -1533,10 +1588,11 @@ impl Model {
 
     /// The cheapest readings of `run` (stroke bits, as keymux's own tape writes them), best
     /// first, at most `keep`.
-    /// `context` is the text typed just before the run, empty when unknown ([`Self::solve_in`]).
-    pub fn solve(&self, run: &[u32], keep: usize, context: &str) -> Vec<Reading> {
+    /// `context` is the text typed just before the run, empty when unknown ([`Self::solve_in`]);
+    /// `lane` is whether the run is a name ([`in_name_lane`]).
+    pub fn solve(&self, run: &[u32], keep: usize, context: &str, lane: bool) -> Vec<Reading> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let readings = self.solve_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, keep, context);
+        let readings = self.solve_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, keep, context, lane);
         drop(guard);
         readings
     }
@@ -1560,15 +1616,18 @@ impl Model {
 
     /// [`Self::solve`] with the caller's own working memory.
     pub fn solve_with(&self, sc: &mut Scratch, run: &[u32], keep: usize) -> Vec<Reading> {
-        self.solve_in(sc, run, keep, "")
+        self.solve_in(sc, run, keep, "", false)
     }
 
     /// [`Self::solve_with`] after `context`, the text typed just before the run (keymux's
     /// `context`; empty when unknown): its last word re-ranks the readings ([`previous_word`],
-    /// [`CONTEXT_WEIGHT_TENTHS`]). An empty context changes nothing.
-    pub fn solve_in(&self, sc: &mut Scratch, run: &[u32], keep: usize, context: &str) -> Vec<Reading> {
-        if let Some((names, rest)) = self.lane(run) {
-            let mut readings = names.solve(rest, keep, context);
+    /// [`CONTEXT_WEIGHT_TENTHS`]). An empty context changes nothing. With `lane` set the run is a
+    /// name, read by the names model alone and capitalized ([`in_name_lane`]); the run holds the
+    /// name's strokes only, not the `#` before it.
+    pub fn solve_in(&self, sc: &mut Scratch, run: &[u32], keep: usize, context: &str, lane: bool) -> Vec<Reading> {
+        if lane {
+            let Some(names) = self.names.as_deref() else { return Vec::new() };
+            let mut readings = names.solve(run, keep, context, false);
             for r in &mut readings {
                 r.text = self.name_text(&r.text);
             }
@@ -1584,16 +1643,6 @@ impl Model {
             return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false, context: 0 }];
         }
         self.solve_locked(sc, tail, keep, Some(&locked), prev)
-    }
-
-    /// The name lane: a run that opens with the bare `#` stroke and goes on is a name, read by the
-    /// names model alone (`rest` is the run after the `#`). `None` for every other run, and always
-    /// when the blob has no names.
-    fn lane<'a>(&self, run: &'a [u32]) -> Option<(&Self, &'a [u32])> {
-        match run {
-            [NUMBER, rest @ ..] if !rest.is_empty() => Some((self.names.as_deref()?, rest)),
-            _ => None,
-        }
     }
 
     /// A name as it is written: its own spelling when the list has one (`McDonald`), else with a
@@ -2097,14 +2146,14 @@ impl Model {
     /// The best reading of `outline` (Plover notation, `KAT/+-G`), or the plain read-back of its
     /// keys when no reading is close enough.
     pub fn answer(&self, outline: &str) -> Option<String> {
-        self.answer_after(outline, "")
+        self.answer_after(outline, "", false)
     }
 
     /// [`Self::answer`] after `context`, the text typed just before the run ([`Self::solve_in`]):
-    /// what the plugin types.
-    pub fn answer_after(&self, outline: &str, context: &str) -> Option<String> {
+    /// what the plugin types. `lane`: the run is a name ([`Self::solve_in`]).
+    pub fn answer_after(&self, outline: &str, context: &str, lane: bool) -> Option<String> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let text = self.answer_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), outline, context);
+        let text = self.answer_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), outline, context, lane);
         drop(guard);
         text
     }
@@ -2120,17 +2169,17 @@ impl Model {
 
     /// [`Self::answer`] with the caller's own working memory.
     pub fn answer_with(&self, sc: &mut Scratch, outline: &str) -> Option<String> {
-        self.answer_in(sc, outline, "")
+        self.answer_in(sc, outline, "", false)
     }
 
     /// [`Self::answer_with`] after `context`, the text typed just before the run ([`Self::solve_in`]).
-    pub fn answer_in(&self, sc: &mut Scratch, outline: &str, context: &str) -> Option<String> {
+    pub fn answer_in(&self, sc: &mut Scratch, outline: &str, context: &str, lane: bool) -> Option<String> {
         let run: Vec<u32> = outline.split('/').map(parse_stroke).collect::<Option<_>>()?;
+        if lane {
+            return self.names.as_deref()?.answer_after_run(&run, context).map(|text| self.name_text(&text));
+        }
         if run.first().is_some_and(|s| s & SPELL != 0) {
             return self.spelled(&run);
-        }
-        if let Some((names, rest)) = self.lane(&run) {
-            return names.answer_after_run(rest, context).map(|text| self.name_text(&text));
         }
         self.answer_run(sc, &run, self.context_word(context))
     }

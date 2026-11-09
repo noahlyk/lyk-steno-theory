@@ -1107,27 +1107,68 @@ mod tests {
         }
     }
 
-    /// The name lane: `#`, then the name struck as the rules strike its lowercase word.
+    /// The name lane: a run struck after a lone `#` stroke, struck as the rules strike the
+    /// name's lowercase word. keymux's stroke history tells the plugin; here the flag is passed.
     #[test]
-    fn a_name_behind_the_hash_reads_from_the_names_alone() {
+    fn a_name_in_the_lane_reads_from_the_names_alone() {
         let model = model();
+        let lane = |outline: &str| model.answer_after(outline, "", true);
         // A name no dictionary lists, struck by its sounds and by its spelling
-        assert_eq!(model.answer("#/AER/+O/+SPHEUT").as_deref(), Some("Aerosmith"));
+        assert_eq!(lane("AER/+O/+SPHEUT").as_deref(), Some("Aerosmith"));
         // Capitalized, and written as the list writes it where that is not just a capital
-        assert_eq!(model.answer("#/PHOBG/+TKAUPBLD").as_deref(), Some("McDonald"));
-        // The same strokes without the `#` are the ordinary lane's, untouched
+        assert_eq!(lane("PHOBG/+TKAUPBLD").as_deref(), Some("McDonald"));
+        // The same strokes out of the lane are the ordinary lane's, untouched
         let plain = model.answer("AER/+O/+SPHEUT").unwrap();
         assert_eq!(plain, plain.to_lowercase(), "the ordinary lane types lowercase: {plain}");
         // A word that is no name is not found in the lane: the lane reads names only
-        let computer = model.answer("#/KOPL/+PU/+TER").unwrap();
+        let computer = lane("KOPL/+PU/+TER").unwrap();
         assert_ne!(computer.to_lowercase(), "computer", "{computer}");
-        // The bare `#` and a `#` held with other keys are not the lane
-        assert_eq!(model.answer("#"), None);
-        let held = model.answer("#KOPL/+PU/+TER");
-        assert_eq!(held, model.answer("#KOPL/+PU/+TER"));
         // Plurals and locks go on as in the ordinary lane
-        assert_eq!(model.answer("#/AER/+O/+SPHEUT/+-S").as_deref(), Some("Aerosmiths"));
-        assert_eq!(model.answer("#/AER/+O/+SPHEUT/+").as_deref(), Some("Aerosmith"));
+        assert_eq!(lane("AER/+O/+SPHEUT/+-S").as_deref(), Some("Aerosmiths"));
+        assert_eq!(lane("AER/+O/+SPHEUT/+").as_deref(), Some("Aerosmith"));
+        // A late star and a one-stroke name read in the lane too
+        let starred = model.answer_after("AER/+O/+SPHEUT/+*", "", true);
+        assert!(starred.is_some());
+        // Reading in the lane is what reading `#/...` was: the names model, capitalized
+        assert_eq!(lane("TKAPBL").as_deref(), Some("Daniel"));
+    }
+
+    /// Only a lone `#` strokes the lane: not another stroke, not `#` held with keys, not no stroke.
+    #[test]
+    fn only_a_lone_number_bar_opens_the_name_lane() {
+        assert!(core::in_name_lane(1 << 22));
+        assert!(!core::in_name_lane(-1), "no stroke before");
+        assert!(!core::in_name_lane(0));
+        assert!(!core::in_name_lane((1 << 22) | 1), "# held with S");
+        assert!(!core::in_name_lane((1 << 22) | (1 << 23)), "a joined #");
+        assert!(!core::in_name_lane(1), "S alone");
+        assert!(!core::in_name_lane(1 << 23));
+    }
+
+    /// The plugin's cache must not hand a lane answer to the plain run or the reverse.
+    #[test]
+    fn the_cache_key_holds_the_run_the_context_and_the_lane() {
+        let mut cache = core::AnswerCache::new();
+        assert_eq!(cache.get("KAT", "", false), None, "nothing yet");
+        cache.put("KAT", "", false, Some("cat".into()));
+        assert_eq!(cache.get("KAT", "", false), Some(Some("cat".into())));
+        assert_eq!(cache.get("KAT", "", true), None, "the same run in the lane is another question");
+        assert_eq!(cache.get("KAT", "well, ", false), None, "another context");
+        assert_eq!(cache.get("KOT", "", false), None, "another run");
+        cache.put("KAT", "", true, None);
+        assert_eq!(cache.get("KAT", "", true), Some(None), "a remembered no answer");
+        assert_eq!(cache.get("KAT", "", false), None);
+        // The real thing: `#` then X and X alone never share an answer
+        let m = model();
+        let mut cache = core::AnswerCache::new();
+        for lane in [true, false, true] {
+            let got = cache.get("AER/+O/+SPHEUT", "", lane).unwrap_or_else(|| {
+                let a = m.answer_after("AER/+O/+SPHEUT", "", lane);
+                cache.put("AER/+O/+SPHEUT", "", lane, a.clone());
+                a
+            });
+            assert_eq!(got, m.answer_after("AER/+O/+SPHEUT", "", lane));
+        }
     }
 
     #[test]
@@ -1467,7 +1508,7 @@ mod tests {
     #[test]
     fn the_plugin_source_carries_the_decoder_and_the_interface() {
         let source = plugin::source(b"LYKS");
-        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "extern \"C\" fn lane", "extern \"C\" fn init", "extern \"C\" fn context", "include_bytes!(\"05-lyk-solver.bin\")"] {
+        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "extern \"C\" fn init", "extern \"C\" fn context", "fn history_stroke", "in_name_lane(stroke_before())", "include_bytes!(\"05-lyk-solver.bin\")"] {
             assert!(source.contains(needle), "{needle}");
         }
         assert!(Model::load(b"nope").is_none());
@@ -1507,9 +1548,9 @@ mod tests {
             let run: Vec<u32> = outline.split('/').map(|s| core::parse_stroke(s).expect("a stroke")).collect();
             let plain: Vec<(String, u32)> = m.solve_with(&mut sc, &run, 8).into_iter().map(|r| (r.text, r.cost)).collect();
             for context in ["", "well, ", "zzqxj ", "\"yes\" "] {
-                let after: Vec<(String, u32)> = m.solve_in(&mut sc, &run, 8, context).into_iter().map(|r| (r.text, r.cost)).collect();
+                let after: Vec<(String, u32)> = m.solve_in(&mut sc, &run, 8, context, false).into_iter().map(|r| (r.text, r.cost)).collect();
                 assert_eq!(after, plain, "{outline} after {context:?}");
-                assert_eq!(m.answer_in(&mut sc, outline, context), m.answer(outline), "{outline} after {context:?}");
+                assert_eq!(m.answer_in(&mut sc, outline, context, false), m.answer(outline), "{outline} after {context:?}");
             }
         }
     }
@@ -1519,10 +1560,10 @@ mod tests {
         let m = model();
         for (outline, context, alone, after) in [("-PB/+OE/+*", "I don't ", "no", "know"), ("WAOE/+RE", "they ", "where", "were")] {
             assert_eq!(m.answer(outline).as_deref(), Some(alone), "{outline} alone");
-            assert_eq!(m.answer_after(outline, context).as_deref(), Some(after), "{outline} after {context:?}");
+            assert_eq!(m.answer_after(outline, context, false).as_deref(), Some(after), "{outline} after {context:?}");
         }
         // After a sentence's end the word before is the start itself, not the word before the stop
-        assert_eq!(m.answer_after("-PB/+OE/+*", "I don't.  ").as_deref(), m.answer_after("-PB/+OE/+*", "Fine. ").as_deref());
+        assert_eq!(m.answer_after("-PB/+OE/+*", "I don't.  ", false).as_deref(), m.answer_after("-PB/+OE/+*", "Fine. ", false).as_deref());
     }
 
     #[test]
@@ -1531,7 +1572,7 @@ mod tests {
         let mut sc = m.scratch();
         let run: Vec<u32> = "WAUT/+-R".split('/').map(|s| core::parse_stroke(s).expect("a stroke")).collect();
         for context in ["", "they ", "I ", "to ", "the "] {
-            let first = m.solve_in(&mut sc, &run, 5, context).into_iter().next().expect("a reading");
+            let first = m.solve_in(&mut sc, &run, 5, context, false).into_iter().next().expect("a reading");
             assert!(first.exact && first.text == "water", "after {context:?}: {}", first.text);
         }
     }

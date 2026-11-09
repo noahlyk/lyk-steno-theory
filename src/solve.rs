@@ -39,6 +39,8 @@ pub struct Options<'a> {
     pub corpus: &'a Path,
     /// With `outline`: the text typed before it
     pub after: &'a str,
+    /// With `outline`: read it in the name lane
+    pub name: bool,
 }
 
 /// The model `build` would ship, from the dictionary already in `dir`.
@@ -72,10 +74,14 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     );
     if let Some(path) = options.answers {
         let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
-        // A line is an outline, or an outline, a tab and the text typed before it
+        // A line is an outline, or an outline, a tab and the text typed before it, or those and a
+        // third field, `lane`, when the run was struck after a lone `#` stroke (the name lane)
         for line in text.lines().filter(|l| !l.is_empty()) {
-            let (outline, before) = line.split_once('\t').unwrap_or((line, ""));
-            println!("{line}\t{}", model.answer_after(outline, before).unwrap_or_else(|| "-".into()));
+            let mut fields = line.split('\t');
+            let outline = fields.next().unwrap_or_default();
+            let before = fields.next().unwrap_or_default();
+            let lane = fields.next() == Some("lane");
+            println!("{line}\t{}", model.answer_after(outline, before, lane).unwrap_or_else(|| "-".into()));
         }
         return Ok(());
     }
@@ -87,7 +93,7 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
             }
         }
         let t = Instant::now();
-        let readings = model.solve(&run, 8, options.after);
+        let readings = model.solve(&run, 8, options.after, options.name);
         let took = t.elapsed();
         for r in &readings {
             let context = if r.context == 0 { String::new() } else { format!("  (context {:+.1})", f64::from(r.context) / 10.0) };
@@ -96,7 +102,7 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
         if !options.after.is_empty() {
             println!("after: {:?}", solve::core::previous_word(options.after));
         }
-        println!("answer: {:?}  ({took:.1?})", model.answer_after(text, options.after));
+        println!("answer: {:?}  ({took:.1?})", model.answer_after(text, options.after, options.name));
         return Ok(());
     }
     if let Some(step) = options.eval {
@@ -142,14 +148,13 @@ impl NameTally {
     }
 }
 
-/// `#` then the outline (join keys set), as the solver is asked it.
+/// The outline (join keys set) as the solver is asked it: the strokes after the lone `#`, which
+/// the plugin reads from keymux's stroke history and the solver is told as `lane`.
 fn lane_run(outline: &[Stroke]) -> Vec<u32> {
-    let mut run = vec![1u32];
-    run.extend(outline.iter().map(|s| s.0));
-    run
+    outline.iter().map(|s| s.0).collect()
 }
 
-/// The name lane: every `step`th name that has a pronunciation, struck behind `#` in four ways: as
+/// The name lane: every `step`th name that has a pronunciation, struck in the lane (after a lone `#`) in four ways: as
 /// the rules strike its sounds, as the cheapest lattice paths strike them, and (the pronunciation
 /// kept, then withheld) as its spelling is struck. The model whose pronunciations are withheld is
 /// the one a name with none is read by.
@@ -187,7 +192,7 @@ fn eval_names(setup: &Setup, model: &Model, step: usize, misses: Option<&Path>) 
         for (kind, outline) in strikes {
             let run = lane_run(&outline);
             // Kinds 3 and 4 are read by the model that was never told how the name sounds
-            let got = if kind >= 3 { blind.solve_with(&mut sc, &run[1..], 5).into_iter().map(|mut r| { r.text = capitalized(&r.text, name); r }).collect() } else { model.solve(&run, 5, "") };
+            let got = if kind >= 3 { blind.solve_with(&mut sc, &run, 5).into_iter().map(|mut r| { r.text = capitalized(&r.text, name); r }).collect() } else { model.solve(&run, 5, "", true) };
             tally[kind].add(&got, &name.text);
             if kind == 0 && got.first().is_none_or(|r| r.text != name.text) {
                 let _ = writeln!(lost, "{}\t{}\t{}", render_outline(&outline), name.text, got.first().map_or("-", |r| r.text.as_str()));
@@ -313,7 +318,7 @@ fn eval_context(model: &Model, dir: &Path, corpus: &Path, step: usize, misses: O
                                 last = Some((outline, model.solve_with(&mut sc, &run, 5)));
                             }
                             let plain = &last.as_ref().expect("solved just now").1;
-                            let after = model.solve_in(&mut sc, &run, 5, before);
+                            let after = model.solve_in(&mut sc, &run, 5, before, false);
                             let right = |got: &[solve::Reading]| got.first().is_some_and(|r| r.text.to_lowercase() == *word);
                             let in5 = |got: &[solve::Reading]| got.iter().any(|r| r.text.to_lowercase() == *word);
                             let note = format!(

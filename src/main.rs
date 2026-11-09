@@ -219,12 +219,15 @@ enum Command {
         #[arg(long)]
         context: Option<usize>,
         /// Test the name lane: every Nth name with a pronunciation, struck by its sounds and by
-        /// its spelling behind `#`, with the pronunciation kept and withheld
+        /// its spelling (the run read after a lone `#` stroke), with the pronunciation kept and withheld
         #[arg(long)]
         names: Option<usize>,
         /// With an outline: the text typed before it, whose last word re-ranks its readings
         #[arg(long, default_value = "")]
         after: String,
+        /// With an outline: read it as a name, the way the plugin does after a lone `#` stroke
+        #[arg(long)]
+        name: bool,
     },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
@@ -418,9 +421,9 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, names, after } => solve::run(&setup(Some(*common))?, &solve::Options {
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, names, after, name } => solve::run(&setup(Some(*common))?, &solve::Options {
             outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught, compounds: *compounds,
-            giant: giant.as_deref(), giant_count: *giant_count, context: *context, names: *names, corpus: &cli.data.join("corpus"), after,
+            giant: giant.as_deref(), giant_count: *giant_count, context: *context, names: *names, corpus: &cli.data.join("corpus"), after, name: *name,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

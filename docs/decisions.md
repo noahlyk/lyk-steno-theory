@@ -2731,7 +2731,8 @@ asserted against every generated entry and the reserved strokes).
 **The solver.** `pack` writes the names as a second, complete model nested after the first (blob
 version 12): the same tables, trie code and costs; names ranked by position; no morphemes; no
 bigrams; a name with no pronunciation in the trie by its spelling's readings alone. The decoder
-takes a run that opens with the bare `#` stroke and goes on to this model, and nothing else, so the
+takes a run flagged as a name to this model (first written as a run that opens with the bare `#`
+stroke; see the stroke-history entry below for how it is flagged now), and nothing else, so the
 ordinary lane cannot move: backups 88.9% (top5 96.9%), taught 98.5%, compounds 42.9%, giant 85.7%,
 `--context 1` 92.8% (3,751 won, 1,398 lost), the output of `solve --eval/--taught/--compounds/--giant/
 --context` equal to the build before it line for line except timing and size. `solve --names 10`
@@ -2744,7 +2745,7 @@ losses are homophones (*Neil*, *Neal*).
 name runs and 10,800 ordinary ones; ordinary 2.0 ms a call as before, a name 0.1-0.5 ms; `init`
 43 ms, first call 0.45 ms.
 
-**The engine.** keymux cannot hand the solver `#` and the stroke after it as one run (the second
+**The engine (superseded by the next entry).** keymux cannot hand the solver `#` and the stroke after it as one run (the second
 stroke is no join), so it gained a generic plugin export, `lane(bits)` (keymux 245ed71, documented in
 `docs/plugins/`): lyk's plugin answers true for `#` alone (bit 22). The alternative with no engine
 change, `#` held on the first stroke (Lapwing's `#TKAPBL` form), was tried: keymux renders a stroke with
@@ -2753,3 +2754,50 @@ the number bar down with its number keys as digits (`#TPHOE` reaches the plugin 
 indistinguishable from the number it also types, and it is a stretch with the first chord. The
 separate stroke also matches Lapwing's prefixed file and the user's own `#/` entries. Not built:
 letter-to-sound for a name with no pronunciation; a context rule (the web bigrams) for names.
+
+## The name lane reads keymux's stroke history, not a `lane` hook (2026-11-09)
+
+77fe665 made the name lane work through a keymux plugin export `lane(bits)`: a stroke the plugin
+named opened a lane, and keymux then asked the plugin about `#/X` as one run. It worked, but it put a
+special case in the engine for one theory's one idea, and `#` had to type a `#` of the user's own
+when struck alone. The hook is dropped. keymux instead keeps a **stroke history** (the strokes since
+the last wall: a key press, typing by hand, a window change; undo shrinks it) and a plugin pulls it
+one stroke at a time through two optional host imports, `history_len()` and `history_stroke(k)`
+(`k = 0` is the stroke just before the run it is asked about, -1 when out of range or past a wall).
+Any theory can build on that, a lane or a mode or anything that depends on what was struck before;
+the engine knows nothing about `#`.
+
+**What changed in lyk.** The plugin is asked about the name's strokes alone (`AER/+O/+SPHEUT`, no
+`#`), like any run. Before decoding, `fallback` reads `history_stroke(0)`; if it is exactly the number
+bar alone (`in_name_lane`: keymux's bit 22, the same stroke `#` that `joins` and the tape carry) the run
+is in the **name lane** and is decoded against the names model, capitalized, as before. The
+decoder core stays free of the import (it also runs natively for the `solve` evals): the lane is an
+argument (`solve_in(.., context, lane)`, `answer_after(.., context, lane)`), and only the plugin's
+interface text, compiled for wasm, calls the host. The plugin's one-answer cache (keymux asks about
+the same run several times while it looks for the longest match) is keyed by run, context **and
+lane** (`AnswerCache`), so `#` then X and X alone never share an answer.
+
+**`#` types nothing.** The stroke `#` alone is now a built-in entry in `01-lyk-commands.json`
+(`rules/reserved/commands.json`) with the output `{}`: a stroke of its own that keymux remembers and
+that types nothing, so no stray `#` appears before the name. The generated `#/...` name entries are
+longer matches and win over it by the engine's longest-match rule, so a listed name is typed from the
+dictionary and an unlisted one reaches the solver with the `#` behind it in the history. The user's
+own `00-user.json` must not map `#` itself (a `"#": "#"` entry shadows the silent one and types a `#`
+before every name, though the lane still works); a literal `#` takes a stroke of its own such as `#/#`.
+
+**Measured.** The names eval strikes the name without the `#` and passes `lane` (`solve --names 10`,
+`solve --name OUTLINE`, a third `lane` field on a `solve --answers` line): 92.3% first / 99.3% in five
+by the rules' sounds, 90.5 / 99.3 lattice, 89.3 / 98.3 spelling, 54.9 / 80.5 and 85.6 / 97.8 with the
+pronunciation withheld: the same as with `#/` in front. The ordinary lane did not move: the
+miss lists of `--eval 125`, `--taught 10000`, `--compounds 2000`, `--giant` and `--names 10` are
+byte for byte those of 77fe665 (backups 88.9% / 3,433 misses, taught 98.5%, compounds 42.9%, giant
+85.7%, `--context 1` 92.8%: 3,751 won, 1,398 lost). wasm byte for byte native on 18,903 runs (3,000
+ordinary, 7,800 after a context, 8,403 in the lane, and the same runs with other strokes in the
+history: not the lane). Blob 27.4 MB, wasm 29.2 MB, memory 84 MB, `init` 41 ms, first call 0.4 ms;
+1.9 ms a call for an ordinary run (as before), 0.7 ms mean for a name run.
+
+**Not changed.** The names model, the generated `#/...` dictionary files (they keep their `#/`
+keys), the sources, the page on the site (rewritten for the new reading). Limits: the lane lasts for
+the run struck right after the `#`; a wall between the `#` and the name (a key press, a window change)
+ends it, so the name is then read as an ordinary run; a keymux without the history imports cannot run
+the plugin at all (it declares them).

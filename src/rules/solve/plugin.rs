@@ -1,6 +1,6 @@
 //! The keymux plugin: [`super::core`] verbatim, the packed blob beside it, and the fixed interface
-//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, `lane`, and `init` and `context`; see keymux's
-//! `docs/plugins/README.md`).
+//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, and `init` and `context`; it imports `history_len` and
+//! `history_stroke` to see the stroke before a run; see keymux's `docs/plugins/README.md`).
 //!
 //! keymux compiles a plugin from its `.rs` alone and caches the result by that file's content
 //! hash, so the source names the blob's own hash: a new blob is a new source, and is recompiled.
@@ -25,10 +25,24 @@ fn model() -> Option<&'static Model> {
     MODEL.get_or_init(|| Model::load(BLOB)).as_ref()
 }
 
+// keymux's stroke history (optional host imports): the strokes struck before the run `fallback` is
+// asked about. Valid only while `fallback` runs.
+#[link(wasm_import_module = "keymux")]
+extern "C" {
+    fn history_len() -> i32;
+    fn history_stroke(k: i32) -> i64;
+}
+
+/// The stroke struck just before the run, in keymux's bits, or -1 when there is none.
+fn stroke_before() -> i64 {
+    // SAFETY: both are keymux host functions that only read its stroke history
+    unsafe { if history_len() > 0 { history_stroke(0) } else { -1 } }
+}
+
 thread_local! {
     // keymux asks about the same run several times while it searches for the longest match: the
-    // run, the context it was asked after, and the answer
-    static LAST: std::cell::RefCell<(String, String, Option<String>)> = const { std::cell::RefCell::new((String::new(), String::new(), None)) };
+    // run, the context and the lane it was asked in, and the answer
+    static LAST: std::cell::RefCell<AnswerCache> = const { std::cell::RefCell::new(AnswerCache::new()) };
     // The text typed just before the run `fallback` is asked next, as `context` gave it
     static CONTEXT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
 }
@@ -68,15 +82,14 @@ pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
     let bytes = unsafe { std::slice::from_raw_parts(ptr as *const u8, len.max(0) as usize) };
     let Ok(outline) = std::str::from_utf8(bytes) else { return -1 };
     let context = CONTEXT.with(|c| c.borrow().clone());
-    let cached = LAST.with(|last| {
-        let last = last.borrow();
-        (last.0 == outline && last.1 == context).then(|| last.2.clone())
-    });
+    // A run struck right after a lone `#` is a name
+    let lane = in_name_lane(stroke_before());
+    let cached = LAST.with(|last| last.borrow().get(outline, &context, lane));
     let text = match cached {
         Some(text) => text,
         None => {
-            let text = model().and_then(|m| m.answer_after(outline, &context));
-            LAST.with(|last| *last.borrow_mut() = (outline.to_owned(), context, text.clone()));
+            let text = model().and_then(|m| m.answer_after(outline, &context, lane));
+            LAST.with(|last| last.borrow_mut().put(outline, &context, lane, text.clone()));
             text
         }
     };
@@ -91,13 +104,6 @@ pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
 #[no_mangle]
 pub extern "C" fn joins(bits: i64) -> i32 {
     i32::from(bits as u32 & JOIN != 0)
-}
-
-/// The name lane's lead stroke: `#` alone (keymux's bit 22, its number key). The stroke after it
-/// is read as part of the same run (see keymux's docs/plugins/README.md, `lane`).
-#[no_mangle]
-pub extern "C" fn lane(bits: i64) -> i32 {
-    i32::from(bits == 1 << 22)
 }
 "#;
 

@@ -21,7 +21,7 @@
     ] },
     { "t": "p", "x": "Most marks have several strokes, for several contexts: plain, doubled, glued, or after a quote. Learn one per mark; the rest are there when you reach for them." },
     { "t": "h", "x": "Capitals" },
-    { "t": "p", "x": "[[KPA]] capitalises the next word and keeps the space; [[KPA*]] does the same glued to the word before. That is how names are handled: a name types as its ordinary sound-alike outline, capitalised by this stroke first. The shortcut is the name lane: strike `#` alone and then the same outline, and the name comes out capitalised (`#/TKAPBL` is *Daniel*); a name the dictionary lacks is read from names alone ([the name lane](#/ref/names))." },
+    { "t": "p", "x": "[[KPA]] capitalises the next word and keeps the space; [[KPA*]] does the same glued to the word before. That is how names are handled: a name types as its ordinary sound-alike outline, capitalised by this stroke first. The shortcut is the name lane: strike `#` alone (it types nothing) and then the same outline, and the name comes out capitalised (`#`, then `TKAPBL` is *Daniel*); a name the dictionary lacks is read from names alone ([the name lane](#/ref/names))." },
     { "t": "h", "x": "Commands" },
     { "t": "table", "head": ["Does", "Stroke", "Does", "Stroke"], "rows": [
       ["Return", "[[SKW-BGS]]", "Backspace", "[[PW*FP]]"],

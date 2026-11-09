@@ -84,5 +84,6 @@
 "TK*UP": "{:undo_word}",
 "TKPWA*EPB": "{:again}",
 "SWA*P": "{:swap}",
-"PHRO*PLZ": "{:transparent}{:engine:unload}"
+"PHRO*PLZ": "{:transparent}{:engine:unload}",
+"#": "{}"
 }
