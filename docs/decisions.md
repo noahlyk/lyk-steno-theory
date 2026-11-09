@@ -2593,3 +2593,15 @@ Wasm, 3,683 outlines each one call: 2.7 -> 2.1 ms a call (p50 1.7, p99 6.3, max 
 pattern, each run fed stroke by stroke (13,568 calls): 1.20 -> 0.57 ms a call (p50 0.60 -> 0.27, p99
 7.3 -> 3.5, max 12 -> 6); the first call, which loads the model, 60 -> 37 ms; wasm memory 84 -> 80
 MB. Native 1.9 -> 1.4 ms a run.
+
+Last, for wasm (keymux compiles plugins at `opt-level=2`, which left the beam's offer a call of its
+own, 14% of the time): the few small functions of the hot loop are marked `#[inline]`; a node's
+slot of working memory holds only where it sits in the beam's list of positions (8 bytes, not 16),
+so the list is the beam and the slots shrink by half; the trie's big tables load a row at a time
+from the blob, not a field at a time. In all, against 1e7e3c2: wasm 4.4 -> 2.0 ms a call (p50 3.7
+-> 1.7, p99 13.1 -> 6.0, max 19 -> 9); stroke by stroke 1.21 -> 0.56 ms (p50 0.61 -> 0.27, p99 7.3
+-> 3.4, max 11 -> 6); first call 61 -> 35 ms; wasm memory 84 -> 72 MB; native 3.4 -> 1.4 ms a run.
+Tried and dropped: matching the root's children once a step for every position at the root (wasm
+7% slower), remembering the rarity of ranks seen (a logarithm is 14% of loading in wasm, but few
+ranks repeat), validating texts with `from_utf8` before the lossy read (no change), and returning
+early from `keep_ends` when it has 16 readings or fewer (it rarely has).

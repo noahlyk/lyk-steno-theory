@@ -292,24 +292,22 @@ enum Offer {
     Worse,
 }
 
-/// One trie node's slot in the working memory: which beam it was last put in (`stamp`), and its
-/// state there. One slot together, so putting a node in the beam touches one place in memory.
+/// One trie node's slot in the working memory: which beam it was last put in (`stamp`), and where
+/// in that beam's list of positions it is.
 #[derive(Clone, Copy, Default)]
 struct Slot {
     stamp: u32,
-    cost: u32,
-    back: u32,
-    used: bool,
+    at: u32,
 }
 
 /// The decoder's working memory, one [`Slot`] per trie node, reused from run to run.
 pub struct Scratch {
     slots: Vec<Slot>,
     generation: u32,
-    /// The beam being built: its cheapest candidate, the nodes put in it (in the order they came),
-    /// the root's candidates, and room for the skips' rounds
+    /// The beam being built: its cheapest candidate, its positions (each node once, in the order
+    /// they came), the root's candidates, and room for the skips' rounds
     best: u32,
-    nodes: Vec<u32>,
+    beam: Vec<St>,
     roots: Vec<St>,
     frontier: Vec<St>,
     next: Vec<St>,
@@ -342,7 +340,7 @@ impl Scratch {
             slots: vec![Slot::default(); nodes],
             generation: 0,
             best: u32::MAX,
-            nodes: Vec::new(),
+            beam: Vec::new(),
             roots: Vec::new(),
             frontier: Vec::new(),
             next: Vec::new(),
@@ -369,33 +367,36 @@ impl Scratch {
     fn begin_beam(&mut self) {
         self.begin();
         self.best = u32::MAX;
-        self.nodes.clear();
+        self.beam.clear();
         self.roots.clear();
     }
     /// A candidate for the beam being built: the root's are kept apart, every other node once.
+    #[inline]
     fn candidate(&mut self, s: St) {
         self.best = self.best.min(s.cost);
         if s.node == 0 {
             self.roots.push(s);
-        } else if matches!(self.offer_new(s), Offer::New) {
-            self.nodes.push(s.node);
+        } else {
+            self.offer_new(s);
         }
     }
     /// A state that has used the stroke beats one that has not at the same cost.
+    #[inline]
     fn offer_new(&mut self, s: St) -> Offer {
         let generation = self.generation;
         let slot = &mut self.slots[s.node as usize];
-        let fresh = slot.stamp != generation;
-        if fresh || s.cost < slot.cost || (s.cost == slot.cost && s.used && !slot.used) {
-            *slot = Slot { stamp: generation, cost: s.cost, back: s.back, used: s.used };
-            if fresh { Offer::New } else { Offer::Better }
+        if slot.stamp != generation {
+            *slot = Slot { stamp: generation, at: self.beam.len() as u32 };
+            self.beam.push(s);
+            return Offer::New;
+        }
+        let held = &mut self.beam[slot.at as usize];
+        if s.cost < held.cost || (s.cost == held.cost && s.used && !held.used) {
+            *held = s;
+            Offer::Better
         } else {
             Offer::Worse
         }
-    }
-    fn state(&self, node: u32) -> St {
-        let slot = self.slots[node as usize];
-        St { node, cost: slot.cost, back: slot.back, used: slot.used }
     }
 }
 
@@ -515,11 +516,21 @@ impl<'a> Reader<'a> {
     fn str(&mut self) -> String {
         self.text().into_owned()
     }
+    /// `n` rows of `size` bytes each: a table read in one go, not a field at a time.
+    fn rows(&mut self, n: usize, size: usize) -> std::slice::ChunksExact<'a, u8> {
+        self.at += n * size;
+        self.b[self.at - n * size..self.at].chunks_exact(size)
+    }
     fn bytes(&mut self) -> Vec<u8> {
         let n = self.u8() as usize;
         self.at += n;
         self.b[self.at - n..self.at].to_vec()
     }
+}
+
+/// The little-endian number in a row's bytes `at..at + N`.
+fn le<const N: usize>(row: &[u8], at: usize) -> [u8; N] {
+    row[at..at + N].try_into().unwrap_or([0; N])
 }
 
 /// Strings end to end in one buffer, each by its number: the words and the known outlines'
@@ -539,6 +550,7 @@ impl Texts {
         self.ends.len()
     }
     /// The length of text `at`, in bytes.
+    #[inline]
     fn len_of(&self, at: usize) -> usize {
         (self.ends[at] - at.checked_sub(1).map_or(0, |before| self.ends[before])) as usize
     }
@@ -546,6 +558,7 @@ impl Texts {
 
 impl std::ops::Index<usize> for Texts {
     type Output = str;
+    #[inline]
     fn index(&self, at: usize) -> &str {
         let start = at.checked_sub(1).map_or(0, |before| self.ends[before] as usize);
         &self.pool[start..self.ends[at] as usize]
@@ -569,6 +582,7 @@ impl Lists {
 
 impl std::ops::Index<usize> for Lists {
     type Output = [u32];
+    #[inline]
     fn index(&self, at: usize) -> &[u32] {
         let start = at.checked_sub(1).map_or(0, |before| self.ends[before] as usize);
         &self.items[start..self.ends[at] as usize]
@@ -653,6 +667,7 @@ impl Model {
     }
 
     /// What the piece at `back` (in `arena`) lets follow it.
+    #[inline]
     fn after(&self, arena: &[(u32, Piece)], back: u32) -> After {
         let short = |len: usize| if len < MORPHEME_WORD_LETTERS { After::Short } else { After::Other };
         match arena.get(back as usize) {
@@ -667,6 +682,7 @@ impl Model {
 
     /// The kinds of piece ([`BELOW_WORD`] and the rest) that may come after the piece at `back`: a
     /// path into the trie only goes where one of them ends.
+    #[inline]
     fn may_follow(&self, arena: &[(u32, Piece)], back: u32) -> u8 {
         match self.after(arena, back) {
             After::Start | After::Prefix => BELOW_WORD | BELOW_PREFIX,
@@ -677,6 +693,7 @@ impl Model {
 
     /// [`Self::may_follow`], remembering the last piece asked about in `seen`: a beam's positions
     /// mostly come in runs after the same piece.
+    #[inline]
     fn may_follow_seen(&self, arena: &[(u32, Piece)], back: u32, seen: &mut Option<(u32, u8)>) -> u8 {
         match *seen {
             Some((last, may)) if last == back => may,
@@ -828,7 +845,7 @@ impl Model {
             word_cost.push(rank_cost(r.u32(), c.rank_weight));
         }
         let n = r.u32() as usize;
-        let spellings: Vec<(u64, u32)> = (0..n).map(|_| (r.u64(), r.u32())).collect();
+        let spellings: Vec<(u64, u32)> = r.rows(n, 12).map(|row| (u64::from_le_bytes(le(row, 0)), u32::from_le_bytes(le(row, 8)))).collect();
         let mut spelling_buckets = vec![0u32; (1 << SPELLING_BUCKET_BITS) + 1];
         for &(hash, _) in &spellings {
             spelling_buckets[(hash >> (64 - SPELLING_BUCKET_BITS)) as usize + 1] += 1;
@@ -851,8 +868,8 @@ impl Model {
             morpheme_prefix.push(r.u8() != 0);
         }
         let n = r.u32() as usize;
-        let edge_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
-        let end_start: Vec<u32> = (0..=n).map(|_| r.u32()).collect();
+        let edge_start: Vec<u32> = r.rows(n + 1, 4).map(|row| u32::from_le_bytes(le(row, 0))).collect();
+        let end_start: Vec<u32> = r.rows(n + 1, 4).map(|row| u32::from_le_bytes(le(row, 0))).collect();
         let m = r.u32() as usize;
         let masks: Vec<u64> = (0..m).map(|_| r.u64()).collect();
         // Numbered breadth first, edge `k` leads to node `k + 1`: the edge's sounds go with the node
@@ -864,15 +881,14 @@ impl Model {
         for (at, node) in nodes.iter_mut().enumerate() {
             node.first = edge_start[at] + 1;
         }
-        for k in 0..m {
-            if r.u32() as usize != k + 1 {
+        for (k, (row, node)) in r.rows(m, 8).zip(&mut nodes[1..]).enumerate() {
+            if u32::from_le_bytes(le(row, 0)) as usize != k + 1 {
                 return None;
             }
-            let node = &mut nodes[k + 1];
-            (node.class, node.letters, node.flags) = (r.u16(), r.u8(), r.u8());
+            (node.class, node.letters, node.flags) = (u16::from_le_bytes(le(row, 4)), row[6], row[7]);
         }
         let m = r.u32() as usize;
-        let ends: Vec<(u32, u8)> = (0..m).map(|_| (r.u32(), r.u8())).collect();
+        let ends: Vec<(u32, u8)> = r.rows(m, 5).map(|row| (u32::from_le_bytes(le(row, 0)), row[4])).collect();
         // Children always come after their parent, so one pass from the back fills every node
         for at in (0..n).rev() {
             let kids = nodes[at].first as usize..nodes[at + 1].first as usize;
@@ -1201,6 +1217,7 @@ impl Model {
     // --- The beam ---
 
     /// A node's children, each with its id.
+    #[inline]
     fn children(&self, node: u32) -> impl Iterator<Item = (u32, &Node)> {
         let (first, end) = (self.nodes[node as usize].first, self.nodes[node as usize + 1].first);
         (first..end).zip(&self.nodes[first as usize..end as usize])
@@ -1225,7 +1242,6 @@ impl Model {
         if best == u32::MAX {
             return Vec::new();
         }
-        let mut nodes = std::mem::take(&mut sc.nodes);
         let mut roots = std::mem::take(&mut sc.roots);
         let mut frontier = std::mem::take(&mut sc.frontier);
         let mut next = std::mem::take(&mut sc.next);
@@ -1235,7 +1251,7 @@ impl Model {
         if skips {
             frontier.clear();
             frontier.extend_from_slice(&roots);
-            frontier.extend(nodes.iter().map(|&n| sc.state(n)));
+            frontier.extend_from_slice(&sc.beam);
             let mut seen = None;
             for round in 0..MAX_DELETES {
                 next.clear();
@@ -1262,13 +1278,8 @@ impl Model {
                         let cost = s.cost + e.drop() + e.lookahead - here;
                         if cost <= limit {
                             let skipped = St { node: child, cost, ..*s };
-                            match sc.offer_new(skipped) {
-                                Offer::New => {
-                                    nodes.push(child);
-                                    next.push(skipped);
-                                }
-                                Offer::Better => next.push(skipped),
-                                Offer::Worse => {}
+                            if !matches!(sc.offer_new(skipped), Offer::Worse) {
+                                next.push(skipped);
                             }
                         }
                     }
@@ -1279,7 +1290,7 @@ impl Model {
                 std::mem::swap(&mut frontier, &mut next);
             }
         }
-        let mut out: Vec<St> = nodes.iter().map(|&n| sc.state(n)).filter(|s| s.cost <= limit).collect();
+        let mut out: Vec<St> = sc.beam.iter().filter(|s| s.cost <= limit).copied().collect();
         if out.len() > BEAM {
             out.select_nth_unstable_by_key(BEAM - 1, |s| s.cost);
             out.truncate(BEAM);
@@ -1288,7 +1299,7 @@ impl Model {
         // may never finish
         let best_root = roots.first().map_or(0, |r| r.cost);
         out.extend(roots.iter().filter(|r| r.cost <= best_root + self.rel));
-        (sc.nodes, sc.roots, sc.frontier, sc.next) = (nodes, roots, frontier, next);
+        (sc.roots, sc.frontier, sc.next) = (roots, frontier, next);
         out
     }
 
