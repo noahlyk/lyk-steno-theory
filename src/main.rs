@@ -194,7 +194,8 @@ enum Command {
         /// Write the keymux plugin (source and blob) to this folder instead
         #[arg(long)]
         plugin: Option<PathBuf>,
-        /// Print each outline of this file (one a line) with the plugin's answer for it
+        /// Print each outline of this file (one a line, or an outline, a tab and the text typed
+        /// before it) with the plugin's answer for it
         #[arg(long)]
         answers: Option<PathBuf>,
         /// Test against the outlines the rules teach (`explain`'s "ours") for the N commonest
@@ -211,6 +212,13 @@ enum Command {
         /// How many of `--giant`'s words to test, at most
         #[arg(long, default_value_t = 2000)]
         giant_count: usize,
+        /// Test the context rule on running text (the books in `data/corpus`): every Nth word
+        /// with backups, one of its backup outlines solved without and with the text before it
+        #[arg(long)]
+        context: Option<usize>,
+        /// With an outline: the text typed before it, whose last word re-ranks its readings
+        #[arg(long, default_value = "")]
+        after: String,
     },
     /// `steno stroke`: the same lookup as `lookup`, every query read as stroke notation
     /// (lowercase is read as capitals). With no outline, opens the interactive lookup.
@@ -404,9 +412,9 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count } => solve::run(&setup(Some(*common))?, &solve::Options {
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, after } => solve::run(&setup(Some(*common))?, &solve::Options {
             outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught, compounds: *compounds,
-            giant: giant.as_deref(), giant_count: *giant_count,
+            giant: giant.as_deref(), giant_count: *giant_count, context: *context, corpus: &cli.data.join("corpus"), after,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

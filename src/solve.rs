@@ -21,7 +21,8 @@ pub struct Options<'a> {
     pub common: usize,
     /// Write the plugin (source and blob) here and stop
     pub plugin: Option<&'a Path>,
-    /// Print `outline<TAB>answer` for every outline in this file (one a line) and stop
+    /// Print `line<TAB>answer` for every line in this file (an outline, or an outline, a tab and
+    /// the text typed before it) and stop
     pub answers: Option<&'a Path>,
     /// Test against the outlines the rules teach for this many of the commonest words
     pub taught: Option<usize>,
@@ -30,13 +31,19 @@ pub struct Options<'a> {
     /// Test against the giant words of this word list that morphemes build, at most `giant_count`
     pub giant: Option<&'a Path>,
     pub giant_count: usize,
+    /// Test the context rule on every this-many-th word of running text with backups
+    pub context: Option<usize>,
+    /// Where the running text is (`data/corpus`, books)
+    pub corpus: &'a Path,
+    /// With `outline`: the text typed before it
+    pub after: &'a str,
 }
 
 /// The model `build` would ship, from the dictionary already in `dir`.
 pub fn model(setup: &Setup, dir: &Path, common: usize) -> Result<(Model, usize)> {
     let entries = crate::built::load(dir).with_context(|| format!("reading the dictionary in {}", dir.display()))?;
     let stems = solve::stems(&entries);
-    let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common };
+    let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common };
     let blob = solve::pack(&setup.rules, &lexicon, &stems);
     let size = blob.len();
     Ok((Model::load(&blob).context("the packed blob does not load")?, size))
@@ -45,7 +52,7 @@ pub fn model(setup: &Setup, dir: &Path, common: usize) -> Result<(Model, usize)>
 pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(to) = options.plugin {
         let entries = crate::built::load(options.dir)?;
-        let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common: options.common };
+        let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common: options.common };
         std::fs::create_dir_all(to)?;
         let size = solve::write_plugin(&setup.rules, &lexicon, &entries, to)?;
         println!("wrote {} and {} ({:.1} MB) to {}", solve::plugin::SOURCE_FILE, solve::plugin::BLOB_FILE, size.to_f64() / 1e6, to.display());
@@ -63,8 +70,10 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     );
     if let Some(path) = options.answers {
         let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
-        for outline in text.lines().filter(|l| !l.is_empty()) {
-            println!("{outline}\t{}", model.answer(outline).unwrap_or_else(|| "-".into()));
+        // A line is an outline, or an outline, a tab and the text typed before it
+        for line in text.lines().filter(|l| !l.is_empty()) {
+            let (outline, before) = line.split_once('\t').unwrap_or((line, ""));
+            println!("{line}\t{}", model.answer_after(outline, before).unwrap_or_else(|| "-".into()));
         }
         return Ok(());
     }
@@ -76,12 +85,16 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
             }
         }
         let t = Instant::now();
-        let readings = model.solve(&run, 8);
+        let readings = model.solve(&run, 8, options.after);
         let took = t.elapsed();
         for r in &readings {
-            println!("{:>4}  {:<24} {}", r.cost, r.text, r.pieces.join(" + "));
+            let context = if r.context == 0 { String::new() } else { format!("  (context {:+.1})", f64::from(r.context) / 10.0) };
+            println!("{:>4}  {:<24} {}{context}", r.cost, r.text, r.pieces.join(" + "));
         }
-        println!("answer: {:?}  ({took:.1?})", model.answer(text));
+        if !options.after.is_empty() {
+            println!("after: {:?}", solve::core::previous_word(options.after));
+        }
+        println!("answer: {:?}  ({took:.1?})", model.answer_after(text, options.after));
         return Ok(());
     }
     if let Some(step) = options.eval {
@@ -99,8 +112,167 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(n) = options.taught {
         eval_taught(setup, &model, options.dir, n, options.misses)?;
     }
+    if let Some(step) = options.context {
+        eval_context(&model, options.dir, options.corpus, step, options.misses)?;
+    }
     Ok(())
 }
+
+/// The backups by word: each word's outlines, but those another file holds (keymux types that
+/// file's word, the solver never sees them).
+fn backups_by_word(dir: &Path) -> Result<HashMap<String, Vec<String>>> {
+    let path = dir.join("02-lyk-backups.json");
+    let text = std::fs::read_to_string(&path).with_context(|| path.display().to_string())?;
+    let shadowed: HashSet<String> = crate::built::load(dir)?
+        .iter()
+        .filter(|e| e.origin != crate::generate::Origin::Backup)
+        .map(|e| render_outline(&e.outline))
+        .collect();
+    let mut by_word: HashMap<String, Vec<String>> = HashMap::new();
+    for line in text.lines() {
+        let Some(l) = line.trim().trim_end_matches(',').strip_prefix('"') else { continue };
+        let Some(at) = l.find("\": \"") else { continue };
+        let Some(word) = l[at + 4..].strip_suffix('"') else { continue };
+        let outline = &l[..at];
+        if parse_outline(outline).is_some() && !shadowed.contains(outline) {
+            by_word.entry(word.to_lowercase()).or_default().push(outline.to_owned());
+        }
+    }
+    Ok(by_word)
+}
+
+/// The books of running text in `corpus` (its `.txt` files), in name order.
+fn books(corpus: &Path) -> Result<Vec<String>> {
+    let mut books: Vec<std::path::PathBuf> = std::fs::read_dir(corpus)
+        .with_context(|| corpus.display().to_string())?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "txt"))
+        .collect();
+    books.sort();
+    Ok(books.iter().map(std::fs::read_to_string).collect::<std::io::Result<_>>()?)
+}
+
+/// A word of running text to solve: an outline, its word, the text before it, and whether it is in
+/// its book's second half.
+type ContextCase<'a> = (&'a str, String, &'a str, bool);
+
+/// Every `step`th word of `texts` with backups, one of its backup outlines picked by where the
+/// word sits, after its last [`solve::core::CONTEXT_BYTES`] of text; and how many words had backups.
+fn context_sample<'a>(texts: &'a [String], by_word: &'a HashMap<String, Vec<String>>, step: usize) -> (Vec<ContextCase<'a>>, usize) {
+    let mut sample: Vec<ContextCase> = Vec::new();
+    let mut eligible = 0usize;
+    for text in texts {
+        let bytes = text.as_bytes();
+        let mut at = 0;
+        while at < bytes.len() {
+            if !bytes[at].is_ascii_alphabetic() {
+                at += 1;
+                continue;
+            }
+            let start = at;
+            while at < bytes.len() && (bytes[at].is_ascii_alphabetic() || bytes[at] == b'\'') {
+                at += 1;
+            }
+            let word = text[start..at].trim_end_matches('\'').to_lowercase();
+            let Some(outlines) = by_word.get(&word) else { continue };
+            eligible += 1;
+            if !eligible.is_multiple_of(step.max(1)) {
+                continue;
+            }
+            let mut from = start.saturating_sub(solve::core::CONTEXT_BYTES);
+            while !text.is_char_boundary(from) {
+                from += 1;
+            }
+            let outline = outlines[start % outlines.len()].as_str();
+            sample.push((outline, word, &text[from..start], start >= text.len() / 2));
+        }
+    }
+    (sample, eligible)
+}
+
+/// One word of running text, solved: right at the top without context and with it, in the top
+/// five without and with, and a line saying what each read.
+type ContextResult = (bool, bool, bool, bool, String);
+
+/// The context rule on running text: every `step`th word of the books in `corpus` that has backups,
+/// one of its backup outlines (picked by where the word sits), solved with no context and after the
+/// text before it (its last 256 bytes, as keymux sends). The first half of each book tunes the
+/// rule's weight and cap, the second half is the test.
+fn eval_context(model: &Model, dir: &Path, corpus: &Path, step: usize, misses: Option<&Path>) -> Result<()> {
+    let by_word = backups_by_word(dir)?;
+    let texts = books(corpus)?;
+    let (mut sample, eligible) = context_sample(&texts, &by_word, step);
+    // By outline, so each one's beam is read once and every context after it only re-ranks
+    sample.sort_by(|a, b| a.0.cmp(b.0));
+    let threads = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
+    let chunk = sample.len().div_ceil(threads).max(1);
+    let solved: Vec<ContextResult> = std::thread::scope(|scope| {
+        // Every thread is spawned before any is joined: joining lazily would run them one at a time
+        #[allow(clippy::needless_collect)]
+        let handles: Vec<_> = sample
+            .chunks(chunk)
+            .map(|part| {
+                scope.spawn(move || {
+                    let mut sc = model.scratch();
+                    let mut last: Option<(&str, Vec<solve::Reading>)> = None;
+                    part.iter()
+                        .map(|&(outline, ref word, before, _)| {
+                            let run: Vec<u32> = parse_outline(outline).map(|s| s.iter().map(|s| s.0).collect()).unwrap_or_default();
+                            if last.as_ref().is_none_or(|l| l.0 != outline) {
+                                last = Some((outline, model.solve_with(&mut sc, &run, 5)));
+                            }
+                            let plain = &last.as_ref().expect("solved just now").1;
+                            let after = model.solve_in(&mut sc, &run, 5, before);
+                            let right = |got: &[solve::Reading]| got.first().is_some_and(|r| r.text.to_lowercase() == *word);
+                            let in5 = |got: &[solve::Reading]| got.iter().any(|r| r.text.to_lowercase() == *word);
+                            let note = format!(
+                                "{outline}\t{word}\t{}\t{}\t{}",
+                                plain.first().map_or("-", |r| r.text.as_str()),
+                                after.first().map_or("-", |r| r.text.as_str()),
+                                solve::core::previous_word(before).unwrap_or_else(|| "-".into())
+                            );
+                            (right(plain), right(&after), in5(plain), in5(&after), note)
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        handles.into_iter().flat_map(|h| h.join().expect("an eval thread panicked")).collect()
+    });
+    let mut lines = Vec::new();
+    for (half, name) in [(false, "tune (first half of each book)"), (true, "test (second half)")] {
+        let (mut plain, mut after) = (Tally::default(), Tally::default());
+        let (mut wins, mut losses) = (0usize, 0usize);
+        for ((_, _, _, second), (p, a, p5, a5, note)) in sample.iter().zip(&solved) {
+            if *second != half {
+                continue;
+            }
+            plain.add(*p, *p5);
+            after.add(*a, *a5);
+            if p != a {
+                if *a {
+                    wins += 1;
+                } else {
+                    losses += 1;
+                }
+            }
+            match (p, a) {
+                (false, true) => lines.push(format!("win\t{note}")),
+                (true, false) => lines.push(format!("loss\t{note}")),
+                (false, false) => lines.push(format!("miss\t{note}")),
+                (true, true) => {}
+            }
+        }
+        println!("context, {name}: no context {}  ->  after the text before it {}   ({wins} won, {losses} lost)", plain.line(), after.line());
+    }
+    println!("  ({eligible} words of running text with backups, every {step}th tested)");
+    if let Some(path) = misses {
+        std::fs::write(path, lines.join("\n") + "\n")?;
+        println!("{} changes and misses written to {}", lines.len(), path.display());
+    }
+    Ok(())
+}
+
 
 /// How well the solver reads compounds past its lexicon (`Setup::spellings`) struck as two words:
 /// each word that splits into two lexicon words of three letters or more, both pieces struck as

@@ -2659,3 +2659,44 @@ and misspellings (*chanice*, *sherrif*, *lieing*) read as the real word they sou
 beam (`LYK_SOLVE_REL=20`) adds 3.8 points of compounds' top5 and nothing of top1: a compound's
 join is refunded only at the end, so one can fall out of the beam, but when it is kept it still
 mostly loses to a real word.
+
+**The word before the run re-ranks the solver's readings (2026-11-08).** Most of the solver's
+remaining misses on near ties are words that sound alike (*know*/*no*, *were*/*where*), which only
+the text around them can tell apart. keymux is gaining a generic plugin export, `context(ptr,
+len)`, called before each `fallback` with the text typed just before the run (its last 256 bytes,
+empty after a wall), and `init()`, called once after load. The plugin now exports both. The last
+word of that text (`<s>` after `.` `!` `?`; none after other punctuation, after nothing, or for a
+word that may be cut) scores each reading's first word by its pointwise mutual information in the
+web bigram counts already in `data/frequency/bigrams_en.txt` (286,358 pairs, cut at 100,000): a
+listed pair by its own count, an unlisted one as if seen 50,000 times but never above 0 (so only a
+pair of common words the list would have held counts against). The score moves the cost by 0.3
+points a bit, to a tenth of a point, capped at 4 either way, and only within the three rules (a
+whole taught outline, then a known word plus endings, then sounds); whether a reading clears the
+floor goes by its own cost. All logarithms are taken by the packer: the decoder adds integers, so
+wasm answers exactly as lyk does. Blob version 11.
+
+Measured with the new `solve --context N` (the five books in `data/corpus`, each word that has
+backups struck as one of its backup outlines, with the 256 bytes before it; the web counts come from
+elsewhere, so the books are a fair test): best reading right 92.1% -> 92.8% on the second half of
+each book (3,747 won, 1,399 lost, of 337,376), 92.1% -> 92.9% on the first halves the weight was
+set on. Tuned on the first halves, every second word: weight, in tenths of a point a bit, 1: +0.4,
+2: +0.7, 3: +0.8, 4: +0.7, 5: +0.5 (and, with the score rounded to whole points, 8: 0, 10: -0.8;
+whole points peaked at +0.7); a cap of 2 points lost 0.1, 4 and 6 the same; a smaller cap on
+penalties alone changed nothing; the unlisted pair taken as 10,000, 25,000 or 100,000 times lost
+0.1 against 50,000, and no penalty for unlisted pairs at all lost 0.2. Most wins are homophones (*know*
+over *no* 848, *were* over *where* 775, *off* over *of* 543, *some* over *come* 440); most losses
+are pairs the one word before cannot settle (*no* over *know* 200, *one* over *won* 181, *his* over
+*has* 128). The ceiling is low: 92% of the books' words were already right, 98.7% are in the top
+five, and most of the rest are misreadings of the sounds (*her* read *hader*, *or* read *are*), not
+homophones one word before could settle.
+
+No context changes nothing: backups 88.8% (top5 96.9%), taught 98.5%, compounds 40.0%, giant
+words 80.8%, every misses file byte for byte the same. The table holds 22,032 words (each pair's
+first words, and the second words a reading can start with) and 255,620 pairs: blob 23.0 -> 24.6
+MB, wasm file 24.8 -> 26.4 MB, wasm memory 72.4 -> 75.4 MB. Wasm, 3,000 outlines each one call
+with a context call before it: 2.0 -> 2.0-2.2 ms a call (run to run noise as large); `init` takes
+40-50 ms once, then the first call 0.4-0.5 ms instead of 39-42 ms. Answers identical to native on
+the 3,000 outlines with no `context` call at all, with an empty one, and on 7,800 outline and
+context pairs (raw book text, the eval's own pairs, punctuation, capitals, apostrophes, non-ASCII,
+a full 256 bytes of one word). Not done: more than one word of context (no trigram counts), and
+pairs inside a reading of several words.

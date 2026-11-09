@@ -135,10 +135,10 @@
    "t": "list",
    "items": [
     "At most three sounds of a word in a row are skipped, and a word starts with at most one skipped sound, a weak one (the *a-* of *about*).",
-    "**A tie goes to the commoner word.** Rarity is rounded to whole points, so homophones often cost the same: `AEU/+T` is *eight*, not *ate*; `TA/+P` *tape*, not *tap*; `PWO/+-R/+-G` *boring* (*bore* + *-ing*), not *baring*.",
+    "**A tie goes to the commoner word.** Rarity is rounded to whole points, so homophones often cost the same: `AEU/+T` is *eight*, not *ate*; `TA/+P` *tape*, not *tap*; `PWO/+-R/+-G` *boring* (*bore* + *-ing*), not *baring*. Unless the word before the run says otherwise ([the word before](#/ref/fallback/the-word-before-the-run)).",
     "**An abbreviation said in full** (*tv* also said *television*: more sounds than twice its letters plus one) is not matched by those sounds: they type the full word.",
     "**Every stroke is used.** A stroke of a run must match at least one sound of the word it is read into (or be a suffix chord or a known outline): a stroke you strike is never explained away as sounds the word does not have. Sounds can be doubled or missing; the order is kept (only the consonants of one stroke may swap, as above).",
-    "The cheapest reading wins. Two words that read the same go to the commoner one: a homophone struck with no spelling cue types the commoner word."
+    "The cheapest reading wins. Two words that read the same go to the commoner one: a homophone struck with no spelling cue types the commoner word, unless the word typed before it favours the other (below)."
    ],
    "ordered": false
   },
@@ -586,11 +586,88 @@
   },
   {
    "t": "h3",
+   "x": "The word before the run"
+  },
+  {
+   "t": "p",
+   "x": "keymux hands the solver the text typed just before the run (at most its last 256 bytes; nothing after a wall, when what came before is unknown). Its **last word** re-ranks the readings by how often each reading's first word follows it in the web's bigram counts (Google's web pairs, `data/frequency/bigrams_en.txt`, every pair seen 100,000 times or more): `-PB/+OE/+*` alone is *no*; after *I don't* it is *know*. `WAOE/+RE` alone is *where*; after *they* it is *were*."
+  },
+  {
+   "t": "table",
+   "head": [
+    "The text before ends in",
+    "The word before is"
+   ],
+   "rows": [
+    [
+     "nothing, or only spaces",
+     "none: nothing changes"
+    ],
+    [
+     "`.` `!` or `?`, then any closing quotes or brackets and spaces",
+     "the start of a sentence (the counts' `<S>`): *Fine.* and *I don't.* say the same"
+    ],
+    [
+     "letters, digits and apostrophes, then any spaces",
+     "that word, lowercase; with an apostrophe the part after the last one, as the web counts split it (*don't* is *t*), or before it when nothing follows (*dogs'* is *dogs*)"
+    ],
+    [
+     "any other mark (`,` `;` `:` `-` `(` a closing quote with no stop before it)",
+     "none: nothing changes"
+    ],
+    [
+     "a word that runs back to the start of a full 256 bytes",
+     "none: it may be cut"
+    ],
+    [
+     "a word no pair starts with",
+     "none: nothing changes"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Each reading's **first word** (its text up to a space, up to an apostrophe, without a last character that is no letter or digit, lowercase: *we're* is *we*, *dr.* is *dr*) is scored against the word before:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "The pair",
+    "Score"
+   ],
+   "rows": [
+    [
+     "listed",
+     "its pointwise mutual information: log2 of how much more often the pair occurs than the two words' counts make chance, `count(pair) × all pairs / (count(word before as a first word) × count(reading's word as a second word))`, each count summed over the list with every case it is written in folded together"
+    ],
+    [
+     "not listed, the reading's word a second word somewhere",
+     "the same with the pair's count taken as 50,000 (half the list's cut), but never above 0: counts only against a pair of words common enough that the list would hold them together"
+    ],
+    [
+     "the reading's word no pair's second word",
+     "0"
+    ]
+   ]
+  },
+  {
+   "t": "list",
+   "ordered": false,
+   "items": [
+    "**The score moves the cost by 0.3 points a bit**, to a tenth of a point, at most **4 points** either way. `-PB/+OE/+*` after *I don't*: *know* costs 4 and *no* 3, but *t know* is 5.3 bits likelier than chance, so *know* ranks at 4 − 1.6 = 2.4 and wins. A word's rarity costs 0.5 a halving of how common it is: the same scale.",
+    "**It only reorders within a rule.** The three rules come first: a brief or a taught outline struck whole is still its word, and a known word plus endings still beats any reading by sounds, whatever comes before. Within the readings by sounds the order is the cost less the score, then the commoner word.",
+    "**It never decides whether a word is typed.** The floor below goes by the best reading's own cost.",
+    "**After a lone `+`** the text locked in is itself read after the word before the run, and the locked text and what follows are scored as one word against it.",
+    "Only the one word before counts, and only for the reading's first word: no pair inside a reading is scored."
+   ]
+  },
+  {
+   "t": "h3",
    "x": "4. The floor: the plain read-back"
   },
   {
    "t": "p",
-   "x": "When no reading costs 40 or less, plus 6 for each stroke, the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 24 strokes is read on its first 24, the strokes after them read back as keys and added on: none is dropped. keymux asks again on every stroke; the solver goes on from the run it read last where the two agree, so each stroke is one stroke's work however long the run (1.1 ms a stroke on average in wasm), with the same answer as reading the run afresh."
+   "x": "When no reading costs 40 or less, plus 6 for each stroke (the best reading's own cost, the word before left out), the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 24 strokes is read on its first 24, the strokes after them read back as keys and added on: none is dropped. keymux asks again on every stroke; the solver goes on from the run it read last where the two agree, so each stroke is one stroke's work however long the run (1.1 ms a stroke on average in wasm), with the same answer as reading the run afresh."
   },
   {
    "t": "h",
@@ -627,7 +704,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --after \"I don't\" -- \"-PB/+OE/+*\"   # the readings after a text, each with what the word before moved\ncargo run --release -- solve --context 1            # running text: every word with backups, alone and after the text before it\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
   },
   {
    "t": "p",

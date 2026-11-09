@@ -20,6 +20,9 @@
 //   word does not costs more. At each stroke boundary a position that ends a word may emit that
 //   word (costing more the rarer it is) and start the next piece. A suffix chord and a run of
 //   strokes that is exactly a known word's outline are exact pieces.
+// - The word typed just before the run (keymux's `context`), when there is one, re-ranks the
+//   readings by how often each one's first word follows it on the web ([`previous_word`],
+//   [`CONTEXT_WEIGHT_TENTHS`]).
 // - The cheapest way through the whole run wins. Every loop is bounded by the run's length and
 //   the beam's width: there is no input that makes it slow.
 
@@ -95,6 +98,16 @@ pub const ORDER_LOOSE: u32 = 1;
 pub const ORDER: u32 = 3;
 /// A word's rarity: `RANK_WEIGHT * log2(rank + 2)`, in tenths: 0.5 a doubling, tuned on the eval.
 pub const RANK_WEIGHT_TENTHS: u32 = 5;
+/// The word before the run (keymux's `context`): a reading whose first word follows it more often
+/// than chance in the web's bigram counts gains, and one that follows it less often loses,
+/// `CONTEXT_WEIGHT_TENTHS` tenths of a point per bit of that (pointwise mutual information), to a
+/// tenth of a point, at most [`CONTEXT_CAP`] points either way. Tuned on running text (`solve
+/// --context`, the first half of each book): 2 to 4 tenths all gain about as much, 5 gains less, 8
+/// gains nothing; the cap seldom binds.
+pub const CONTEXT_WEIGHT_TENTHS: u32 = 3;
+pub const CONTEXT_CAP: u32 = 4;
+/// The context's longest stretch read, in bytes: keymux sends at most the last 256
+pub const CONTEXT_BYTES: usize = 256;
 /// A stroke's readings tried: those within this of its cheapest, at most this many.
 pub const READING_SLACK: u32 = 4;
 pub const MAX_READINGS: u32 = 40;
@@ -258,6 +271,9 @@ pub struct Costs {
     pub built: u32,
     /// [`RANK_WEIGHT_TENTHS`]
     pub rank_weight: u32,
+    /// [`CONTEXT_WEIGHT_TENTHS`], [`CONTEXT_CAP`]
+    pub context_weight: u32,
+    pub context_cap: u32,
 }
 
 fn tuned(name: &str, default: u32) -> u32 {
@@ -293,6 +309,8 @@ impl Costs {
             morpheme_lookahead: tuned("MORPHEME_LOOKAHEAD", MORPHEME_LOOKAHEAD),
             built: tuned("BUILT", BUILT),
             rank_weight: tuned("RANK", RANK_WEIGHT_TENTHS),
+            context_weight: tuned("CONTEXT_WEIGHT", CONTEXT_WEIGHT_TENTHS),
+            context_cap: tuned("CONTEXT_CAP", CONTEXT_CAP),
         }
     }
 }
@@ -434,6 +452,9 @@ pub struct Reading {
     pub built: bool,
     /// Ends on a prefix: never the run's reading, only a way on to one
     pub open: bool,
+    /// What the word before the run took off its cost in the ranking, in tenths of a point
+    /// ([`Model::solve_in`]; negative: added); `cost` itself is unchanged
+    pub context: i32,
 }
 
 pub struct Model {
@@ -498,9 +519,48 @@ pub struct Model {
     end_start: Vec<u32>,
     masks: Vec<u64>,
     ends: Vec<(u32, u8)>,
+    context: Context,
     scratch: std::sync::Mutex<Option<Scratch>>,
     rel: u32,
     c: Costs,
+}
+
+/// The web's bigram counts, as the context rule reads them: every word that is a pair's first or
+/// second, with log2 of how often it is each (`left`, `right`, in quarter bits, 0 when never),
+/// and each first word's pairs (`rows`, by the second word's id, sorted) with their pointwise
+/// mutual information in quarter bits. Everything is worked out by the packer: the decoder adds
+/// and compares whole numbers only, so a plugin answers exactly as lyk does.
+#[derive(Default)]
+struct Context {
+    words: Texts,
+    table: Option<Table>,
+    left: Vec<u8>,
+    right: Vec<u8>,
+    rows: Vec<u32>,
+    next: Vec<u32>,
+    pmi: Vec<i8>,
+    /// log2(the count taken for a pair the list lacks, times every pair's count), in quarter bits
+    unseen: u32,
+}
+
+impl Context {
+    fn id(&self, word: &str) -> Option<u32> {
+        self.table.as_ref()?.get(spelling_hash(word), |id| &self.words[id as usize] == word)
+    }
+
+    /// The pointwise mutual information of `prev` then `word`, in quarter bits: as listed, or for
+    /// a pair the list lacks, what the count it fell short of gives, but never above 0. 0 when
+    /// `word` is no pair's second word (too rare on the web to say).
+    fn pmi(&self, prev: u32, word: &str) -> i32 {
+        let Some(id) = self.id(word) else { return 0 };
+        let right = self.right[id as usize];
+        if right == 0 {
+            return 0;
+        }
+        let row = self.rows[prev as usize] as usize..self.rows[prev as usize + 1] as usize;
+        let unseen = || (self.unseen.cast_signed() - i32::from(self.left[prev as usize]) - i32::from(right)).min(0);
+        self.next[row.clone()].binary_search(&id).map_or_else(|_| unseen(), |at| i32::from(self.pmi[row.start + at]))
+    }
 }
 
 struct Reader<'a> {
@@ -651,7 +711,36 @@ const SPELLING_BUCKET_BITS: u32 = 16;
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
+
+/// The word a context ends on, as the bigram table keys it: lowercase, `<s>` at a sentence's
+/// start. `None` when nothing in the context says what came just before:
+///
+/// - an empty context (keymux's wall: the text before is unknown), or one of nothing but spaces;
+/// - after other punctuation (`,` `;` `:` `-` `(` and the rest): the bigram counts hold words only;
+/// - a word that runs back to the start of a full context ([`CONTEXT_BYTES`]): it may be cut.
+///
+/// After `.`, `!` or `?` (closing quotes and brackets after it skipped) it is `<s>`. A word is the
+/// letters, digits and apostrophes before the end (spaces skipped); with an apostrophe, the part
+/// after the last one (the web counts split *don't* as *don* *t*), or before it when nothing
+/// follows (*dogs'*).
+pub fn previous_word(context: &str) -> Option<String> {
+    let text = context.trim_end();
+    let text = text.trim_end_matches(['"', '\'', '\u{201d}', '\u{2019}', ')', ']', '}']);
+    if text.ends_with(['.', '!', '?']) {
+        return Some("<s>".to_owned());
+    }
+    let text = context.trim_end();
+    let is_word = |c: char| c.is_alphanumeric() || c == '\'' || c == '\u{2019}';
+    let start = text.rfind(|c: char| !is_word(c)).map_or(0, |at| at + text[at..].chars().next().map_or(1, char::len_utf8));
+    let word = &text[start..];
+    if word.is_empty() || (start == 0 && context.len() >= CONTEXT_BYTES) {
+        return None;
+    }
+    let word = word.trim_matches(['\'', '\u{2019}']);
+    let word = word.rsplit(['\'', '\u{2019}']).next().unwrap_or(word);
+    (!word.is_empty()).then(|| word.to_lowercase())
+}
 
 /// `run` with each `+*` (the join key and the star alone) put on the stroke before it as its star:
 /// the star struck late, `+-T` then `+*` is `+*T`.
@@ -937,6 +1026,25 @@ impl Model {
             (nodes[at].below, nodes[at].lookahead, nodes[at].skip) = (below, best, skip as u16);
         }
         nodes[0].lookahead = 0;
+        let mut context = Context { unseen: r.u32(), ..Context::default() };
+        let n = r.u32() as usize;
+        let mut table = Table::new(n);
+        context.rows.push(0);
+        for i in 0..n {
+            context.words.push(&r.text());
+            context.left.push(r.u8());
+            context.right.push(r.u8());
+            let row = r.u32();
+            context.rows.push(context.rows[i] + row);
+            let at = table.find(spelling_hash(&context.words[i]), |id| context.words[id as usize] == context.words[i]);
+            table.slots[at] = i as u32 + 1;
+        }
+        context.table = Some(table);
+        let m = *context.rows.last().unwrap_or(&0) as usize;
+        (context.next, context.pmi) = r.rows(m, 5).map(|row| (u32::from_le_bytes(le(row, 0)), row[4].cast_signed())).unzip();
+        if r.at != blob.len() {
+            return None;
+        }
         Some(Self {
             sound_names,
             sound_spelling,
@@ -976,6 +1084,7 @@ impl Model {
             end_start,
             masks,
             ends,
+            context,
             scratch: std::sync::Mutex::new(None),
             rel: rel(),
             c,
@@ -1407,9 +1516,10 @@ impl Model {
 
     /// The cheapest readings of `run` (stroke bits, as keymux's own tape writes them), best
     /// first, at most `keep`.
-    pub fn solve(&self, run: &[u32], keep: usize) -> Vec<Reading> {
+    /// `context` is the text typed just before the run, empty when unknown ([`Self::solve_in`]).
+    pub fn solve(&self, run: &[u32], keep: usize, context: &str) -> Vec<Reading> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let readings = self.solve_with(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, keep);
+        let readings = self.solve_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, keep, context);
         drop(guard);
         readings
     }
@@ -1419,22 +1529,62 @@ impl Model {
         Scratch::new(self.node_count())
     }
 
+    /// Make [`Self::solve`] and [`Self::answer`]'s own working memory now, not on the first call
+    /// (the plugin's `init`; nothing native calls it).
+    #[allow(dead_code)]
+    pub fn warm(&self) {
+        let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        guard.get_or_insert_with(|| Scratch::new(self.node_count()));
+    }
+
     /// [`Self::solve`] with the caller's own working memory.
     pub fn solve_with(&self, sc: &mut Scratch, run: &[u32], keep: usize) -> Vec<Reading> {
+        self.solve_in(sc, run, keep, "")
+    }
+
+    /// [`Self::solve_with`] after `context`, the text typed just before the run (keymux's
+    /// `context`; empty when unknown): its last word re-ranks the readings ([`previous_word`],
+    /// [`CONTEXT_WEIGHT_TENTHS`]). An empty context changes nothing.
+    pub fn solve_in(&self, sc: &mut Scratch, run: &[u32], keep: usize, context: &str) -> Vec<Reading> {
+        let prev = self.context_word(context);
         let run = late_stars(run);
-        let Some(at) = last_lock(&run) else { return self.solve_locked(sc, &run, keep, None) };
-        let Some(locked) = self.answer_run(sc, &run[..at]) else { return Vec::new() };
+        let Some(at) = last_lock(&run) else { return self.solve_locked(sc, &run, keep, None, prev) };
+        let Some(locked) = self.answer_run(sc, &run[..at], prev) else { return Vec::new() };
         let tail = &run[at + 1..];
         if tail.is_empty() {
             let pieces = vec![locked.clone()];
-            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false }];
+            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false, context: 0 }];
         }
-        self.solve_locked(sc, tail, keep, Some(&locked))
+        self.solve_locked(sc, tail, keep, Some(&locked), prev)
+    }
+
+    /// The id in the bigram table of the word `context` ends on ([`previous_word`]), when it is
+    /// some pair's first word: else no context.
+    fn context_word(&self, context: &str) -> Option<u32> {
+        let id = self.context.id(&previous_word(context)?)?;
+        (self.context.left[id as usize] != 0).then_some(id)
+    }
+
+    /// What the word before the run takes off a reading's cost, in tenths of a point (a negative
+    /// number adds to it): the pointwise mutual information of it and the reading's first word,
+    /// [`CONTEXT_WEIGHT_TENTHS`] tenths of a point a bit, rounded, at most [`CONTEXT_CAP`] points
+    /// either way. The first word is the text up to a space, up to an apostrophe (the web counts
+    /// split *don't*), without what ends it that is no letter or digit (*mr.*), lowercase.
+    fn context_points(&self, prev: Option<u32>, text: &str) -> i32 {
+        let Some(prev) = prev else { return 0 };
+        let first = text.split(' ').next().unwrap_or(text);
+        let first = first.split(['\'', '\u{2019}']).next().unwrap_or(first);
+        let first = first.trim_end_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
+        // Quarter bits times tenths of a point a bit: fortieths of a point, rounded to tenths
+        let scaled = self.context.pmi(prev, &first) * self.c.context_weight.cast_signed();
+        let tenths = (scaled + scaled.signum() * 2) / 4;
+        let cap = 10 * self.c.context_cap.cast_signed();
+        tenths.clamp(-cap, cap)
     }
 
     /// [`Self::solve_with`] for a run with no lock or late star in it, after `locked` (the text a
     /// lone `+` kept), if any.
-    fn solve_locked(&self, sc: &mut Scratch, run: &[u32], keep: usize, locked: Option<&str>) -> Vec<Reading> {
+    fn solve_locked(&self, sc: &mut Scratch, run: &[u32], keep: usize, locked: Option<&str>, prev: Option<u32>) -> Vec<Reading> {
         let k = run.len().min(MAX_RUN);
         let run = &run[..k];
         if k == 0 {
@@ -1487,9 +1637,14 @@ impl Model {
         // spell a real word, is that word (`PROB/+-BL` *probable*); only then the cheapest reading.
         // A tie goes to the commoner word (ids run most common first): rarity is rounded to whole
         // points, so *eight* and *ate* cost the same
+        // The word before the run moves a reading within its kind only, by what it takes off the
+        // cost: never past a whole-run outline or a known word with endings
+        for r in &mut out {
+            r.context = self.context_points(prev, &r.text);
+        }
         out.sort_by_key(|r| {
             let id = self.known(&r.text.to_lowercase());
-            (!r.exact, !(r.composed && id.is_some()), r.cost, id.unwrap_or(u32::MAX))
+            (!r.exact, !(r.composed && id.is_some()), 10 * i64::from(r.cost) - i64::from(r.context), id.unwrap_or(u32::MAX))
         });
         out.truncate(keep);
         out
@@ -1885,7 +2040,7 @@ impl Model {
         // A prefix with nothing after it is no word yet
         let open = pieces.last().is_some_and(|&p| self.is_prefix(p));
         let pieces = pieces.iter().map(|&p| self.piece_text(p, locked).to_owned()).collect();
-        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, built, open }
+        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, built, open, context: 0 }
     }
 
     // --- What the plugin answers ---
@@ -1893,41 +2048,53 @@ impl Model {
     /// The best reading of `outline` (Plover notation, `KAT/+-G`), or the plain read-back of its
     /// keys when no reading is close enough.
     pub fn answer(&self, outline: &str) -> Option<String> {
+        self.answer_after(outline, "")
+    }
+
+    /// [`Self::answer`] after `context`, the text typed just before the run ([`Self::solve_in`]):
+    /// what the plugin types.
+    pub fn answer_after(&self, outline: &str, context: &str) -> Option<String> {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let text = self.answer_with(guard.get_or_insert_with(|| Scratch::new(self.node_count())), outline);
+        let text = self.answer_in(guard.get_or_insert_with(|| Scratch::new(self.node_count())), outline, context);
         drop(guard);
         text
     }
 
     /// [`Self::answer`] with the caller's own working memory.
     pub fn answer_with(&self, sc: &mut Scratch, outline: &str) -> Option<String> {
+        self.answer_in(sc, outline, "")
+    }
+
+    /// [`Self::answer_with`] after `context`, the text typed just before the run ([`Self::solve_in`]).
+    pub fn answer_in(&self, sc: &mut Scratch, outline: &str, context: &str) -> Option<String> {
         let run: Vec<u32> = outline.split('/').map(parse_stroke).collect::<Option<_>>()?;
         if run.first().is_some_and(|s| s & SPELL != 0) {
             return self.spelled(&run);
         }
-        self.answer_run(sc, &run)
+        self.answer_run(sc, &run, self.context_word(context))
     }
 
     /// What a run types: its late stars put on the strokes before them, each lone `+` locking in
     /// what came before it.
-    fn answer_run(&self, sc: &mut Scratch, run: &[u32]) -> Option<String> {
+    fn answer_run(&self, sc: &mut Scratch, run: &[u32], prev: Option<u32>) -> Option<String> {
         let run = late_stars(run);
-        let Some(at) = last_lock(&run) else { return self.answer_locked(sc, &run, None) };
-        let locked = self.answer_run(sc, &run[..at])?;
+        let Some(at) = last_lock(&run) else { return self.answer_locked(sc, &run, None, prev) };
+        let locked = self.answer_run(sc, &run[..at], prev)?;
         let tail = &run[at + 1..];
         if tail.is_empty() {
             return Some(locked);
         }
-        self.answer_locked(sc, tail, Some(&locked))
+        self.answer_locked(sc, tail, Some(&locked), prev)
     }
 
     /// What a run with no lock or late star in it types after `locked`.
-    fn answer_locked(&self, sc: &mut Scratch, run: &[u32], locked: Option<&str>) -> Option<String> {
+    fn answer_locked(&self, sc: &mut Scratch, run: &[u32], locked: Option<&str>, prev: Option<u32>) -> Option<String> {
         // A run past the solver's reach: its first [`MAX_RUN`] strokes read, the rest read back,
         // never dropped
         let (head, tail) = run.split_at(run.len().min(MAX_RUN));
         let limit = THRESHOLD + THRESHOLD_PER_STROKE * head.len() as u32;
-        let mut text = match self.solve_locked(sc, head, 1, locked).into_iter().next() {
+        // Whether a reading is close enough goes by its own cost: the word before only reorders
+        let mut text = match self.solve_locked(sc, head, 1, locked, prev).into_iter().next() {
             Some(best) if best.cost <= limit => best.text,
             _ => format!("{}{}", locked.unwrap_or(""), self.read_back(head)?),
         };

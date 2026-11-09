@@ -1,5 +1,6 @@
 //! The keymux plugin: [`super::core`] verbatim, the packed blob beside it, and the fixed interface
-//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`; see keymux's `docs/plugins/README.md`).
+//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, and `init` and `context`; see keymux's
+//! `docs/plugins/README.md`).
 //!
 //! keymux compiles a plugin from its `.rs` alone and caches the result by that file's content
 //! hash, so the source names the blob's own hash: a new blob is a new source, and is recompiled.
@@ -25,8 +26,33 @@ fn model() -> Option<&'static Model> {
 }
 
 thread_local! {
-    // keymux asks about the same run several times while it searches for the longest match
-    static LAST: std::cell::RefCell<(String, Option<String>)> = const { std::cell::RefCell::new((String::new(), None)) };
+    // keymux asks about the same run several times while it searches for the longest match: the
+    // run, the context it was asked after, and the answer
+    static LAST: std::cell::RefCell<(String, String, Option<String>)> = const { std::cell::RefCell::new((String::new(), String::new(), None)) };
+    // The text typed just before the run `fallback` is asked next, as `context` gave it
+    static CONTEXT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+}
+
+/// Called once after the plugin loads: the model and its working memory are made now, so the
+/// first stroke that misses waits for nothing.
+#[no_mangle]
+pub extern "C" fn init() {
+    if let Some(m) = model() {
+        m.warm();
+    }
+}
+
+/// Called before each `fallback` with the text typed just before the run (at most its last 256
+/// bytes; empty after a wall, when what came before is unknown): its last word re-ranks the readings.
+#[no_mangle]
+pub extern "C" fn context(ptr: i32, len: i32) {
+    let bytes = unsafe { std::slice::from_raw_parts(ptr as *const u8, len.max(0) as usize) };
+    let text = String::from_utf8_lossy(bytes);
+    CONTEXT.with(|c| {
+        let mut c = c.borrow_mut();
+        c.clear();
+        c.push_str(&text);
+    });
 }
 
 #[no_mangle]
@@ -41,15 +67,16 @@ pub extern "C" fn alloc(len: i32) -> i32 {
 pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
     let bytes = unsafe { std::slice::from_raw_parts(ptr as *const u8, len.max(0) as usize) };
     let Ok(outline) = std::str::from_utf8(bytes) else { return -1 };
+    let context = CONTEXT.with(|c| c.borrow().clone());
     let cached = LAST.with(|last| {
         let last = last.borrow();
-        (last.0 == outline).then(|| last.1.clone())
+        (last.0 == outline && last.1 == context).then(|| last.2.clone())
     });
     let text = match cached {
         Some(text) => text,
         None => {
-            let text = model().and_then(|m| m.answer(outline));
-            LAST.with(|last| *last.borrow_mut() = (outline.to_owned(), text.clone()));
+            let text = model().and_then(|m| m.answer_after(outline, &context));
+            LAST.with(|last| *last.borrow_mut() = (outline.to_owned(), context, text.clone()));
             text
         }
     };

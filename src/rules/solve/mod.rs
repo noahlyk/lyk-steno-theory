@@ -24,6 +24,7 @@ use super::orthography::{self, Phone};
 use super::resolve::default_spelling;
 use super::{Rules, plain};
 use crate::data::Pronunciations;
+use crate::num::ToF64;
 use crate::generate::{Entry, Origin};
 use crate::stroke::Stroke;
 use std::collections::{HashMap, HashSet};
@@ -358,7 +359,78 @@ pub struct Lexicon<'a> {
     pub rank: &'a HashMap<String, usize>,
     /// Real spellings past `rank`, with their line in the frequency list (`Setup::spellings`)
     pub spellings: &'a [(String, usize)],
+    /// The web's bigram counts (`Setup::web_bigrams`), for the context rule
+    pub bigrams: &'a [(String, String, u64)],
     pub common: usize,
+}
+
+/// A pair the bigram list lacks was seen fewer times than its cut (100,000): taken as half that.
+/// It only ever counts against a pair (the decoder caps it at 0), and only against a pair of words
+/// common enough that the list would have held them together had they gone together.
+const CONTEXT_UNSEEN_COUNT: f64 = 50_000.0;
+
+/// What a reading's first word is looked up as in the bigram table: as the decoder's
+/// `context_points` takes it: up to a space, up to an apostrophe, without a last character that is
+/// no letter or digit, lowercase.
+fn context_first_word(text: &str) -> String {
+    let first = text.split(' ').next().unwrap_or(text);
+    let first = first.split(['\'', '\u{2019}']).next().unwrap_or(first);
+    first.trim_end_matches(|c: char| !c.is_alphanumeric()).to_lowercase()
+}
+
+/// log2 of `x`, in quarter bits.
+fn quarter_bits(x: f64) -> f64 {
+    (4.0 * x.log2()).round()
+}
+
+/// The bigram table the context rule reads ([`core::Context`]): every pair's counts summed over
+/// the case they were written in, each word's count as a first word and as a second, and every pair
+/// whose second word a reading may start with (`outputs`), with its pointwise mutual information.
+/// Quarter bits of counts at least 100,000 and at most 2^40 are 66 to 160, and of a pair's
+/// information within ±32 bits once clamped: the casts to `u8` and `i8` are exact.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn write_context(b: &mut Blob, bigrams: &[(String, String, u64)], outputs: &HashSet<String>) {
+    let mut pairs: HashMap<(&str, &str), u64> = HashMap::new();
+    let mut left: HashMap<&str, u64> = HashMap::new();
+    let mut right: HashMap<&str, u64> = HashMap::new();
+    let mut total = 0u64;
+    for (first, second, count) in bigrams {
+        *pairs.entry((first.as_str(), second.as_str())).or_default() += count;
+        *left.entry(first.as_str()).or_default() += count;
+        *right.entry(second.as_str()).or_default() += count;
+        total += count;
+    }
+    let total_f = total.to_f64();
+    let q = |count: u64| quarter_bits(count.to_f64()) as u8;
+    let mut words: Vec<&str> = left.keys().copied().chain(right.keys().copied().filter(|w| outputs.contains(*w))).collect();
+    words.sort_unstable();
+    words.dedup();
+    let id: HashMap<&str, u32> = words.iter().enumerate().map(|(i, w)| (*w, index(i))).collect();
+    let mut rows: Vec<Vec<(u32, i8)>> = vec![Vec::new(); words.len()];
+    for (&(first, second), &count) in &pairs {
+        if !outputs.contains(second) {
+            continue;
+        }
+        let pmi = (count.to_f64() * total_f / (left[first].to_f64() * right[second].to_f64())).log2();
+        rows[id[first] as usize].push((id[second], (4.0 * pmi).round().clamp(-128.0, 127.0) as i8));
+    }
+    // Natively, while tuning, `LYK_SOLVE_CONTEXT_UNSEEN` overrides it
+    let unseen = std::env::var("LYK_SOLVE_CONTEXT_UNSEEN").ok().and_then(|v| v.parse::<f64>().ok()).unwrap_or(CONTEXT_UNSEEN_COUNT);
+    b.u32(quarter_bits(unseen * total_f) as u32);
+    b.len(words.len());
+    for (word, row) in words.iter().zip(&mut rows) {
+        row.sort_unstable();
+        b.str(word);
+        b.u8(left.get(word).map_or(0, |&c| q(c)));
+        b.u8(if outputs.contains(*word) { right.get(word).map_or(0, |&c| q(c)) } else { 0 });
+        b.len(row.len());
+    }
+    for row in &rows {
+        for &(second, pmi) in row {
+            b.u32(second);
+            b.u8(pmi as u8);
+        }
+    }
 }
 
 /// The known outlines a run may contain as exact pieces: every entry of the dictionary that is a
@@ -747,6 +819,14 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
         b.u8(u8::from(m.prefix));
     }
     write_trie(&mut b, &trie, &order, &id);
+    // What a reading may start with: a word, a known outline's word, a real spelling pieces spell
+    let outputs: HashSet<String> = words
+        .iter()
+        .map(|(w, _)| context_first_word(w))
+        .chain(stems.iter().map(|(_, text)| context_first_word(text)))
+        .chain(lexicon.spellings.iter().filter(|(_, r)| *r < SPELLINGS).map(|(w, _)| context_first_word(w)))
+        .collect();
+    write_context(&mut b, lexicon.bigrams, &outputs);
     b.0
 }
 
@@ -955,7 +1035,7 @@ mod tests {
     fn model() -> &'static Model {
         static MODEL: std::sync::LazyLock<Model> = std::sync::LazyLock::new(|| {
             let setup = crate::dictionary_fixture::setup();
-            let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common: 100_000 };
+            let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common: 100_000 };
             let blob = pack(&setup.rules, &lexicon, &stems(&crate::dictionary_fixture::generated().entries));
             Model::load(&blob).expect("the packed blob loads")
         });
@@ -1321,9 +1401,72 @@ mod tests {
     #[test]
     fn the_plugin_source_carries_the_decoder_and_the_interface() {
         let source = plugin::source(b"LYKS");
-        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "include_bytes!(\"05-lyk-solver.bin\")"] {
+        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "extern \"C\" fn init", "extern \"C\" fn context", "include_bytes!(\"05-lyk-solver.bin\")"] {
             assert!(source.contains(needle), "{needle}");
         }
         assert!(Model::load(b"nope").is_none());
+    }
+
+    #[test]
+    fn the_previous_word_is_the_last_word_or_a_sentence_start() {
+        use super::core::previous_word;
+        let full = "x".repeat(core::CONTEXT_BYTES);
+        for (context, word) in [
+            ("", None),
+            ("   ", None),
+            ("the cat ", Some("cat")),
+            ("The Cat", Some("cat")),
+            ("I don't", Some("t")),
+            ("the dogs' ", Some("dogs")),
+            ("It ended. ", Some("<s>")),
+            ("\"Stop!\" ", Some("<s>")),
+            ("Why?)\n", Some("<s>")),
+            ("well, ", None),
+            ("one; two:", None),
+            ("\"yes\" ", None),
+            (full.as_str(), None),
+        ] {
+            assert_eq!(previous_word(context).as_deref(), word, "{context:?}");
+        }
+        // A full context's word is whole when a space comes before it, wherever that is
+        assert_eq!(previous_word(&format!(" {}", &full[1..])).as_deref(), Some(&full[1..]));
+        assert_eq!(previous_word(&format!("{} cat", &full[4..])).as_deref(), Some("cat"));
+    }
+
+    #[test]
+    fn an_empty_or_unknown_context_changes_nothing() {
+        let m = model();
+        let mut sc = m.scratch();
+        for outline in ["-PB/+OE/+*", "WAOE/+RE", "AEU/+T", "KOPL/+PU/+TER", "-B/+AOT/+-S", "HRAOBG/+/+UP", "PROB/+-BL"] {
+            let run: Vec<u32> = outline.split('/').map(|s| core::parse_stroke(s).expect("a stroke")).collect();
+            let plain: Vec<(String, u32)> = m.solve_with(&mut sc, &run, 8).into_iter().map(|r| (r.text, r.cost)).collect();
+            for context in ["", "well, ", "zzqxj ", "\"yes\" "] {
+                let after: Vec<(String, u32)> = m.solve_in(&mut sc, &run, 8, context).into_iter().map(|r| (r.text, r.cost)).collect();
+                assert_eq!(after, plain, "{outline} after {context:?}");
+                assert_eq!(m.answer_in(&mut sc, outline, context), m.answer(outline), "{outline} after {context:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_word_before_breaks_a_tie_between_words_that_sound_alike() {
+        let m = model();
+        for (outline, context, alone, after) in [("-PB/+OE/+*", "I don't ", "no", "know"), ("WAOE/+RE", "they ", "where", "were")] {
+            assert_eq!(m.answer(outline).as_deref(), Some(alone), "{outline} alone");
+            assert_eq!(m.answer_after(outline, context).as_deref(), Some(after), "{outline} after {context:?}");
+        }
+        // After a sentence's end the word before is the start itself, not the word before the stop
+        assert_eq!(m.answer_after("-PB/+OE/+*", "I don't.  ").as_deref(), m.answer_after("-PB/+OE/+*", "Fine. ").as_deref());
+    }
+
+    #[test]
+    fn the_word_before_never_moves_a_reading_past_a_whole_outline() {
+        let m = model();
+        let mut sc = m.scratch();
+        let run: Vec<u32> = "WAUT/+-R".split('/').map(|s| core::parse_stroke(s).expect("a stroke")).collect();
+        for context in ["", "they ", "I ", "to ", "the "] {
+            let first = m.solve_in(&mut sc, &run, 5, context).into_iter().next().expect("a reading");
+            assert!(first.exact && first.text == "water", "after {context:?}: {}", first.text);
+        }
     }
 }

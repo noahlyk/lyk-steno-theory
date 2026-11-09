@@ -32,7 +32,7 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     let generated = generate(setup, briefs, common)?;
     let files = crate::output::write_dictionary(&generated, out)?;
     print_files(&generated, &files, out);
-    let lexicon = crate::rules::solve::Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, common };
+    let lexicon = crate::rules::solve::Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common };
     let size = crate::rules::solve::write_plugin(&setup.rules, &lexicon, &generated.entries, out)?;
     println!(
         "  {:<24} the solver plugin, with its {:.1} MB lexicon in {}",

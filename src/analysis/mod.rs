@@ -120,6 +120,9 @@ pub struct Setup {
     /// to rank which bigrams are worth attempting to merge into a single stroke - see
     /// `site/reference/phrases.json`.
     pub bigrams: HashMap<(String, String), u64>,
+    /// The same counts unfiltered, as `data::load_bigrams` reads them (lowercased, `<s>` the
+    /// sentence's start): the solver's context rule (`site/reference/fallback.json`)
+    pub web_bigrams: Vec<(String, String, u64)>,
     /// The frequency list's rows past those ranked here, down to [`SPELLINGS`], with their line:
     /// real spellings, unranked and unpronounced, that the solver lets pieces spell (*lookup*)
     pub spellings: Vec<(String, usize)>,
@@ -194,10 +197,11 @@ impl Setup {
         let crate::frequency::Counts { count, rank } = crate::frequency::count(spoken, |w| gold.is_name(w));
         // Vocabulary-filtered here, not in `load_bigrams`: "vocabulary" means this generator's
         // own ranked words, which only exist once `rank` above is built.
-        let bigrams = bigrams?
-            .into_iter()
+        let web_bigrams = bigrams?;
+        let bigrams = web_bigrams
+            .iter()
             .filter(|(first, second, _)| rank.contains_key(first) && rank.contains_key(second))
-            .map(|(first, second, times)| ((first, second), times))
+            .map(|(first, second, times)| ((first.clone(), second.clone()), *times))
             .collect();
         Ok(Self {
             rules,
@@ -206,6 +210,7 @@ impl Setup {
             rank,
             count,
             bigrams,
+            web_bigrams,
             spellings,
         })
     }
@@ -221,6 +226,7 @@ impl Setup {
             rank: HashMap::new(),
             count: HashMap::new(),
             bigrams: HashMap::new(),
+            web_bigrams: Vec::new(),
             spellings: Vec::new(),
         }
     }
