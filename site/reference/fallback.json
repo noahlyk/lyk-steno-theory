@@ -169,6 +169,11 @@
      "1"
     ],
     [
+     "a folded plural: a stroke struck with `-S` or `-Z`, read as its other sounds and then *-s* (below)",
+     "on a stroke whose other sounds end a lexicon word, never a morpheme",
+     "1, as the `+-S` chord"
+    ],
+    [
      "a hard suffix: the chord with `*` added to its first stroke (`+*D`, the suffix sheet's own entry)",
      "the same, and the stroke is never read as sounds: it is the suffix",
      "0"
@@ -184,7 +189,7 @@
      "5, plus the same as a known outline"
     ],
     [
-     "a morpheme: a prefix or suffix of the [morpheme table](#/ref/fallback/giant-words-prefixes-a-word-suffixes) (*anti-*, *-ization*), by its sounds",
+     "a morpheme: a prefix or suffix of the [morpheme table](#/ref/fallback/giant-words-prefixes-a-word-suffixes) (*anti-*, *-ization*), by its sounds, or by its spelling letter by letter (+3)",
      "on whole strokes: prefixes first, then one word, then suffixes (below)",
      "4, plus 1 to join it on (never 10); a word after a prefix joins for 1 too"
     ]
@@ -198,8 +203,9 @@
     "**Then a word you know plus ending chords, when they spell a real word, is that word.** `PROB/+-BL` is *prob* + *-able*: *probable*, whatever the sounds might also say. When they spell no word (`PRO/+-BL`, *pro* + *able*), the run is read by its sounds (*pro-bly*: *probably*). Only an outline you struck counts, never a misstroke guess one key off it: `SKRAEPL/+-Z` is *screams*, not *cream* + *s*. Three rules, in order: a brief or a taught outline, struck whole, is its word; a known word plus endings is that word; otherwise the sounds decide.",
     "**Pieces that spell a word are that word**, never cheaper than the pieces themselves: *part* + `+-S` is as rare as *parts*, and a rare piece does not become a common word by spelling one. *part* + `+-S` is *parts*, priced at the rarity of *parts*, not of *part*.",
     "**Words joined that spell a real word the lexicon lacks are that word.** The plugin also carries a list of real spellings down to rank 250,000 of the frequency list (no sounds, only the spelling): `HRAOBG/+UP` is *look* + *up*, *lookup* (rank 121,405), not *lockup*. Each join costs 2 there, not 10, and the word is priced at its own rarity, never below its pieces'. Only words joined to words: a stem and suffix chords must spell a lexicon word, since the list's tail holds misspellings (*regreting*).",
-    "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well.",
-    "A word piece only ends at a stroke boundary; a suffix chord is always the suffix, never its bare consonants."
+    "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well. A word and a plural *-s* (the `+-S` or `+-Z` chord, or a folded plural) that spell no word cost 4, as a built word does ([giant words](#/ref/fallback/giant-words-prefixes-a-word-suffixes)): *stopover* + *-s* is *stopovers*.",
+    "**A plural folds on a word's last stroke.** A stroke struck with `-S` or `-Z` is read as well as its other sounds and then *-s*: the word those sounds end takes the plural (spelled at the seam as a suffix is, below), for 1, as if `+-S` had been struck after it. So `STOP/+OEFRZ` is *stopovers* and `A/+PWAPBD/+-PB/+PHUPBTS` is *abandonments*, not *abandonment* with an S it does not have (6). The plural goes on a lexicon word read by its sounds or spelling, never on a morpheme (the table has its plurals), and only on a stroke with another sound before the S or Z; on the Z only when that sound is voiced, as the plural is said (*stopovers*; `SHAEPZ` stays *shape*, not *shapes*).",
+    "A word piece only ends at a stroke boundary, but for a folded plural's word; a suffix chord is always the suffix, never its bare consonants."
    ],
    "ordered": false
   },
@@ -216,10 +222,13 @@
    "ordered": false,
    "items": [
     "**Order.** A prefix starts the run or follows a prefix. A suffix follows the word or another suffix. The word between is a lexicon word or a known outline of **4 letters or more** (*a* + *less* is never read). A run that ends on a prefix is no reading.",
-    "**No suffix chord after a morpheme**, and no suffix morpheme after a suffix chord: the table has the plurals itself (*-nesses*, *-isms*), and a prefix wants a word (`PHAOEU/+-BG/+R/+O/+-PB` is *micron*, not *micro* + *-en*).",
+    "**A suffix chord that writes a suffix morpheme is that morpheme** (`+EUFT` *-ist*, `+AEUGS` *-ation*, `+-PLT` *-ment*, `+-PBS` *-ness*, `+-LS` *-less*, `+AOEUZ` *-ize*, `+SH-P` *-ship*, `+HAOD` *-hood*, `+EUZ/+-PL` *-ism*, `+U/+TEU` *-ity*, `+-BG/+UL` *-ical*): suffix morphemes may follow it (`ABS/+HRAOUT/+EUFT/+EU/+KHREU` is *absolute* + *-ist* + *-ically*), and so may suffix chords, as after any chord (`KAEUR/+-LS/+-PBS` *carelessness*).",
+    "**No suffix chord after a suffix morpheme**, no suffix morpheme after any other suffix chord, and nothing but a word or another prefix after a prefix: the table has the plurals itself (*-nesses*, *-isms*), and a prefix wants a word (`PHAOEU/+-BG/+R/+O/+-PB` is *micron*, not *micro* + *-en*).",
     "**Every consonant of a morpheme is struck.** An unstressed vowel may be left out, as the rules fold it (`EUFPL` for *-ism*, `TPHUSZ` for *-nesses*), but not a morpheme's only vowel (`HE/+-D` is never *hood*) and never a stressed one.",
-    "**Spelling at the seams** is a suffix chord's: a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*).",
-    "**A word you know still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*."
+    "**A morpheme is read by its spelling too**, letter by letter as a word's spelling is (each letter a sound, a doubled consonant one sound or two), every sound struck, for 3 more: `TPHESZ` is *-ness* as *n-e-s-s*, so `KHAOEURBD/+TPHESZ` is *childishness*, not *childish* + *-nesses*.",
+    "**The word and its chords spell a word.** In a reading built of morphemes, the word with any suffix chords on it must spell a lexicon word, as a stem and its chords alone must (*anti* + *conventional*, not *anti* + *convention* + `+-L`); and after the word's first suffix come only suffixes (*curry* + *-ation* + `+-FT` builds nothing). A reading that breaks either costs 4 and 6.",
+    "**Spelling at the seams** is a suffix chord's (below): a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*).",
+    "**A word you know still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*. A plural *-s* at the end counts as a suffix here: a word or a built word and *-s* that spell no word cost 4 too."
    ]
   },
   {
@@ -529,6 +538,21 @@
    ],
    "rows": [
     [
+     "`s`, `x`, `z`, `ch` or `sh` before *-s*",
+     "*-s* becomes *-es*",
+     "`!anticlimax` + `+-S` is `!anticlimaxes`"
+    ],
+    [
+     "anything but an `o` before *-logy* (`+OL/+SKWREU`)",
+     "add the `o` of *-ology*",
+     "`!accident` + `!logy` is `!accidentology`; `!bio` + `!logy` is `!biology`"
+    ],
+    [
+     "`-ic` before *-ly*",
+     "*-ly* becomes *-ally*",
+     "`!basic` + `+-L` is `!basically`"
+    ],
+    [
      "a consonant and `le` before *-ly*",
      "`le` becomes `ly`",
      "*probable* + `+-L` is *probably*; *simple* + *ly* is *simply*"
@@ -544,9 +568,9 @@
      "[[have|SR]] + `+-G` is `!having`"
     ],
     [
-     "a `y` after a consonant before a suffix not starting with `i`",
+     "a `y` after a consonant before a suffix not starting with `i`, but *-ship*",
      "`y` becomes `i`",
-     "`!happy` + `!ness` is `!happiness`; `!fly` + `!s` is `!flies`; `!carry` + `!ing` is `!carrying`"
+     "`!happy` + `!ness` is `!happiness`; `!fly` + `!s` is `!flies`; `!carry` + `!ing` is `!carrying`; `!secretary` + `!ship` is `!secretaryship`"
     ],
     [
      "otherwise",

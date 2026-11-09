@@ -1,7 +1,8 @@
 # The pieces a giant word is built from, for the solver (`src/rules/solve/`): a run of `+` strokes
 # that is no word the lexicon has is read as prefixes, then one word, then suffixes, each piece
 # struck by its sounds (`antidisestablishmentarianism`: anti + dis + establish + ment + arian +
-# ism). Each piece is spelled as written and said in ARPAbet, every way it is said; a prefix only
+# ism). Each piece is spelled as written and said in ARPAbet, every way it is said (and the solver
+# reads it by its spelling too, letter by letter: `TPHESZ` is -ness's n-e-s-s); a prefix only
 # ever starts a word and a suffix only ever ends one (joined by English spelling, as a suffix
 # chord's ending is: `happy` + `ness` is *happiness*). The suffix chords of `rules/suffixes.toml`
 # stay the short way to strike the common endings; these are the long ones the chords lack, and

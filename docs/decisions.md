@@ -2605,3 +2605,57 @@ Tried and dropped: matching the root's children once a step for every position a
 7% slower), remembering the rarity of ranks seen (a logarithm is 14% of loading in wasm, but few
 ranks repeat), validating texts with `from_utf8` before the lossy read (no change), and returning
 early from `keep_ends` when it has 16 readings or fewer (it rarely has).
+
+**Giant words and compounds: what a built word may be, a folded plural, spelling at the seams
+(2026-11-08).** The 385 misses of `solve --giant` (2,000 words), sorted by cause, and the fixes
+kept, each measured on every eval:
+- *The word and its chords spell a word.* `APB/+TAOE/+KOPB/+SREPB/+-GS/+-L` read *anti* +
+  *convention* + `+-L`, *anticonventionly*, priced as a built word (4) like *anti* +
+  *conventional*. A built reading now holds the word and its suffix chords to what a stem and
+  chords alone are held to (they must spell a lexicon word), and after the word's first suffix
+  only suffixes may follow (*curry* + *-ation* + `+-FT`). One that breaks it pays 4 and 6. Giant
+  80.8% -> 83.8% (paying only 6: 82.5%); backups unchanged.
+- *A folded plural.* A lexicon word whose plural the lexicon lacks, struck with the plural on its
+  last stroke (`A/+PWAPBD/+-PB/+PHUPBTS` *abandonments*, `STOP/+OEFRZ` *stopovers*), read as the
+  word with an S it does not have (6), 1 cheaper than the built *abandon* + *-ments*. A stroke
+  with `-S` or `-Z` is now read also as its other sounds and then *-s*, which the word they end
+  takes, for 1, as the `+-S` chord would (the fold is a mark at the end of a stroke's reading, so
+  it shares the reading's walk; the positions that reach it emit their words with the plural on).
+  A word and a plural that spell no word are priced as built (4), not 6. Giant 84.0% -> 85.0%,
+  backups 3,470 -> 3,453 misses, compounds 40.1% -> 42.9% (their misses were full of
+  *brownouts*, *cottonwoods*, *snapdragons*). At 0: 84.4%, 3,478 misses; at 2: 84.0%, compounds
+  39.5%. A Z folds only after a voiced sound: on the tape `SHAEPZ`, `TAEBGZ`, `PHAEBGZ` had turned
+  from *shape*, *take*, *make* (what was struck next) into *shapes*, *takes*, *makes* (giant
+  85.8% -> 85.7%, tape 335 -> 339 of 3,596; before all this, 340).
+- *A morpheme by its spelling.* `KHAOEURBD/+TPHESZ` (a taught outline of *childishness*, `TPHESZ`
+  being *-ness* letter by letter) read *childish* + *-nesses*. Morphemes now go in the trie by
+  their spelling too, as words do (every sound struck, 3 more): backups 3,452 -> 3,432 misses,
+  every *-nesses* miss gone. That made a surcharge on folding the Z of `-SZ` (tried at 1 and 2, to
+  keep `TKPWAO/+TK/+TPHESZ` *goodness*) unneeded, and giant words better without it (85.2% ->
+  85.5%).
+- *A chord that writes a suffix morpheme is that morpheme* (`+EUFT` *-ist*, `+AEUGS` *-ation*,
+  `+-PLT` *-ment* and 8 more): *absolute* + *-ist* + *-ically* could not be read, since `+EUFT`
+  read as the chord (1) took the trie position from the morpheme (5) and no morpheme may follow a
+  chord. Now suffix morphemes may follow such a chord, chords still may (`KAEUR/+-LS/+-PBS`), and
+  a built reading counts it as a suffix. Giant 85.0% -> 85.3%.
+- *Spelling at the seams*: *-s* is *-es* after `s x z ch sh` (*anticlimaxs*), *-logy* takes its
+  *o* (`+OL/+SKWREU` is the *-logy* chord: *accidentlogy*), `-ic` + *-ly* is *-ically*, a *y*
+  stays before *-ship* (*actuariship*).
+
+In all: giant 80.8% -> 85.7% top1 (92.0% -> 93.0% top5); backups 88.8% -> 88.9% (3,470 -> 3,433
+misses); taught 98.5% unchanged (the same 78 misses); compounds 40.0% -> 42.9% (53.1% -> 55.6%);
+the tape 9.5% -> 9.4% (340 -> 339: `KRAO*ERS` now *careers*, not *increase*). Wasm answers byte
+for byte native on 6,000 outlines whole and 19,462 calls stroke by stroke; 2.0 ms a call and 0.62
+ms stroke by stroke, as before; the first call 35 to 39 ms, as before; 72.4 MB.
+
+Left: 287 giant misses, 147 with the word in the top five. Most are a commoner word read as well
+(*asked* for *acid*, *adopted* for *adapted*, *abatement* for *abetment*: a rare stem pays its
+rarity, a morpheme 4 and a built word 4 more); 13 are *-ical* struck `EUBG/+-L`, which reads
+*-ically* (`+-L` is the *-ly* chord, and *acrobatically* is the likelier word); spelling variants
+the lexicon spells otherwise (*advertize*, *mediaeval*, *levelling*); a silent *e* kept at the seam
+(*ableism*); a struck *-nesses* read as a known *-ness* word (3). Compounds: the eval's words are
+the commonest past the lexicon that split into two lexicon words, and most of its misses are names
+and misspellings (*chanice*, *sherrif*, *lieing*) read as the real word they sound like. A wider
+beam (`LYK_SOLVE_REL=20`) adds 3.8 points of compounds' top5 and nothing of top1: a compound's
+join is refunded only at the end, so one can fall out of the beam, but when it is kept it still
+mostly loses to a real word.

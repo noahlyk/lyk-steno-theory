@@ -53,6 +53,8 @@ pub const R_FOR_ER: u32 = 1;
 pub const PIECE: u32 = 10;
 /// A suffix chord read as its suffix.
 pub const SUFFIX: u32 = 1;
+/// A plural folded on a stroke's `-S` or `-Z` ([`FOLD`]), read as the *-s* chord.
+pub const FOLD_PLURAL: u32 = 1;
 /// A known word's exact outline as a piece after the first.
 pub const STEM_LATER: u32 = 2;
 /// A stroke read as a known single-stroke outline one key away (a key too many or one missed): a
@@ -73,8 +75,9 @@ pub const MORPHEME_PIECE: u32 = 1;
 /// cheapest word below it): cheaper, and a prefix's paths crowd a word out of the search (at 6,
 /// *thinking* falls to *the* + *knocking*).
 pub const MORPHEME_LOOKAHEAD: u32 = 8;
-/// A reading built with morphemes that is no word the lexicon has, in place of [`NONWORD`]: a word
-/// you know, read as well, still wins (*goodness* over *goodnesses*).
+/// A reading built with morphemes, or a word and a plural *-s* ([`Model::built`]), that is no word
+/// the lexicon has, in place of [`NONWORD`]: a word you know, read as well, still wins (*goodness*
+/// over *goodnesses*).
 /// 4 over 0: the backups' misses as without morphemes (3,470 to 3,497), giant words 80.8% to 84.2%.
 pub const BUILT: u32 = 4;
 /// A known outline carried on into a longer word by the strokes after it (`SKEL` *cancel*, then
@@ -210,6 +213,12 @@ const BELOW_SUFFIX: u8 = 4;
 
 const NO_BACK: u32 = u32::MAX;
 
+/// The mark ending a stroke's reading whose last sound, an S or Z of the `-S` or `-Z` key, is a
+/// plural folded on: the word the sounds before it end takes *-s* (`STOP/+OEFRZ` *stopovers*).
+const FOLD: Tok = Tok::C(u8::MAX);
+/// The keys a plural is folded on with, `-S` and `-Z`.
+const FOLD_KEYS: u32 = (1 << 20) | (1 << 22);
+
 /// One reading of a stroke: its sounds, in order, and what reading them so costs.
 type StrokeReading = (Vec<Tok>, u32);
 
@@ -229,6 +238,7 @@ pub struct Costs {
     pub spelled_vowel: u32,
     pub piece: u32,
     pub suffix: u32,
+    pub fold_plural: u32,
     pub stem_later: u32,
     pub nonword: u32,
     pub marker: u32,
@@ -264,6 +274,7 @@ impl Costs {
             spelled_vowel: tuned("SPELLED_VOWEL", SPELLED_VOWEL),
             piece: tuned("PIECE", PIECE),
             suffix: tuned("SUFFIX", SUFFIX),
+            fold_plural: tuned("FOLD_PLURAL", FOLD_PLURAL),
             stem_later: tuned("STEM_LATER", STEM_LATER),
             nonword: tuned("NONWORD", NONWORD),
             marker: tuned("MARKER", MARKER),
@@ -316,6 +327,8 @@ pub struct Scratch {
     /// stroke alone, so one run kept is not enough)
     runs: Vec<Progress>,
     steps: usize,
+    /// The positions a stroke's sounds reach before its folded plural ([`FOLD`])
+    folded: Vec<St>,
 }
 
 /// Where reading a run stands after each of its strokes, to go on from.
@@ -346,6 +359,7 @@ impl Scratch {
             next: Vec::new(),
             runs: Vec::new(),
             steps: 0,
+            folded: Vec::new(),
         }
     }
 
@@ -416,6 +430,8 @@ pub struct Reading {
     pub joins: u32,
     /// Built with morphemes (prefixes before one word, suffixes after it)
     pub morphemic: bool,
+    /// Built as English builds a word ([`Model::built`]): priced at [`BUILT`], not [`NONWORD`]
+    pub built: bool,
     /// Ends on a prefix: never the run's reading, only a way on to one
     pub open: bool,
 }
@@ -473,6 +489,9 @@ pub struct Model {
     /// The morphemes are `words[first_morpheme..]`, each a prefix or a suffix
     first_morpheme: u32,
     morpheme_prefix: Vec<bool>,
+    /// Whether each suffix chord, and each two-stroke one, writes a suffix morpheme (*-ist*,
+    /// *-ation*): what may follow it is what may follow that morpheme
+    chord_morpheme: (Vec<bool>, Vec<bool>),
     /// The trie's nodes and one past the last, whose `first` ends the last node's children ([`Node`]);
     /// node `n`'s words are `ends[end_start[n]..end_start[n + 1]]`
     nodes: Vec<Node>,
@@ -673,7 +692,8 @@ impl Model {
         match arena.get(back as usize) {
             None => After::Start,
             Some(&(_, Piece::Morpheme(w))) => if self.morpheme(w) == Some(true) { After::Prefix } else { After::Suffix },
-            Some((_, Piece::Suffix(_) | Piece::TwoSuffix(_))) => After::Chord,
+            Some(&(_, Piece::Suffix(s))) => if self.chord_morpheme.0[s as usize] { After::Suffix } else { After::Chord },
+            Some(&(_, Piece::TwoSuffix(s))) => if self.chord_morpheme.1[s as usize] { After::Suffix } else { After::Chord },
             Some(&(_, Piece::Word(w))) => short(self.words.len_of(w as usize)),
             Some(&(_, Piece::Stem(s) | Piece::Slip(s))) => short(self.stem_text.len_of(s as usize)),
             Some((_, Piece::Locked)) => After::Other,
@@ -800,9 +820,9 @@ impl Model {
         let n = r.u32() as usize;
         let vowel_coda = (0..n).map(|_| (r.u32(), r.u8(), r.u8(), r.u8())).collect();
         let n = r.u32() as usize;
-        let suffixes = (0..n).map(|_| (r.u32(), r.str(), r.u8() != 0)).collect();
+        let suffixes: Vec<(u32, String, bool)> = (0..n).map(|_| (r.u32(), r.str(), r.u8() != 0)).collect();
         let n = r.u32() as usize;
-        let two_suffixes = (0..n).map(|_| (r.u32(), r.u32(), r.str(), r.u8() != 0)).collect();
+        let two_suffixes: Vec<(u32, u32, String, bool)> = (0..n).map(|_| (r.u32(), r.u32(), r.str(), r.u8() != 0)).collect();
         let n = r.u32() as usize;
         let spelling = (0..n).map(|_| (r.u32(), r.str())).collect();
         let n = r.u32() as usize;
@@ -867,6 +887,11 @@ impl Model {
             word_cost.push(c.morpheme);
             morpheme_prefix.push(r.u8() != 0);
         }
+        let morpheme_text = |text: &str| (first_morpheme as usize..words.len()).any(|w| !morpheme_prefix[w - first_morpheme as usize] && &words[w] == text);
+        let chord_morpheme = (
+            suffixes.iter().map(|(_, text, _)| morpheme_text(text)).collect(),
+            two_suffixes.iter().map(|(_, _, text, _)| morpheme_text(text)).collect(),
+        );
         let n = r.u32() as usize;
         let edge_start: Vec<u32> = r.rows(n + 1, 4).map(|row| u32::from_le_bytes(le(row, 0))).collect();
         let end_start: Vec<u32> = r.rows(n + 1, 4).map(|row| u32::from_le_bytes(le(row, 0))).collect();
@@ -944,6 +969,7 @@ impl Model {
             spelling_buckets,
             first_morpheme,
             morpheme_prefix,
+            chord_morpheme,
             words,
             word_cost,
             nodes,
@@ -1342,6 +1368,14 @@ impl Model {
             while j < alts.len() && alts[j].0.len() > depth && alts[j].0[depth] == tok {
                 j += 1;
             }
+            if tok == FOLD {
+                // The stroke's sounds before a folded plural: the words that end here take it
+                for alt in &alts[i..j] {
+                    sc.folded.extend(states.iter().map(|s| St { cost: s.cost + alt.1, ..*s }));
+                }
+                i = j;
+                continue;
+            }
             let next = self.step(sc, arena, states, tok);
             if !next.is_empty() {
                 self.walk(sc, arena, &alts[i..j], depth + 1, &next, out);
@@ -1393,7 +1427,7 @@ impl Model {
         let tail = &run[at + 1..];
         if tail.is_empty() {
             let pieces = vec![locked.clone()];
-            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, open: false }];
+            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false }];
         }
         self.solve_locked(sc, tail, keep, Some(&locked))
     }
@@ -1433,7 +1467,9 @@ impl Model {
                             reading.cost = (reading.cost.saturating_sub(reading.rarity) + rank_cost(rank, self.c.rank_weight).max(reading.rarity)).saturating_sub(refund);
                         }
                         // Prefixes, one word, suffixes: a word built as English builds them
-                        None if reading.morphemic && reading.joins == 0 => reading.cost += self.c.built,
+                        None if reading.built => reading.cost += self.c.built,
+                        // Built, but on a stem and chords that spell no word: both
+                        None if reading.morphemic && reading.joins == 0 => reading.cost += self.c.built + self.c.nonword,
                         None => reading.cost += self.c.nonword,
                     },
                 }
@@ -1545,6 +1581,7 @@ impl Model {
                     alts.push(k);
                 }
             }
+            self.add_folds(run[i], &mut alts);
             alts.sort();
             if hard {
                 alts.clear();
@@ -1552,14 +1589,20 @@ impl Model {
             // Each stroke must match at least one sound of the word it is read into
             let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
             let mut next = Vec::new();
+            sc.folded.clear();
             self.walk(sc, &p.arena, &alts, 0, &starting, &mut next);
             if self.c.must_use > 0 {
                 next.retain(|s| s.used);
             }
+            let mut folded = std::mem::take(&mut sc.folded);
             let mut next = self.settle(sc, &p.arena, &next, false);
             let mut emitted = Vec::new();
             self.emit(&next, &mut p.arena, &mut emitted);
             next.extend(emitted);
+            if !folded.is_empty() {
+                self.fold_plurals(sc, &mut p.arena, &mut folded, &mut next);
+            }
+            sc.folded = folded;
             next.append(&mut arrived);
             next
         };
@@ -1567,6 +1610,54 @@ impl Model {
         self.keep_ends(&p.arena, &mut next, p.locked.as_deref());
         p.before.push(self.settle(sc, &p.arena, &next, true));
         p.arena_at.push(p.arena.len());
+    }
+
+    /// A stroke struck with `-S` or `-Z` may fold a plural on: each of its readings that ends on
+    /// that key's S or Z, after other sounds, is read too as the sounds before it and [`FOLD`]. A Z
+    /// only after a voiced sound, as the plural is said (*stopovers*, but `SHAEPZ` is no *shapes*).
+    fn add_folds(&self, stroke: u32, alts: &mut Vec<StrokeReading>) {
+        if stroke & FOLD_KEYS == 0 {
+            return;
+        }
+        let name = |t: Option<&Tok>| match t {
+            Some(&Tok::C(s)) => self.sound_names[s as usize].as_str(),
+            Some(_) => "vowel",
+            None => "",
+        };
+        let plural = |toks: &[Tok]| match name(toks.last()) {
+            "S" => true,
+            "Z" => !matches!(name(toks.get(toks.len().wrapping_sub(2))), "P" | "T" | "K" | "F" | "TH" | "S" | "SH" | "CH"),
+            _ => false,
+        };
+        let folds: Vec<StrokeReading> = alts
+            .iter()
+            .filter(|(toks, _)| toks.len() >= 2 && plural(toks))
+            .map(|(toks, cost)| (toks[..toks.len() - 1].iter().copied().chain([FOLD]).collect(), *cost))
+            .collect();
+        for fold in folds {
+            if !alts.contains(&fold) {
+                alts.push(fold);
+            }
+        }
+    }
+
+    /// The words that end where a stroke's folded plural starts, each with *-s* on (a suffix chord's
+    /// piece, as `+-S` struck on its own is): a lexicon word's, never a morpheme's (a suffix
+    /// morpheme has its plural its own).
+    fn fold_plurals(&self, sc: &mut Scratch, arena: &mut Vec<(u32, Piece)>, folded: &mut Vec<St>, next: &mut Vec<St>) {
+        let Some(plural) = self.suffixes.iter().position(|(_, text, hard)| text == "s" && !hard) else { return };
+        if self.c.must_use > 0 {
+            folded.retain(|s| s.used);
+        }
+        let settled = self.settle(sc, arena, folded, false);
+        let mut ends = Vec::new();
+        self.emit(&settled, arena, &mut ends);
+        for e in ends {
+            if matches!(self.after(arena, e.back), After::Short | After::Other) {
+                arena.push((e.back, Piece::Suffix(plural as u32)));
+                next.push(St { node: 0, cost: e.cost + self.c.fold_plural, back: (arena.len() - 1) as u32, used: true });
+            }
+        }
     }
 
     /// Whether stroke `i` is the star ladder's marker, a stroke of the star alone after the first.
@@ -1589,7 +1680,7 @@ impl Model {
             for root in roots(&p.before[start]) {
                 // Nor after a morpheme: a suffix morpheme has its plural its own (*-nesses*), and a
                 // prefix wants a word
-                if root.back == NO_BACK || matches!(self.after(&p.arena, root.back), After::Prefix | After::Suffix) {
+                if root.back == NO_BACK || matches!(p.arena[root.back as usize].1, Piece::Morpheme(_)) {
                     continue;
                 }
                 let found = if two {
@@ -1652,6 +1743,7 @@ impl Model {
     fn keep_ends(&self, arena: &[(u32, Piece)], states: &mut Vec<St>, locked: Option<&str>) {
         let mut pieces = Vec::new();
         let mut text = String::new();
+        let mut core = String::new();
         let mut ends: Vec<(u32, St)> = states
             .iter()
             .filter(|s| s.node == 0 && s.back != NO_BACK)
@@ -1668,10 +1760,11 @@ impl Model {
                     text = text.to_lowercase();
                 }
                 let joins = self.joins(&pieces);
-                let built = morphemic && joins == 0;
+                let built = self.built(&pieces, locked, &mut core);
                 let nonsense = pieces.len() > 1 && !built && self.known(&text).is_none() && (joins == 0 || self.spelled_rank(&text).is_none());
                 let unknown_built = built && self.known(&text).is_none();
-                (s.cost + if nonsense { self.c.nonword } else if unknown_built { self.c.built } else { 0 }, s)
+                let loose_built = nonsense && morphemic && joins == 0;
+                (s.cost + if loose_built { self.c.nonword + self.c.built } else if nonsense { self.c.nonword } else if unknown_built { self.c.built } else { 0 }, s)
             })
             .collect();
         if ends.len() <= KEEP_ENDS {
@@ -1736,6 +1829,39 @@ impl Model {
             .count() as u32
     }
 
+    /// Whether `pieces` build a word as English does: prefixes, one word, suffixes, nothing else
+    /// joined on, and the word with any suffix chords on it a word the lexicon has (*anti* +
+    /// *conventional*, never *anti* + *convention* + *ly*: the stem and its chords are held to what a
+    /// run of them alone is held to). `core` is working space.
+    fn built(&self, pieces: &[Piece], locked: Option<&str>, core: &mut String) -> bool {
+        // A plural *-s* ending it is English's own suffix too, on a word or a built one
+        let (pieces, plural) = match pieces.split_last() {
+            Some((&Piece::Suffix(s), rest)) if self.suffixes[s as usize].1 == "s" && !rest.is_empty() => (rest, true),
+            _ => (pieces, false),
+        };
+        // A chord that writes a suffix morpheme (`+EUFT`, *-ist*) is that morpheme here
+        let morpheme = |p: &Piece| match *p {
+            Piece::Morpheme(_) => true,
+            Piece::Suffix(s) => self.chord_morpheme.0[s as usize],
+            Piece::TwoSuffix(s) => self.chord_morpheme.1[s as usize],
+            _ => false,
+        };
+        if !(plural || pieces.iter().any(morpheme)) || self.joins(pieces) != 0 {
+            return false;
+        }
+        let start = pieces.iter().position(|&p| !self.is_prefix(p)).unwrap_or(pieces.len());
+        let end = pieces[start..].iter().position(morpheme).map_or(pieces.len(), |at| start + at);
+        // After the word's suffixes, nothing but suffixes (*-ation* + *-est* builds nothing)
+        if !pieces[end..].iter().all(morpheme) {
+            return false;
+        }
+        if end <= start + 1 {
+            return true;
+        }
+        self.write_text(&pieces[start..end], locked, core);
+        self.known(&core.to_lowercase()).is_some()
+    }
+
     fn reading(&self, arena: &[(u32, Piece)], end: St, locked: Option<&str>) -> Reading {
         let mut pieces = Vec::new();
         Self::chain(arena, end.back, &mut pieces);
@@ -1755,10 +1881,11 @@ impl Model {
         let exact = pieces.len() == 1 && matches!(pieces[0], Piece::Stem(_));
         let joins = self.joins(&pieces);
         let morphemic = pieces.iter().any(|p| matches!(p, Piece::Morpheme(_)));
+        let built = self.built(&pieces, locked, &mut String::new());
         // A prefix with nothing after it is no word yet
         let open = pieces.last().is_some_and(|&p| self.is_prefix(p));
         let pieces = pieces.iter().map(|&p| self.piece_text(p, locked).to_owned()).collect();
-        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, open }
+        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, built, open }
     }
 
     // --- What the plugin answers ---
@@ -1870,24 +1997,35 @@ const fn place(keys: u32) -> u32 {
     if k == 0 { 0 } else { k.trailing_zeros() }
 }
 
-/// English's spelling at a suffix, applied to `text` before `next` is added: a consonant and `le`
-/// become `ly` with *-ly* (`probable` + `ly`, *probably*; `simple`, *simply*) and `-ble` becomes
-/// `-bil` before *-ity* (*probability*); a silent `e` drops before a vowel (`make` + `ing`); a
-/// `y` after a consonant turns to `i` before anything but `i` (`happy` + `ness`).
+/// English's spelling at a suffix, applied to `text` before `next` is added: *-s* is *-es* after
+/// `s x z ch sh` (*climaxes*); *-logy* takes its *o* after anything but an `o` (*accidentology*);
+/// `-ic` and *-ly* is *-ically* (*basically*); a consonant and `le` become `ly` with *-ly*
+/// (`probable` + `ly`, *probably*; `simple`, *simply*) and `-ble` becomes `-bil` before *-ity*
+/// (*probability*); a silent `e` drops before a vowel (`make` + `ing`); a `y` after a consonant
+/// turns to `i` before anything but `i` and *-ship* (`happy` + `ness`, but *secretaryship*).
 fn join_suffix(text: &mut String, next: &str) {
     let b = text.as_bytes();
     let n = b.len();
     let vowel = |c: u8| matches!(c, b'a' | b'e' | b'i' | b'o' | b'u');
     let next_vowel = next.starts_with(['a', 'e', 'i', 'o', 'u', 'y']);
     let next_i = next.starts_with('i');
-    if n > 2 && text.ends_with("le") && !vowel(b[n - 3]) && next == "ly" {
+    if next == "s" && (text.ends_with(['s', 'x', 'z']) || text.ends_with("ch") || text.ends_with("sh")) {
+        // `climax` + `s` is *climaxes*
+        text.push('e');
+    } else if next == "logy" && n > 0 && b[n - 1] != b'o' {
+        // `accident` + `logy` is *accidentology*: the joining *o* of *-ology*
+        text.push('o');
+    } else if text.ends_with("ic") && next == "ly" {
+        // `basic` + `ly` is *basically*
+        text.push_str("al");
+    } else if n > 2 && text.ends_with("le") && !vowel(b[n - 3]) && next == "ly" {
         text.truncate(n - 2);
     } else if text.ends_with("ble") && next.starts_with("ity") {
         text.truncate(n - 2);
         text.push_str("il");
     } else if n > 1 && next_vowel && b[n - 1] == b'e' && !vowel(b[n - 2]) {
         text.pop();
-    } else if n > 1 && !next_i && b[n - 1] == b'y' && !vowel(b[n - 2]) {
+    } else if n > 1 && !next_i && next != "ship" && b[n - 1] == b'y' && !vowel(b[n - 2]) {
         // `fly` + `s` is *flies*, `happy` + `ness` is *happiness*
         text.pop();
         text.push_str(if next == "s" { "ie" } else { "i" });

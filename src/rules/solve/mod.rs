@@ -541,6 +541,33 @@ fn pron_has_no_final_vowel(variants: &[Vec<String>]) -> bool {
     variants.iter().any(|v| v.last().is_some_and(|s| !s.ends_with(|c: char| c.is_ascii_digit())))
 }
 
+/// One reading of a word's spelling ([`orthography::readings`]) as a path down the trie.
+fn spelled_path(reading: &[Phone], sounds: &mut Sounds) -> Vec<EdgeKey> {
+    let last_vowel = reading.iter().rposition(|p| p.heard.ends_with(|c: char| c.is_ascii_digit()));
+    reading
+        .iter()
+        .enumerate()
+        .map(|(at, phone)| {
+            let vowel = phone.heard.ends_with(|c: char| c.is_ascii_digit());
+            if vowel {
+                let mask = (1u64 << sounds.id(&phone.heard)) | (1 << sounds.id(&phone.long)) | (1 << sounds.id(&phone.weak));
+                // The last vowel letter is a syllable struck (*probably*'s *y*), as on the
+                // sounds' own path; not an *e*, which ends a word as often reduced or silent
+                let drop = if Some(at) == last_vowel && phone_letters(phone) != letters("e") {
+                    (DROP_SECONDARY + tuned_pack("DROP_LAST", DROP_LAST)).min(DROP_STRESSED)
+                } else if phone.weak.ends_with('0') {
+                    DROP_UNSTRESSED
+                } else {
+                    DROP_SECONDARY
+                };
+                EdgeKey { mask, letters: phone_letters(phone), drop, vowel }
+            } else {
+                EdgeKey { mask: 1 << sounds.id(&phone.heard), letters: 0, drop: DROP_CONSONANT, vowel }
+            }
+        })
+        .collect()
+}
+
 /// The lexicon's words, most common first with their ranks, and the trie over each one's
 /// pronunciations and the readings of its spelling.
 fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a String, usize)>, Trie) {
@@ -585,28 +612,7 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
         }
         for reading in orthography::readings(word, 1) {
             let last_vowel = reading.iter().rposition(|p| p.heard.ends_with(|c: char| c.is_ascii_digit()));
-            let path: Vec<EdgeKey> = reading
-                .iter()
-                .enumerate()
-                .map(|(at, phone)| {
-                    let vowel = phone.heard.ends_with(|c: char| c.is_ascii_digit());
-                    if vowel {
-                        let mask = (1u64 << sounds.id(&phone.heard)) | (1 << sounds.id(&phone.long)) | (1 << sounds.id(&phone.weak));
-                        // The last vowel letter is a syllable struck (*probably*'s *y*), as on the
-                        // sounds' own path; not an *e*, which ends a word as often reduced or silent
-                        let drop = if Some(at) == last_vowel && phone_letters(phone) != letters("e") {
-                            (DROP_SECONDARY + tuned_pack("DROP_LAST", DROP_LAST)).min(DROP_STRESSED)
-                        } else if phone.weak.ends_with('0') {
-                            DROP_UNSTRESSED
-                        } else {
-                            DROP_SECONDARY
-                        };
-                        EdgeKey { mask, letters: phone_letters(phone), drop, vowel }
-                    } else {
-                        EdgeKey { mask: 1 << sounds.id(&phone.heard), letters: 0, drop: DROP_CONSONANT, vowel }
-                    }
-                })
-                .collect();
+            let path = spelled_path(&reading, sounds);
             trie.insert(&path, id, tuned_pack("SPELLED_PATH", SPELLED_PATH));
             // A silent final `e` struck as an *e* (EH or IY, not a schwa any vowel key reads as) is
             // the word's spelling on purpose (*dance*'s, not *dancer*'s ER): a cheaper spelled path
@@ -699,6 +705,11 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -
                 .map(|(at, k)| EdgeKey { drop: if droppable(at) { k.drop } else { 0x7f }, ..k })
                 .collect();
             trie.insert(&path, index(words.len() + j), 0);
+        }
+        // And as it is spelled, every sound struck: `TPHESZ` is *-ness* letter by letter
+        for reading in orthography::readings(&m.text, 1) {
+            let path: Vec<EdgeKey> = spelled_path(&reading, &mut sounds).into_iter().map(|k| EdgeKey { drop: 0x7f, ..k }).collect();
+            trie.insert(&path, index(words.len() + j), tuned_pack("SPELLED_PATH", SPELLED_PATH));
         }
     }
     let mut b = Blob(Vec::new());
@@ -1070,6 +1081,34 @@ mod tests {
             ("R/+EU/+-T/+EU", "righty", "no morpheme on a word under four letters (are + ity)"),
             ("PHAOEU/+-BG/+R/+O/+-PB", "micron", "no suffix chord after a prefix (micro + en)"),
             ("THAO*E/+TPH/+KEU/+-PBG", "thinking", "no path into a morpheme that cannot follow (the + -ness...)"),
+            ("KHAOEURBD/+TPHESZ", "childishness", "a morpheme struck as spelled, -ness letter by letter (not childish + nesses)"),
+            ("APB/+TAOE/+KOPB/+SREPB/+-GS/+-L", "anticonventional", "the word and its chords spell a word you know (not convention + ly)"),
+            ("APB/+TAOE/+KRAOE/+AEUGS/+-FT", "anticreationist", "only suffixes after the word's suffixes (not curry + ation + est)"),
+            ("ABS/+HRAOUT/+EUFT/+EU/+KHREU", "absolutistically", "a chord that writes a suffix morpheme takes the morphemes after it (-ist + -ically)"),
+            ("KAEUR/+-LS/+-PBS", "carelessness", "and the chords after it (-less + -ness)"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}: {rule}");
+        }
+    }
+
+    #[test]
+    fn a_plural_folds_on_a_word_s_last_stroke() {
+        for (outline, word, why) in [
+            ("A/+PWAPBD/+-PB/+PHUPBTS", "abandonments", "abandonment + a folded -s, not abandonment with an S left over"),
+            ("STOP/+OEFRZ", "stopovers", "on -Z too"),
+            ("PWROUPB/+OUTS", "brownouts", "a compound's plural"),
+            ("TKPWAO/+TK/+TPHESZ", "goodness", "-SZ spelling a double s is still the word you know"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline} ({why})");
+        }
+    }
+
+    #[test]
+    fn suffixes_join_by_english_spelling_at_the_seam() {
+        for (outline, word, rule) in [
+            ("ABGSD/+-PBT/+OL/+SKWREU", "accidentology", "-logy takes its o"),
+            ("APB/+TAOE/+KHREUPL/+ABGS/+-S", "anticlimaxes", "-s is -es after x"),
+            ("ABG/+KHAOU/+AEUR/+EU/+SHEUP", "actuaryship", "y stays before -ship"),
         ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}: {rule}");
         }
