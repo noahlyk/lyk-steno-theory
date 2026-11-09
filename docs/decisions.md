@@ -2579,3 +2579,17 @@ below it, the edge into it) and one slot of working memory per node, so stepping
 one stretch of memory. Answers byte for byte the same (native and wasm), backups 88.8% unchanged.
 Native 3.3 -> 1.9 ms a run; wasm 4.3 -> 2.7 ms a call (p50 3.6 -> 2.3, p99 13.0 -> 7.8, max 18.8 ->
 11.6), 84 -> 88 MB of wasm memory.
+
+Then, still the same answers: a step puts its candidates straight into the beam it builds (no list
+of them first) and the beam's lists live in the working memory; a position none of whose children
+is within the beam's limit is not skipped through (each node knows its cheapest skip); the 23
+misstroke outlines are looked up once a stroke, not once per finished reading; the table of
+spellings is searched from the top 16 bits of the hash (it was a binary search of 200,000 entries,
+one cache miss a probe, for most finished readings each stroke); `keep_ends` spells a reading out
+only when it has two pieces or a morpheme. Loading the model read 157,446 known outlines and 65,000
+words into a heap allocation each and two hash maps keyed by them; the texts and outlines now sit
+end to end in one buffer each, found through open-addressed tables of ids (56 -> 21 ms natively).
+Wasm, 3,683 outlines each one call: 2.7 -> 2.1 ms a call (p50 1.7, p99 6.3, max 9.2); keymux's
+pattern, each run fed stroke by stroke (13,568 calls): 1.20 -> 0.57 ms a call (p50 0.60 -> 0.27, p99
+7.3 -> 3.5, max 12 -> 6); the first call, which loads the model, 60 -> 37 ms; wasm memory 84 -> 80
+MB. Native 1.9 -> 1.4 ms a run.
