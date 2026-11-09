@@ -17,7 +17,8 @@
     "**It answers again on every stroke.** A `+` run has no word boundary inside it, so keymux hands the solver the whole run after each new stroke and the new answer replaces the old one. A word can read as something else halfway through (`KOPL/+PU` reads *champa*) and settles on the right one when the run is done (`KOPL/+PU/+TER` *computer*).",
     "**It never overrides the dictionary.** keymux asks the dictionary files first; the solver only sees what none of them has.",
     "**It is what makes `+` a join key.** keymux itself gives no key a meaning; the solver's `joins` answer is what tells keymux that a `+` stroke continues the word before it and is never a word of its own.",
-    "**Spelling mode is unchanged.** A run that starts with `~` is read one letter a stroke from `rules/spelling.toml` ([spelling mode](#/ref/spelling-mode))."
+    "**Spelling mode is unchanged.** A run that starts with `~` is read one letter a stroke from `rules/spelling.toml` ([spelling mode](#/ref/spelling-mode)).",
+    "**A run that starts with the stroke `#` alone and goes on is a name.** It is read by a second model that holds the names alone, with the same rules and costs, never by the words ([the name lane](#/ref/names)). The solver tells keymux the stroke opens a lane (`lane`), so keymux asks it about `#` and the stroke after it together. No other run touches the names model."
    ],
    "ordered": false
   },
@@ -704,7 +705,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --after \"I don't\" -- \"-PB/+OE/+*\"   # the readings after a text, each with what the word before moved\ncargo run --release -- solve --context 1            # running text: every word with backups, alone and after the text before it\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --after \"I don't\" -- \"-PB/+OE/+*\"   # the readings after a text, each with what the word before moved\ncargo run --release -- solve --names 10              # the name lane: every 10th name struck by its sounds and by its spelling\ncargo run --release -- solve --context 1            # running text: every word with backups, alone and after the text before it\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
   },
   {
    "t": "p",

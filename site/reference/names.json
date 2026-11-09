@@ -1,0 +1,58 @@
+{
+ "id": "names",
+ "title": "The name lane",
+ "goal": "Type a name capitalized with `#` and the outline of its sounds: which outlines the dictionary holds for it, what the solver does when it holds none, and what to strike when a name has no pronunciation.",
+ "blocks": [
+  { "t": "h", "x": "What it is" },
+  { "t": "p", "x": "A name has two ways in. The ordinary one: the lowercase word, capitalized by [[KPA]] before it ([Punctuation](#/ref/punctuation)). The **name lane**: the stroke `#` alone, then the name struck as the rules strike its lowercase word. `#/TKAPBL` types *Daniel*; `TKAPBL` alone is still *daniel*. Nothing in the lane is a new way of striking: it is the sounds you already know, behind one extra stroke." },
+  { "t": "list", "ordered": false, "items": [
+   "**The lane stroke is `#` alone**, the number bar with nothing else down. `#` held with other keys (`#KAT`) is not it, and `#` with nothing after it is still a literal `#`.",
+   "**What follows it is a name, for every stroke the dictionaries do not list.** A name is read from the names alone (below), never from the ordinary words: `#/KOPL/+PU/+TER` is not *Computer* but the name that sounds likeliest. To type a literal `#` and then a word, put a stroke between them.",
+   "**The first stroke after `#` has no `+`**, as the first stroke of any word; every stroke after it carries `+`, as ever: `#/AER/+O/+SPHEUT` is *Aerosmith*. A lone `+` locks, a `+*` stars the stroke before, and the endings of the [suffix table](#/ref/suffixes) go on: `#/AER/+O/+SPHEUT/+-S` is *Aerosmiths*.",
+   "**Lowercase is dropping the `#/`.** `HRO*ERD` lowercases the name just typed, as it does a capital from `KPA`. A name written other than with a capital first letter is written as the list has it (*McDonald*, *iPad*).",
+   "**The lane costs one stroke**, the `#`. A name that is also a word keeps its place in the one-stroke policy: its word is one stroke, the name is that stroke behind `#`."
+  ] },
+  { "t": "h", "x": "Which names there are" },
+  { "t": "p", "x": "The lane's list is Lapwing's proper nouns (`lapwing-prefixed-proper-nouns.json` and `lapwing-proper-nouns.json`) and every word Plover and Lapwing write only capitalized ([how names are counted](#/ref/how-stroke-setup)). A text is left out when it is a plain lowercase word (the file holds *college*) or an acronym (*NBC*, *HTML*: all capitals). A name's key is its lowercase letters; how common it is comes from the subtitle counts, as for words." },
+  { "t": "h", "x": "The dictionary: generated, never borrowed where the rules can strike the name" },
+  { "t": "p", "x": "`build` writes `03-lyk-names.json`, numbered ahead of the solver (`05-`) so the dictionary answers where the solver would guess. Every entry is `#/` and an outline lyk's own rules give the lowercase name, from these sources, earlier first. An outline already held by an earlier source or a commoner name is not taken again." },
+  { "t": "table", "head": ["Source", "Entries for a name"], "rows": [
+   ["lyk's own outlines", "if lyk has the lowercase word: every outline of its words, short, alternates and extras entries (`#/` + [[daniel|TKAPBL]] is *Daniel*; nothing new to learn)"],
+   ["the rules' reading", "the plain outline and the spelling variant of every pronunciation the name has (a name said two ways gets both)"],
+   ["its syllables", "one syllable a stroke, for every pronunciation ([syllables](#/ref/syllables))"],
+   ["the lattice", "the cheapest 3 two-stroke, 2 three-stroke and 1 four-stroke ways to write its sounds, for every pronunciation"],
+   ["its spelling", "a name with **no pronunciation**: the cheapest ways to write its letters as joined strokes (4 of one stroke, 4 of two, 2 of three, 1 of four, as the spelled backups do), each vowel as the spelling gives it"]
+  ] },
+  { "t": "p", "x": "Only a name none of these can strike (more than one word, a digit, a dot) is **borrowed**: Lapwing's outline after `#/`, in the separate file `03-lyk-names-borrowed.json` so it is never mistaken for lyk's, and never an outline a lyk entry holds. A name of more than one word is also two names: *Adam Neely* is the lane twice, `#/` *Adam* then `#/` *Neely*." },
+  { "t": "note", "kind": "rule", "x": "No entry in the lane can shadow a normal entry: every one starts with the stroke `#` alone, and no other file does. `cargo test` asserts it against every generated entry and the reserved strokes." },
+  { "t": "h", "x": "When the dictionary has nothing: the name solver" },
+  { "t": "p", "x": "A `#/` run no file lists goes to the [solver](#/ref/fallback), which reads it from **a second model that holds the names alone**, never the ordinary words or the morphemes: the same matching, costs, pieces, locks and late star as [the solver](#/ref/fallback), a name's rarity from its place among the names, and no word before it re-ranking the readings. Struck by its sounds, a name lands on its name:" },
+  { "t": "table", "head": ["Strike", "Names (every 10th name with a pronunciation)", "First", "In the first five"], "rows": [
+   ["the rules' outline of its sounds", "853 strikes", "92.3%", "99.3%"],
+   ["the lattice paths of its sounds", "3,901", "90.5%", "99.3%"],
+   ["its spelling, pronunciation kept", "11,082", "89.3%", "98.3%"],
+   ["the rules' outline, **pronunciation withheld**", "853", "54.9%", "80.5%"],
+   ["its spelling, **pronunciation withheld**", "11,082", "85.6%", "97.8%"]
+  ] },
+  { "t": "p", "x": "The last two rows are a name with no pronunciation: the sounds of its outline are not in the model, so a name struck by its sounds is found about half the time, and one struck by its spelling nearly nine times in ten. A tie goes to the commoner name (*Neil* before *Neal*). When no name is close, the run types its keys read back as plain sounds, capitalized." },
+  { "t": "h", "x": "A name that misses: what to strike" },
+  { "t": "table", "head": ["Name", "Strike", "Types"], "rows": [
+   ["one the dictionary has", "`#/TKAPBL`", "*Daniel*"],
+   ["one the dictionary does not list (the sounds, a syllable a stroke)", "`#/AER/+O/+SPHEUT`", "*Aerosmith*"],
+   ["the same with an ending", "`#/AER/+O/+SPHEUT/+-S`", "*Aerosmiths*"],
+   ["a name with no pronunciation (its spelling, in chunks)", "`#/` then the chunks, a vowel as it is spelled", "the name"]
+  ] },
+  { "t": "h", "x": "What the lane covers, and what it does not" },
+  { "t": "table", "head": ["Names", "How you get in", "Count"], "rows": [
+   ["with a lyk entry (rules, syllables, lattice or spelling)", "the dictionary; the solver reads any other strike of its sounds", "9,424"],
+   ["of those, with no pronunciation, written by their spelling", "the dictionary by its spelling; the solver by sounds about half the time, by spelling nearly always", "1,902"],
+   ["only Lapwing's outline: more than one word, a digit, a dot, a hyphen or apostrophe, or a spelling the rules cannot chunk", "borrowed; a name of several words is also the lane twice", "1,177"],
+   ["no way in at all", "nothing: no lyk outline and none from Lapwing", "21"]
+  ] },
+  { "t": "p", "x": "Counts are from the current `build`: 10,622 names, 92,772 lyk entries, 2,685 borrowed entries. A letter-to-sound reading of a name with no pronunciation is not built: the spelling reading above is a deterministic stand-in that follows the spelled backups' chunks." },
+  { "t": "h", "x": "Keymux" },
+  { "t": "p", "x": "The solver tells keymux the stroke `#` alone opens a lane (`lane`, a generic plugin export): keymux then asks the solver about `#/` and the stroke after it together, where it would otherwise ask about that stroke alone and type the `#` by itself. A dictionary entry `#/...` is found first, as any entry ahead of the solver is. A `#` entry of your own dictionary (literal `#`, or `#/` names such as your own) still wins: the longest entry matches." },
+  { "t": "h", "x": "Try it" },
+  { "t": "pre", "x": "cargo run --release -- solve '#/AER/+O/+SPHEUT'      # the name lane, every reading\ncargo run --release -- solve --names 10             # strike every 10th name by sounds and by spelling\ncargo run --release -- build                         # writes 03-lyk-names.json and 03-lyk-names-borrowed.json" }
+ ]
+}

@@ -520,6 +520,11 @@ pub struct Model {
     masks: Vec<u64>,
     ends: Vec<(u32, u8)>,
     context: Context,
+    /// The name lane's model (`#/` then a name's outline): a model of its own over the names alone,
+    /// never consulted for any other run
+    names: Option<Box<Self>>,
+    /// Names written other than first letter capital (`McDonald`), by lowercase key, sorted
+    shown: Vec<(String, String)>,
     scratch: std::sync::Mutex<Option<Scratch>>,
     rel: u32,
     c: Costs,
@@ -711,7 +716,7 @@ const SPELLING_BUCKET_BITS: u32 = 16;
 
 /// The blob's first bytes and format version: `pack.rs` writes what `Model::load` reads.
 pub const MAGIC: &[u8; 4] = b"LYKS";
-pub const VERSION: u32 = 11;
+pub const VERSION: u32 = 12;
 
 /// The word a context ends on, as the bigram table keys it: lowercase, `<s>` at a sentence's
 /// start. `None` when nothing in the context says what came just before:
@@ -1042,6 +1047,16 @@ impl Model {
         context.table = Some(table);
         let m = *context.rows.last().unwrap_or(&0) as usize;
         (context.next, context.pmi) = r.rows(m, 5).map(|row| (u32::from_le_bytes(le(row, 0)), row[4].cast_signed())).unzip();
+        let nested = r.u32() as usize;
+        let names = if nested == 0 {
+            None
+        } else {
+            let inner = blob.get(r.at..r.at + nested)?;
+            r.at += nested;
+            Some(Box::new(Self::load(inner)?))
+        };
+        let n = r.u32() as usize;
+        let shown: Vec<(String, String)> = (0..n).map(|_| (r.str(), r.str())).collect();
         if r.at != blob.len() {
             return None;
         }
@@ -1085,6 +1100,8 @@ impl Model {
             masks,
             ends,
             context,
+            names,
+            shown,
             scratch: std::sync::Mutex::new(None),
             rel: rel(),
             c,
@@ -1535,6 +1552,10 @@ impl Model {
     pub fn warm(&self) {
         let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         guard.get_or_insert_with(|| Scratch::new(self.node_count()));
+        drop(guard);
+        if let Some(names) = &self.names {
+            names.warm();
+        }
     }
 
     /// [`Self::solve`] with the caller's own working memory.
@@ -1546,6 +1567,13 @@ impl Model {
     /// `context`; empty when unknown): its last word re-ranks the readings ([`previous_word`],
     /// [`CONTEXT_WEIGHT_TENTHS`]). An empty context changes nothing.
     pub fn solve_in(&self, sc: &mut Scratch, run: &[u32], keep: usize, context: &str) -> Vec<Reading> {
+        if let Some((names, rest)) = self.lane(run) {
+            let mut readings = names.solve(rest, keep, context);
+            for r in &mut readings {
+                r.text = self.name_text(&r.text);
+            }
+            return readings;
+        }
         let prev = self.context_word(context);
         let run = late_stars(run);
         let Some(at) = last_lock(&run) else { return self.solve_locked(sc, &run, keep, None, prev) };
@@ -1556,6 +1584,27 @@ impl Model {
             return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false, context: 0 }];
         }
         self.solve_locked(sc, tail, keep, Some(&locked), prev)
+    }
+
+    /// The name lane: a run that opens with the bare `#` stroke and goes on is a name, read by the
+    /// names model alone (`rest` is the run after the `#`). `None` for every other run, and always
+    /// when the blob has no names.
+    fn lane<'a>(&self, run: &'a [u32]) -> Option<(&Self, &'a [u32])> {
+        match run {
+            [NUMBER, rest @ ..] if !rest.is_empty() => Some((self.names.as_deref()?, rest)),
+            _ => None,
+        }
+    }
+
+    /// A name as it is written: its own spelling when the list has one (`McDonald`), else with a
+    /// capital first letter.
+    fn name_text(&self, text: &str) -> String {
+        let lower = text.to_lowercase();
+        if let Ok(at) = self.shown.binary_search_by(|(key, _)| key.as_str().cmp(lower.as_str())) {
+            return self.shown[at].1.clone();
+        }
+        let mut letters = text.chars();
+        letters.next().map(|c| c.to_uppercase().chain(letters).collect()).unwrap_or_default()
     }
 
     /// The id in the bigram table of the word `context` ends on ([`previous_word`]), when it is
@@ -2060,6 +2109,15 @@ impl Model {
         text
     }
 
+    /// What a run types (the run parsed), after `context`: [`Self::answer_after`] for the names model.
+    fn answer_after_run(&self, run: &[u32], context: &str) -> Option<String> {
+        let mut guard = self.scratch.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let prev = self.context_word(context);
+        let text = self.answer_run(guard.get_or_insert_with(|| Scratch::new(self.node_count())), run, prev);
+        drop(guard);
+        text
+    }
+
     /// [`Self::answer`] with the caller's own working memory.
     pub fn answer_with(&self, sc: &mut Scratch, outline: &str) -> Option<String> {
         self.answer_in(sc, outline, "")
@@ -2070,6 +2128,9 @@ impl Model {
         let run: Vec<u32> = outline.split('/').map(parse_stroke).collect::<Option<_>>()?;
         if run.first().is_some_and(|s| s & SPELL != 0) {
             return self.spelled(&run);
+        }
+        if let Some((names, rest)) = self.lane(&run) {
+            return names.answer_after_run(rest, context).map(|text| self.name_text(&text));
         }
         self.answer_run(sc, &run, self.context_word(context))
     }

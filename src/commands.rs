@@ -66,6 +66,10 @@ pub fn deploy(
     for name in [crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE] {
         copied.push((words_out.join(name), to.join(name)));
     }
+    // The name lane: `#/` then a name's outline, lyk's own and the few borrowed from Lapwing
+    for name in [crate::names::FILE, crate::names::BORROWED_FILE] {
+        copied.push((words_out.join(name), to.join(name)));
+    }
     for (from, dest) in &copied {
         std::fs::copy(from, dest).with_context(|| dest.display().to_string())?;
     }

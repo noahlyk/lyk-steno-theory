@@ -49,6 +49,7 @@
         { "id": "punctuation", "title": "Punctuation and commands", "summary": "Every mark, capital, cursor and editing stroke." },
         { "id": "fingerspelling", "title": "Fingerspelling, numbers and modifiers", "summary": "The alphabet, numbers, function keys, symbols and OS chords." },
         { "id": "spelling-mode", "title": "Spelling mode", "summary": "Letter-exact typing for a word with no pronunciation." },
+        { "id": "names", "title": "The name lane", "summary": "`#/` then a name's outline types it capitalized: the generated dictionary, the name solver for a miss, and the spelling reading for a name with no pronunciation." },
         { "id": "fallback", "title": "The solver: what a miss types", "summary": "The keymux plugin that reads a stroke or `+` run the dictionary lacks as its word; its costs; the plain read-back below it; the thinned backups." }
       ]
     },

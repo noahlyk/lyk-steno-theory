@@ -126,6 +126,9 @@ pub struct Setup {
     /// The frequency list's rows past those ranked here, down to [`SPELLINGS`], with their line:
     /// real spellings, unranked and unpronounced, that the solver lets pieces spell (*lookup*)
     pub spellings: Vec<(String, usize)>,
+    /// Lapwing's proper nouns (`crate::names`): the outline after `#/` when the file has one, and
+    /// the name
+    pub proper_nouns: Vec<(Option<String>, String)>,
 }
 
 /// How far down the frequency list real spellings are kept for the solver (see `Setup::spellings`).
@@ -212,6 +215,7 @@ impl Setup {
             bigrams,
             web_bigrams,
             spellings,
+            proper_nouns: crate::names::load_proper_nouns(data)?,
         })
     }
 
@@ -228,6 +232,7 @@ impl Setup {
             bigrams: HashMap::new(),
             web_bigrams: Vec::new(),
             spellings: Vec::new(),
+            proper_nouns: Vec::new(),
         }
     }
 

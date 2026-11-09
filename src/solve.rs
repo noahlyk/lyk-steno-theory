@@ -33,6 +33,8 @@ pub struct Options<'a> {
     pub giant_count: usize,
     /// Test the context rule on every this-many-th word of running text with backups
     pub context: Option<usize>,
+    /// Test the name lane on every this-many-th name with a pronunciation
+    pub names: Option<usize>,
     /// Where the running text is (`data/corpus`, books)
     pub corpus: &'a Path,
     /// With `outline`: the text typed before it
@@ -44,7 +46,7 @@ pub fn model(setup: &Setup, dir: &Path, common: usize) -> Result<(Model, usize)>
     let entries = crate::built::load(dir).with_context(|| format!("reading the dictionary in {}", dir.display()))?;
     let stems = solve::stems(&entries);
     let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common };
-    let blob = solve::pack(&setup.rules, &lexicon, &stems);
+    let blob = solve::pack(&setup.rules, &lexicon, &stems, Some(&crate::names::collect(setup)));
     let size = blob.len();
     Ok((Model::load(&blob).context("the packed blob does not load")?, size))
 }
@@ -54,7 +56,7 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
         let entries = crate::built::load(options.dir)?;
         let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common: options.common };
         std::fs::create_dir_all(to)?;
-        let size = solve::write_plugin(&setup.rules, &lexicon, &entries, to)?;
+        let size = solve::write_plugin(&setup.rules, &lexicon, &entries, &crate::names::collect(setup), to)?;
         println!("wrote {} and {} ({:.1} MB) to {}", solve::plugin::SOURCE_FILE, solve::plugin::BLOB_FILE, size.to_f64() / 1e6, to.display());
         return Ok(());
     }
@@ -115,7 +117,96 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
     if let Some(step) = options.context {
         eval_context(&model, options.dir, options.corpus, step, options.misses)?;
     }
+    if let Some(step) = options.names {
+        eval_names(setup, &model, step, options.misses)?;
+    }
     Ok(())
+}
+
+/// One kind of name test: how many strikes, how many the solver put first, how many in its five.
+#[derive(Default)]
+struct NameTally {
+    cases: usize,
+    first: usize,
+    five: usize,
+}
+
+impl NameTally {
+    fn add(&mut self, got: &[solve::Reading], name: &str) {
+        self.cases += 1;
+        self.first += usize::from(got.first().is_some_and(|r| r.text == name));
+        self.five += usize::from(got.iter().any(|r| r.text == name));
+    }
+    fn line(&self, what: &str) -> String {
+        format!("  {what:<44} {:>6} strikes  top-1 {:>5.1}%  top-5 {:>5.1}%", self.cases, pct(self.first, self.cases), pct(self.five, self.cases))
+    }
+}
+
+/// `#` then the outline (join keys set), as the solver is asked it.
+fn lane_run(outline: &[Stroke]) -> Vec<u32> {
+    let mut run = vec![1u32];
+    run.extend(outline.iter().map(|s| s.0));
+    run
+}
+
+/// The name lane: every `step`th name that has a pronunciation, struck behind `#` in four ways: as
+/// the rules strike its sounds, as the cheapest lattice paths strike them, and (the pronunciation
+/// kept, then withheld) as its spelling is struck. The model whose pronunciations are withheld is
+/// the one a name with none is read by.
+fn eval_names(setup: &Setup, model: &Model, step: usize, misses: Option<&Path>) -> Result<()> {
+    let names = crate::names::collect(setup);
+    let sample: Vec<&crate::names::Name> =
+        names.iter().filter(|n| setup.pron.contains_key(&n.key) && crate::names::spellable(&n.key)).step_by(step.max(1)).collect();
+    let held: HashSet<&str> = sample.iter().map(|n| n.key.as_str()).collect();
+    let mut withheld = setup.pron.clone();
+    withheld.retain(|k, _| !held.contains(k.as_str()));
+    let blind = solve::pack_names(&setup.rules, &withheld, &names);
+    let blind = Model::load(&blind).context("the names model without pronunciations does not load")?;
+    let mut tally: [NameTally; 5] = Default::default();
+    let mut lost = String::new();
+    let mut sc = blind.scratch();
+    for name in &sample {
+        let rules = &setup.rules;
+        let mut strikes: Vec<(usize, Vec<Stroke>)> = Vec::new();
+        for sounds in &setup.pron[&name.key] {
+            if let Some(mut outline) = rules.outline(&name.key, sounds) {
+                rules.joined(&mut outline);
+                strikes.push((0, outline.clone()));
+                strikes.push((3, outline));
+            }
+            for (_, mut outline) in rules.lattice_paths(&name.key, sounds, &[3, 2, 1, 0, 0]) {
+                rules.joined(&mut outline);
+                strikes.push((1, outline));
+            }
+        }
+        for (_, mut outline) in rules.orthographic_paths(&name.key, &crate::names::SPELLING_QUOTAS).into_iter().chain(rules.spelled_remainder(&name.key, &crate::names::SPELLING_QUOTAS)) {
+            rules.joined(&mut outline);
+            strikes.push((2, outline.clone()));
+            strikes.push((4, outline));
+        }
+        for (kind, outline) in strikes {
+            let run = lane_run(&outline);
+            // Kinds 3 and 4 are read by the model that was never told how the name sounds
+            let got = if kind >= 3 { blind.solve_with(&mut sc, &run[1..], 5).into_iter().map(|mut r| { r.text = capitalized(&r.text, name); r }).collect() } else { model.solve(&run, 5, "") };
+            tally[kind].add(&got, &name.text);
+            if kind == 0 && got.first().is_none_or(|r| r.text != name.text) {
+                let _ = writeln!(lost, "{}\t{}\t{}", render_outline(&outline), name.text, got.first().map_or("-", |r| r.text.as_str()));
+            }
+        }
+    }
+    println!("names: {} of {} names with a pronunciation, every {step}th", sample.len(), names.iter().filter(|n| setup.pron.contains_key(&n.key)).count());
+    for (kind, what) in ["the rules' outline of its sounds", "lattice paths of its sounds", "its spelling, pronunciation kept", "the rules' outline, pronunciation withheld", "its spelling, pronunciation withheld"].iter().enumerate() {
+        println!("{}", tally[kind].line(what));
+    }
+    if let Some(path) = misses {
+        std::fs::write(path, lost)?;
+    }
+    Ok(())
+}
+
+/// A reading's text as the name is written: the name's own text when it is the same word.
+fn capitalized(text: &str, name: &crate::names::Name) -> String {
+    if text.to_lowercase() == name.key { name.text.clone() } else { text.to_owned() }
 }
 
 /// The backups by word: each word's outlines, but those another file holds (keymux types that

@@ -16,7 +16,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | | |
 |---|---|
 | `lessons/index.json`, `lessons/NN-name.json` | The curriculum: 20 chapters in 6 parts (plus the optional chapter 0, Learn the keys; chapters 19 and 20 are the phrasing grammar). The only place lesson text lives. |
-| `reference/index.json`, `reference/<id>.json` | The **Reference** area (`#/ref`): every rule, table and mechanism that is not a lesson, 23 pages in 6 sections (cheat sheet, how it works, the rules, briefs/phrases/suffixes, punctuation and letters, the project). The docs/ chapters and the Lyk Pipeline artifact live here now. Same blocks as a lesson, no drill; searchable (`js/reference.js`, also surfaced in Lookup); every heading is an anchor, `#/ref/<page>/<heading-slug>`. |
+| `reference/index.json`, `reference/<id>.json` | The **Reference** area (`#/ref`): every rule, table and mechanism that is not a lesson, 24 pages in 6 sections (cheat sheet, how it works, the rules, briefs/phrases/suffixes, punctuation and letters, the project). The docs/ chapters and the Lyk Pipeline artifact live here now. Same blocks as a lesson, no drill; searchable (`js/reference.js`, also surfaced in Lookup); every heading is an anchor, `#/ref/<page>/<heading-slug>`. |
 | `data/grammar.json` | The phrasing grammar's parts and its 3,758 strokes, from `tools/phrasing_prototype.py`. **Generated.** `js/grammar.js` is the composer. |
 | `data/words.json` | The 12,000 commonest words, plus every word a lesson names, each with its fastest outline and a few more ways in. **Generated.** |
 | `data/chart.json` | The key chart, read from `rules/plover.toml`. **Generated.** |

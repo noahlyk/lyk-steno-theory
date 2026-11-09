@@ -445,8 +445,8 @@ pub fn stems(entries: &[Entry]) -> Vec<(Vec<Stroke>, String)> {
 
 /// Write the keymux plugin, its source and its blob, into `dir` beside the dictionary files.
 /// Returns the blob's size in bytes.
-pub fn write_plugin(rules: &Rules, lexicon: &Lexicon, entries: &[Entry], dir: &std::path::Path) -> anyhow::Result<usize> {
-    let blob = pack(rules, lexicon, &stems(entries));
+pub fn write_plugin(rules: &Rules, lexicon: &Lexicon, entries: &[Entry], names: &[crate::names::Name], dir: &std::path::Path) -> anyhow::Result<usize> {
+    let blob = pack(rules, lexicon, &stems(entries), Some(names));
     crate::output::write_if_different(&dir.join(plugin::BLOB_FILE), &blob)?;
     crate::output::write_if_different(&dir.join(plugin::SOURCE_FILE), plugin::source(&blob).as_bytes())?;
     Ok(blob.len())
@@ -642,18 +642,18 @@ fn spelled_path(reading: &[Phone], sounds: &mut Sounds) -> Vec<EdgeKey> {
 
 /// The lexicon's words, most common first with their ranks, and the trie over each one's
 /// pronunciations and the readings of its spelling.
-fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a String, usize)>, Trie) {
+fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds, unpronounced: bool) -> (Vec<(&'a String, usize)>, Trie) {
     let mut words: Vec<(&String, usize)> = lexicon
         .rank
         .iter()
-        .filter(|(w, r)| **r < lexicon.common && lexicon.pron.contains_key(*w))
+        .filter(|(w, r)| **r < lexicon.common && (unpronounced || lexicon.pron.contains_key(*w)))
         .map(|(w, r)| (w, *r))
         .collect();
     words.sort_by(|a, b| (a.1, a.0).cmp(&(b.1, b.0)));
     let mut trie = Trie::default();
     for (id, (word, rank)) in words.iter().enumerate() {
         let id = index(id);
-        for variant in &lexicon.pron[*word] {
+        for variant in lexicon.pron.get(*word).into_iter().flatten() {
             // An abbreviation said in full (*tv* as *television*): those sounds are the full word's
             if variant.len() > 2 * word.chars().count() + 1 {
                 continue;
@@ -693,7 +693,7 @@ fn lexicon_trie<'a>(lexicon: &'a Lexicon, sounds: &mut Sounds) -> (Vec<(&'a Stri
                 && chars[chars.len() - 1] == 'e'
                 && !"aeiouy".contains(chars[chars.len() - 2])
                 && Some(reading.len() - 1) == last_vowel
-                && pron_has_no_final_vowel(&lexicon.pron[*word]);
+                && lexicon.pron.get(*word).is_some_and(|p| pron_has_no_final_vowel(p));
             if silent_e_struck {
                 let e = &reading[reading.len() - 1];
                 let mut path = path;
@@ -717,7 +717,7 @@ fn with_taught(rules: &Rules, lexicon: &Lexicon, words: &[(&String, usize)], ste
     let mut held: HashSet<Vec<u32>> = stems.iter().map(|(o, _)| bare(o)).collect();
     let mut out = stems.to_vec();
     for (word, _) in words {
-        for sounds in &lexicon.pron[*word] {
+        for sounds in lexicon.pron.get(*word).into_iter().flatten() {
             for outline in [rules.outline(word, sounds), rules.variant(word, sounds)].into_iter().flatten() {
                 if outline.len() >= 2 && held.insert(bare(&outline)) {
                     out.push((outline, (*word).clone()));
@@ -753,16 +753,59 @@ fn write_spellings(b: &mut Blob, lexicon: &Lexicon, lexicon_words: &HashMap<&str
 
 /// Everything [`Model::load`] reads, packed.
 #[must_use]
-pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)]) -> Vec<u8> {
+pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)], names: Option<&[crate::names::Name]>) -> Vec<u8> {
+    let mut b = Blob(pack_model(rules, lexicon, stems, false));
+    match names {
+        None => {
+            b.u32(0);
+            b.u32(0);
+        }
+        Some(names) => {
+            let nested = pack_names(rules, lexicon.pron, names);
+            b.len(nested.len());
+            b.0.extend_from_slice(&nested);
+            // How a name is written where it is not just its first letter capitalized
+            let mut shown: Vec<(&str, &str)> = names.iter().filter(|n| n.text != capitalized(&n.key)).map(|n| (n.key.as_str(), n.text.as_str())).collect();
+            shown.sort_unstable();
+            b.len(shown.len());
+            for (key, text) in shown {
+                b.str(key);
+                b.str(text);
+            }
+        }
+    }
+    b.0
+}
+
+/// A word with its first letter capitalized.
+fn capitalized(key: &str) -> String {
+    let mut letters = key.chars();
+    letters.next().map(|c| c.to_uppercase().chain(letters).collect()).unwrap_or_default()
+}
+
+/// The name lane's model (`crate::names`): a model of its own over the names alone, each ranked by
+/// where it stands among them, no morphemes, no known outlines but the ones the rules teach, no
+/// bigrams. A name with no pronunciation is in the trie by the readings of its spelling alone.
+pub fn pack_names(rules: &Rules, pron: &Pronunciations, names: &[crate::names::Name]) -> Vec<u8> {
+    let listed: Vec<&crate::names::Name> = names.iter().filter(|n| pron.contains_key(&n.key) || crate::names::spellable(&n.key)).collect();
+    let rank: HashMap<String, usize> = listed.iter().enumerate().map(|(at, n)| (n.key.clone(), at)).collect();
+    let lexicon = Lexicon { pron, rank: &rank, spellings: &[], bigrams: &[], common: 1_000_000 };
+    let mut b = Blob(pack_model(rules, &lexicon, &[], true));
+    b.u32(0);
+    b.u32(0);
+    b.0
+}
+
+fn pack_model(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)], names: bool) -> Vec<u8> {
     let mut sounds = Sounds::new();
     let tables = Tables::new(rules, &mut sounds);
-    let (words, mut trie) = lexicon_trie(lexicon, &mut sounds);
+    let (words, mut trie) = lexicon_trie(lexicon, &mut sounds, names);
     // The morphemes in the same trie, numbered after the words, each way it is said, every
     // consonant struck: a morpheme is short and cheap to join, and with its consonants skippable it
     // would match half of any stroke (`UD`, *hood*). An unstressed vowel may go, as the rules fold
     // it (`EUFPL`, *-ism*), but not a morpheme's only vowel (`HE/+-D` is no *hood*), nor a plural's
     // last (*-nesses* without it is *-ness* + *-s*)
-    let morphemes = morphemes();
+    let morphemes = if names { Vec::new() } else { morphemes() };
     for (j, m) in morphemes.iter().enumerate() {
         for way in &m.sounds {
             let variant: Vec<String> = way.split_whitespace().map(str::to_owned).collect();
@@ -1036,7 +1079,7 @@ mod tests {
         static MODEL: std::sync::LazyLock<Model> = std::sync::LazyLock::new(|| {
             let setup = crate::dictionary_fixture::setup();
             let lexicon = Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common: 100_000 };
-            let blob = pack(&setup.rules, &lexicon, &stems(&crate::dictionary_fixture::generated().entries));
+            let blob = pack(&setup.rules, &lexicon, &stems(&crate::dictionary_fixture::generated().entries), Some(&crate::names::collect(setup)));
             Model::load(&blob).expect("the packed blob loads")
         });
         &MODEL
@@ -1062,6 +1105,29 @@ mod tests {
         ] {
             assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}");
         }
+    }
+
+    /// The name lane: `#`, then the name struck as the rules strike its lowercase word.
+    #[test]
+    fn a_name_behind_the_hash_reads_from_the_names_alone() {
+        let model = model();
+        // A name no dictionary lists, struck by its sounds and by its spelling
+        assert_eq!(model.answer("#/AER/+O/+SPHEUT").as_deref(), Some("Aerosmith"));
+        // Capitalized, and written as the list writes it where that is not just a capital
+        assert_eq!(model.answer("#/PHOBG/+TKAUPBLD").as_deref(), Some("McDonald"));
+        // The same strokes without the `#` are the ordinary lane's, untouched
+        let plain = model.answer("AER/+O/+SPHEUT").unwrap();
+        assert_eq!(plain, plain.to_lowercase(), "the ordinary lane types lowercase: {plain}");
+        // A word that is no name is not found in the lane: the lane reads names only
+        let computer = model.answer("#/KOPL/+PU/+TER").unwrap();
+        assert_ne!(computer.to_lowercase(), "computer", "{computer}");
+        // The bare `#` and a `#` held with other keys are not the lane
+        assert_eq!(model.answer("#"), None);
+        let held = model.answer("#KOPL/+PU/+TER");
+        assert_eq!(held, model.answer("#KOPL/+PU/+TER"));
+        // Plurals and locks go on as in the ordinary lane
+        assert_eq!(model.answer("#/AER/+O/+SPHEUT/+-S").as_deref(), Some("Aerosmiths"));
+        assert_eq!(model.answer("#/AER/+O/+SPHEUT/+").as_deref(), Some("Aerosmith"));
     }
 
     #[test]
@@ -1401,7 +1467,7 @@ mod tests {
     #[test]
     fn the_plugin_source_carries_the_decoder_and_the_interface() {
         let source = plugin::source(b"LYKS");
-        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "extern \"C\" fn init", "extern \"C\" fn context", "include_bytes!(\"05-lyk-solver.bin\")"] {
+        for needle in ["pub fn solve_with", "extern \"C\" fn alloc", "extern \"C\" fn fallback", "extern \"C\" fn joins", "extern \"C\" fn lane", "extern \"C\" fn init", "extern \"C\" fn context", "include_bytes!(\"05-lyk-solver.bin\")"] {
             assert!(source.contains(needle), "{needle}");
         }
         assert!(Model::load(b"nope").is_none());

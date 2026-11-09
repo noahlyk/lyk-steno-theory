@@ -17,6 +17,7 @@ mod frequency;
 mod generate;
 mod interactive;
 mod lookup_cache;
+mod names;
 mod num;
 mod output;
 mod phrases;
@@ -58,6 +59,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 enum Command {
     /// Print the version (the same as `--version`)
     #[command(hide = true)]
@@ -216,6 +218,10 @@ enum Command {
         /// with backups, one of its backup outlines solved without and with the text before it
         #[arg(long)]
         context: Option<usize>,
+        /// Test the name lane: every Nth name with a pronunciation, struck by its sounds and by
+        /// its spelling behind `#`, with the pronunciation kept and withheld
+        #[arg(long)]
+        names: Option<usize>,
         /// With an outline: the text typed before it, whose last word re-ranks its readings
         #[arg(long, default_value = "")]
         after: String,
@@ -412,9 +418,9 @@ fn main() -> Result<()> {
             let entries = commands::dictionary_entries(&setup, briefs.as_deref(), *common, *rebuild)?;
             quote::run(&setup, &entries, *words)
         }
-        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, after } => solve::run(&setup(Some(*common))?, &solve::Options {
+        Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, names, after } => solve::run(&setup(Some(*common))?, &solve::Options {
             outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught, compounds: *compounds,
-            giant: giant.as_deref(), giant_count: *giant_count, context: *context, corpus: &cli.data.join("corpus"), after,
+            giant: giant.as_deref(), giant_count: *giant_count, context: *context, names: *names, corpus: &cli.data.join("corpus"), after,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };

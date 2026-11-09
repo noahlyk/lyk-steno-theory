@@ -33,13 +33,17 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     let files = crate::output::write_dictionary(&generated, out)?;
     print_files(&generated, &files, out);
     let lexicon = crate::rules::solve::Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common };
-    let size = crate::rules::solve::write_plugin(&setup.rules, &lexicon, &generated.entries, out)?;
+    let names = crate::names::collect(setup);
+    let size = crate::rules::solve::write_plugin(&setup.rules, &lexicon, &generated.entries, &names, out)?;
     println!(
         "  {:<24} the solver plugin, with its {:.1} MB lexicon in {}",
         crate::rules::solve::plugin::SOURCE_FILE,
         crate::num::ToF64::to_f64(size) / 1e6,
         crate::rules::solve::plugin::BLOB_FILE
     );
+    let lane = crate::names::generate(setup, &generated.entries, &names)?;
+    crate::names::write(&lane, out)?;
+    println!("  {:<24} the name lane: {}", crate::names::FILE, crate::names::summary(&lane, &names, setup));
     if !generated.stranded.is_empty() {
         println!(
             "warning: {} words are stranded on a worse outline than their own plain reading: {} (build --report for the rest)",

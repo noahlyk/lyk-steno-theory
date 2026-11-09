@@ -115,6 +115,11 @@ impl Gold {
         self.names.contains(word)
     }
 
+    /// Every such name, lowercase.
+    pub fn names(&self) -> impl Iterator<Item = &String> {
+        self.names.iter()
+    }
+
     /// The words either dictionary writes.
     pub fn words(&self) -> HashSet<&str> {
         self.plover

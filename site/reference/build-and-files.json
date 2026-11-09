@@ -203,7 +203,7 @@
   },
   {
    "t": "p",
-   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`), and the solver plugin, `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly the first time it loads it and whenever it changes, see [the solver](#/ref/fallback))."
+   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`), the [name lane](#/ref/names)'s `03-lyk-names.json` (lyk's own outlines for names, `#/` and an outline) and `03-lyk-names-borrowed.json` (Lapwing's, only for a name the rules cannot strike; written by `!build` and shipped by `!deploy`), and the solver plugin, `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly the first time it loads it and whenever it changes, see [the solver](#/ref/fallback))."
   },
   {
    "t": "p",

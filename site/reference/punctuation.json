@@ -479,7 +479,7 @@
   },
   {
    "t": "p",
-   "x": "Capitalizing a name is how proper nouns are written: lyk never makes a special outline for a name. The name types as its ordinary phonetic outline, capitalized by `KPA` before it. To capitalize or upper-case a word already written, or to write the next word in capitals, see [Commands](#/ref/punctuation/commands)."
+   "x": "A name is written two ways. The ordinary one: the word's ordinary outline, capitalized by `KPA` before it. The [name lane](#/ref/names): the stroke `#` alone, then the same outline, which types the name capitalized in one go (`#/TKAPBL` is *Daniel*), with a names-only solver behind it for a name the dictionary lacks. To capitalize or upper-case a word already written, or to write the next word in capitals, see [Commands](#/ref/punctuation/commands)."
   },
   {
    "t": "note",

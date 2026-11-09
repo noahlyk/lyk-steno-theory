@@ -1,5 +1,5 @@
 //! The keymux plugin: [`super::core`] verbatim, the packed blob beside it, and the fixed interface
-//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, and `init` and `context`; see keymux's
+//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, `lane`, and `init` and `context`; see keymux's
 //! `docs/plugins/README.md`).
 //!
 //! keymux compiles a plugin from its `.rs` alone and caches the result by that file's content
@@ -91,6 +91,13 @@ pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
 #[no_mangle]
 pub extern "C" fn joins(bits: i64) -> i32 {
     i32::from(bits as u32 & JOIN != 0)
+}
+
+/// The name lane's lead stroke: `#` alone (keymux's bit 22, its number key). The stroke after it
+/// is read as part of the same run (see keymux's docs/plugins/README.md, `lane`).
+#[no_mangle]
+pub extern "C" fn lane(bits: i64) -> i32 {
+    i32::from(bits == 1 << 22)
 }
 "#;
 
