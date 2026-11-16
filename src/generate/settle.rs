@@ -102,7 +102,17 @@ pub fn settle(setup: &Setup, pools: &Pools, families: &Families, book: &mut Book
                 .filter_map(|w| crate::family::chain(families.links, w))
                 .filter_map(|(root, _)| settled.get(root).map(|o| (root.to_owned(), hold(o))))
                 .collect();
-            let next = family_offers(families, &book.entries);
+            let mut next = family_offers(families, &book.entries);
+            // A member past the exempt ranks does not inherit a root's dropped onset sound
+            // (`give` `EUF` is exempt, `gave` is not): the faithful rule applies to its shape too.
+            next.retain(|word, shapes| {
+                if rank_of.get(word.as_str()).is_none_or(|&r| r < setup.rules.faithful_exempt_rank()) {
+                    return true;
+                }
+                let Some(prons) = setup.pron.get(word.as_str()) else { return true };
+                shapes.retain(|shape| setup.rules.faithful_any(shape, word, prons));
+                !shapes.is_empty()
+            });
             if holds.last {
                 break;
             }

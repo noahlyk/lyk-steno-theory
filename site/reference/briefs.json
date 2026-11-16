@@ -65,7 +65,7 @@
   },
   {
    "t": "p",
-   "x": "At 25 keys a stroke, [[like|HRAOEU]] beats `HRAOEUB`, [[day|AEU]] beats `TAEU`, and [[young|HUPBG]] beats `KWHUPBG`. A stroke used to weigh 1,000 keys, which let a rare word that saved one stroke beat any number of extra keys on a far commoner word (*you* was once pushed from [[U]] to the 7-key `KWRAOU`)."
+   "x": "At 25 keys a stroke, [[like|HRAOEU]] beats `HRAOEUB` and [[day|AEU]] beats `TAEU`. A stroke used to weigh 1,000 keys, which let a rare word that saved one stroke beat any number of extra keys on a far commoner word (*you* was once pushed from [[U]] to the 7-key `KWRAOU`)."
   },
   {
    "t": "h",
@@ -101,11 +101,19 @@
   },
   {
    "t": "h",
+   "x": "A brief may not drop a sound for free"
+  },
+  {
+   "t": "p",
+   "x": "A gold outline that leaves out a key of the word's first onset (*grab* `RAB`, *graph* `TPWRAF`, *got* `TKPOT`) is only offered if it saves a whole stroke on every other candidate, or the word is among the 550 commonest, or it is pinned in `rules/briefs.toml`. The end of the word is free: [[find|TPAOEUD]] drops the N. The rule, its allowances and the measured choice of 550 are in [faithful outlines](#/ref/collisions). A pinned `plover` or `lapwing` source counts as pinned; *got* and *find* are pinned to their faithful outlines."
+  },
+  {
+   "t": "h",
    "x": "Extra one-stroke entries"
   },
   {
    "t": "p",
-   "x": "After everything else is placed, each word's other one-stroke candidates that lost its primary slot take any stroke that is still unclaimed. The candidates are: its gold briefs from Plover and Lapwing, the plain rules reading, a spelling variant, an `-S` respelling and a family shape."
+   "x": "After everything else is placed, each word's other one-stroke candidates that lost its primary slot take any stroke that is still unclaimed. The candidates are: its gold briefs from Plover and Lapwing that key the first onset (see [faithful outlines](#/ref/collisions)), the plain rules reading, a spelling variant, an `-S` respelling and a family shape."
   },
   {
    "t": "list",
@@ -425,7 +433,7 @@
   },
   {
    "t": "p",
-   "x": "A literal override is exempt from this check by definition (a human chose it), so a literal override should not be a half-held chord. Six old overrides (*on*, *from*, *no*, *then*, *day*, *which*) were exploits of an older, narrower version of the check and were removed; each word now takes its own full phonetic reading. (*which* was later pinned to [[KH]] for a different reason, listed above.)"
+   "x": "A literal override is exempt from this check by definition (a human chose it), and from the faithful check just below, so a literal override should not be a half-held chord. Six old overrides (*on*, *from*, *no*, *then*, *day*, *which*) were exploits of an older, narrower version of the check and were removed; each word now takes its own full phonetic reading. (*which* was later pinned to [[KH]] for a different reason, listed above.)"
   }
  ]
 }

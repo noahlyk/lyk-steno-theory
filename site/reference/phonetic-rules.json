@@ -541,7 +541,7 @@
     [
      "ear (i + r)",
      "[[AOER]]",
-     "[[clear|KAOER]]"
+     "[[dear|TKAER]]"
     ],
     [
      "ear (ee + r)",
@@ -621,7 +621,7 @@
   },
   {
    "t": "p",
-   "x": "When two or three sounds would not fit the keys one after the other, the table folds them. Plover folds some of these onto a star (*bank* [[*PBG]], *stamp* [[*PL]]). A run of consonants that is in steno order is simply struck key after key: [[tent|TEPBT]], [[hold|HOLD]], [[mind|PHOEUPBD]]."
+   "x": "When two or three sounds would not fit the keys one after the other, the table folds them. Plover folds some of these onto a star (*bank* [[*PBG]], *stamp* [[*PL]]). A run of consonants that is in steno order is simply struck key after key: [[tent|TEPBT]], [[hold|HOLD]], [[mind|PHOEUPBD]]. The onset tables are also what decides whether a brief drops a sound at the start of a word: see [faithful outlines](#/ref/collisions)."
   },
   {
    "t": "table",
@@ -754,7 +754,7 @@
     [
      "l + b",
      "[[-BL]]",
-     "[[bulb|*UBL]]"
+     "[[bulb|PW*UBL]]"
     ],
     [
      "sh + n (`-tion`, `-sion`, `-cian`, `-cean`)",

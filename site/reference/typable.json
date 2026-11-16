@@ -76,7 +76,7 @@
   },
   {
    "t": "p",
-   "x": "Examples: *cadence* is [[cadence|KAEUPBTS]], *utters* is [[utters|URTS]], *silenced* is [[silenced|SAOEUPBLTS]]."
+   "x": "Examples: *cadence* is [[cadence|KAEUPBDZ]], *utters* is [[utters|URTS]], *silenced* is [[silenced|SAOEUPBLTS]]."
   },
   {
    "t": "h3",
@@ -126,7 +126,7 @@
   },
   {
    "t": "p",
-   "x": "Four rare words have no outline because their only repair fails the consonant check on the voiced `-D`: *cleansed*, *pulsed*, *blitzed*, *repulsed*. They are still typable from their syllables, e.g. [[cleansed|KEPBS/+-D]], and [the solver](#/ref/fallback) reads a run of their sounds as the word."
+   "x": "Four rare words have no outline because their only repair fails the consonant check on the voiced `-D`: *cleansed*, *pulsed*, *blitzed*, *repulsed*. They are still typable from their syllables, e.g. [[cleansed|-BLG/+EFPBD]], and [the solver](#/ref/fallback) reads a run of their sounds as the word."
   }
  ]
 }

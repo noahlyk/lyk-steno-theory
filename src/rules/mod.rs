@@ -8,6 +8,7 @@ use std::path::Path;
 
 /// The rules that ship with the program.
 mod brevity;
+mod faithful;
 mod fragments;
 mod lattice;
 mod orthography;
@@ -172,6 +173,9 @@ struct RawTheory {
     /// Strokes after the first of a word carry a join key
     #[serde(default)]
     join_key: bool,
+    /// The frequency rank below which a word keeps every gold outline, faithful or not
+    #[serde(default)]
+    faithful_exempt_rank: Option<usize>,
 }
 
 #[derive(Deserialize, Default)]
@@ -280,6 +284,8 @@ pub struct Rules {
     /// Whether consonants joining the stroke before may land out of steno order
     fold_any: bool,
     join_key: bool,
+    /// Words ranked below this keep every gold outline (see `rules/faithful.rs`)
+    faithful_exempt_rank: usize,
     brevity: Vec<Shortening>,
     prefixes: Vec<(Prefix, Stroke)>,
     // Read the keys of a stroke the rules did not write, back into the sounds that would have
@@ -508,6 +514,7 @@ impl Rules {
                 })
                 .collect::<Result<_>>()?,
             join_key: raw.theory.join_key,
+            faithful_exempt_rank: raw.theory.faithful_exempt_rank.unwrap_or(usize::MAX),
             brevity: raw
                 .brevity
                 .into_iter()

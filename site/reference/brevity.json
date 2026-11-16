@@ -79,7 +79,7 @@
   {
    "t": "note",
    "kind": "rule",
-   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `!shell`, `!ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words."
+   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `!shell`, `!ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words. They are the one place a sound may still be dropped for a stroke: the faithful rule ([faithful outlines](#/ref/collisions)) applies to gold briefs, and these forms are not changed by it."
   },
   {
    "t": "p",

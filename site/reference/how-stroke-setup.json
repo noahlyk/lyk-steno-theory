@@ -34,7 +34,7 @@
       ["CMUdict", "`pronunciation/cmudict.dict`", "The primary pronunciations, in ARPAbet."],
       ["MFA dictionary", "`pronunciation/english_us_mfa.dict`", "IPA pronunciations, fallback only."],
       ["WikiPron", "`pronunciation/wikipron_us_broad.tsv`", "IPA pronunciations, fallback only."],
-      ["Gold dictionaries", "Plover and Lapwing", "The briefs kept as candidates, and which words are written only capitalized (names)."],
+      ["Gold dictionaries", "Plover and Lapwing", "The briefs kept as candidates (all of them for the 550 commonest words; past that, only those that key the first onset or save a stroke: [faithful outlines](#/ref/collisions)), and which words are written only capitalized (names)."],
       ["Bigrams", "`frequency/bigrams_en.txt`", "Word-pair counts for phrase merging, kept only for words that are ranked."]
     ] },
     { "t": "pre", "x": "// src/analysis/mod.rs, Setup::load\nlet mut pron = cmudict?;\nfor (word, variants) in fallback_pronunciations(&pron, &mfa?, &wikipron?) {\n    pron.entry(word).or_insert(variants);   // never overwrites a CMUdict entry\n}" },

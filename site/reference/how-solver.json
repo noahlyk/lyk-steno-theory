@@ -39,7 +39,6 @@
     { "t": "table", "head": ["Word", "Outline"], "rows": [
       ["[[early|ERL]]", "one stroke"],
       ["[[exactly|ELG]]", "one stroke"],
-      ["[[guys|AOEUS]]", "one stroke"],
       ["[[mayor|PHAEUR]]", "one stroke"],
       ["[[bath|PWA*T]]", "one stroke"]
     ] },
@@ -81,7 +80,7 @@
       ["[[building|PWHR-G]]", "ending key", "[[buildings|PWHR-GZ]]", "two ending keys"],
       ["[[built|PWHR-D]]", "irregular past", "[[builder|PWHR-R]]", "ending key"],
       ["[[PWHR-RZ]] (builders)", "two ending keys", "[[rebuild|RE/+PWHR]]", "prefix then stem"],
-      ["[[RE/+PWHR-G]] (rebuilding)", "prefix then family shape", "", ""]
+      ["[[RE/+PW-LG]] (rebuilding)", "prefix then family shape", "", ""]
     ] },
     { "t": "h3", "x": "How closely families follow their root" },
     { "t": "table", "head": ["Top 10,000, by ending", "Members", "Outline follows the family", "Reachable as stem + ending"], "rows": [

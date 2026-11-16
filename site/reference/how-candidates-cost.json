@@ -7,7 +7,7 @@
     { "t": "p", "x": "`ranked_words` takes the frequency list's top 100,000 that have a pronunciation, in plain lowercase (letters and apostrophes only). Two kinds of token are dropped because they were frequency-list artifacts claiming short strokes they could never use." },
     { "t": "list", "ordered": false, "items": [
       "**The bare letter \"i\".** The list spells the pronoun lowercase, so the letter would inherit the pronoun's count. The pronoun keeps its own entry on [[I|EU]]; the letter is fingerspelled. `a` is the only single-letter word.",
-      "**Contraction tails** (`'s 'd 'll 're 'm 've 't 'n 'a`). The tokenizer splits \"I've\" into \"i\" + \"'ve\", so each tail would carry a whole contraction family's count. Struck alone it would type the tail with its space. The strokes they would have held go to real words: [[guess|ES]], [[you'll|UL]], [[um|UPL]], [[tour|TUR]]. Clipped words that are real on their own (`'cause`, `'em`, `'til`) stay."
+      "**Contraction tails** (`'s 'd 'll 're 'm 've 't 'n 'a`). The tokenizer splits \"I've\" into \"i\" + \"'ve\", so each tail would carry a whole contraction family's count. Struck alone it would type the tail with its space. The strokes they would have held go to real words: [[guess|TKPWES]], [[you'll|UL]], [[um|UPL]], [[tour|TUR]]. Clipped words that are real on their own (`'cause`, `'em`, `'til`) stay."
     ] },
     { "t": "h", "x": "Strokes spoken for before any word" },
     { "t": "p", "x": "These go into the `!taken` map first, and no word can land on them." },
@@ -25,7 +25,7 @@
     { "t": "h", "x": "The candidate pool" },
     { "t": "p", "x": "`enumerate_candidates` is a pure function: given a word it returns every legal outline, tagged with where it came from, and touches no shared state. The pool is built across every core (`enumerate_in_parallel`) with a byte-identical result. No candidate is preferred by construction; the solver settles that later, on cost. Candidates that land on the same rendered text are deduplicated, keeping the cheaper one." },
     { "t": "table", "head": ["Source", "Origin tag", "What it does"], "rows": [
-      ["Gold brief", "`Origin::Brief`", "Every outline Plover and Lapwing list for the spelling, plus a repaired variant from `drop_fragments` if the brief holds only part of a multi-key chord."],
+      ["Gold brief", "`Origin::Brief`", "Every outline Plover and Lapwing list for the spelling, plus a repaired variant from `drop_fragments` if the brief holds only part of a multi-key chord. One that leaves out a key of the first onset (`Rules::faithful`) is offered only if it saves a stroke, or the word is among the 170 commonest, or is pinned: see [faithful outlines](#/ref/collisions)."],
       ["Rules-derived", "`Origin::Rules`", "lyk's own phonetic reading, built from the pronunciation against the onset, vowel and coda tables."],
       ["Stem plus suffix", "`Origin::Rules`", "The same reading with the trailing reduced syllable struck as its own standalone continuation after the reading of the rest: [[pearly|PERL/+EU]], rabble's stem reading [[RAB/+-L]]. Up to two syllables are peeled. Never fewer strokes than the fold, so it is the predictable way down when every one-stroke form is taken."],
       ["Spelling variant", "`Origin::Spelling`", "For a homophone group (their, there, they're), the members that need telling apart get a spelling-marked variant. See [Spelling](#/ref/spelling)."],
@@ -70,7 +70,6 @@
     { "t": "table", "head": ["Word", "Outline"], "rows": [
       ["[[like|HRAOEU]]", "one stroke"],
       ["[[day|AEU]]", "one stroke"],
-      ["[[young|HUPBG]]", "one stroke"],
       ["[[better|PWERT]]", "one stroke"]
     ] },
     { "t": "p", "x": "A cross-word trade can also go the other way: a rare word may be written with a longer form so that a commoner word holds the one-stroke form." },

@@ -637,6 +637,21 @@ loose = ["R", "L"]
 # and overlap with words without ever being taken for one.
 join_key = true
 
+# Faithful outlines: a sound at the start of a word is never dropped for free. A gold-dictionary
+# outline (Plover's or Lapwing's, as listed or with its fragments dropped) that leaves out a key of
+# the word's first onset (the keys the tables above give those sounds: `g` is `TKPW`, `j` is
+# `SKWR`, `gr` is `TKPWR`) is "unfaithful": a weakened `G` (`TPWRAF`, `TKPOT`), a stripped onset
+# (`RAB` for `grab`). Sounds at the end of a word may still be dropped (the N of `find` `TPAOEUD`).
+# An unfaithful outline is a candidate only if it pays for itself, by one of three things:
+#   1. it takes fewer strokes than every other candidate the word has (strokes come before keys in
+#      the cost, so a drop that saves only keys inside one stroke is never worth it);
+#   2. the word is among the commonest: its rank is below this number (a one-key brief for `the`
+#      or `of` is worth more than its derivation; 550 is the smallest rank at which the
+#      Gutenberg-prose guard ("words costing more than Plover") passes: at 500 it reads 7.2%);
+#   3. a literal in `rules/briefs.toml` pins it (a human decision).
+faithful_exempt_rank = 550
+
+
 # How short a long word may be written, from the shortest form tried first. Each step is a
 # transformation of the full outline that can be done by hand; `rank` is how common a word has
 # to be (its place in the frequency list) to take it, and `vowel` whether the stressed vowel

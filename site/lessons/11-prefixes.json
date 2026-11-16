@@ -5,7 +5,7 @@
   "blocks": [
     { "t": "h", "x": "A prefix, then a word" },
     { "t": "table", "head": ["Prefix", "Stroke", "Example"], "rows": [
-      ["un-", "[[UPB]]", "[[unclear|UPB/+KAOER]]"],
+      ["un-", "[[UPB]]", "[[unclear|TKPHRAER]]"],
       ["re-", "[[RE]]", "[[rebuild|RE/+PWHR]]"],
       ["de-", "[[TKE]]", "[[decode|TKE/+KOED]]"],
       ["pre-", "[[PRE]]", "[[prefix|PRE/+TPEUBGS]]"],
@@ -26,14 +26,14 @@
     { "t": "note", "x": "You do not need to know which. Both are in the dictionary; the prefix stroke always works." },
     { "t": "h", "x": "Two words in one" },
     { "t": "p", "x": "A word that is two words is the two words, second one joined: [[myself|PHAOEU/+SEFL]], [[outside|OUT/+SAOEUD]]. This works for any compound you can split: *sun* + *light*, and even where speech blurs the join: [[noone|PHO/+WUPB]] is *no* + *one*, [[cannot|K/+OT]] is *can* + *not*." },
-    { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold T or G with the second stroke." }
+    { "t": "try", "title": "Prefix, then stem", "items": [["unclear", "TKPHRAER"], ["rebuild", "RE/+PWEULD"], ["decode", "TKE/+KOED"], ["subway", "SUB/+WAEU"], ["nonstop", "TPHOPB/+STOP"]], "x": "Five joined words. Hold T or G with the second stroke." }
   ],
   "drill": {
     "title": "Prefixes and compounds",
     "pass": 90,
     "repeat": 2,
     "items": [
-      ["unclear", "UPB/+KAOER"], ["rebuild", "RE/+PWHR"], ["decode", "TKE/+KOED"], ["prefix", "PRE/+TPEUBGS"], ["incorrect", "EUPB/+KREBGT"],
+      ["unclear", "TKPHRAER"], ["rebuild", "RE/+PWEULD"], ["decode", "TKE/+KOED"], ["prefix", "PRE/+TPEUBGS"], ["incorrect", "EUPB/+KREBGT"],
       ["impossible", "EUPL/+POS/+-BL"], ["enjoy", "EPB/+SKWROEU"], ["coexist", "KOE/+UG/+STKPWEUFT"], ["nonstop", "TPHOPB/+STOP"],
       ["subway", "SUB/+WAEU"], ["transplant", "TRAPBS/+PHRAPBLT"], ["interstate", "EUPB/+TER/+STAET"], ["antibody", "APB/+TEU/+PWA/+TKEU"],
       ["semifinal", "SEPL/+EU/+TPAOEUPBL"], ["overcome", "AUFR/+KUPL"], ["myself", "PHAOEU/+SEFL"], ["outside", "OUT/+SAOEUD"]

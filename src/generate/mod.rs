@@ -9,6 +9,8 @@ mod report;
 mod settle;
 mod solver;
 #[cfg(test)]
+mod faithful_tests;
+#[cfg(test)]
 mod tests;
 
 pub use candidates::{Candidate, STROKE_WEIGHT, candidate_cost, enumerate_candidates};

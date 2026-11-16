@@ -109,6 +109,8 @@ struct Total {
     plover: (f64, f64),
     lapwing: (f64, f64),
     other: (f64, f64),
+    /// This dictionary's ergonomic cost (`ergonomics::weighted_outline`) per word
+    comfort: f64,
 }
 
 /// One frequency band: weighted keys per dictionary, then the band's words counted once and how
@@ -157,6 +159,7 @@ fn tally<'a>(setup: &Setup, generated: &'a Generated, against: Option<&Against>)
         };
         total.weight += weight;
         add(&mut total.ours, (strokes, key_count));
+        total.comfort += weight * f64::from(crate::ergonomics::weighted_outline(outline));
         add(&mut total.plover, plover);
         add(&mut total.lapwing, lapwing);
         add(&mut total.other, other);
@@ -189,6 +192,7 @@ fn print_costs(total: &Total, bands: &[Band], other: Option<&str>) {
     for (name, (strokes, key_count)) in rows {
         println!("  {name:<9} {:>7.3} {:>8.3}", strokes / total.weight, key_count / total.weight);
     }
+    println!("  comfort cost per word (ergonomics, lower is easier): {:.3}", total.comfort / total.weight);
     println!("\nkeys per word by how common the word is, and the share of all words said;");
     println!("then, counting each word once, how many of the band's words are one stroke");
     println!("            share     this   plover  lapwing  {other_name:<8}   words  1-stroke  plover  lapwing");

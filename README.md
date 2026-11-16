@@ -27,7 +27,7 @@ once would be.
 <!-- lyk:overall-table:start -->
 | Theory | Keys/Stroke, weighted by how often each word is said |
 |---|---|
-| Lyk | 3.23 |
+| Lyk | 3.25 |
 | Plover | 3.57 |
 | Lapwing | 3.94 |
 <!-- lyk:overall-table:end -->
@@ -135,10 +135,10 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 77% | 82% | 5.50 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 5.76 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.54 | 4.78 | 5.14 |
-| 4+ | 23% | 17% | 18% | 5.69 | 4.94 | 5.18 |
+| 1 | 89% | 77% | 82% | 5.56 | 5.65 | 5.84 |
+| 2 | 59% | 44% | 51% | 5.81 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.58 | 4.78 | 5.14 |
+| 4+ | 23% | 17% | 18% | 5.72 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -148,10 +148,10 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.83 | 3.19 | 3.59 |
-| 2 | 4.68 | 4.70 | 5.00 |
-| 3 | 4.65 | 4.92 | 5.25 |
-| 4+ | 5.08 | 5.22 | 5.48 |
+| 1 | 2.84 | 3.19 | 3.59 |
+| 2 | 4.72 | 4.70 | 5.00 |
+| 3 | 4.70 | 4.92 | 5.25 |
+| 4+ | 5.09 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a
@@ -194,7 +194,7 @@ Longer words differ mostly where Plover and Lapwing have a brief, and where Lyk 
 
 | | Strokes | Keys |
 |---|---|---|
-| Lyk | 1.010 | 3.278 |
+| Lyk | 1.009 | 3.300 |
 | Plover | 1.040 | 3.721 |
 | Lapwing | 1.042 | 4.118 |
 
@@ -203,22 +203,22 @@ is said, and then, counting each word once, how many of the band's words are a s
 
 | Words | Share of all words said | Lyk | Plover | Lapwing | One stroke (Lyk) | Plover | Lapwing |
 |---|---|---|---|---|---|---|---|
-| top 100 | 58% | 2.11 | 2.48 | 2.91 | 100% | 100% | 100% |
-| 100 to 1,000 | 28% | 4.38 | 4.81 | 5.17 | 100% | 98% | 98% |
-| 1,000 to 5,000 | 10% | 5.44 | 6.14 | 6.42 | 98% | 84% | 82% |
-| 5,000 to 10,000 | 2.4% | 6.15 | 7.16 | 7.55 | 91% | 63% | 62% |
-| 10,000 to 20,000 | 1.4% | 7.25 | 8.00 | 8.43 | 79% | 46% | 44% |
-| 20,000 to 50,000 | 0.7% | 7.95 | 8.82 | 9.21 | 68% | 29% | 30% |
-| 50,000 to 100,000 | 0.1% | 8.78 | 9.76 | 10.07 | 57% | 17% | 20% |
+| top 100 | 58% | 2.12 | 2.48 | 2.91 | 100% | 100% | 100% |
+| 100 to 1,000 | 28% | 4.41 | 4.80 | 5.16 | 100% | 98% | 98% |
+| 1,000 to 5,000 | 10% | 5.52 | 6.17 | 6.45 | 97% | 83% | 81% |
+| 5,000 to 10,000 | 2.3% | 6.18 | 7.25 | 7.66 | 90% | 61% | 59% |
+| 10,000 to 20,000 | 1.2% | 7.26 | 8.14 | 8.57 | 78% | 43% | 42% |
+| 20,000 to 50,000 | 0.6% | 7.88 | 8.91 | 9.29 | 67% | 28% | 29% |
+| 50,000 to 100,000 | 0.1% | 8.63 | 9.83 | 10.12 | 57% | 17% | 20% |
 
-The top thousand words are briefs in all three, which is why the dictionaries are close: the
+The top hundred words are briefs in all three (past that, lyk only drops a sound where it saves a stroke, see [faithful outlines](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)), which is why the dictionaries are close: the
 rules can only move the rest. Lyk beats Plover across every frequency tier, including the
 rarest words — every word's primary outline is settled by a single global optimization over every
 legal candidate at once (briefs, the plain rules reading, brevity, the star ladder, all competing
 on cost together), not a commonest-word-first pass that only ever revisits a word's own brief
 attempt; see [briefs](https://noahlyk.github.io/lyk-steno-theory/#/ref/briefs) for how. Past rank 5,000 the one-stroke share is what
 moves: every word gets its one-stroke consonant skeleton (see [how short](https://noahlyk.github.io/lyk-steno-theory/#/ref/brevity)), so
-a word ranked 10,000–20,000 is one stroke 79% of the time, against 46% in Plover.
+a word ranked 10,000–20,000 is one stroke 78% of the time, against 43% in Plover.
 
 That is with the join key on every continuation stroke counted, and with a Plover outline counted
 only when Lapwing has it too: Plover's `main.json` is full of misstrokes (`O` for *to*, `SP` for

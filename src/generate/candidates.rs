@@ -141,7 +141,13 @@ pub fn enumerate_candidates(
 ) -> Vec<Candidate> {
     let Some(prons) = setup.pron.get(word) else { return Vec::new() };
     let Some(sounds) = prons.first() else { return Vec::new() };
-    let mut pool = Pool { setup, word, sounds, out: Vec::new() };
+    // A gold outline must write the word's edge consonants with their own keys (`Rules::faithful`)
+    // unless the word is among the commonest or `rules/briefs.toml` names its source; otherwise it
+    // is held back and only kept if it saves a stroke (5b below).
+    let rank = setup.rank.get(word).copied().unwrap_or(usize::MAX);
+    let pinned = briefs.word.contains_key(word);
+    let exempt = rank < setup.rules.faithful_exempt_rank() || pinned;
+    let mut pool = Pool { setup, word, sounds, prons, exempt, held: Vec::new(), out: Vec::new() };
 
     // 1. Gold briefs; a literal override is the one candidate and nothing else competes with it.
     match briefs.word.get(word).map(String::as_str) {
@@ -174,6 +180,23 @@ pub fn enumerate_candidates(
             pool.push(laddered, Origin::Ladder(n));
         }
     }
+    // 5b. An unfaithful gold outline must pay for itself: it stays only if it takes fewer strokes
+    // than every other candidate the word has (the theory ranks strokes first, so a drop that
+    // saves only keys within a stroke count is never worth it). A word with nothing else keeps
+    // them all.
+    let fewest = pool.out.iter().map(|c| c.outline.len()).min().unwrap_or(usize::MAX);
+    for outline in std::mem::take(&mut pool.held) {
+        let from = pool.out.len();
+        pool.push(outline, Origin::Brief);
+        let mut kept = from;
+        for i in from..pool.out.len() {
+            if pool.out[i].outline.len() < fewest {
+                pool.out.swap(kept, i);
+                kept += 1;
+            }
+        }
+        pool.out.truncate(kept);
+    }
     // 6. S-for-Z coda alternates.
     for outline in voicing_alternates(word, &pool.out) {
         pool.push(outline, Origin::Voicing);
@@ -186,6 +209,12 @@ struct Pool<'a> {
     setup: &'a Setup,
     word: &'a str,
     sounds: &'a [String],
+    /// Every pronunciation of the word: a gold outline is faithful if it is to any of them
+    prons: &'a [Vec<String>],
+    /// Whether unfaithful gold outlines stay in the pool (see [`Rules::faithful`])
+    exempt: bool,
+    /// The unfaithful gold outlines left out, kept for a word with nothing else
+    held: Vec<Vec<Stroke>>,
     out: Vec<Candidate>,
 }
 
@@ -217,7 +246,11 @@ impl Pool<'_> {
     /// A gold dictionary's outlines for the word, each raw and with its fragments dropped.
     fn briefs(&mut self, outlines: Option<&Vec<String>>) {
         for outline in gold_candidates(&self.setup.rules, outlines, self.word, self.sounds) {
-            self.push(outline, Origin::Brief);
+            if self.exempt || self.setup.rules.faithful_any(&outline, self.word, self.prons) {
+                self.push(outline, Origin::Brief);
+            } else {
+                self.held.push(outline);
+            }
         }
     }
 

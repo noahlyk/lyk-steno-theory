@@ -43,6 +43,7 @@
     { "t": "list", "items": [
       "Ten at a time. Drill, then move on; the **Practice** tab mixes in everything you have done.",
       "Rows that look odd (*the* on a bare `-T`) are on purpose: the commonest words get the cheapest keys.",
+      "Past the 550 commonest words every sound at the start of a word has its own keys (*grab* is `TKPWRAB`, with the whole `TKPW` for G), so there is nothing to memorise but the rules.",
       "Stuck on a word? **Lookup** shows its fastest outline and the other ways in.",
       "Each of these also has joins and extras. You will never need them for a word you have memorised."
     ] },

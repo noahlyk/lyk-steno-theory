@@ -2902,3 +2902,100 @@ same `-D` stretch key, so they are the next candidates if they feel the same.
 
 **What regresses if undone.** Put the two lines back in `rules/briefs.toml` (`got = "-GTD"`,
 `find = "-FPBD"`), rebuild, and regenerate `site/data/`.
+
+**Update (same day, "A dropped sound must pay" below).** The generator's `got` was `TKPOT`, a `G`
+weakened to `TKP`, which is the kind of drop the typist dislikes; his own reading of the word is
+`G O T`, `TKPWOT`. `got` is pinned again, now to `TKPWOT` (the whole `G`), and `find` to `TPAOEUD`
+(F, EYE, D; the N of *find* is not keyed and that is fine), which is what the generator chose, so
+a later change to the generator cannot move it. Neither is `-GTD` or `-FPBD`: both were hard to press.
+
+## A dropped sound must pay: faithful onsets (2026-11-16)
+
+**The complaint.** "I really don't like that you are dropping sounds in G- and J- and (cluster)
+etc. ... *graph*: why is it harder to hit and less intuitive?" The rules read *graph* as `TKPWRAF`;
+the deployed outline was Plover's `TPWRAF`, a `G` with no `K`, a gappy chord harder to hit than
+the solid `TKPW` block. *grab* was `RAB` (no `G`), *green* `RAOEPB`, *great* `RAET`, *got* `TKPOT`.
+Cause: every gold outline competed on cost, and fewer keys always wins within a stroke count, so a
+sound-dropping candidate beat the faithful one whenever it was free.
+
+**The principle.** *A sound at the start of a word is never dropped for free; the end of the word
+may be.* An outline is **faithful** (`Rules::faithful`, `src/rules/faithful.rs`) when every key of
+the word's first onset (as the tables write it, clusters included: `g` `TKPW`, `j` `SKWR`, `gr`
+`TKPWR`) is down in the first stroke's left hand. Containment only; vowels, star, extra keys and
+the right hand are not checked, so `find` `TPAOEUD` (no N) is fine. A first version also checked
+the last coda: it made `find` `TPEUPBD`, `kind`, `end`, `went`, `world` and a thousand more words
+heavier on the hand (1,135 top-1,000-weighted words with a worse gap or stretch term) for no gain
+against the complaint, and was dropped. The rules' own reading is faithful by definition.
+
+**The rule** (`enumerate_candidates`, step 5b; `settle` for family shapes). An unfaithful gold
+outline is a candidate only if it **pays for itself**: (1) it takes fewer strokes than every other
+candidate the word has (so `graph` `TPWRAF` against `TKPWRAF`, both one stroke, loses); or (2) the
+word's rank is below `faithful_exempt_rank` in `rules/plover.toml` (550); or (3) a literal or named
+source in `rules/briefs.toml` pins it. A family member past the rank is offered at its root's shape
+only if that shape is faithful.
+
+**Pins.** `got = "TKPWOT"` and `find = "TPAOEUD"` in `rules/briefs.toml`, the typist's own
+outlines (see the `got` and `find` entry above). `find` is what the generator already chose; `got`
+is not (it chose `TKPOT`).
+
+**The sweep** (full builds from the same data; each row rebuilt, taught set rebuilt from it):
+
+| Exempt below rank | Words, new primary | Share of speech | Strokes/word | Keys/word | Comfort/word | Backups top-1 | Taught top-1 |
+|---|---|---|---|---|---|---|---|
+| no check (before) | 0 | 0% | 1.009 | 3.280 | 91.0 | 89.1% | 98.5% |
+| 1,000 | 1,855 | 1.0% | 1.009 | 3.293 | 91.5 | 88.8% | 98.5% |
+| **550 (chosen)** | 1,946 | 1.4% | 1.009 | 3.300 | 92.1 | 89.2% | 98.5% |
+| 500 (fails the Gutenberg guard) | 1,961 | 1.5% | 1.009 | 3.300 | 92.2 | 89.1% | 98.5% |
+| 300 | 2,036 | 2.2% | 1.009 | 3.316 | 92.5 | 89.1% | 98.5% |
+| 200 | 2,068 | 2.5% | 1.009 | 3.322 | 92.4 | 89.2% | 98.5% |
+| 170 | 2,090 | 2.7% | 1.009 | 3.330 | 92.2 | 89.1% | 98.5% |
+| 100 | 2,133 | 3.9% | 1.009 | 3.351 | 93.0 | 89.1% | 98.5% |
+
+(The baseline already has `got` pinned to `TKPWOT`. "Comfort" is `ergonomics::weighted_outline` per
+word weighted by use, printed by `build --report`.)
+
+**Why 550.** Onset-only keeps the cost small at any rank: 0.02 keys a word and 1.2% comfort at 550.
+The binding limit is not the keys-per-word guard (3.272 with 2% slack, 3.337 ceiling; every rank in
+the table passes it) but the Gutenberg-prose guard in `quote_corpus` (at most 7.2% of words may
+cost more keys than Plover): rank 300 reads 7.3%, 500 and 520 read 7.2% rounded and fail, 550, 600
+and 700 pass. Guards were not touched. Left exempt, so left with a dropped onset: *make* `AEUBG`,
+*great* `RAET`, *guy* `TKPAOEU`, *give* `EUF`, *gave* `AEUF`, *gone* `OPB`, *day* `AEU`, *never*,
+*because*, *love*, *off*, *much*, *mean*, *god*, *maybe*. Pinning *great* to `TKPWRAET` was measured
+at ranks 550 and 650 and fails the Gutenberg guard (7.3%), so *great* is not pinned.
+
+**The th pins, measured and rejected.** The th family is four different dropped-sound shapes in
+Plover: *then* `THEB`, *than* `THAP` (fragments of `-PB`, `-PL`), *them* `THEP`, *that* `TA` (`T` for
+`TH`), beside *this* `TH`, *these* `THEZ`, *those* `THOZ`, *they* `THE`. Pinning `then = THEPB`,
+`than = THAPB`, `them = THEPL`, `that = THA` makes the family consistent but costs keys on four very
+common words, and the Gutenberg guard fails at every rank: 8.4% at 550, 8.3% at 700, 7.9% with the
+check switched off altogether (K = infinity), against 7.2% allowed; the hand-picked 100-passage
+guard reads 6.4% against 6.2%. No exemption rank can pay for them, so they are not pinned; *then*,
+*than*, *them*, *that* keep Plover's shapes (all exempt). A guard nudge would be needed, and the
+user has said no nudges.
+
+**What changes.** 1,946 primaries (1.4% of speech); of the top 1,000 words only 34 change: *got*
+`TKPOT` -> `TKPWOT`, *black*, *book*, *white*, *small*, *glad*, *given*, *giving*, *loved*, *report*,
+*goodbye*, *general*, *ya*, *class*, *dark*, *blue*, *broke*, *group*, *normal*, *ground*, *gold*,
+*bar*, *government*, *detective*, *difficult*, *scene*, *cell*, *girlfriend*, *starting*, *private*,
+*neither*, *things* `-FRLGZ` (the whole TH dropped, allowed), *thinks* `THEUS`, *ass*. (`grab`, `green`,
+`grow`, `glass`, `judge` `SKWRU`, `plan`, `stop`, `find` are keyed; the Y of *use*, *used*, *using*, *user*,
+*unit* before `UW` is a glide, not keyed.)
+
+**Comfort.** Of the top-1,000 words that changed, some got a worse gap or stretch term than before
+(*glad* `TKPWHRAD`, *class* `KHRAS`, *small* `SPHAL`); each is a faithful onset that needs its keys
+(`TKPW`, `HR`); keeping the old form would be the drop the rule forbids.
+
+**Guards.** None moved: keys-per-word baseline, the ergonomic ceilings and the quote-corpus floors
+are as before, and the acceptance-gate list and `site/test.mjs` are untouched.
+
+**The `ar` effect.** `ar` used to keep `AR`; now the phrase pass gives `AR` to *for a* and `ar` is
+`A/+R/+*`. Cause, shown in the data: Plover's brief for *czar* is `A*R`, which drops its `Z` and
+`STKPW` onset, so it is no longer a candidate; `A*R` is then free for *arr*, one of `ar`'s own
+fallbacks is cheap, and the phrase pass (which may take a stroke from a rare word when the
+phrase is worth more than the word's loss) takes `AR`. Harmless: *ar* (rank 8,370) is still
+reachable, and the test now accepts either holder of `AR` and requires `ar` to have an outline.
+
+**What regresses if undone.** Remove step 5b in `src/generate/candidates.rs` or set
+`faithful_exempt_rank` huge: `graph` is `TPWRAF`, `grab` `RAB`, `green` `RAOEPB`
+again, about 1,900 words lose their keyed onsets, and the guard test
+`no_primary_outline_past_the_exemption_rank_drops_an_edge_consonant` fails.
