@@ -4,7 +4,7 @@
   "goal": "How a word of several syllables is stroked: which syllables fold onto the stroke before them, which become a continuation stroke, and every extra way into a word the generator adds (stem plus ending, prefix plus stem, syllable by syllable, the lattice, word families).",
   "blocks": [
     { "t": "h", "x": "Folding a reduced syllable" },
-    { "t": "p", "x": "An unstressed syllable with a reduced vowel is not written. Its consonants join the stroke before it, in steno order: [[living|HREUFG]], [[special|SPERBL]]. A lone `-er` or `-ly` may land out of order, as in Plover: [[better|PWERT]], [[lately|HRAEULT]]." },
+    { "t": "p", "x": "An unstressed syllable with a reduced vowel is not written. Its consonants join the stroke before it, in steno order: [[living|HREUFG]], [[special|SPERBL]]. A lone `-er` or `-ly` may land out of order, as in Plover: [[better|PWERT]], [[lately|HRAELT]]." },
     { "t": "p", "x": "When the consonants do not fit, the stem keeps the consonant it owns and the rest is a **continuation stroke** of right-hand consonants only, struck with the [join key](#/ref/join-key):" },
     { "t": "table", "head": ["Word", "Outline", "What happens"], "rows": [
       ["[[ended|EPBD/+-D]]", "[[EPBD/+-D]]", "stem EPBD, then `-D` on its own"],

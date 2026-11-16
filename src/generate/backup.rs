@@ -263,7 +263,7 @@ impl<'a> Stems<'a> {
             push(outline, None);
         }
         if first_round {
-            for pron in &self.setup.pron[word] {
+            for pron in self.setup.pron.get(word).into_iter().flatten() {
                 for outline in self.setup.rules.syllable_paths(word, pron) {
                     push(outline, Some(pron));
                 }

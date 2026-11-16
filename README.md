@@ -136,10 +136,10 @@ stroke, which the join key replaces) for:
 <!-- lyk:score-table:start -->
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
-| 1 | 89% | 77% | 82% | 5.56 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 5.98 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.88 | 4.78 | 5.14 |
-| 4+ | 23% | 17% | 18% | 6.11 | 4.94 | 5.18 |
+| 1 | 89% | 77% | 82% | 5.57 | 5.65 | 5.84 |
+| 2 | 59% | 44% | 51% | 6.00 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.90 | 4.78 | 5.14 |
+| 4+ | 23% | 17% | 18% | 6.12 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -149,10 +149,10 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.84 | 3.19 | 3.59 |
-| 2 | 4.74 | 4.70 | 5.00 |
-| 3 | 4.76 | 4.92 | 5.25 |
-| 4+ | 5.22 | 5.22 | 5.48 |
+| 1 | 2.85 | 3.19 | 3.59 |
+| 2 | 4.76 | 4.70 | 5.00 |
+| 3 | 4.77 | 4.92 | 5.25 |
+| 4+ | 5.25 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a

@@ -3071,3 +3071,38 @@ single-stroke outlines for 12,155 words (nearly all words that already have a on
 and 218,653 multi-stroke ones (not sampled; the single-stroke sample had noise such as *action*
 `-BGS` and *entity* `SPWEUT`). Raising `MAX_EXTRAS_PER_WORD` or `EXTRA_KEY_MARGIN` would admit more;
 not done, because an alternate is one more stroke the solver cannot read as something else.
+
+## Gold-only words join the solver (2026-11-16)
+
+**The request.** "I am looking for alternate defs as much as just a more exhaustive dictionary ...
+*strategy* could be moved then *supercalifra* can be put there ... and our non-live solver should
+handle this." *supercalifragilisticexpialidocious* had no entry: ranked 115,821 (past the 100,000
+cut) and pronounced by no source, while Plover and Lapwing both write it `STPRAPBLG`. A leftover
+pass could not give it the stroke; only the solver can move a holder.
+
+**The change.** `ranked_words` appends `Gold::vocabulary` (everything Plover or Lapwing writes, plus
+what two or more of the other theories write: 56,608 words with the Plover/Lapwing part alone,
+63,244 with the corroborated words) after the core list. A word with sounds takes the normal pool;
+one without gets `gold_only`: its one-stroke typable gold outlines, no faithful check (nothing to
+check against), nothing repaired. `settle` counts every word at least once said, so a rare word
+can take a stroke whose holder has an equal-cost way around. Multi-stroke gold is not borrowed:
+other theories' strokes carry no join key. `pron[...]` indexes that assumed every word had sounds
+now use `get`.
+
+**Result.** *supercalifragilisticexpialidocious* `STPRAPBLG`; *suffrage* (which the other theories'
+pool had put there) `SUFRPBLG`, same cost. Dictionary words 47,620 to 63,244, extras 25,672 to
+27,609; strokes 1.004, keys 3.284 to 3.287, comfort 92.5 to 92.7 (the extension words' own
+strokes; the core is unchanged); `solve --giant` 85.7% to 85.5%, `--taught` 98.5%, use-weighted
+backups 91.7% to 91.8%; unweighted backups 89.0% to 72.7% only because the test set grew from
+30,962 to 40,142 with about 9,000 backups of words the solver's lexicon does not contain.
+Documented outlines that moved: *swamp*, *clothes*, *lately* (replaced in Reference).
+
+**Counts.** "Unplaced" and "contested" count only the core vocabulary (ranked below `common`, with
+a pronunciation), as the guards meant: unplaced 367 of a ceiling of 450. Contested rose from
+17,747 to 18,690 (Plover/Lapwing-only words: 18,272), over `CONTESTED_MAX` 18,000, a size bound on
+the solver's input, not a quality gate; build time is unchanged at about a minute and a half. The
+user approved raising it to 19,500 ("if you think its an upgrade yeah"). Every other guard
+passed untouched (241 of 242 tests; the 242nd is that ceiling).
+
+**What regresses if undone.** Remove the `more` list in `ranked_words`: *supercalifragilistic...*
+is composed in 14 strokes again.

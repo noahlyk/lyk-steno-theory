@@ -97,7 +97,7 @@ fn print_summary(setup: &Setup, generated: &Generated) {
         println!("    {}", generated.stranded.join(", "));
     }
     let sample: Vec<String> =
-        generated.unresolved.iter().take(40).map(|w| format!("{w} ({})", setup.pron[w.as_str()][0].join(" "))).collect();
+        generated.unresolved.iter().take(40).map(|w| format!("{w} ({})", setup.pron.get(w.as_str()).map_or_else(String::new, |p| p[0].join(" ")))).collect();
     println!("    the commonest: {}", sample.join(", "));
 }
 

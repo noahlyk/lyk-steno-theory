@@ -20,7 +20,7 @@ const EXTRA_KEY_MARGIN: u32 = 3;
 pub fn alternates(setup: &Setup, words: &[(&String, usize)], book: &mut Book) {
     for (word, _) in words {
         let mut seen: Vec<Vec<Stroke>> = Vec::new();
-        for sounds in &setup.pron[word.as_str()] {
+        for sounds in setup.pron.get(word.as_str()).into_iter().flatten() {
             let Some(outline) = setup.rules.outline(word, sounds) else { continue };
             if seen.contains(&outline) {
                 continue;

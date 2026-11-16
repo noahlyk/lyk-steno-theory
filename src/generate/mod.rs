@@ -303,7 +303,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         words.iter().map(|(w, r)| (w.as_str(), *r)).filter(|(w, _)| !is_literal_override(w)).collect();
     let names: Vec<&str> = competing.iter().map(|(w, _)| *w).collect();
     let candidates = enumerate_in_parallel(&names, |word| enumerate_candidates(setup, briefs, word, &texts));
-    let pools = settle::Pools::new(competing, candidates);
+    let pools = settle::Pools::new(competing, candidates, common);
 
     let vocabulary = || words.iter().map(|(w, _)| w.as_str());
     let links = crate::family::links(&setup.pron, &setup.count, vocabulary());
@@ -342,7 +342,8 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
 
     Ok(Generated {
         entries: book.entries,
-        unresolved: book.unresolved,
+        // only the core vocabulary counts: a gold-only word with no outline is just not written
+        unresolved: book.unresolved.into_iter().filter(|w| setup.rank.get(w).is_some_and(|&r| r < common) && setup.pron.contains_key(w)).collect(),
         backup_skipped,
         stranded,
         contested: settled.contested,

@@ -43,13 +43,17 @@ pub struct Pools<'a> {
     pub ranks: Vec<usize>,
     pub candidates: Vec<Vec<Candidate>>,
     pub texts: Vec<Vec<String>>,
+    /// Words ranked below this are the core vocabulary; the words after it (what the gold
+    /// dictionaries vouch for past the frequency cut) are settled with them but not counted
+    /// toward the guards on how much the solver has to arbitrate.
+    pub common: usize,
 }
 
 impl<'a> Pools<'a> {
-    pub fn new(words: Vec<(&'a str, usize)>, candidates: Vec<Vec<Candidate>>) -> Self {
+    pub fn new(words: Vec<(&'a str, usize)>, candidates: Vec<Vec<Candidate>>, common: usize) -> Self {
         let texts = candidates.iter().map(|list| list.iter().map(|c| render_outline(&c.outline)).collect()).collect();
         let (words, ranks) = words.into_iter().unzip();
-        Self { words, ranks, candidates, texts }
+        Self { words, ranks, candidates, texts, common }
     }
 
     /// Each word with its candidates.
@@ -91,6 +95,13 @@ pub fn settle(setup: &Setup, pools: &Pools, families: &Families, book: &mut Book
     let mut holds = Holds::default();
     let mut offers: HashMap<String, Vec<Vec<Stroke>>> = HashMap::new();
     let mut contested = 0;
+    let core: HashSet<&str> = pools
+        .words
+        .iter()
+        .zip(&pools.ranks)
+        .filter(|&(w, &r)| r < pools.common && setup.pron.contains_key(*w))
+        .map(|(w, _)| *w)
+        .collect();
     for pass in 0..MAX_FAMILY_PASSES {
         if pass > 0 {
             let settled: HashMap<&str, &[Stroke]> =
@@ -130,7 +141,7 @@ pub fn settle(setup: &Setup, pools: &Pools, families: &Families, book: &mut Book
             book.reset(&base);
         }
         let open = open_words(pools, &offers, &holds, book);
-        contested = place(setup, open, book);
+        contested = place(setup, open, book, &core);
     }
     unstrand(pools, base.entries, book);
     Settled { offers, contested }
@@ -220,11 +231,11 @@ fn open_words<'a>(pools: &Pools<'a>, offers: &HashMap<String, Vec<Vec<Stroke>>>,
 
 /// Settles every open word into `book`: peeling, then the solver per component. Returns how many
 /// words the solver had to arbitrate.
-fn place(setup: &Setup, open: Vec<Open>, book: &mut Book) -> usize {
+fn place(setup: &Setup, open: Vec<Open>, book: &mut Book, core: &HashSet<&str>) -> usize {
     let graph = Graph::new(&open);
     let settled = graph.peel();
     let mut components = graph.components(&settled);
-    let contested = components.iter().map(Vec::len).sum();
+    let contested = components.iter().flatten().filter(|&&w| core.contains(open[w].word)).count();
 
     let mut open: Vec<Option<Open>> = open.into_iter().map(Some).collect();
     for (slot, _) in open.iter_mut().zip(&settled).filter(|(_, settled)| **settled) {
@@ -367,7 +378,8 @@ fn problem<'a>(setup: &Setup, component: &[usize], open: &mut [Option<Open<'a>>]
         .iter()
         .map(|&w| {
             let o = open[w].take().expect("each word is in one component");
-            let weight = setup.count.get(o.word).copied().unwrap_or(0);
+            // at least once said: a word the frequency list has never seen still counts for a stroke
+            let weight = setup.count.get(o.word).copied().unwrap_or(0).max(1);
             let candidates: Vec<Candidate> = o.options.into_iter().map(|(_, c)| c).collect();
             no_match.push(no_match_cost(o.word, weight, &candidates));
             let edges = candidates

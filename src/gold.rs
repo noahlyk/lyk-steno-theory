@@ -45,10 +45,13 @@ pub fn theory_files(dicts: &Path) -> Vec<std::path::PathBuf> {
 
 /// Every outline all the other theories write for each plain word, merged, shortest first. A
 /// missing folder or file is no error: the pool is then just Plover and Lapwing.
-fn load_extra(dicts: &Path) -> Result<HashMap<String, Vec<String>>> {
+fn load_extra(dicts: &Path) -> Result<(HashMap<String, Vec<String>>, HashSet<String>)> {
     let mut merged: HashMap<String, Vec<String>> = HashMap::new();
+    let mut support: HashMap<String, u8> = HashMap::new();
     for file in theory_files(dicts) {
         for (word, outlines) in all_outlines(&load_dictionary(&file)?) {
+            let seen = support.entry(word.clone()).or_default();
+            *seen = seen.saturating_add(1);
             let held = merged.entry(word).or_default();
             for outline in outlines {
                 if !held.contains(&outline) {
@@ -60,7 +63,8 @@ fn load_extra(dicts: &Path) -> Result<HashMap<String, Vec<String>>> {
     for outlines in merged.values_mut() {
         outlines.sort_by_key(|o| (o.split('/').count(), o.len(), o.clone()));
     }
-    Ok(merged)
+    let corroborated = support.into_iter().filter(|&(_, n)| n >= 2).map(|(word, _)| word).collect();
+    Ok((merged, corroborated))
 }
 
 /// Every word a dictionary writes with a capital first letter and the rest lowercase (`Matt`),
@@ -124,6 +128,9 @@ pub struct Gold {
     /// What every other theory in `data/dictionaries/theory-*.json` writes for each word: a pool of
     /// extra briefs for the generator to weigh, never a column in the comparison tables
     pub extra: HashMap<String, Vec<String>>,
+    /// The words two or more of those theories write: trusted as words, though no frequency list
+    /// or pronunciation may know them (`Gold::vocabulary`)
+    corroborated: HashSet<String>,
     plover_pieces: Pieces,
     lapwing_pieces: Pieces,
     /// Words either dictionary writes capitalized and neither writes lowercase: names
@@ -138,11 +145,13 @@ impl Gold {
         let mut gold = Self {
             plover: all_outlines(&plover),
             lapwing: all_outlines(&lapwing),
-            extra: load_extra(&dicts)?,
+            extra: HashMap::new(),
+            corroborated: HashSet::new(),
             plover_pieces: pieces(&plover),
             lapwing_pieces: pieces(&lapwing),
             names: HashSet::new(),
         };
+        (gold.extra, gold.corroborated) = load_extra(&dicts)?;
         gold.names = capitalized(&plover)
             .chain(capitalized(&lapwing))
             .filter(|word| !gold.plover.contains_key(word) && !gold.lapwing.contains_key(word))
@@ -154,6 +163,18 @@ impl Gold {
     /// it capitalized (`Matt`, never `matt`).
     pub fn is_name(&self, word: &str) -> bool {
         self.names.contains(word)
+    }
+
+    /// The words the gold dictionaries vouch for, plain lowercase letters only: everything Plover or
+    /// Lapwing writes, and what two or more of the other theories write. The generator settles
+    /// each of them, however rare or unpronounced, so a giant word can hold a stroke a commoner
+    /// one has an equal-cost way around (`generate::candidates::ranked_words`).
+    pub fn vocabulary(&self) -> impl Iterator<Item = &String> {
+        self.plover
+            .keys()
+            .chain(self.lapwing.keys())
+            .chain(self.corroborated.iter())
+            .filter(|w| w.len() >= 2 && w.bytes().all(|b| b.is_ascii_lowercase()))
     }
 
     /// Every such name, lowercase.
@@ -223,11 +244,13 @@ impl Gold {
             w.len(usize::from(pieces.glue.is_some()));
             w.strokes(pieces.glue.as_deref().unwrap_or_default());
         }
-        let mut names: Vec<&String> = self.names.iter().collect();
-        names.sort_unstable();
-        w.len(names.len());
-        for name in names {
-            w.str(name);
+        for set in [&self.names, &self.corroborated] {
+            let mut words: Vec<&String> = set.iter().collect();
+            words.sort_unstable();
+            w.len(words.len());
+            for word in words {
+                w.str(word);
+            }
         }
     }
 
@@ -245,7 +268,8 @@ impl Gold {
         };
         let (plover_pieces, lapwing_pieces) = (pieces()?, pieces()?);
         let names = r.strings()?.into_iter().collect();
-        Some(Self { plover, lapwing, extra, plover_pieces, lapwing_pieces, names })
+        let corroborated = r.strings()?.into_iter().collect();
+        Some(Self { plover, lapwing, extra, corroborated, plover_pieces, lapwing_pieces, names })
     }
 }
 

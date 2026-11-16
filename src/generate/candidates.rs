@@ -75,6 +75,27 @@ fn gold_candidates(
     found
 }
 
+/// A word with no pronunciation on record, written only by the gold dictionaries: its one-stroke,
+/// typable outlines from Plover, Lapwing and the other theories, as they are. Nothing can be
+/// checked against sounds that are not there, so nothing is repaired or held; cost alone decides.
+fn gold_only(setup: &Setup, briefs: &Briefs, word: &str) -> Vec<Candidate> {
+    if briefs.word.contains_key(word) {
+        return Vec::new();
+    }
+    let mut seen = HashSet::new();
+    [&setup.gold.plover, &setup.gold.lapwing, &setup.gold.extra]
+        .into_iter()
+        .filter_map(|dictionary| dictionary.get(word))
+        .flatten()
+        .filter_map(|text| parse_outline(text))
+        .filter(|outline| outline.len() == 1 && typable(outline) && seen.insert(outline.clone()))
+        .map(|outline| {
+            let cost = candidate_cost(&outline);
+            Candidate { outline, origin: Origin::Brief, cost }
+        })
+        .collect()
+}
+
 /// The other theories' one-stroke outlines for `word` that are worth keeping as alternates: the
 /// first onset keyed (`faithful_any`) and no half of a multi-key sound (`matches_real_consonants`),
 /// under some pronunciation, and typable on lyk's layout. Never a primary: only the extras pass (`fill::extras`) reads them, and
@@ -163,8 +184,8 @@ pub fn enumerate_candidates(
     word: &str,
     texts: &RulesTexts,
 ) -> Vec<Candidate> {
-    let Some(prons) = setup.pron.get(word) else { return Vec::new() };
-    let Some(sounds) = prons.first() else { return Vec::new() };
+    let Some(sounds) = setup.pron.get(word).and_then(|p| p.first()) else { return gold_only(setup, briefs, word) };
+    let prons = &setup.pron[word];
     // A gold outline must write the word's edge consonants with their own keys (`Rules::faithful`)
     // unless the word is among the commonest or `rules/briefs.toml` names its source; otherwise it
     // is held back and only kept if it saves a stroke (5b below).
@@ -431,7 +452,20 @@ pub(super) fn ranked_words(setup: &Setup, common: usize) -> Vec<(&String, usize)
         })
         .map(|(w, r)| (w, *r))
         .collect();
+    // Then every word the gold dictionaries vouch for that the frequency cut or a missing
+    // pronunciation left out (`supercalifragilisticexpialidocious`): placed after the rest, so a
+    // rare word only ever takes a stroke a commoner one has an equal-cost way around.
+    let have: HashSet<&String> = words.iter().map(|(w, _)| *w).collect();
+    let mut more: Vec<(&String, usize)> = setup
+        .gold
+        .vocabulary()
+        .filter(|w| !have.contains(w) && !CONTRACTION_TAILS.contains(&w.as_str()))
+        .map(|w| (w, setup.rank.get(w).copied().unwrap_or(usize::MAX / 2).max(common)))
+        .collect();
+    more.sort_by_key(|(w, r)| (*r, w.as_str()));
+    more.dedup_by_key(|(w, _)| *w);
     words.sort_by_key(|(w, r)| (*r, w.as_str()));
+    words.extend(more);
     words
 }
 
@@ -456,7 +490,7 @@ pub const STAR_SURCHARGE: u32 = STROKE_WEIGHT / 2;
 pub(super) fn rules_texts(setup: &Setup, words: &[(&String, usize)]) -> RulesTexts {
     let mut texts = RulesTexts { wanted: HashSet::new(), stars: HashSet::new() };
     for (word, _) in words {
-        let prons = &setup.pron[word.as_str()];
+        let Some(prons) = setup.pron.get(word.as_str()) else { continue };
         let Some(outline) = prons.iter().find_map(|sounds| setup.rules.outline(word, sounds)) else { continue };
         let one_syllable = prons[0].iter().filter(|s| s.ends_with(|c: char| c.is_ascii_digit())).count() == 1;
         if let ([stroke], true) = (&outline[..], one_syllable) {
