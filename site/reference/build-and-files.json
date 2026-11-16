@@ -103,7 +103,7 @@
     ],
     [
      "`lookup [WORD|PHRASE|STROKES] [--show-keys] [--fast] [--rebuild]` (alias `keys`)",
-     "A word, a phrase word by word, or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
+     "A word, a phrase (its own entry first when it has one, then word by word: `lookup \"to the\"` shows the phrase `TOTD`, then *to* and *the*), or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
     ],
     [
      "`resolve [STROKES] [--rebuild]` (alias `stroke`)",

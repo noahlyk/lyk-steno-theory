@@ -89,7 +89,8 @@ impl Answer {
     #[must_use]
     pub fn totals(&self) -> Totals {
         let mut totals = Totals::default();
-        for row in self.rows.iter().filter(|r| r.mark == Mark::Entry && !r.word.is_empty()) {
+        // A phrase's own row (`to the`) is left out: the totals are of its words
+        for row in self.rows.iter().filter(|r| r.mark == Mark::Entry && !r.word.is_empty() && !r.word.contains(' ')) {
             let keys = |cell: &Option<Cell>| cell.as_ref().map(|c| generate::keys(&c.strokes));
             let ours = keys(&row.cells[0]);
             if let (Some(cell), Some(k)) = (&row.cells[0], ours) {
@@ -337,6 +338,14 @@ impl<'a> Lookup<'a> {
     fn reverse_rows(&self, text: &str, ask: Ask) -> Answer {
         let words: Vec<&str> = text.split_whitespace().collect();
         let mut rows = Vec::new();
+        // A phrase that is an entry of its own (`to the`, one stroke) comes first, then each word
+        if words.len() >= 2 {
+            let phrase = words.join(" ").to_lowercase();
+            if let Some(outline) = self.dictionary.get(phrase.as_str()) {
+                let cell = Cell { strokes: outline.to_vec(), how: How::Entry };
+                rows.push(Row { word: phrase, cells: [Some(cell), None, None], mark: Mark::Entry });
+            }
+        }
         for found in reverse::reverse_phrase(self.setup, &self.dictionary, text) {
             let word = found.word.as_str();
             let cells = Self::best_cells(&found);
@@ -385,6 +394,17 @@ mod tests {
     use super::*;
 
     const ALL: Ask = Ask { fast: false, stroke_mode: false, extra: 8 };
+
+    #[test]
+    fn a_phrase_that_is_an_entry_is_answered_as_one() {
+        let answer = lookup().answer("of the", ALL);
+        assert_eq!(answer.rows[0].word, "of the");
+        assert_eq!(answer.rows[0].cells[0].as_ref().map(|c| render_outline(&c.strokes)).as_deref(), Some("-FT"));
+        // and each word still follows
+        assert!(answer.rows.iter().any(|r| r.word == "of") && answer.rows.iter().any(|r| r.word == "the"));
+        // the totals count the words, not the phrase on top of them
+        assert_eq!(answer.totals().strokes, 2);
+    }
 
     fn lookup() -> Lookup<'static> {
         Lookup::new(crate::dictionary_fixture::setup(), &crate::dictionary_fixture::generated().entries, None)
