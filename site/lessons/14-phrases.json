@@ -23,7 +23,7 @@
     { "t": "p", "x": "A phrase is the **union of the keys** of the two words' own strokes. If you know the two words, you can work the phrase out; if the keys would collide, no phrase exists." },
     { "t": "note", "kind": "rule", "x": "Striking the two words one after the other still works. The phrase stroke is only a faster way in, so you can adopt phrases one at a time." },
     { "t": "h", "x": "Phrases that carry on" },
-    { "t": "p", "x": "Some phrases are the first stroke of a longer word with a word fused in: *implications of* is [[implications of|*EUFP/+KAEUGSZ]]. Those are pure bonuses; learn the two-word ones first." },
+    { "t": "p", "x": "Some phrases are the first stroke of a longer word with a word fused in: *the utility* is [[the utility|AOUT/+EULT]]. Those are pure bonuses; learn the two-word ones first." },
     { "t": "try", "title": "Phrases", "items": [["of the", "-FT"], ["in the", "TPH-T"], ["it is", "ST"], ["you are", "RU"], ["for the", "-RT"], ["and the", "SKP-T"]], "x": "Six phrases of two words each." }
   ],
   "drill": {

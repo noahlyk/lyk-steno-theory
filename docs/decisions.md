@@ -2999,3 +2999,62 @@ reachable, and the test now accepts either holder of `AR` and requires `ar` to h
 `faithful_exempt_rank` huge: `graph` is `TPWRAF`, `grab` `RAB`, `green` `RAOEPB`
 again, about 1,900 words lose their keyed onsets, and the guard test
 `no_primary_outline_past_the_exemption_rank_drops_an_edge_consonant` fails.
+
+## Fourteen more theories as a pool of briefs (2026-11-16)
+
+**The request.** "increase the amount of theories uses in parsing to help increase the pool of
+sensible briefs. Platinum? Josiah? Palantype? Magnum? MagWing?" The generator drew its gold
+briefs from Plover and Lapwing only.
+
+**What exists.** Searched for each name. *Magnum* is sold with its book (the author took the
+dictionary down); its derivative, Stan's `stanmain.json` (`stanographer/steno-dictionaries`), is
+free. Thirteen court-reporting theories are published as JSON from Stenovations
+(`user202729/plover-resources`): Bryan, StarTran, Steno Foundation, The Steno Way, Tri-C,
+Pennsylvania Clinic, RealWrite, Robert Walsh Gonzales, San Antonio, South Coast College, StenEd,
+Stenograph, Thyra Ellis. *Platinum* has transcripts only, *Josiah* and *MagWing* nothing found,
+*Palantype* (`rubenmoor/palantype`) is another layout, not readable here. Di's and Ted's are Plover
+theory, nothing new.
+
+**The mechanism.** `fetch` downloads them as `data/dictionaries/theory-*.json`; `Gold::load` merges
+every such file into `Gold::extra` (one outline list per word); `enumerate_candidates` holds them
+and step 5b keeps only those that take **fewer strokes than every other candidate** the word has.
+`lookup_cache` keys on the files and its magic is `2`.
+
+**Two versions measured and rejected first.**
+1. *As Plover and Lapwing are treated* (all candidates, the commonest 550 exempt): keys 3.300 to
+   2.973, comfort 92.1 to 80.6, one-stroke coverage up everywhere, but `job` became `KWROB`,
+   `liquid` `KHREUD`, `dock` `TKAUBG`, `public` `P-B`, `take` `TAE`: the exempt words took any
+   theory's shorter variant, dropping sounds from the commonest words, and 13 tests that pin
+   outlines failed. The contested count after peeling was 18,802 against a ceiling of 18,000.
+2. *Never exempt, faithful onset only* (`faithful_any`): keys 3.067, comfort 85.2, 9 failures:
+   the onset check is blind to a stray key (`KHREUD` for `liquid`) and `liquid` still lost
+   `KWEULD`, which the solver tests read.
+
+**The rule kept.** An outline from another theory must save a stroke, whatever the word's rank and
+faithfulness. Plover and Lapwing keep exactly the behaviour of the faithful-outline entry above.
+
+**A bug the guard found.** `faithful_tests` measures "saves a stroke" against the rules' reading
+under *any* pronunciation; step 5b compared with the first one only, so `notices` (a second
+pronunciation reads in one stroke) let a one-stroke `TOES` through. 5b now takes the minimum over
+all pronunciations.
+
+**Measured** (same data, full builds): strokes per word 1.009 to 1.004, keys 3.300 to 3.284,
+comfort 92.1 to 92.5 (worse: more words sit on dense one-stroke briefs), one-stroke words 10k-20k
+78.2% to 89.6%, 50k-100k 56.7% to 68.0%, contested after peeling 17,755 (ceiling 18,000).
+`solve --eval 125`: backups top-1 89.2% to 89.0%, weighted by use 92.7% to 91.7%; `--taught
+10000` 98.5% unchanged. The Gutenberg-prose, quote-corpus, keys-per-word and ergonomics guards
+passed untouched (242 tests).
+
+**What changed in the docs.** Fourteen outlines in lessons and Reference pages went stale and were
+replaced (*penguin* `PEPB/+WEUPB`, *incorrect* `EUPB/+KREBGT`, *building* `PWHR-G`: now
+*assembling*'s, *euro*, *stamp*, *beige*, *argh*, *excuse*, *implications of*). The two phrase
+tests that used *accuracy* and *added* as their two-stroke hosts now use *array* and *assess*
+(both two strokes with or without the new pool). The exemption-rank table was measured before
+this and says so.
+
+**Cost to know.** The solver reads a point less of the speech by use (92.7% to 91.7%), and some
+family shapes change hands. If the solver number matters more than the strokes, delete the
+`theory-*.json` files and everything returns to the previous build: the pool is data, not code.
+
+**What regresses if undone.** Remove `briefs_extra` in `src/generate/candidates.rs`: the 10k-20k
+one-stroke share returns to 78.2%.

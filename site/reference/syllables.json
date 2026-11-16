@@ -237,7 +237,7 @@
     ] },
     { "t": "h3", "x": "The three family rules" },
     { "t": "list", "ordered": true, "items": [
-      "**Add the ending's key.** [[build|PWHR]] gives [[builds|PWHR-Z]], [[building|PWHR-G]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]], [[builders|PWHR-RZ]]; [[play|PHRAEU]] gives [[plays|PHRAEUZ]], [[played|PHRAEUD]]; [[start|SART]] gives [[started|SARTD]], [[starting|STARGT]].",
+      "**Add the ending's key.** [[build|PWHR]] gives [[builds|PWHR-Z]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]], [[builders|PWHR-RZ]] (*building* is [[building|PW-LG]], because [[assembling|PWHR-G]] holds the ending-key shape); [[play|PHRAEU]] gives [[plays|PHRAEUZ]], [[played|PHRAEUD]]; [[start|SART]] gives [[started|SARTD]], [[starting|STARGT]].",
       "**If the root already holds that key, add the star too.** [[need|TPHAED]] gives [[needed|TPHA*ED]]; [[do|-D]] gives [[did|*D]].",
       "**\"-ing\" on a root ending in the K chord `-BG` swaps it for a bare `-G`** (Plover's convention): [[talk|TAUBG]] gives [[talking|TAUG]], [[look|HRAOBG]] gives [[looking|HRAOG]], [[speak|SPAEBG]] gives [[speaking|SPAEG]]. Rule 2 offers the star form as well, and cost picks."
     ] },

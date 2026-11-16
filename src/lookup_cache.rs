@@ -28,7 +28,7 @@ use std::path::{Path, PathBuf};
 pub const DIR: &str = "out/cache";
 const LOOKUP_FILE: &str = "lookup.bin";
 const BACKUPS_FILE: &str = "backups.bin";
-const LOOKUP_MAGIC: &[u8] = b"lyk lookup cache 1\n";
+const LOOKUP_MAGIC: &[u8] = b"lyk lookup cache 2\n";
 const BACKUPS_MAGIC: &[u8] = b"lyk backups cache 1\n";
 
 /// The files a lookup's data is made from: the pronunciations and reference dictionaries
@@ -44,6 +44,7 @@ fn inputs(data: &Path, built_dir: &Path) -> Vec<PathBuf> {
     .iter()
     .map(|file| data.join(file))
     .collect();
+    files.extend(crate::gold::theory_files(&data.join("dictionaries")));
     files.extend(Role::ALL.map(|role| built_dir.join(role.file_name())));
     files.push(built_dir.join(FAMILY_FILE));
     files

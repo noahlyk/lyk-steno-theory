@@ -64,7 +64,7 @@ enum Command {
     /// Print the version (the same as `--version`)
     #[command(hide = true)]
     Version,
-    /// Download the pronunciation, frequency and Plover/Lapwing data (American English)
+    /// Download the pronunciation, frequency, Plover/Lapwing and other theories' data (American English)
     Fetch,
     /// Say what was loaded, and how well the pronunciations cover Plover and Lapwing
     Report,

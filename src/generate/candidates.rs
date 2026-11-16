@@ -94,7 +94,10 @@ fn gold_candidates(
 ///    selector - that gating only ever narrows *which* dictionaries to merge now, never whether a
 ///    brief competes at all). Every raw candidate competes regardless of whether it holds a real,
 ///    complete sound or only a fragment of one - see `gold_candidates`'s own doc for why a blanket
-///    `matches_real_consonants` filter was tried here and reverted.
+///    `matches_real_consonants` filter was tried here and reverted. `setup.gold.extra`, the other
+///    theories' dictionaries merged (`data/dictionaries/theory-*.json`), is offered too but held:
+///    each of its outlines stays only if it takes fewer strokes than all the others (step 5b), so
+///    a dozen theories widen what fits in one stroke without displacing a phonetic reading.
 /// 2. **Rules-derived candidate**: `setup.rules.outline(word, sounds)` - lyk's own plain reading,
 ///    unconditionally, for every word with a brief or not. This is the piece missing from the old
 ///    brief pool entirely, and the whole reason lyk's own derivation used to never get a chance to
@@ -157,6 +160,7 @@ pub fn enumerate_candidates(
         None => {
             pool.briefs(setup.gold.plover.get(word));
             pool.briefs(setup.gold.lapwing.get(word));
+            pool.briefs_extra(setup.gold.extra.get(word));
         }
     }
     // 2. The plain rules reading, every time, brief or not; 2b. the stem-plus-suffix readings.
@@ -184,7 +188,10 @@ pub fn enumerate_candidates(
     // than every other candidate the word has (the theory ranks strokes first, so a drop that
     // saves only keys within a stroke count is never worth it). A word with nothing else keeps
     // them all.
-    let fewest = pool.out.iter().map(|c| c.outline.len()).min().unwrap_or(usize::MAX);
+    // The rules' reading under any of the word's pronunciations counts, as the faithful check
+    // reads them all (`faithful_any`), not only the first one's.
+    let reading = prons.iter().filter_map(|sounds| setup.rules.outline(word, sounds)).map(|o| o.len()).min();
+    let fewest = pool.out.iter().map(|c| c.outline.len()).chain(reading).min().unwrap_or(usize::MAX);
     for outline in std::mem::take(&mut pool.held) {
         let from = pool.out.len();
         pool.push(outline, Origin::Brief);
@@ -252,6 +259,14 @@ impl Pool<'_> {
                 self.held.push(outline);
             }
         }
+    }
+
+    /// The other theories' outlines for the word, all held: each is a candidate only if it takes
+    /// fewer strokes than everything else the word has (5b in `enumerate_candidates`). They widen
+    /// what fits in one stroke without displacing a phonetic reading that already does, so a
+    /// dozen theories cannot hand `liquid` a `KHREUD` for the sake of a key.
+    fn briefs_extra(&mut self, outlines: Option<&Vec<String>>) {
+        self.held.extend(gold_candidates(&self.setup.rules, outlines, self.word, self.sounds));
     }
 
     /// A literal `[word]` outline: the user's own choice, so never filtered here (it is checked,

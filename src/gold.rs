@@ -26,6 +26,43 @@ pub fn all_outlines(dict: &BTreeMap<String, String>) -> HashMap<String, Vec<Stri
     words
 }
 
+/// The data files of every other theory: `theory-*.json` in the dictionaries folder, in name order.
+pub fn theory_files(dicts: &Path) -> Vec<std::path::PathBuf> {
+    let mut files: Vec<_> = std::fs::read_dir(dicts)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("theory-") && n.ends_with(".json"))
+        })
+        .collect();
+    files.sort();
+    files
+}
+
+/// Every outline all the other theories write for each plain word, merged, shortest first. A
+/// missing folder or file is no error: the pool is then just Plover and Lapwing.
+fn load_extra(dicts: &Path) -> Result<HashMap<String, Vec<String>>> {
+    let mut merged: HashMap<String, Vec<String>> = HashMap::new();
+    for file in theory_files(dicts) {
+        for (word, outlines) in all_outlines(&load_dictionary(&file)?) {
+            let held = merged.entry(word).or_default();
+            for outline in outlines {
+                if !held.contains(&outline) {
+                    held.push(outline);
+                }
+            }
+        }
+    }
+    for outlines in merged.values_mut() {
+        outlines.sort_by_key(|o| (o.split('/').count(), o.len(), o.clone()));
+    }
+    Ok(merged)
+}
+
 /// Every word a dictionary writes with a capital first letter and the rest lowercase (`Matt`),
 /// lowercased.
 fn capitalized(dict: &BTreeMap<String, String>) -> impl Iterator<Item = String> + '_ {
@@ -84,6 +121,9 @@ fn pieces(dict: &BTreeMap<String, String>) -> Pieces {
 pub struct Gold {
     pub plover: HashMap<String, Vec<String>>,
     pub lapwing: HashMap<String, Vec<String>>,
+    /// What every other theory in `data/dictionaries/theory-*.json` writes for each word: a pool of
+    /// extra briefs for the generator to weigh, never a column in the comparison tables
+    pub extra: HashMap<String, Vec<String>>,
     plover_pieces: Pieces,
     lapwing_pieces: Pieces,
     /// Words either dictionary writes capitalized and neither writes lowercase: names
@@ -98,6 +138,7 @@ impl Gold {
         let mut gold = Self {
             plover: all_outlines(&plover),
             lapwing: all_outlines(&lapwing),
+            extra: load_extra(&dicts)?,
             plover_pieces: pieces(&plover),
             lapwing_pieces: pieces(&lapwing),
             names: HashSet::new(),
@@ -170,7 +211,7 @@ impl Gold {
 
     /// Both dictionaries as `lookup`'s cache keeps them (see `crate::lookup_cache`).
     pub fn write(&self, w: &mut Writer) {
-        for words in [&self.plover, &self.lapwing] {
+        for words in [&self.plover, &self.lapwing, &self.extra] {
             w.map(words, |w, outlines| w.strs(outlines));
         }
         for pieces in [&self.plover_pieces, &self.lapwing_pieces] {
@@ -194,6 +235,7 @@ impl Gold {
     pub fn read(r: &mut Reader<'_>) -> Option<Self> {
         let plover = r.map(Reader::strings)?;
         let lapwing = r.map(Reader::strings)?;
+        let extra = r.map(Reader::strings)?;
         let mut pieces = || -> Option<Pieces> {
             let n = r.count()?;
             let suffixes = (0..n).map(|_| Some((r.string()?, r.strokes()?))).collect::<Option<_>>()?;
@@ -203,7 +245,7 @@ impl Gold {
         };
         let (plover_pieces, lapwing_pieces) = (pieces()?, pieces()?);
         let names = r.strings()?.into_iter().collect();
-        Some(Self { plover, lapwing, plover_pieces, lapwing_pieces, names })
+        Some(Self { plover, lapwing, extra, plover_pieces, lapwing_pieces, names })
     }
 }
 

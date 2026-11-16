@@ -162,53 +162,53 @@ fn two_real_multi_stroke_host_bigrams_checked_by_hand_against_the_real_dictionar
     let single = primary_single_strokes(&generated.entries);
     let any_len = primary_outlines(&generated.entries);
 
-    // Direction (B): "the" (single-stroke primary "-T") + "accuracy" (host, a real two-stroke
-    // primary "ABG/+SEU") - a real bigram in `setup.bigrams`. The filler "-T" merges into
-    // "accuracy"'s own first stroke "ABG" (disjoint: "-T" shares no key with "ABG"), and
-    // "accuracy"'s own second stroke "+SEU" - join bit included - carries through unchanged.
-    // (This used "a currency" until "currency" became the one-stroke `KURPBS`, and "a
-    // working" before that, until "working" became `WOG`.)
-    assert!(setup.bigrams.contains_key(&("the".to_owned(), "accuracy".to_owned())));
+    // Direction (B): "the" (single-stroke primary "-T") + "array" (host, a real two-stroke
+    // primary "A/+RAEU") - a real bigram in `setup.bigrams`. The filler "-T" merges into
+    // "array"'s own first stroke "A" (disjoint: "-T" shares no key with "A"), and "array"'s own
+    // second stroke "+RAEU" - join bit included - carries through unchanged. (This used "the
+    // accuracy" until the other theories' briefs made "accuracy" one stroke, "a currency" until
+    // "currency" became the one-stroke `KURPBS`, and "a working" before that, until "working"
+    // became `WOG`.)
+    assert!(setup.bigrams.contains_key(&("the".to_owned(), "array".to_owned())));
     assert_eq!(single.get("the").copied(), Some(parse_outline("-T").unwrap()[0]));
-    assert_eq!(any_len.get("accuracy").copied(), Some(&parse_outline("ABG/+SEU").unwrap()[..]));
-    let the_accuracy = phrase_candidate_outline(&single, &any_len, "the", "accuracy");
+    assert_eq!(any_len.get("array").copied(), Some(&parse_outline("A/+RAEU").unwrap()[..]));
+    let the_array = phrase_candidate_outline(&single, &any_len, "the", "array");
     assert_eq!(
-        the_accuracy,
-        Some(parse_outline("ABGT/+SEU").unwrap()),
-        "\"the\"'s whole primary should merge into \"accuracy\"'s own first stroke only"
+        the_array,
+        Some(parse_outline("AT/+RAEU").unwrap()),
+        "\"the\"'s whole primary should merge into \"array\"'s own first stroke only"
     );
     assert_eq!(
         generated
             .entries
             .iter()
-            .find(|e| e.origin == Origin::Phrase && e.word == "the accuracy")
+            .find(|e| e.origin == Origin::Phrase && e.word == "the array")
             .map(|e| e.outline.clone()),
-        the_accuracy,
-        "\"the accuracy\" should have actually committed with this exact two-stroke outline"
+        the_array,
+        "\"the array\" should have actually committed with this exact two-stroke outline"
     );
 
-    // Direction (C), the symmetric case: "added" (host, a real two-stroke primary "AD/+-D") +
-    // "by" (single-stroke primary "PWEU") - also a real bigram. "by"'s whole primary merges into
-    // "added"'s own first stroke "AD" (disjoint), and "added"'s own second stroke "+-D" carries
-    // through unchanged. ("accompanied by" was the example until names stopped outranking the
-    // words they sound like and "accompanied" settled on one stroke.)
-    assert!(setup.bigrams.contains_key(&("added".to_owned(), "by".to_owned())));
-    assert_eq!(any_len.get("added").copied(), Some(&parse_outline("AD/+-D").unwrap()[..]));
-    assert_eq!(single.get("by").copied(), Some(parse_outline("PWEU").unwrap()[0]));
-    let added_by = phrase_candidate_outline(&single, &any_len, "added", "by");
+    // Direction (C), the symmetric case: "assess" (host, a real two-stroke primary "A/+SES") +
+    // "the" (single-stroke primary "-T") - also a real bigram. "the"'s whole primary merges into
+    // "assess"'s own first stroke "A" (disjoint), and "assess"'s own second stroke "+SES" carries
+    // through unchanged. ("added by" was the example until the other theories' briefs made "added"
+    // one stroke, and "accompanied by" before that, until "accompanied" settled on one.)
+    assert!(setup.bigrams.contains_key(&("assess".to_owned(), "the".to_owned())));
+    assert_eq!(any_len.get("assess").copied(), Some(&parse_outline("A/+SES").unwrap()[..]));
+    let assess_the = phrase_candidate_outline(&single, &any_len, "assess", "the");
     assert_eq!(
-        added_by,
-        Some(parse_outline("PWAEUD/+-D").unwrap()),
-        "\"by\"'s whole primary should merge into \"added\"'s own first stroke only"
+        assess_the,
+        Some(parse_outline("AT/+SES").unwrap()),
+        "\"the\"'s whole primary should merge into \"assess\"'s own first stroke only"
     );
     assert_eq!(
         generated
             .entries
             .iter()
-            .find(|e| e.origin == Origin::Phrase && e.word == "added by")
+            .find(|e| e.origin == Origin::Phrase && e.word == "assess the")
             .map(|e| e.outline.clone()),
-        added_by,
-        "\"added by\" should have actually committed with this exact two-stroke outline"
+        assess_the,
+        "\"assess the\" should have actually committed with this exact two-stroke outline"
     );
 }
 

@@ -14,6 +14,27 @@ const PLOVER: &str = "https://raw.githubusercontent.com/openstenoproject/plover/
 const LAPWING: &str =
     "https://raw.githubusercontent.com/aerickt/plover-lapwing-aio/main/plover_lapwing/dictionaries";
 const GUTENBERG: &str = "https://www.gutenberg.org/files";
+const RAW: &str = "https://raw.githubusercontent.com";
+
+/// The other theories whose dictionaries are free to download, as (file name, source). Magnum's
+/// own is sold with the book (Stan's is its derivative), and Platinum, Josiah's and Palantype
+/// publish no dictionary a Plover-layout machine can read.
+const THEORIES: [(&str, &str); 14] = [
+    ("stan", "{R}/stanographer/steno-dictionaries/master/stanmain.json"),
+    ("bryan", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/Bryan.json"),
+    ("startran", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/StarTran.json"),
+    ("stenofoundation", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/StenoFoundation.json"),
+    ("stenoway", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/The%20Steno%20Way.json"),
+    ("tric", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/Tri-C.json"),
+    ("pennclinic", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/clinic%5BPennsylvania%20Clinic%5D.json"),
+    ("realwrite", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/realwrite.json"),
+    ("rwg", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/rwg%5BRobert%20Walsh%20Gonzales%5D.json"),
+    ("sastened", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/sastened%5BSan%20Antonio%20Main%5D.json"),
+    ("southcoast", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/southcoastcollege.json"),
+    ("stened", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/stened.json"),
+    ("stenograph", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/stenograph.json"),
+    ("thyra", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/thyra.json"),
+];
 
 /// Where each file goes under the data folder, and where it comes from.
 fn sources() -> Vec<(String, String)> {
@@ -57,6 +78,12 @@ fn sources() -> Vec<(String, String)> {
             format!("dictionaries/{name}.json"),
             format!("{LAPWING}/{name}.json"),
         ));
+    }
+    // Other theories' dictionaries, each a pool of gold outlines for the generator to weigh
+    // (`Gold::extra`): the Magnum derivative Stan's, and the court-reporting theories Stenovations
+    // published (StenEd, StarTran, Steno Foundation, Tri-C, RealWrite, Robert Walsh Gonzales, ...).
+    for (name, url) in THEORIES {
+        files.push((format!("dictionaries/theory-{name}.json"), url.replace("{R}", RAW)));
     }
     // Public-domain (pre-1929, no translator/editor claim) connected prose for
     // `quote_corpus`'s larger, non-hand-picked benchmark corpus (see `src/corpus_extract.rs`

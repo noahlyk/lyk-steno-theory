@@ -82,6 +82,10 @@
    "x": "The exemption rank, measured"
   },
   {
+   "t": "p",
+   "x": "These rows were measured with Plover and Lapwing as the only sources, before [other theories' briefs](#/ref/collisions) joined the pool. The ordering and the guard's cut-off at 550 are the same with them, but the absolute numbers below are those of the earlier pool."
+  },
+  {
    "t": "table",
    "head": ["Exempt below rank", "Words with a new primary", "Share of speech", "Strokes per word", "Keys per word", "Comfort per word", "Solver, backups top-1"],
    "rows": [
@@ -98,6 +102,30 @@
   {
    "t": "p",
    "x": "The stroke count never moves, and the taught set stays at 98.5%. Keys per word are what faithful onsets cost: 550 adds 0.02 keys a word (0.6%) and 1.2% comfort. What stops the exemption going lower is the Gutenberg-prose guard in the test suite (at most 7.2% of words may cost more keys than Plover): at rank 500 it reads 7.2% rounded, just over, at 550 it passes. The keys-per-word guard (3.272 with 2% slack) holds at every rank in the table."
+  },
+  {
+   "t": "h",
+   "x": "Other theories' briefs"
+  },
+  {
+   "t": "p",
+   "x": "Besides Plover and Lapwing, the generator reads fourteen more dictionaries as a pool of briefs: Stan's (a derivative of Magnum, the theory of Mark Kislingbury) and thirteen court-reporting theories published by Stenovations: Bryan, StarTran, Steno Foundation, The Steno Way, Tri-C, Pennsylvania Clinic, RealWrite, Robert Walsh Gonzales, San Antonio, South Coast College, StenEd, Stenograph and Thyra Ellis. Each is `data/dictionaries/theory-NAME.json`, downloaded by `fetch`; every `theory-*.json` file found is merged into one list of outlines per word (`Gold::extra`). Magnum's own dictionary is sold with its book, and Platinum, Josiah's and Palantype publish none that a Plover-layout machine can read, so they are not in the pool."
+  },
+  {
+   "t": "p",
+   "x": "**Their outlines are held to one rule: they must save a stroke.** An outline from these theories is a candidate only if it takes fewer strokes than every other candidate the word has (under any of its pronunciations), the rules' own reading included. They never replace a one-stroke outline the word already has. Neither the commonest-words exemption nor a faithful onset gets one in: a word that already fits one stroke keeps what Plover, Lapwing or the rules gave it. Without the rule a dozen theories handed *job* `KWROB`, *liquid* `KHREUD` and *dock* `TKAUBG`, each a key shorter and none predictable. What the rule buys is one-stroke words: *accuracy* (`ABG/+SEU` before) is now [[accuracy|KRAES]], *added* (`AD/+-D`) is [[added|ATD]]."
+  },
+  {
+   "t": "table",
+   "head": ["Pool", "Strokes per word", "Keys per word", "Comfort per word", "One-stroke words, 10k-20k", "One-stroke words, 50k-100k", "Backups top-1 (weighted)", "Taught top-1"],
+   "rows": [
+    ["Plover and Lapwing", "1.009", "3.300", "92.1", "78.2%", "56.7%", "89.2% (92.7%)", "98.5%"],
+    ["**and the fourteen theories**", "**1.004**", "**3.284**", "**92.5**", "**89.6%**", "**68.0%**", "**89.0% (91.7%)**", "**98.5%**"]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The cost is on the reading side. More words sit on irregular one-stroke briefs (*penguin* `PEPBG`, *incomplete* `*EUBG`), so the solver's weighted top-1 on backups falls a point (92.7% to 91.7%) and each stroke carries more keys; the comfort per word is 0.4 worse. The taught outlines do not move. Plover's `PWHR-G` and similar family shapes can also change hands: [[assembling|PWHR-G]] is one stroke now, so *building* is [[building|PW-LG]]. The Gutenberg-prose and keys-per-word guards hold unchanged."
   },
   {
    "t": "h",
@@ -162,7 +190,7 @@
   },
   {
    "t": "p",
-   "x": "The marker stroke is the last resort of a one-syllable word. It is a rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with [[+*]] after it. *suite* is [[suite|SWAOET/+*]] because [[SWAOET]] is *sweet* and [[SWAO*ET]] is *sweetie*. About 1,200 words end that way, almost all names and interjections (*argh* [[argh|ARG/+*]], *hah* [[hah|HA/+*]])."
+   "x": "The marker stroke is the last resort of a one-syllable word. It is a rule, not a memorised fact: a stroke that is taken, starred and still taken, is written again with [[+*]] after it. *suite* is [[suite|SWAOET/+*]] because [[SWAOET]] is *sweet* and [[SWAO*ET]] is *sweetie*. About 1,200 words end that way, almost all names and interjections (*uhh* [[uhh|U/+*]], *hah* [[hah|HA/+*]])."
   },
   {
    "t": "h",

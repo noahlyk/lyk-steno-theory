@@ -43,7 +43,7 @@
    "rows": [
     [
      "`fetch`",
-     "Download the data into `data/` (safe to re-run)."
+     "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Plover and Lapwing, and the fourteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
     ],
     [
      "`report`",

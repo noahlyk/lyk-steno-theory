@@ -58,7 +58,7 @@
     { "t": "h3", "x": "The family rules" },
     { "t": "p", "x": "After the first settling pass every family root is locked to the outline it won on cost alone. Nothing else may take it, and it moves only to something strictly cheaper. Every member is then offered its root's outline, written by these rules, on the root's **last stroke**:" },
     { "t": "table", "head": ["Rule", "Example"], "rows": [
-      ["Add the ending's key", "[[build|PWHR]] gives [[builds|PWHR-Z]], [[building|PWHR-G]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]]"],
+      ["Add the ending's key", "[[build|PWHR]] gives [[builds|PWHR-Z]], [[buildings|PWHR-GZ]], [[builder|PWHR-R]]"],
       ["Key already there: add the star", "`TPHAED` becomes `TPHA*ED` (needed); `-D` becomes `*D` (did)"],
       ["K chord plus -ing: bare `-G`", "`TAUBG` becomes `TAUG` (talking); `HRAOBG` becomes `HRAOG` (looking)"],
       ["Irregular past: stem plus `D`", "[[built|PWHR-D]], said `SAEUD`, left `HREFD`, came `KUPLD`"],
@@ -77,7 +77,7 @@
     { "t": "h3", "x": "One family, every member" },
     { "t": "table", "head": ["Member", "Outline", "Member", "Outline"], "rows": [
       ["[[build|PWHR]]", "root", "[[builds|PWHR-Z]]", "ending key"],
-      ["[[building|PWHR-G]]", "ending key", "[[buildings|PWHR-GZ]]", "two ending keys"],
+      ["[[building|PW-LG]]", "its own shape: [[assembling|PWHR-G]] holds the ending-key one", "[[buildings|PWHR-GZ]]", "two ending keys"],
       ["[[built|PWHR-D]]", "irregular past", "[[builder|PWHR-R]]", "ending key"],
       ["[[PWHR-RZ]] (builders)", "two ending keys", "[[rebuild|RE/+PWHR]]", "prefix then stem"],
       ["[[RE/+PW-LG]] (rebuilding)", "prefix then family shape", "", ""]
