@@ -17,10 +17,12 @@ const GUTENBERG: &str = "https://www.gutenberg.org/files";
 const RAW: &str = "https://raw.githubusercontent.com";
 
 /// The other theories whose dictionaries are free to download, as (file name, source). Magnum's
-/// own is sold with the book (Stan's is its derivative), and Platinum, Josiah's and Palantype
-/// publish no dictionary a Plover-layout machine can read.
-const THEORIES: [(&str, &str); 14] = [
+/// own is sold with the book (Stan's is its derivative); Platinum's is a members' download, and
+/// Palantype is another layout.
+const THEORIES: [(&str, &str); 15] = [
     ("stan", "{R}/stanographer/steno-dictionaries/master/stanmain.json"),
+    // Josiah theory: a Magnum-style write-short dictionary; the outlines on its extra `^` key do not parse here and are skipped
+    ("josiah", "{R}/Josiah-tan/Josiah_theory/main/user.json"),
     ("bryan", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/Bryan.json"),
     ("startran", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/StarTran.json"),
     ("stenofoundation", "{R}/user202729/plover-resources/main/stenovations-dictionaries/json/StenoFoundation.json"),

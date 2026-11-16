@@ -3106,3 +3106,24 @@ passed untouched (241 of 242 tests; the 242nd is that ceiling).
 
 **What regresses if undone.** Remove the `more` list in `ranked_words`: *supercalifragilistic...*
 is composed in 14 strokes again.
+
+## Josiah theory joins the pool (2026-11-16)
+
+**The question.** "did we ever get josiah theory added." The first searches found nothing under that
+name; a second found the Plover blog post (July 2023) and the repository `Josiah-tan/Josiah_theory`
+(`user.json`, 62,271 entries, no licence file). *Platinum* publishes its dictionary only as a
+members' download (RTF) on platinumsteno.com, so it is still out.
+
+**What it is.** A write-short, Magnum-flavoured dictionary on a Plover-like core, with an extra `^`
+key beside `*`. 11,417 entries use that key; the parser does not know it and drops them, which is
+right (no such key on this layout). Of the rest, 26,725 are plain words, 19,758 of them one stroke.
+It is the file `theory-josiah.json`, added to `fetch`'s list; nothing else changed in the code.
+
+**Measured** (against the previous build, gold-only words included): dictionary words 63,244 to
+64,015, extras 27,609 to 31,928, strokes 1.004 to 1.003, keys 3.287 to 3.285, comfort 92.7 to 92.8,
+one-stroke words 10k-20k 92.6% and 50k-100k 68.8%, `solve --taught` 98.5%, `--giant` 85.5%,
+use-weighted backups 91.8% to 92.6% (Josiah's briefs read as the solver's own phonetic guesses
+more often than the earlier pool's). Contested after peeling 18,690 to 19,101 (the user-approved
+ceiling is 19,500: 400 of headroom left, so the next big source needs the ceiling or a smaller
+vocabulary). *inconvenience* became one stroke, so the `in-` example in the lessons is *indistinct*.
+

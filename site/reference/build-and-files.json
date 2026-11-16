@@ -43,7 +43,7 @@
    "rows": [
     [
      "`fetch`",
-     "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Plover and Lapwing, and the fourteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
+     "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Plover and Lapwing, and the fifteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
     ],
     [
      "`report`",
@@ -303,7 +303,7 @@
     ["`no_word_is_stranded_on_a_worse_outline` (`src/generate/report.rs`)", "No word sits on a worse outline than its unclaimed plain reading", "0"],
     ["`no_two_words_share_the_same_deployed_outline` (`src/quality.rs`)", "No collisions among primary outlines", "0"],
     ["`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`", "Words the rules cannot place", "at most 450 (410 measured)"],
-    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 19,500 (18,690 measured); at most 35% of the dictionary"],
+    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 19,500 (19,101 measured); at most 35% of the dictionary"],
     ["`phrase_and_extra_passes_each_add_entries`", "Phrase and extra passes add entries", "each above 0"],
     ["`what_a_word_costs_has_not_regressed`", "Weighted keys and strokes per word", "at most 2% over 3.272 keys and 1.009 strokes; below Plover on both"],
     ["`readme_tables_match_score` (ignored; `cargo test --release readme_tables -- --ignored`)", "README tables match `score`", "exact (same as `score --check-readme`)"]

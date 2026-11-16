@@ -109,7 +109,7 @@
   },
   {
    "t": "p",
-   "x": "Besides Plover and Lapwing, the generator reads fourteen more dictionaries as a pool of briefs: Stan's (a derivative of Magnum, the theory of Mark Kislingbury) and thirteen court-reporting theories published by Stenovations: Bryan, StarTran, Steno Foundation, The Steno Way, Tri-C, Pennsylvania Clinic, RealWrite, Robert Walsh Gonzales, San Antonio, South Coast College, StenEd, Stenograph and Thyra Ellis. Each is `data/dictionaries/theory-NAME.json`, downloaded by `fetch`; every `theory-*.json` file found is merged into one list of outlines per word (`Gold::extra`). Magnum's own dictionary is sold with its book, and Platinum, Josiah's and Palantype publish none that a Plover-layout machine can read, so they are not in the pool."
+   "x": "Besides Plover and Lapwing, the generator reads fifteen more dictionaries as a pool of briefs: Stan's (a derivative of Magnum, the theory of Mark Kislingbury), Josiah theory (a write-short theory with a dictionary of about 30,000 plain words; the outlines on its own extra `^` key do not exist on this layout and are skipped) and thirteen court-reporting theories published by Stenovations: Bryan, StarTran, Steno Foundation, The Steno Way, Tri-C, Pennsylvania Clinic, RealWrite, Robert Walsh Gonzales, San Antonio, South Coast College, StenEd, Stenograph and Thyra Ellis. Each is `data/dictionaries/theory-NAME.json`, downloaded by `fetch`; every `theory-*.json` file found is merged into one list of outlines per word (`Gold::extra`). Magnum's own dictionary is sold with its book, Platinum's is a members' download, and Palantype is another layout, so they are not in the pool."
   },
   {
    "t": "p",
@@ -120,7 +120,8 @@
    "head": ["Pool", "Strokes per word", "Keys per word", "Comfort per word", "One-stroke words, 10k-20k", "One-stroke words, 50k-100k", "Backups top-1 (weighted)", "Taught top-1"],
    "rows": [
     ["Plover and Lapwing", "1.009", "3.300", "92.1", "78.2%", "56.7%", "89.2% (92.7%)", "98.5%"],
-    ["**and the fourteen theories**", "**1.004**", "**3.284**", "**92.5**", "**89.6%**", "**68.0%**", "**89.0% (91.7%)**", "**98.5%**"]
+    ["and the fourteen theories", "1.004", "3.284", "92.5", "89.6%", "68.0%", "89.0% (91.7%)", "98.5%"],
+    ["**and Josiah, and the [gold-only words](#/ref/how-candidates-cost)**", "**1.003**", "**3.285**", "**92.8**", "**92.6%**", "**68.8%**", "**72.9% (92.6%)**", "**98.5%**"]
    ]
   },
   {

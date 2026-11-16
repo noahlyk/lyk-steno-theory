@@ -122,7 +122,7 @@ has the scripts for measuring what a change did to the built dictionary.
 | Word frequency | hermitdave/FrequencyWords (OpenSubtitles 2018), each name's count cut to a tenth so a name never outranks the word it sounds like ([collisions](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)) |
 | Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](https://noahlyk.github.io/lyk-steno-theory/#/ref/phrases) |
 | Dictionaries to match | Plover `main.json` and `commands.json`, Lapwing dictionaries |
-| Other theories' briefs | Stan's (a Magnum derivative) and thirteen Stenovations theories (StenEd, StarTran, Steno Foundation, Tri-C, RealWrite and more), `dictionaries/theory-*.json`: a pool of one-stroke briefs, each kept only if it saves a stroke ([collisions](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)) |
+| Other theories' briefs | Stan's (a Magnum derivative), Josiah theory and thirteen Stenovations theories (StenEd, StarTran, Steno Foundation, Tri-C, RealWrite and more), `dictionaries/theory-*.json`: a pool of one-stroke briefs, each kept only if it saves a stroke ([collisions](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)) |
 
 ## Full benchmarks
 
@@ -137,9 +137,9 @@ stroke, which the join key replaces) for:
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
 | 1 | 89% | 77% | 82% | 5.57 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 6.00 | 4.90 | 5.25 |
-| 3 | 37% | 25% | 31% | 5.90 | 4.78 | 5.14 |
-| 4+ | 23% | 17% | 18% | 6.12 | 4.94 | 5.18 |
+| 2 | 59% | 44% | 51% | 6.06 | 4.90 | 5.25 |
+| 3 | 37% | 25% | 31% | 5.99 | 4.78 | 5.14 |
+| 4+ | 23% | 17% | 18% | 6.21 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts every distinct word once, regardless of how rare it is. The same
@@ -150,9 +150,9 @@ of very common words dominate it and a long tail of rare ones barely move it:
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
 | 1 | 2.85 | 3.19 | 3.59 |
-| 2 | 4.76 | 4.70 | 5.00 |
-| 3 | 4.77 | 4.92 | 5.25 |
-| 4+ | 5.25 | 5.22 | 5.48 |
+| 2 | 4.77 | 4.70 | 5.00 |
+| 3 | 4.78 | 4.92 | 5.25 |
+| 4+ | 5.26 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a

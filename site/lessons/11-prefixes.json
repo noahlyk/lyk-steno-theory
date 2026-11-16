@@ -9,7 +9,7 @@
       ["re-", "[[RE]]", "[[rebuild|RE/+PWHR]]"],
       ["de-", "[[TKE]]", "[[decode|TKE/+KOED]]"],
       ["pre-", "[[PRE]]", "[[prefix|PRE/+TPEUBGS]]"],
-      ["in-", "[[EUPB]]", "[[inconvenience|EUPB/+KWAOEPBS]]"],
+      ["in-", "[[EUPB]]", "[[indistinct|EUPB/+STKEUPBGT]]"],
       ["im-", "[[EUPL]]", "[[impossible|EUPL/+POS/+-BL]]"],
       ["en-", "[[EPB]]", "[[enjoy|EPB/+SKWROEU]]"],
       ["co-", "[[KOE]]", "[[coexist|KOE/+UG/+STKPWEUFT]]"],
@@ -33,7 +33,7 @@
     "pass": 90,
     "repeat": 2,
     "items": [
-      ["unclear", "TKPHRAER"], ["rebuild", "RE/+PWEULD"], ["decode", "TKE/+KOED"], ["prefix", "PRE/+TPEUBGS"], ["inconvenience", "EUPB/+KWAOEPBS"],
+      ["unclear", "TKPHRAER"], ["rebuild", "RE/+PWEULD"], ["decode", "TKE/+KOED"], ["prefix", "PRE/+TPEUBGS"], ["indistinct", "EUPB/+STKEUPBGT"],
       ["impossible", "EUPL/+POS/+-BL"], ["enjoy", "EPB/+SKWROEU"], ["coexist", "KOE/+UG/+STKPWEUFT"], ["nonstop", "TPHOPB/+STOP"],
       ["subway", "SUB/+WAEU"], ["transplant", "TRAPBS/+PHRAPBLT"], ["interstate", "EUPB/+TER/+STAET"], ["antibody", "APB/+TEU/+PWA/+TKEU"],
       ["semifinal", "SEPL/+EU/+TPAOEUPBL"], ["overcome", "AUFR/+KUPL"], ["myself", "PHAOEU/+SEFL"], ["outside", "OUT/+SAOEUD"]

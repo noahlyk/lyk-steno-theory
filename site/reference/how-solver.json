@@ -12,7 +12,7 @@
     ] },
     { "t": "note", "kind": "rule", "x": "Taking a text nobody else wants can never make the total worse, so peeling is exact: it never costs a word a better outline than the solver would have given it." },
     { "t": "pre", "x": "pass : { PAS }            -> committed  pass -> PAS\n                           PAS removed from every other list\npast : { PAS, PAFT }  -> { PAFT }  -> committed in round 2  past -> PAFT" },
-    { "t": "p", "x": "Words with no candidate at all skip both peeling and the solver and are reported as unplaced. In the current build 18,690 of the 100,000 commonest words are still contested after peeling and go to the solver (the gold-only words settled beside them, [see below](#/ref/how-candidates-cost), are not counted)." },
+    { "t": "p", "x": "Words with no candidate at all skip both peeling and the solver and are reported as unplaced. In the current build 19,101 of the 100,000 commonest words are still contested after peeling and go to the solver (the gold-only words settled beside them, [see below](#/ref/how-candidates-cost), are not counted)." },
 
     { "t": "h", "x": "The solver: exact min-cost matching" },
     { "t": "p", "x": "The contested remainder is an assignment problem: words on one side, candidate texts on the other, each text usable by at most one word. The solver finds the cheapest assignment **in total**, not word by word. It is hand-written (successive shortest augmenting paths), run on each independent connected component of the contested graph, and uses no graph library." },
