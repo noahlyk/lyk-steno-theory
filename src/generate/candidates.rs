@@ -75,6 +75,27 @@ fn gold_candidates(
     found
 }
 
+/// The other theories' one-stroke outlines for `word` that are worth keeping as alternates: the
+/// first onset keyed (`faithful_any`) and no half of a multi-key sound (`matches_real_consonants`),
+/// under some pronunciation, and typable on lyk's layout. Never a primary: only the extras pass (`fill::extras`) reads them, and
+/// only where their stroke is free.
+pub(super) fn theory_spares(setup: &Setup, word: &str) -> Vec<Vec<Stroke>> {
+    let Some(prons) = setup.pron.get(word) else { return Vec::new() };
+    setup
+        .gold
+        .extra
+        .get(word)
+        .into_iter()
+        .flatten()
+        .filter_map(|text| parse_outline(text))
+        .filter(|outline| outline.len() == 1 && typable(outline))
+        .filter(|outline| {
+            setup.rules.faithful_any(outline, word, prons)
+                && prons.iter().any(|sounds| setup.rules.matches_real_consonants(outline, word, sounds))
+        })
+        .collect()
+}
+
 /// Every legal, fragment-safe primary-outline candidate for `word` - backups excluded (composing
 /// from an already-placed word's own outline is inherently iterative, the opposite of this
 /// function's whole point; see the backup-entry pass further down in `generate`, which is

@@ -337,7 +337,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         };
         crate::phrases::place(setup, &mut book.entries, &mut book.taken, &pool_index, &stems, &natural, &is_literal_override)
     };
-    let extras_added = fill::extras(&pools, &settled.offers, &mut book);
+    let extras_added = fill::extras(setup, &pools, &settled.offers, &mut book);
     let stranded = fill::stranded(setup, &book);
 
     Ok(Generated {

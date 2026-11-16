@@ -3058,3 +3058,16 @@ family shapes change hands. If the solver number matters more than the strokes, 
 
 **What regresses if undone.** Remove `briefs_extra` in `src/generate/candidates.rs`: the 10k-20k
 one-stroke share returns to 78.2%.
+
+**Alternates from the same pool.** Asked whether more dictionaries also mean more outlines
+covered. Before: only a stroke-saving outline survived step 5b; everything else the theories wrote
+was dropped. Now `fill::extras` also reads `candidates::theory_spares` (one stroke, `faithful_any`,
+`matches_real_consonants` under some pronunciation, `typable`) and places them where the stroke is
+free, inside the existing three-extras and three-key limits. Measured: extras 24,652 to 25,672
+(+1,020); primaries, strokes, keys, comfort, solver and taught numbers unchanged to the digit. The
+first version lacked `typable` and `no_generated_stroke_needs_an_impossible_pinky_chord` failed:
+the Stenovations theories use chords this layout cannot press. Unused and left out: 22,303
+single-stroke outlines for 12,155 words (nearly all words that already have a one-stroke outline),
+and 218,653 multi-stroke ones (not sampled; the single-stroke sample had noise such as *action*
+`-BGS` and *entity* `SPWEUT`). Raising `MAX_EXTRAS_PER_WORD` or `EXTRA_KEY_MARGIN` would admit more;
+not done, because an alternate is one more stroke the solver cannot read as something else.

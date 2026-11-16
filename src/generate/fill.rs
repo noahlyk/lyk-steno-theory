@@ -54,10 +54,10 @@ pub fn short_forms(pools: &Pools, book: &mut Book) {
 
 /// Extra one-stroke entries, last of all, in frequency order: a word's other one-stroke
 /// candidates (its gold briefs, its plain reading, a spelling variant, an `-S` respelling, a family
-/// shape) whose stroke nobody needed, up to `MAX_EXTRAS_PER_WORD` within `EXTRA_KEY_MARGIN` keys
+/// shape, and the other theories' faithful one-stroke briefs) whose stroke nobody needed, up to `MAX_EXTRAS_PER_WORD` within `EXTRA_KEY_MARGIN` keys
 /// of its outline. Star-ladder steps are collision fallbacks, not alternates, and are left out.
 /// Returns how many were added.
-pub fn extras(pools: &Pools, offers: &HashMap<String, Vec<Vec<Stroke>>>, book: &mut Book) -> usize {
+pub fn extras(setup: &Setup, pools: &Pools, offers: &HashMap<String, Vec<Vec<Stroke>>>, book: &mut Book) -> usize {
     let primary_cost: HashMap<String, u32> =
         cheapest(&book.entries).into_iter().map(|(w, o)| (w.to_owned(), candidate_cost(o))).collect();
     let mut added = 0;
@@ -67,6 +67,8 @@ pub fn extras(pools: &Pools, offers: &HashMap<String, Vec<Vec<Stroke>>>, book: &
             .iter()
             .filter(|c| matches!(c.origin, Origin::Brief | Origin::Rules | Origin::Spelling | Origin::Voicing))
             .map(|c| c.outline.clone());
+        let theories = super::candidates::theory_spares(setup, word);
+        let own = own.chain(theories);
         let limit = primary_cost.get(word).map_or(u32::MAX, |c| c.saturating_add(EXTRA_KEY_MARGIN * KEY_WEIGHT));
         let mut options: Vec<(u32, String, Vec<Stroke>)> = own
             .chain(family)

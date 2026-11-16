@@ -113,7 +113,7 @@
   },
   {
    "t": "p",
-   "x": "After everything else is placed, each word's other one-stroke candidates that lost its primary slot take any stroke that is still unclaimed. The candidates are: its gold briefs from Plover and Lapwing that key the first onset (see [faithful outlines](#/ref/collisions)), its briefs from the other theories that save a stroke (see [other theories' briefs](#/ref/collisions)), the plain rules reading, a spelling variant, an `-S` respelling and a family shape."
+   "x": "After everything else is placed, each word's other one-stroke candidates that lost its primary slot take any stroke that is still unclaimed. The candidates are: its gold briefs from Plover and Lapwing that key the first onset (see [faithful outlines](#/ref/collisions)), its briefs from the other theories that save a stroke (see [other theories' briefs](#/ref/collisions)), and the other theories' faithful, typable one-stroke briefs that do not save one, the plain rules reading, a spelling variant, an `-S` respelling and a family shape."
   },
   {
    "t": "list",

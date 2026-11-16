@@ -128,6 +128,10 @@
    "x": "The cost is on the reading side. More words sit on irregular one-stroke briefs (*penguin* `PEPBG`, *incomplete* `*EUBG`), so the solver's weighted top-1 on backups falls a point (92.7% to 91.7%) and each stroke carries more keys; the comfort per word is 0.4 worse. The taught outlines do not move. Plover's `PWHR-G` and similar family shapes can also change hands: [[assembling|PWHR-G]] is one stroke now, so *building* is [[building|PW-LG]]. The Gutenberg-prose and keys-per-word guards hold unchanged."
   },
   {
+   "t": "p",
+   "x": "**What does not save a stroke is still used, as an alternate.** The extras pass (the last one, which only fills strokes nobody holds) also reads the other theories' one-stroke outlines for a word: the first onset must be keyed, no half of a multi-key sound may be in it, and it must be typable on lyk's layout (some theories use chords this layout cannot press). It adds them within three keys of the word's own outline, at most three extras per word with the word's own. They never become a primary, never take a stroke, and never change a word's cheapest outline. About 1,000 alternates were added this way (24,652 to 25,672 extras); the other theories hold about 22,000 more unused one-stroke outlines, almost all for words that already have a one-stroke lyk outline, and the filters, the three-extras cap and the key margin leave them out. Their multi-stroke outlines (about 219,000 unused) are not read at all; they were not sampled for quality."
+  },
+  {
    "t": "h",
    "x": "What spelling decides"
   },
