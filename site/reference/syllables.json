@@ -254,7 +254,7 @@
       ["[[given|EUFD]]", "*give*", "stem + `D`"],
       ["[[did|*D]]", "[[do|-D]]", "*do* already holds the `D`, so rule 2 adds the star"]
     ] },
-    { "t": "p", "x": "A literal pin in `rules/briefs.toml` still wins ([[knew|-PZ]], [[thought|-LGT]], [[got|-GTD]]). Each irregular form also gets its stem plus `+-D` / `+-Z` as a backup." },
+    { "t": "p", "x": "A literal pin in `rules/briefs.toml` still wins ([[knew|-PZ]], [[thought|-LGT]], [[found|-FBD]]). Each irregular form also gets its stem plus `+-D` / `+-Z` as a backup." },
     { "t": "h3", "x": "Prefixed words follow their stem" },
     { "t": "p", "x": "A word that is `re-`, `pre-`, `un-`, `dis-`, `mis-`, `over-` or `under-` plus another word is offered the prefix's stroke followed by its stem's settled outline. The condition: by spelling, its pronunciation ends in the stem's, the stem is at least three letters and not far rarer, and the word is not in `not_family` (which lists coincidences like *remorse* and *present*). `re-` and `pre-` write `RE` and `PRE`; the rest write the prefix word's own outline (`un` [[UPB]], `dis` [[TKEUS]], `over` [[AUFR]])." },
     { "t": "table", "head": ["Word", "Outline"], "rows": [

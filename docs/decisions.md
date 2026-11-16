@@ -2878,3 +2878,27 @@ choice the typist may not make.
 
 **What regresses if undone.** The site board, the key maps and the lessons all have to move back
 together; `site/keymap.test.mjs` pins the keyboard map against the board geometry.
+
+## `got` and `find` are no longer pinned briefs (2026-11-16)
+
+**Decision.** `got = "-GTD"` and `find = "-FPBD"` are removed from `rules/briefs.toml`. The generator
+writes them again: `got` is `TKPOT`, `find` is `TPAOEUD` (the outlines the same words had before the
+brief pass, bar `got`, which was `TPWOT` and is now `TKPOT`).
+
+**Why.** The typist found both hard to press: `-GTD` puts two pinky keys in one row (`T` and `D`,
+the "same-finger double") after a ring-to-pinky move, and `-FPBD` adds a ring gap and the stretch key
+`D`. `cargo run -- ergonomics` agrees: `-GTD` costs 431 and `-FPBD` 418, against 168 for `TKPOT` and
+167 for `TPAOEUD`, with no transition and no gap. The briefs saved two to three keys each; the
+ergonomic cost was two and a half times the outline they replaced.
+
+**What changed.** 27 words and phrases changed their shortest outline (`got`, `got a`, `have got`,
+`we got`; `find`, `finding`, `finds`, `finder`, `will find`, `find the`), plus a few that took a
+freed stroke (`fide`, `fido`, `fireside`, `missy`, `untried`). README table values moved by a
+hundredth. Lesson 2's drill and the briefs and syllables Reference pages name the new outlines.
+
+**Left alone.** The other briefs from the same pass (`found`, `liked`, `believed`, `thing`,
+`thought` ...) are unchanged: only these two were reported as hard to press. Several end in the
+same `-D` stretch key, so they are the next candidates if they feel the same.
+
+**What regresses if undone.** Put the two lines back in `rules/briefs.toml` (`got = "-GTD"`,
+`find = "-FPBD"`), rebuild, and regenerate `site/data/`.

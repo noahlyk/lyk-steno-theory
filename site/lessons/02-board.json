@@ -37,7 +37,7 @@
       {"p": "-PB", "o": ["-PB"], "w": "an"},
       {"p": "-PL", "o": ["-PL"], "w": "am"},
       {"p": "-PBG", "o": ["-PBG"], "w": "think"},
-      {"p": "-GTD", "o": ["-GTD"], "w": "got"},
+      {"p": "TKPOT", "o": ["TKPOT"], "w": "got"},
       {"p": "TPH", "o": ["TPH"], "w": "in"},
       {"p": "SKP", "o": ["SKP"], "w": "and"},
       {"p": "TH", "o": ["TH"], "w": "this"},
