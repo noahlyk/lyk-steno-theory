@@ -1,7 +1,7 @@
 {
  "id": "fingerspelling",
  "title": "Fingerspelling, numbers and modifiers",
- "goal": "Spell any word letter by letter, press Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols, and know the rule that generates all 5,475 modifier strokes.",
+ "goal": "Spell any word letter by letter, press Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols, and know the rule that generates all 1,665 modifier strokes.",
  "blocks": [
   {
    "t": "h",
@@ -29,7 +29,7 @@
     [
      "Modifier chords ('Emily's' dictionary)",
      "OS key presses: Ctrl+C, Alt+Tab, Shift+B, F-keys, arrows, media keys",
-     "a chord plus modifier keys plus the ender `LGTS` (5,475 strokes)",
+     "a chord plus modifier keys plus the ender `LGTS` (1,665 strokes)",
      "`rules/reserved/emilys-modifiers.py` and `.json`"
     ]
    ]
@@ -44,7 +44,7 @@
   },
   {
    "t": "p",
-   "x": "Each letter is one chord, the same chords as the starting sounds (`PW` is *b*, `TK` is *d*, `STKPW` is *z*). The table gives the bare chord, the glued form, the glued capital, the Shift+letter stroke, and any second chord."
+   "x": "Each letter is one chord, the same chords as the starting sounds (`PW` is *b*, `TK` is *d*, `STKPW` is *z*). The table gives the bare chord, the glued form, the glued capital and the Shift+letter stroke."
   },
   {
    "t": "table",
@@ -53,8 +53,7 @@
     "Chord",
     "Glued lowercase",
     "Glued capital",
-    "Shift+letter",
-    "Second chord for the OS strokes"
+    "Shift+letter"
    ],
    "rows": [
     [
@@ -62,208 +61,182 @@
      "[[A]]",
      "[[A*]]",
      "[[A*P]]",
-     "[[ARLGTS]]",
-     ""
+     "[[ARLGTS]]"
     ],
     [
      "b",
      "[[PW]]",
      "[[PW*]]",
      "[[PW*P]]",
-     "[[PW-RLGTS]]",
-     ""
+     "[[PW-RLGTS]]"
     ],
     [
      "c",
      "[[KR]]",
      "[[KR*]]",
      "[[KR*P]]",
-     "[[KR-RLGTS]]",
-     ""
+     "[[KR-RLGTS]]"
     ],
     [
      "d",
      "[[TK]]",
      "[[TK*]]",
      "[[TK*P]]",
-     "[[TK-RLGTS]]",
-     ""
+     "[[TK-RLGTS]]"
     ],
     [
      "e",
      "[[E]]",
      "[[*E]]",
      "[[*EP]]",
-     "[[ERLGTS]]",
-     ""
+     "[[ERLGTS]]"
     ],
     [
      "f",
      "[[TP]]",
      "[[TP*]]",
      "[[TP*P]]",
-     "[[TP-RLGTS]]",
-     ""
+     "[[TP-RLGTS]]"
     ],
     [
      "g",
      "[[TKPW]]",
      "[[TKPW*]]",
      "[[TKPW*P]]",
-     "[[TKPW-RLGTS]]",
-     ""
+     "[[TKPW-RLGTS]]"
     ],
     [
      "h",
      "[[H]]",
      "[[H*]]",
      "[[H*P]]",
-     "[[H-RLGTS]]",
-     ""
+     "[[H-RLGTS]]"
     ],
     [
      "i",
      "[[EU]]",
      "[[*EU]]",
      "[[*EUP]]",
-     "[[EURLGTS]]",
-     "[[AOEU]]"
+     "[[EURLGTS]]"
     ],
     [
      "j",
      "[[SKWR]]",
      "[[SKWR*]]",
      "[[SKWR*P]]",
-     "[[SKWR-RLGTS]]",
-     "[[SKWRAEU]]"
+     "[[SKWR-RLGTS]]"
     ],
     [
      "k",
      "[[K]]",
      "[[K*]]",
      "[[K*P]]",
-     "[[K-RLGTS]]",
-     ""
+     "[[K-RLGTS]]"
     ],
     [
      "l",
      "[[HR]]",
      "[[HR*]]",
      "[[HR*P]]",
-     "[[HR-RLGTS]]",
-     ""
+     "[[HR-RLGTS]]"
     ],
     [
      "m",
      "[[PH]]",
      "[[PH*]]",
      "[[PH*P]]",
-     "[[PH-RLGTS]]",
-     ""
+     "[[PH-RLGTS]]"
     ],
     [
      "n",
      "[[TPH]]",
      "[[TPH*]]",
      "[[TPH*P]]",
-     "[[TPH-RLGTS]]",
-     ""
+     "[[TPH-RLGTS]]"
     ],
     [
      "o",
      "[[O]]",
      "[[O*]]",
      "[[O*P]]",
-     "[[ORLGTS]]",
-     ""
+     "[[ORLGTS]]"
     ],
     [
      "p",
      "[[P]]",
      "[[P*]]",
      "[[P*P]]",
-     "[[P-RLGTS]]",
-     ""
+     "[[P-RLGTS]]"
     ],
     [
      "q",
      "[[KW]]",
      "[[KW*]]",
      "[[KW*P]]",
-     "[[KW-RLGTS]]",
-     ""
+     "[[KW-RLGTS]]"
     ],
     [
      "r",
      "[[R]]",
      "[[R*]]",
      "[[R*P]]",
-     "[[R-RLGTS]]",
-     ""
+     "[[R-RLGTS]]"
     ],
     [
      "s",
      "[[S]]",
      "[[S*]]",
      "[[S*P]]",
-     "[[S-RLGTS]]",
-     ""
+     "[[S-RLGTS]]"
     ],
     [
      "t",
      "[[T]]",
      "[[T*]]",
      "[[T*P]]",
-     "[[T-RLGTS]]",
-     ""
+     "[[T-RLGTS]]"
     ],
     [
      "u",
      "[[U]]",
      "[[*U]]",
      "[[*UP]]",
-     "[[URLGTS]]",
-     ""
+     "[[URLGTS]]"
     ],
     [
      "v",
      "[[SR]]",
      "[[SR*]]",
      "[[SR*P]]",
-     "[[SR-RLGTS]]",
-     ""
+     "[[SR-RLGTS]]"
     ],
     [
      "w",
      "[[W]]",
      "[[W*]]",
      "[[W*P]]",
-     "[[W-RLGTS]]",
-     ""
+     "[[W-RLGTS]]"
     ],
     [
      "x",
      "[[KP]]",
      "[[KP*]]",
      "[[KP*P]]",
-     "[[KP-RLGTS]]",
-     ""
+     "[[KP-RLGTS]]"
     ],
     [
      "y",
      "[[KWH]]",
      "[[KWR*]]",
      "[[KWR*P]]",
-     "[[KWH-RLGTS]]",
-     ""
+     "[[KWH-RLGTS]]"
     ],
     [
      "z",
      "[[STKPW]]",
      "[[STKPW*]]",
      "[[STKPW*P]]",
-     "[[STKPW-RLGTS]]",
-     "[[STKPWHR]]"
+     "[[STKPW-RLGTS]]"
     ]
    ]
   },
@@ -341,7 +314,7 @@
   {
    "t": "list",
    "items": [
-    "The ender `LGTS` (the right hand's bottom four keys, `-LGTS`) is on every one of the 5,475 strokes. It exists only so that an ordinary word's outline never collides with a modifier chord.",
+    "The ender `LGTS` (the right hand's bottom four keys, `-LGTS`) is on every one of the 1,665 strokes. It exists only so that an ordinary word's outline never collides with a modifier chord.",
     "At least one modifier key must be held. A bare letter or symbol with no modifier is not this dictionary's job.",
     "The output is wrapped in `{^}` on both sides, so it attaches to nothing and adds no space."
    ],
@@ -525,7 +498,7 @@
   },
   {
    "t": "p",
-   "x": "Any chord that is not in the tables is not a stroke. Total: 365 base chords times 15 modifier combinations = 5,475 strokes."
+   "x": "Any chord that is not in the tables is not a stroke. Total: 111 base chords times 15 modifier combinations = 1,665 strokes. Each is the one stroke for its output: the chords that other keys would make equal (an extra `T`, `E` or `U`) are not strokes."
   },
   {
    "t": "h",
@@ -533,7 +506,7 @@
   },
   {
    "t": "p",
-   "x": "Strike `AO` with no `E`, `U` or star. The left hand's bottom row counts in binary: **`R`=1, `W`=2, `K`=4, `S`=8**, added together. Digits are valid up to 9. Other left-hand keys (`T`, `H`, `P`) do not change the digit, so several chords give the same one."
+   "x": "Strike `AO` with no `E`, `U` or star. The left hand's bottom row counts in binary: **`R`=1, `W`=2, `K`=4, `S`=8**, added together. Digits are valid up to 9. Only the keys of the table below are strokes: an extra `T`, `H` or `P` is not."
   },
   {
    "t": "table",
@@ -662,7 +635,7 @@
   },
   {
    "t": "p",
-   "x": "A star in the stroke switches the chord from letters and digits to this table. The vowels `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. An `E`, `U` or `EU` struck as well is ignored (`T*EFLGTS` is the same as `T*FLGTS`). The strokes below are shown with Ctrl (`F`); use any other modifier combination in its place."
+   "x": "A star in the stroke switches the chord from letters and digits to this table. The vowels `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. An `E`, `U` or `EU` struck as well makes no stroke. The strokes below are shown with Ctrl (`F`); use any other modifier combination in its place."
   },
   {
    "t": "table",
@@ -676,7 +649,7 @@
    "rows": [
     [
      "`TR`",
-     "`Tab` [[TR*FLGTS]]",
+     "",
      "`Backspace` [[TRA*FLGTS]]",
      "`Delete` [[TRO*FLGTS]]",
      "`Escape` [[TRAO*FLGTS]]"
@@ -911,16 +884,12 @@
     [
      "[[AO*FLGTS]]",
      "Space"
-    ],
-    [
-     "[[*FLGTS]]",
-     "modifiers only (no key)"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*EFPBLGTS]] is Ctrl+Super+Alt+Up (`{^}{#control(super(alt(up)))}{^}`)."
+   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*FPBLGTS]] is Ctrl+Super+Alt+Up (`{^}{#control(super(alt(up)))}{^}`)."
   }
  ]
 }

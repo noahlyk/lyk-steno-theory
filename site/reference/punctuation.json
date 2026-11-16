@@ -9,11 +9,11 @@
   },
   {
    "t": "p",
-   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **200 strokes**. 144 are forked from Plover's punctuation dictionary, 4 are hyphen and dash strokes from [Lapwing chapter 20](https://lapwing.aerick.ca/Chapter-20.html), and 52 are the glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **84 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "Punctuation lives in `rules/reserved/punctuation.json`: **117 strokes**, 65 marks and symbols and the 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). Commands live in `rules/reserved/commands.json`: **81 strokes** ([below](#/ref/punctuation/commands)). All of them are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
-   "x": "Most marks have several strokes, one for each situation: plain, struck twice, with glue before or after so no unwanted space appears, after a quote, before a parenthesis. The **Plover code** column is what the stroke sends."
+   "x": "**One stroke per mark, and per command.** Each distinct output has exactly one stroke in these tables: the one struck most in the typed tape, else the one with the fewest keys. A mark that differs in its spacing or capital code (`{.}` and `{^.^}`, `{^-^}` and `-`) is a different output, with a stroke of its own. The **Plover code** column is what the stroke sends. `^` next to a mark attaches it, as the table shows."
   },
   {
    "t": "table",
@@ -61,23 +61,23 @@
    ],
    "rows": [
     [
-     "`.` (30 strokes)",
-     "[[-FP]] [[TP-P]] [[P-FP]] [[TPHR-FRPBLT]] [[*FPLT]] [[-FP/-RB]] [[-FP/PHOEUFP]] [[-FP/PHR-RB]] [[-FPL]] [[-FPLT]] [[-FPLT/-FPLT]] [[-FPLTD]] [[-FPT]] [[-FRLT]] [[-FRP]] [[-PLT]] [[-PT]] [[P-FP/PHOEUFP]] [[P-PL]] [[PR*RD]] [[T-PL]] [[TH-PL]] [[TP-F]] [[TP-FPL]] [[TP-L]] [[TP-LT]] [[TP-PL]] [[TP-PL/PHOEUFP]] [[TP-PLT]] [[TPH-PL]]",
+     "`.`",
+     "[[TP-PL]]",
      "`{.}`: period, capitalizes the next word"
     ],
     [
-     "`,` (14 strokes)",
-     "[[-RB]] [[KW-BG]] [[W-BG]] [[-BGS]] [[-FRBGS]] [[-RBG]] [[-RBGS]] [[-RBS]] [[-RGS]] [[KW-B]] [[KWR-BG]] [[KWR-BGS]] [[TP-PL/-RBGS]] [[TP-PL/KW-BG]]",
+     "`,`",
+     "[[KW-BG]]",
      "`{,}`"
     ],
     [
-     "`,` glued both sides (2)",
-     "[[*RBGS]] [[W-B]]",
+     "`,` glued both sides",
+     "[[W-B]]",
      "`{^,^}`: no space before or after"
     ],
     [
-     "`?` (11 strokes)",
-     "[[H-F]] [[STP]] [[STPH*]] [[H*F]] [[H-FPB]] [[KW-PL]] [[STH/PHOEUFP]] [[STKPH]] [[STPH]] [[STPHA]] [[TP-PL/STPH-RB]]",
+     "`?`",
+     "[[KW-PL]]",
      "`{?}`"
     ],
     [
@@ -86,8 +86,8 @@
      "`{&?}`: a question mark that joins glued text"
     ],
     [
-     "`!` (5 strokes)",
-     "[[TP-BG]] [[SKHAPL]] [[SKHRAPL]] [[SKPHRAPL]] [[STKPWHR-FPLT]]",
+     "`!`",
+     "[[TP-BG]]",
      "`{!}`"
     ],
     [
@@ -96,8 +96,8 @@
      "`{!'}` (two strokes)"
     ],
     [
-     "`;` (4 strokes)",
-     "[[SP-PT]] [[SKWR*RBGS]] [[STPH*FPL]] [[STPH*FPLT]]",
+     "`;`",
+     "[[SP-PT]]",
      "`{;}`"
     ],
     [
@@ -106,8 +106,8 @@
      "`{^;^}`"
     ],
     [
-     "`:` (3 strokes)",
-     "[[STP-FPLT]] [[STPH-FPLT]] [[-FRPLT]]",
+     "`:`",
+     "[[-FRPLT]]",
      "`{:}`"
     ],
     [
@@ -117,7 +117,7 @@
     ],
     [
      "`.` glued both sides (a dot inside a word, as in `a.b`)",
-     "[[P-P]] [[P-PBT]] [[P-T]]",
+     "[[P-P]]",
      "`{^.^}`"
     ],
     [
@@ -130,7 +130,7 @@
   {
    "t": "note",
    "kind": "rule",
-   "x": "Because the period has 30 strokes, the bare `-P` and `-PL` were freed for the briefs [[up|-P]] and [[am|-PL]]."
+   "x": "Because the period has the one stroke [[TP-PL]], the bare `-P` and `-PL` are free for the briefs [[up|-P]] and [[am|-PL]]."
   },
   {
    "t": "h",
@@ -147,12 +147,12 @@
     [
      "apostrophe attached to the previous word",
      "`{^'}`",
-     "[[-PBT]] [[SKW*T]] [[SKW*TS]]"
+     "[[-PBT]]"
     ],
     [
      "opening single quote, attached to the next word",
      "`{'^}`",
-     "[[SKW-T]] [[SKW-TS]]"
+     "[[SKW-T]]"
     ],
     [
      "closing single quote, carries the pending capital",
@@ -226,7 +226,7 @@
     [
      "`[` glued on both sides",
      "`{^[^}`",
-     "[[PWR*BGS]] [[PWR-BG]]"
+     "[[PWR-BG]]"
     ],
     [
      "`[` attached to the next word",
@@ -266,7 +266,7 @@
     [
      "hyphen joining the words either side, no spaces",
      "`{^-^}`",
-     "[[H-PB]] [[H-B]] [[H*FPB]] [[HA*EPB]]",
+     "[[H-PB]]",
      "[[well|WEL]] [[H-PB]] [[known|TPHOED]] types `well-known`"
     ],
     [
@@ -278,7 +278,7 @@
     [
      "hyphen glued to the next word, space before kept",
      "`{-^}`",
-     "[[H-PBS]] [[HAO*EPB]]",
+     "[[H-PBS]]",
      "`ls` [[H-PBS]] `a` types `ls -a`"
     ],
     [
@@ -314,7 +314,7 @@
     [
      "ellipsis `...` attached to the previous word",
      "`{^...}`",
-     "[[HR-PS]] [[SW-BS]]",
+     "[[HR-PS]]",
      ""
     ]
    ]
@@ -374,7 +374,7 @@
     [
      "`/` glued both sides",
      "`{^/^}`",
-     "[[OEU]] [[-RBGS/OEU]]"
+     "[[OEU]]"
     ],
     [
      "`\\` glued both sides",
@@ -389,12 +389,12 @@
     [
      "`_` glued both sides",
      "`{^_^}`",
-     "[[R*UPBD]] [[RUPBD]]"
+     "[[RUPBD]]"
     ],
     [
      "`^` glued both sides",
      "`{^}^{^}`",
-     "[[KA*RT]] [[KR-RT]]"
+     "[[KA*RT]]"
     ],
     [
      "`~` attached to the previous word",
@@ -404,12 +404,12 @@
     [
      "`>` glued both sides",
      "`{^>^}`",
-     "[[A*EPBG]] [[A*EPBGT]]"
+     "[[A*EPBG]]"
     ],
     [
      "`<` glued both sides",
      "`{^<^}`",
-     "[[AEPBG]] [[AEPBGT]]"
+     "[[AEPBG]]"
     ],
     [
      "backtick attached to the previous word, carries the pending capital",
@@ -444,12 +444,12 @@
     [
      "a single space, glued both sides (no automatic spacing)",
      "`{^ ^}`",
-     "[[SP]] [[S-P]] [[S-PS]] [[S*PS]] [[SP*S]]"
+     "[[SP]]"
     ],
     [
      "no space before the next word (deletes the automatic space)",
      "`{^^}`",
-     "[[TK-LS]]"
+     ""
     ]
    ]
   },
@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "87 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 29 of them (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "81 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's own strokes, minus its number-key variants (lyk has no number key). Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and its Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`) were left out. There is no caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 28 of them (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -575,7 +575,7 @@
     ],
     [
      "Backspace",
-     "[[PW*FP]] [[PW-FP]]",
+     "[[PW-FP]]",
      "Backspace"
     ],
     [
@@ -585,12 +585,12 @@
     ],
     [
      "Return",
-     "[[SKW-BGS]] [[R*R]]",
+     "[[SKW-BGS]]",
      "Return key"
     ],
     [
      "Paragraph break",
-     "[[SKWRAEURBGS]] [[SKWRAURBGS]]",
+     "[[SKWRAURBGS]]",
      "`{^\\n\\n^}{-\\|}`: a blank line, next word capitalized"
     ],
     [
@@ -600,7 +600,7 @@
     ],
     [
      "Escape",
-     "[[TPEFBG]] [[EFBG]]",
+     "[[EFBG]]",
      "Escape"
     ]
    ]
@@ -657,7 +657,7 @@
     ],
     [
      "Backspace",
-     "[[PW*FP]] [[PW-FP]]",
+     "[[PW-FP]]",
      "hold all but one of the keys (`PW` and `-F`, then tap `-P`): delete backwards a character at a time"
     ],
     [
@@ -696,7 +696,7 @@
      "They change spacing or capitalisation, or act on the previous words; repeating or sending them early is a mistake, not a convenience."
     ],
     [
-     "[[SKW-BGS]] and [[R*R]] (Return), [[TPEFBG]] (Escape)",
+     "[[SKW-BGS]] and (Return), (Escape)",
      "Return submits forms and chat boxes and Escape cancels things: you want the deliberate send of a stroke that has fully come up, and repeating them is rarely wanted."
     ],
     [
@@ -744,7 +744,7 @@
   },
   {
    "t": "p",
-   "x": "**Plover itself does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin and looks the name up; there is none called `firstup`, and Plover 5.4.2's lookup raises `KeyError: 'firstup'`. So in plain Plover the 29 strokes above would error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk is deployed to Keymux, so the 29 strokes carry it; a Plover user can register a one-line meta plugin named `firstup` that does nothing, or take a copy of `commands.json` with the marker removed. The strokes themselves never change either way."
+   "x": "**Plover itself does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin and looks the name up; there is none called `firstup`, and Plover 5.4.2's lookup raises `KeyError: 'firstup'`. So in plain Plover the 28 strokes above would error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk is deployed to Keymux, so the 28 strokes carry it; a Plover user can register a one-line meta plugin named `firstup` that does nothing, or take a copy of `commands.json` with the marker removed. The strokes themselves never change either way."
   },
   {
    "t": "h3",
@@ -848,7 +848,7 @@
     ],
     [
      "Capitalize the word just written",
-     "[[KPAD]] [[KA*PD]]",
+     "[[KPAD]]",
      "`{*-\\|}`",
      "[[pay|PAEU]] `KPAD` types `Pay`"
     ],
@@ -878,14 +878,14 @@
     ],
     [
      "No space before the next word",
-     "[[SP-S]] [[TK-LS]]",
+     "[[SP-S]]",
      "`{^^}`",
      "[[how|HOU]] `SP-S` [[ever|-FR]] types `however`"
     ],
     [
      "Remove the last space",
      "[[SP-LS]]",
-     "`{*!}` (the file also lists the bare key `^` for it)",
+     "`{*!}`",
      "[[more|PHOR]] [[over|AUFR]] `SP-LS` types `moreover`"
     ]
    ]

@@ -565,6 +565,31 @@ fn every_suffix_is_a_join_key_stroke_defined_as_a_pure_attach_and_every_listed_o
     assert!(problems.is_empty(), "suffix entries that would not attach: {problems:#?}");
 }
 
+/// One way to type each mark or command: no two outlines in the reserved dictionaries (commands,
+/// punctuation, fingerspelled modifiers) type the same thing. The Reference's tables list one
+/// stroke per mark, so a second one creeping back in would make them wrong.
+#[test]
+fn every_reserved_output_has_exactly_one_outline() {
+    let mut by_output: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    for (kind, json) in [
+        ("commands", include_str!("../rules/reserved/commands.json")),
+        ("punctuation", include_str!("../rules/reserved/punctuation.json")),
+        ("modifiers", include_str!("../rules/reserved/emilys-modifiers.json")),
+    ] {
+        let table: std::collections::BTreeMap<String, String> =
+            serde_json::from_str(json).expect("reserved table parses");
+        for (outline, output) in table {
+            by_output.entry(output).or_default().push(format!("{outline} ({kind})"));
+        }
+    }
+    let twice: Vec<String> = by_output
+        .iter()
+        .filter(|(_, outlines)| outlines.len() > 1)
+        .map(|(output, outlines)| format!("{output:?}: {}", outlines.join(", ")))
+        .collect();
+    assert!(twice.is_empty(), "outputs with more than one reserved outline: {twice:#?}");
+}
+
 /// The name lane's opener: `#` alone is a built-in, silent entry (the plugin reads it from keymux's
 /// stroke history, so nothing may type before the name). Reserved like every command, and the
 /// `#/...` name entries that begin with it are longer matches that win over it.

@@ -150,7 +150,7 @@ of very common words dominate it and a long tail of rare ones barely move it:
 |---|---|---|---|
 | 1 | 2.82 | 3.19 | 3.59 |
 | 2 | 4.67 | 4.70 | 5.00 |
-| 3 | 4.67 | 4.92 | 5.25 |
+| 3 | 4.65 | 4.92 | 5.25 |
 | 4+ | 5.08 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 

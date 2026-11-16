@@ -269,7 +269,7 @@ export function createEngine({ dict, joins = {}, chart }) {
     const runs = runsOf(strokes);
     const parts = [];
     for (let i = 0; i < runs.length; i += 1) {
-      // a reserved outline can span runs (`-FP/PHOEUFP`): the longest one that is an entry wins
+      // a reserved outline can span runs (`STKPWHR-FPLT/SKW-TS`): the longest one that is an entry wins
       let took = 1;
       for (let k = Math.min(3, runs.length - i); k >= 2; k -= 1) {
         const joined = runs.slice(i, i + k).flat();

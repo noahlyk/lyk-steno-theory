@@ -23,19 +23,19 @@
     [
      "`commands.json`",
      "`01-lyk-commands.json`",
-     "87 strokes: the silent `#` that opens the [name lane](#/ref/names), cursor, editing, shortcuts, case and spacing commands, F-keys, Plover control, overlay and lookup controls, engine unload, undo and history helpers",
+     "81 strokes: the silent `#` that opens the [name lane](#/ref/names), cursor, editing, shortcuts, case and spacing commands, F-keys, Plover control, overlay and lookup controls, engine unload, undo and history helpers",
      "[Punctuation and commands](#/ref/punctuation/commands)"
     ],
     [
      "`punctuation.json`",
      "`03-lyk-punctuation.json`",
-     "200 strokes: marks, symbols, and the 52 glued fingerspelling letters",
+     "117 strokes: 65 marks and symbols, and the 52 glued fingerspelling letters",
      "[Punctuation and commands](#/ref/punctuation), [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text)"
     ],
     [
      "`emilys-modifiers.json` (generated from `emilys-modifiers.py` by `regenerate.py`)",
      "`04-lyk-emilys-modifiers.json`",
-     "5,475 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key",
+     "1,665 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key",
      "[Fingerspelling](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary)"
     ]
    ]
@@ -49,7 +49,8 @@
    "items": [
     "Nothing generated competes with a reserved stroke: not a word's plain outline, not a brief, not a star form, not an alternate pronunciation, not a phrase, not a backup.",
     "A word that wanted a reserved stroke moves to its next-cheapest outline. Examples: [[captain|KAPT]] would have been `K*P` (the glued capital K), and [[eh|A*EU]] would have been `*E` (the glued letter e).",
-    "A reserved stroke can be given back to words only by removing it from the reserved file. [[up|-P]] and [[am|-PL]] sit on `-P` and `-PL` for that reason: the period has 30 other strokes and does not need them."
+    "A reserved stroke can be given back to words only by removing it from the reserved file. [[up|-P]] and [[am|-PL]] sit on `-P` and `-PL` for that reason: the period has its one stroke, [[TP-PL]], and does not need them.",
+    "**One stroke per output.** No two outlines in these three files type the same thing: every mark, command and modifier chord has exactly one stroke, the one struck most in the typed tape, else the one with the fewest keys. `cargo test` asserts it (`every_reserved_output_has_exactly_one_outline`), so a second stroke for a mark cannot creep back in. The strokes this freed (the alternate periods, commas, question marks and so on, and the thousands of modifier chords that only differed by a key the dictionary ignores) belong to words and phrases now."
    ],
    "ordered": false
   },

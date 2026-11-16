@@ -60,7 +60,7 @@ const def = (o) => engine.define(strokes(o));
 expect('* defined as undo_or', def('*').text, '{:undo_or:Control_L(BackSpace)}');
 expect('+-D is {^ed}', def('+-D').text, '{^ed}');
 expect('+-G is {^ing}', def('+-G').text, '{^ing}');
-expect('-FP is {.}', def('-FP').text, '{.}');
+expect('TP-PL is {.}', def('TP-PL').text, '{.}');
 expect('ED/+-D is the word', def('ED/+-D').text, 'ended');
 expect('ED/+-D is an entry', def('ED/+-D').how, 'entry');
 expect('SKP/+-L is read back, not an entry', def('SKP/+-L').how, 'guess');

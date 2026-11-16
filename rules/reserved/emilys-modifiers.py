@@ -9,6 +9,14 @@ uniqueEnders = ["LGTS"]
 
 LONGEST_KEY = 1
 
+# One way per output: regenerate.py keeps a single stroke of every group that types the same
+# thing (the one listed here, else the fewest keys, then alphabetical). These are the strokes
+# the tape showed struck most (or at all) where a shorter twin exists.
+PREFERRED = [
+    "SKWR-FLGTS", "SKWR-RLGTS", "R*RLGTS", "-FRLGTS", "SKWR-PLGTS", "SKWR-BLGTS", "-FBLGTS",
+    "HR*EPBLGTS", "STKPWHR-FRPBLGTS",
+]
+
 # fingerspelling dictionary entries for relevant theories
 spelling = {
         "A"     : "a",

@@ -12,11 +12,10 @@
     { "t": "h", "x": "Strokes spoken for before any word" },
     { "t": "p", "x": "These go into the `!taken` map first, and no word can land on them." },
     { "t": "table", "head": ["What", "Strokes", "Source"], "rows": [
-      ["Punctuation", "144", "`rules/reserved/punctuation.json`, forked from Plover"],
+      ["Punctuation", "65", "`rules/reserved/punctuation.json`, forked from Plover: one stroke per mark"],
       ["Fingerspelling", "52", "[[A*]] writes a, [[A*P]] writes A, through [[STKPW*]] and [[STKPW*P]]"],
-      ["Commands", "40", "cursor, word movement, newline, editing, Plover control"],
-      ["Lapwing commands", "26", "Home/End/PgUp/PgDn on `STPH-`, Shift-select with `*`, F1 to F12"],
-      ["Emily's modifiers", "5,475", "OS shortcuts, all ending in `-LGTS`"],
+      ["Commands", "81", "cursor and selection (`STPH-`, with `*` to select), newline, editing, F1 to F12, Plover control, overlay and lookup controls"],
+      ["Emily's modifiers", "1,665", "OS shortcuts, all ending in `-LGTS`"],
       ["Standalone suffixes", "38", "`rules/suffixes.toml` ([[+-G]] is ing, [[+-D]] is ed)"],
       ["Literal brief overrides", "no fixed count", "`[word]` outlines in `rules/briefs.toml`, for example [[eye|AOEU]], [[oh|OE]], [[working|WOG]]"]
     ] },

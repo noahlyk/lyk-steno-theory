@@ -65,6 +65,19 @@ def write(bits):
     return ("#" if number else "") + LEFT[0][left] + hyphen + MIDDLE[0][middle] + RIGHT[0][right]
 
 
+def one_way(entries, preferred):
+    """One stroke per output: of the strokes that type the same thing keep the one the module
+    prefers (PREFERRED), else the one with the fewest keys, then the first alphabetically."""
+    groups = {}
+    for steno, value in entries.items():
+        groups.setdefault(value, []).append(steno)
+    keep = set()
+    for strokes in groups.values():
+        liked = [s for s in strokes if s in preferred]
+        keep.add(min(liked or strokes, key=lambda s: (len(s.replace("-", "")), s)))
+    return {steno: value for steno, value in entries.items() if steno in keep}
+
+
 def convert(source):
     output = os.path.splitext(source)[0] + ".json"
     spec = importlib.util.spec_from_file_location("programmatic", source)
@@ -83,6 +96,7 @@ def convert(source):
             continue
         if value:
             entries[steno] = value
+    entries = one_way(entries, getattr(module, "PREFERRED", ()))
     with open(output + ".part", "w", encoding="utf-8") as fp:
         json.dump(entries, fp, ensure_ascii=False, indent=0, separators=(",", ": "))
         fp.write("\n")

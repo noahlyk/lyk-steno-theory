@@ -137,7 +137,7 @@ A drill does not ask for one outline: it asks whether what you struck *types the
 reads a stroke stream the way the dictionary does (`site/reference/join-key.json`, `site/reference/fallback.json`):
 
 1. A stroke without the join key opens a run; every `+` stroke continues the run before it. Runs
-   are separated by a space; a reserved outline can span runs (`-FP/PHOEUFP`).
+   are separated by a space; a reserved outline can span runs (`STKPWHR-FPLT/SKW-TS`).
 2. A run is looked up whole (`ED/+-D` is *ended*), as a dictionary entry or a reserved one
    (punctuation attaches to the word before it and capitalises the next; commands show as `⟨Return⟩`).
 3. A run with no entry is read as the real fallback does: a single-stroke word as the stem, then each

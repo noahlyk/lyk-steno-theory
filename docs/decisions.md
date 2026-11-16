@@ -2801,3 +2801,41 @@ keys), the sources, the page on the site (rewritten for the new reading). Limits
 the run struck right after the `#`; a wall between the `#` and the name (a key press, a window change)
 ends it, so the name is then read as an ordinary run; a keymux without the history imports cannot run
 the plugin at all (it declares them).
+
+## One stroke per punctuation mark, command and modifier chord (2026-11-15)
+
+Asked: "there are way too many ways to type the same punctuation. I just want the main shortest ways.
+I will never need more than one way to type each punctuation or miscellaneous thing." Before, the
+period had 30 strokes, the comma 14, the question mark 11, a space 5, and Emily's modifier file
+typed the same shortcut from up to eight chords (an extra `T` or `P` beside the digit bits, an `E`,
+`U` or `EU` the generator ignores).
+
+**The rule.** Every distinct output in `rules/reserved/*.json` has exactly one outline. Outputs are
+compared by their text, so `{^-^}`, `-` and `{-^}` are three outputs with a stroke each, and
+`{:firstup}{#Left}{^}` is not `{#Left}`. The survivor of a group is, in order: (a) the outline struck
+most in the real tape (`steno-tape.txt`, about 200,000 strokes; a two-stroke outline counts as the
+pair), (b) else the fewest keys, (c) the fewest strokes, (d) the lowest ergonomic cost, (e)
+alphabetical. The tape decided 19 of the 27 groups in the hand-written files, and nine times the
+tape winner is not the shortest (`TP-PL` over `-FP` for the period, `KW-BG` over `-RB`, `KW-PL` over
+`H-F`, `H-PB` over `H-B`, `SP` over `S-P`, `SKW-BGS` over `R*R`, `SP-LS` over `^`, `KA*RT` over
+`KR-RT`, `HR-PS` over `SW-BS`). One group crossed files (`{^^}`: `SP-S` in commands, `TK-LS` in
+punctuation): `SP-S` stays. Emily's file: 1,320 groups, nine of them decided by the tape.
+
+**What changed.** commands 87 to 81, punctuation 200 to 117 (65 marks and the 52 glued letters),
+Emily's modifiers 5,475 to 1,665 (111 base chords times 15 modifier combinations); reserved outlines
+5,762 to 1,863. `emilys-modifiers.py` keeps its full generator; `regenerate.py` now collapses each
+output to one stroke (the module's `PREFERRED` list where the tape beat the shortest, else fewest
+keys) and reproduces the committed file exactly. `every_reserved_output_has_exactly_one_outline`
+fails if a second outline for an output is added to any of the three files. Kept because something
+refers to them: `#` (the silent name opener), `PHRUP` and the other overlay, tape, keyboard, lookup
+and engine controls (one outline each already), and `PW-FP` (the user's `00-user.json` also maps it).
+
+**The freed strokes.** The build gives them to words and phrases: 62 words changed their best
+outline (for instance `fall` `TPAUL` to `TPAL`, `family` `TPAL` to `TP-L`, `required` `R-RD` to
+`R*RD`, `multiple` `POUPL` to `P-PL`), nine words that needed two or three strokes now take one,
+15 phrases came in on freed strokes (`-FP` is now "up of", `-PLT` "am the") and 8 lost theirs.
+Words and phrases with a one-stroke outline 46,279 to 46,294; total strokes 96,925 to 96,922. The
+old extra period strokes are no longer periods: striking `-FP` types what the dictionary says.
+
+**Measured.** `solve --eval 125` backups 88.9% top-1 (unchanged; weighted 92.2 to 92.3), `--taught
+10000` 98.5% (unchanged). README keys per stroke by frequency, three-syllable words 4.67 to 4.65.
