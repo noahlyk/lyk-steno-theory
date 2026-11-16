@@ -84,11 +84,13 @@ pub fn truncate(text: &str, max: usize) -> String {
 }
 
 /// The qwerty key that presses each stroke key, by bit: keymux's default layout, with lyk's
-/// join key on `Q` (`"+": Key(KC_Q)`, as in the author's config).
+/// config (`"*": Key(KC_Y)` so the star is the right index only, `"+": Key(KC_T)` and the alias
+/// `"+|G": Key(KC_G)` so the join key is the left index's inner column; `Q` also presses `S-`
+/// beside `A`). Where a key has two, the first is shown.
 const KEY_FOR_BIT: [char; 23] = [
-    '1', 'A', 'W', 'S', 'E', 'D', 'R', 'F', 'C', 'V', 'T', 'N', 'M', 'U', 'J', 'I', 'K', 'O', 'L', 'P', ';', '[', '\'',
+    '1', 'A', 'W', 'S', 'E', 'D', 'R', 'F', 'C', 'V', 'Y', 'N', 'M', 'U', 'J', 'I', 'K', 'O', 'L', 'P', ';', '[', '\'',
 ];
-const JOIN_KEY: char = 'Q';
+const JOIN_KEY: char = 'T';
 
 /// The finger group of a key by bit (keys one finger plays together share one), or `None`:
 /// keymux's `Layout::plover` groups.
@@ -403,7 +405,9 @@ mod tests {
         assert!(lines[0].ends_with("keys"));
         // K is S, A is C, the right-hand T is P: `KAT` on qwerty is S C P
         assert!(lines[1].ends_with("SCP"), "{}", lines[1]);
-        assert_eq!(keys_text(&crate::stroke::parse_outline("KAT/+-D").unwrap()), "SCP/Q[");
+        assert_eq!(keys_text(&crate::stroke::parse_outline("KAT/+-D").unwrap()), "SCP/T[");
+        // the join key is T (the left index's inner column) and the star Y (the right index)
+        assert_eq!(keys_text(&crate::stroke::parse_outline("PHA*/+*").unwrap()), "ERCY/TY");
     }
 
     #[test]

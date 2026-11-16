@@ -9,7 +9,7 @@ import { KEYS, needsHyphen, parseOutline } from './steno.js';
 
 export const GROUP_OF = (k) => (k === '+' || k === '*' ? 'misc' : /^[AOEU]$/.test(k) ? 'vowel' : k.startsWith('-') ? 'right' : 'left');
 // keys one finger plays together (a column; the two keys of a thumb pair)
-const PAIRS = [['+', 'S-'], ['T-', 'K-'], ['P-', 'W-'], ['H-', 'R-'], ['A', 'O'], ['E', 'U'],
+const PAIRS = [['T-', 'K-'], ['P-', 'W-'], ['H-', 'R-'], ['A', 'O'], ['E', 'U'],
   ['-F', '-R'], ['-P', '-B'], ['-L', '-G'], ['-T', '-S'], ['-D', '-Z']];
 const PAIR_OF = new Map(PAIRS.flatMap(([a, b]) => [[a, { pos: 'a', with: b }], [b, { pos: 'b', with: a }]]));
 const DISPLAY_ORDER = ['+', ...KEYS.filter((k) => k !== '+')];

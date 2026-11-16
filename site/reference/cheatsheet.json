@@ -8,7 +8,7 @@
       ["Left hand", "`S T K P W H R`", "the sounds a syllable starts with"],
       ["Thumbs", "`A O` `*` `E U`", "the vowel (`*` is the star, a marker the rules use)"],
       ["Right hand", "`F R P B L G T S D Z`", "the sounds a syllable ends with"],
-      ["Join key", "`+` (the top half of the left `S` key)", "this stroke continues the previous one: no space between"]
+      ["Join key", "`+` (the left index finger's inner column, a tall key between the `H`/`R` column and the star)", "this stroke continues the previous one: no space between"]
     ] },
     { "t": "h3", "x": "Merged keys on the diagram" },
     { "t": "p", "x": "Every board on this site (lessons, drills, the Try it pad, the hover preview) draws the keys of a steno letter chord as one bigger key while **all** of them are lit; a partly lit group lights its keys one by one, and the stroke itself never changes. These 24 groups, and only these, merge (left hand, then right hand, then thumbs):" },

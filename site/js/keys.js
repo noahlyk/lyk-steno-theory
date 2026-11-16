@@ -18,8 +18,8 @@ const DONE_KEEP = 6; // finished words left in view
 const IDLE_MS = 3000; // a wait longer than this counts as this much
 // The Plover QWERTY key each steno key sits under (input.js has the same map by key code).
 const HINT = {
-  'S-': 'A', 'T-': 'W', 'K-': 'S', 'P-': 'E', 'W-': 'D', 'H-': 'R', 'R-': 'F', A: 'C', O: 'V', '*': 'T', E: 'N', U: 'M',
-  '-F': 'U', '-R': 'J', '-P': 'I', '-B': 'K', '-L': 'O', '-G': 'L', '-T': 'P', '-S': ';', '-D': '[', '-Z': "'", '+': 'Q',
+  'S-': 'A', 'T-': 'W', 'K-': 'S', 'P-': 'E', 'W-': 'D', 'H-': 'R', 'R-': 'F', A: 'C', O: 'V', '*': 'Y', E: 'N', U: 'M',
+  '-F': 'U', '-R': 'J', '-P': 'I', '-B': 'K', '-L': 'O', '-G': 'L', '-T': 'P', '-S': ';', '-D': '[', '-Z': "'", '+': 'T',
 };
 const GUIDES = [
   [P.GUIDE.FULL, 'Diagram and hints'],
@@ -96,8 +96,8 @@ export async function keysPage(app) {
       peekNote),
     el('p', { class: 'boardbox__hint' },
       'Hold the keys of a stroke together on your keyboard (Plover QWERTY: ', el('code', {}, 'QWER ASDF'), ' left hand, ',
-      el('code', {}, 'C V'), ' and ', el('code', {}, 'N M'), ' thumbs, ', el('code', {}, 'T'), ' star, ', el('code', {}, 'UIOP JKL;'),
-      ' right hand, ', el('code', {}, 'Q'), ' join key), then let go. Typing a longer word needs the join key, so it unlocks last.'));
+      el('code', {}, 'C V'), ' and ', el('code', {}, 'N M'), ' thumbs, ', el('code', {}, 'Y H'), ' star, ', el('code', {}, 'UIOP JKL;'),
+      ' right hand, ', el('code', {}, 'T G'), ' join key), then let go. Typing a longer word needs the join key, so it unlocks last.'));
 
   const save = () => store.saveKeys(p);
   const mask = () => P.unlockedMask(p);

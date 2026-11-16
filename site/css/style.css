@@ -304,7 +304,6 @@ button.key { cursor: pointer; }
 /* steno machine (WebHID, Chromium only) */
 .hid { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
 .hid.is-on .hid__btn { border-color: var(--ok); color: var(--ok); }
-.hid__join { display: inline-flex; align-items: center; gap: 0.25rem; }
 
 /* Reference area: search hits, section blurbs, formulas, grammar strokes, the composer */
 .refsec { color: var(--muted); margin: 0.2rem 0 0.6rem; }

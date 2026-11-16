@@ -212,15 +212,15 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   if (weak.guide === P.GUIDE.MEMORY) fail('keys: struggling typist did not get the guide back');
 }
 
-// a steno machine over Plover HID: a snapshot of levers decodes to lyk keys (the Uni's top S is the join key)
+// a steno machine over Plover HID: a snapshot of levers decodes to lyk keys (the Uni's left star levers are the join key, both S halves are S)
 {
   const report = (...bits) => { const b = new Uint8Array(8); for (const i of bits) b[i >> 3] |= 0x80 >> (i & 7); return b; };
-  const keys = (k, join) => [...(decodeReport(REPORT_ID, report(...k), join) ?? [])].sort().join(' ');
-  if (keys([1, 2, 7], true) !== 'A K- T-') fail(`hid: T- K- A- decoded as ${keys([1, 2, 7], true)}`);
-  if (keys([0, 23], true) !== '+ S-') fail('hid: S1- S2- should be + and S-');
-  if (keys([0], false) !== 'S-') fail('hid: top S should be S- when the join option is off');
-  if (keys([9, 24, 25, 26], true) !== '*') fail('hid: every asterisk lever is *');
-  if (keys([10, 11, 12, 21], true) !== '-F -Z E U') fail(`hid: right bank decoded as ${keys([10, 11, 12, 21], true)}`);
+  const keys = (k) => [...(decodeReport(REPORT_ID, report(...k)) ?? [])].sort().join(' ');
+  if (keys([1, 2, 7]) !== 'A K- T-') fail(`hid: T- K- A- decoded as ${keys([1, 2, 7])}`);
+  if (keys([0, 23]) !== 'S-') fail('hid: both halves of the Uni S press the one S- key');
+  if (keys([9]) !== '+' || keys([24]) !== '+') fail('hid: the left star levers (*1, *2) press the join key +');
+  if (keys([25, 26]) !== '*') fail('hid: the right star levers (*3, *4) press *');
+  if (keys([10, 11, 12, 21]) !== '-F -Z E U') fail(`hid: right bank decoded as ${keys([10, 11, 12, 21])}`);
   if (decodeReport(0x01, report(1)) !== null) fail('hid: wrong report id must be ignored');
 }
 

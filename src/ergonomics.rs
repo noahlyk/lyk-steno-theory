@@ -14,15 +14,17 @@
 //!
 //! `keymux`'s steno layer presses ordinary QWERTY keys, two per column for most fingers (a home-row
 //! key and the top-row key directly above it, the two keys a touch-typist already assigns to that
-//! finger) - **not** a dedicated stenotype board with physical top/bottom banks. The one override
-//! in the user's own config (`"+": Key(KC_Q)`) confirms the left pinky's column is `Q` (join, top)
-//! over `A` (`S-`, home) exactly like every other column; `S-` itself has no top position of its
-//! own and is fixed at the column's bottom. The right pinky's column is doubled: `T-`/`S-` on the
-//! normal home/top pair (`;`/`P`), plus `D`/`Z` one key further right on the *same* two rows (`'`/
+//! finger) - **not** a dedicated stenotype board with physical top/bottom banks. The overrides
+//! in the user's own config pin three keys: the star on the right index only (`"*": Key(KC_Y)`), the
+//! join key on the left index's inner column (`"+": Key(KC_T)` and the alias `"+|G": Key(KC_G)`), and
+//! `S-` as a tall key pressed by `A` (home) or `Q` (top). The join key is excluded from every term
+//! below, so where it sits changes no cost. `S-` is modeled at the home key `A` always: that is
+//! where it is typed, and the model does not offer `Q` as a cheaper alternative the way it does
+//! for the star. The right pinky's column is doubled: `T-`/`S-` on the normal home/top pair (`;`/`P`), plus `D`/`Z` one key further right on the *same* two rows (`'`/
 //! `[`) - a real further lateral reach, not a modeling choice. The right index gets the same kind
 //! of second position, confirmed directly by the user: `*` is always struck by the right index via
-//! `H` (home row, one key left of its own `J`) or `Y` (top row, one key left of its own `U`) - never
-//! the left hand's `T`/`G` alternates the default layout also allows.
+//! `H` (home row, one key left of its own `J`) or `Y` (top row, one key left of its own `U`). The
+//! left hand's `T`/`G`, which the default layout also gives the star, are the join key now.
 //!
 //! So every key a finger can press reduces to a **reach vector** `(vertical, lateral)`, each either
 //! 0 (the finger's own row) or 1 (one key away from it):
@@ -511,7 +513,7 @@ mod tests {
 
     #[test]
     fn star_on_the_right_index_costs_more_than_resting_at_home_next_to_a_stretched_neighbor() {
-        // Confirmed directly: `*` is always the right index via H/Y, never the left hand's T/G.
+        // Confirmed directly: `*` is always the right index via H/Y (T/G are the join key).
         // `-*LD` asks the index to also reach a lateral position (H), which doesn't share an axis
         // with the ring's vertical-only reach (L) the way `-RLD`'s resting index (R2, home) does
         // not conflict with it either - but `*`'s own lateral reach is a genuine axis mismatch

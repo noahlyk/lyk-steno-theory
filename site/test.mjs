@@ -8,6 +8,7 @@ import { parseOutline } from './js/steno.js';
 import { classify, classifyList } from './js/hovermatch.js';
 import { store } from './js/store.js';
 import { mergeTests } from './merge.test.mjs';
+import { keymapTests } from './keymap.test.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
@@ -128,6 +129,8 @@ expect('assisted run: still passes', store.recordRun('t-peek', { accuracy: 95, w
 
 // merged keys on the board (js/merge.js, its tests in merge.test.mjs)
 errors.push(...mergeTests());
+// the physical keyboard mapping and the board layout (keymap.test.mjs)
+errors.push(...keymapTests());
 
 for (const e of errors) console.error('FAIL', e);
 console.log(`engine: ${total} outlines read back (${wrong} differ), ${errors.length} failures`);

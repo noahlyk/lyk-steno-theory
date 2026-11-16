@@ -119,7 +119,7 @@ function explore(b) {
       for (const k of held) keys.add(k);
       paint();
     },
-    onActivate: () => { hint.textContent = 'Strike keys together on your keyboard or steno machine. Q is the join key.'; },
+    onActivate: () => { hint.textContent = 'Strike keys together on your keyboard or steno machine. T and G are the join key.'; },
     onDeactivate: () => {
       clearTimeout(timer);
       keys.clear();

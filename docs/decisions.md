@@ -2839,3 +2839,42 @@ old extra period strokes are no longer periods: striking `-FP` types what the di
 
 **Measured.** `solve --eval 125` backups 88.9% top-1 (unchanged; weighted 92.2 to 92.3), `--taught
 10000` 98.5% (unchanged). README keys per stroke by frequency, three-syllable words 4.67 to 4.65.
+
+## The join key moves to the left index finger; the left star is gone (2026-11-15)
+
+**What changed.** The join key `+` moved from the left pinky (physical `Q`, drawn as the top half of
+the `S` key) to the left index finger, on the physical keys `T` and `G` (the inner column, where the
+left star keys were). The left star is removed: `*` is now only on the right index (`Y` and `H`). `Q`
+is plain `S` again: `S-` is a tall key pressed by `A` and `Q`, as in standard steno. The pinky `+` is
+gone (one `+` only). On the board diagram `+` is its own tall column, two finger rows high like the
+star, between the left-hand block (the `H-`/`R-` column) and the star column. **Notation and the
+theory do not change**: `+` is the same join key (stroke bit 23), `+X` strokes read the same, and no
+rule, brief or dictionary entry moved.
+
+**Why.** The pinky was slow for a key struck on most continuation strokes (every stroke after the
+first of a long word carries `+`, and in sticky-plus it is held across a whole word). The left star
+was nearly unused: on the author's tape 94% of star strokes are a bare `*` (undo), only 3% chord a
+left index key and 2% a right index key, so the left star's second position bought almost nothing.
+`+` goes on the stronger finger, in the place the unused left star freed.
+
+**The keymux config.** `extra_keys: ['+']` and `join_keys: ['+']` as before; `layout_overrides: {
+"*": Key(KC_Y), "+": Key(KC_T), "+|G": Key(KC_G) }` (star on the right index only; `+` on `T`, with
+`G` an alias for the same slot); `overlay_overrides: { "+": ColumnBefore("*") }` for the diagram.
+The `"SLOT|KC"` alias entry and the overlay `ColumnBefore(...)` placement are generic keymux
+capabilities, not lyk rules.
+
+**Where the layout lives in this repo.** The site: `site/js/boardgeom.js` (the board: `S-` tall, a
+new tall `+` column, everything right of it one column over), `site/js/steno.js` (`QWERTY`: `T` and
+`G` press `+`, `Y` and `H` press `*`, `Q` and `A` press `S-`), `site/js/hid.js` (the Uni's left star
+levers `*1`/`*2` press `+`, `*3`/`*4` press `*`, both halves of the Uni's S press `S-`; the "top S is
+the join key" option is gone), the key hints, the Try-it pad and the lessons. The terminal keys
+column (`src/view.rs`) shows `T` for the join key and `Y` for the star.
+
+**The ergonomics model is unchanged.** It already priced the star on the right index only (`H`/`Y`)
+and excluded the join key from every term, so where `+` sits changes no cost and no outline. `S-` is
+still priced at `A` only; that `Q` also presses it (a cheaper reach next to a top-row ring key) is
+not modeled, deliberately: `A` is where `S` is typed, and modeling `Q` would move outlines for a
+choice the typist may not make.
+
+**What regresses if undone.** The site board, the key maps and the lessons all have to move back
+together; `site/keymap.test.mjs` pins the keyboard map against the board geometry.

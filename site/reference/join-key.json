@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Every stroke after the first of a word carries the join key `+` (the `Q` key). A stroke without it always starts a new word. Word boundaries are written explicitly, never inferred."
+   "x": "Every stroke after the first of a word carries the join key `+` (the left index finger's inner column: `T` and `G` on a keyboard). A stroke without it always starts a new word. Word boundaries are written explicitly, never inferred."
   },
   {
    "t": "h",
@@ -114,7 +114,15 @@
   },
   {
    "t": "p",
-   "x": "Keymux learns the join key from the steno layer's config: `extra_keys: ['+']` adds the key and `join_keys: ['+']` marks it as a join key (Keymux 1b9cf76 or later; the key's physical position goes in `layout_overrides`). A stroke with it down is only ever looked up glued onto the strokes before it. When no joined outline matches (`TEST/+-D` does not exist), it falls back to its own entry, and every suffix has one, defined as `{^text}`, so the ending still attaches to the previous word. See [the suffix table](#/ref/suffixes)."
+   "x": "Keymux learns the join key from the steno layer's config: `extra_keys: ['+']` adds the key and `join_keys: ['+']` marks it as a join key (Keymux 1b9cf76 or later; the key's physical position goes in `layout_overrides`: `+` on the left index finger's inner column, the star on the right index only, and `overlay_overrides` draws `+` as its own column before the star; see below). A stroke with it down is only ever looked up glued onto the strokes before it. When no joined outline matches (`TEST/+-D` does not exist), it falls back to its own entry, and every suffix has one, defined as `{^text}`, so the ending still attaches to the previous word. See [the suffix table](#/ref/suffixes)."
+  },
+  {
+   "t": "p",
+   "x": "The physical layout, in the steno layer's config:"
+  },
+  {
+   "t": "pre",
+   "x": "extra_keys: ['+'],\njoin_keys: ['+'],\nlayout_overrides: {\n    \"*\": Key(KC_Y),        // star only on the right index\n    \"+\": Key(KC_T),        // the join key on the left index (T) ...\n    \"+|G\": Key(KC_G),      // ... and G\n},\noverlay_overrides: { \"+\": ColumnBefore(\"*\") },"
   },
   {
    "t": "h",

@@ -118,7 +118,8 @@
     { "t": "list", "ordered": false, "items": [
       "A same-finger double press is charged +1 in total and nothing else.",
       "Squaring the per-axis difference makes transitions convex: asking two poorly coupled fingers to each reach further costs much more than twice a small reach.",
-      "The join key is excluded from every term: it appears in nearly every continuation stroke, so costing it would penalize \"more than one stroke\", not any real word choice.",
+      "The join key is excluded from every term: it appears in nearly every continuation stroke, so costing it would penalize \"more than one stroke\", not any real word choice. It sits on the left index finger's inner column (`T` and `G`), so where it is does not change any cost.",
+      "The star is the right index only (`Y` or `H`). `S-` is a tall key pressed by `A` (home) or `Q` (top); the model always prices it at `A`, where it is typed, and does not offer `Q` as a cheaper alternative the way it does for the star.",
       "`PINKY_TAX` is a judgment call, not a measurement. It is small relative to every other term (smaller than the smallest nonzero engagement cost, 56), so it can only break a tie between candidates that differ in pinky presses."
     ] },
     { "t": "h3", "x": "Four strokes, scored in full" },

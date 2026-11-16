@@ -5,7 +5,6 @@
 // and the Uni v4's QMK keymap, as also read by the steno-lessons project.
 
 import { feed } from './input.js';
-import { store } from './store.js';
 
 // The USB HID usage the firmware exposes; Plover's machine scans for exactly this pair.
 export const USAGE_PAGE = 0xff50;
@@ -23,14 +22,14 @@ export const CHART = [
 ];
 
 /**
- * The lyk key a lever presses, or null. The Uni splits S in two (S1- above S2-); lyk puts the join
- * key `+` on the top half of S, so by default the top one is `+` and the bottom one is `S-`.
- * Turn `topSIsJoin` off to have both press `S-`. All four asterisks are `*`; the `#` keys press
- * nothing (lyk has no number bar).
+ * The lyk key a lever presses, or null. The Uni splits S in two (S1- above S2-), but lyk's `S-` is
+ * one tall key, so both halves press `S-`. The left star levers (`*1`, `*2`, the left index
+ * finger's inner column) press the join key `+`; the right ones (`*3`, `*4`) press `*`. The `#`
+ * keys press nothing (lyk has no number bar).
  */
-export function leverKey(name, topSIsJoin = true) {
-  if (name === 'S1-') return topSIsJoin ? '+' : 'S-';
-  if (name === 'S2-') return 'S-';
+export function leverKey(name) {
+  if (name === 'S1-' || name === 'S2-') return 'S-';
+  if (name === '*1' || name === '*2') return '+';
   if (name.startsWith('*')) return '*';
   if (name === 'A-') return 'A';
   if (name === 'O-') return 'O';
@@ -44,7 +43,7 @@ export function leverKey(name, topSIsJoin = true) {
  * A Plover HID report as a Set of lyk key ids; null if it is not one. `reportId` and the payload
  * come apart in WebHID (the browser strips the id off the data), so both are taken separately.
  */
-export function decodeReport(reportId, payload, topSIsJoin = true) {
+export function decodeReport(reportId, payload) {
   const bytes = payload instanceof DataView ? new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength) : payload;
   if (reportId !== REPORT_ID || !bytes || bytes.length < 8) return null;
   let state = 0n;
@@ -52,7 +51,7 @@ export function decodeReport(reportId, payload, topSIsJoin = true) {
   const keys = new Set();
   for (let i = 0; i < CHART.length; i += 1) {
     if ((state >> BigInt(63 - i)) & 1n) {
-      const key = leverKey(CHART[i], topSIsJoin);
+      const key = leverKey(CHART[i]);
       if (key) keys.add(key);
     }
   }
@@ -66,10 +65,8 @@ const isMachine = (d) => d.collections?.some((c) => c.usagePage === USAGE_PAGE &
 let device = null;
 let onStatus = () => {};
 
-const topSIsJoin = () => store.settings.topSIsJoin !== false;
-
 function onReport(e) {
-  const keys = decodeReport(e.reportId, e.data, topSIsJoin());
+  const keys = decodeReport(e.reportId, e.data);
   if (keys) feed(keys);
 }
 
@@ -133,15 +130,7 @@ export function initHid(host) {
   button.textContent = 'Connect steno machine';
   const wrap = document.createElement('div');
   wrap.className = 'hid';
-  const join = document.createElement('input');
-  join.type = 'checkbox';
-  join.checked = topSIsJoin();
-  join.addEventListener('change', () => store.setSetting('topSIsJoin', join.checked));
-  const joinLabel = document.createElement('label');
-  joinLabel.className = 'hid__join';
-  joinLabel.title = 'The Uni splits S in two; lyk puts the join key on the top half';
-  joinLabel.append(join, ' top S is the join key');
-  wrap.append(button, label, joinLabel);
+  wrap.append(button, label);
   host.append(wrap);
   onStatus = (s) => {
     button.textContent = s.connected ? 'Disconnect machine' : 'Connect steno machine';

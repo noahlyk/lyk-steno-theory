@@ -75,8 +75,8 @@ export function createDrill(host, rawItems, opts = {}) {
     peekNote,
     el('p', { class: 'boardbox__hint', style: 'text-align:center;margin:.5rem auto 0' },
       'Hold the keys of a stroke together (Plover QWERTY: ', el('code', {}, 'QWER'), ' ', el('code', {}, 'ASDF'), ', ',
-      el('code', {}, 'CV'), ' ', el('code', {}, 'TG'), ' ', el('code', {}, 'NM'), ' ', el('code', {}, 'UIOP'), ' ', el('code', {}, 'JKL;'),
-      ', join key = Q) or a steno machine, then let go.'),
+      el('code', {}, 'CV'), ' ', el('code', {}, 'NM'), ' ', el('code', {}, 'UIOP'), ' ', el('code', {}, 'JKL;'),
+      ', join key = T or G, star = Y or H) or a steno machine, then let go.'),
   );
   host.append(root);
 

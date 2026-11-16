@@ -74,7 +74,10 @@ export function mergeTests() {
   near('N area is the whole rectangle, gaps filled', area(N.corners), N.bounds.w * N.bounds.h);
   expect('N top corners soft, bottom square', N.corners.map((c) => c.radius), [0.1, 0.1, 0, 0]);
   const Z = sh('Z', 'S-,T-,K-,P-,W-');
-  expect('Z is an L with a filleted inner corner', Z.corners.filter((c) => !c.convex).length, 1);
+  expect('Z is a plain rectangle: S- is tall, so S T K P W fill two rows with no fold', Z.corners.length, 4);
+  expect('Z has no inner corner', Z.corners.filter((c) => !c.convex).length, 0);
+  // J (S K W R): the tall S- beside K- W- R- is an L with one filleted inner corner
+  expect('J is an L with a filleted inner corner', sh('J', 'S-,K-,W-,R-').corners.filter((c) => !c.convex).length, 1);
   const L2 = outline([member({ x: 0, y: 0, w: 10, h: 42 }, 0, 0), member({ x: 12, y: 0, w: 10, h: 20 }, 0, 0)], 5, 2);
   expect('L has six corners', L2.length, 6);
   const [cx, cy] = labelCenter(L2);
@@ -88,15 +91,27 @@ export function mergeTests() {
     const l = links(rects(keys), NEIGHBOUR_GAP);
     expect(`${keys} one connector`, l.length, 1);
     near(`${keys} connector is a third of a key`, l[0].h, 1 / 3, 0.001);
-    const row = box(keys[0]);
+    const row = box(keys[1]); // R-: the height the tall S- and R- share is R-'s row
     near(`${keys} connector is centred on the row`, l[0].y + l[0].h / 2, row.y + row.h / 2);
   }
   const V = sh('V', 'S-,R-');
   expect('V outline has the connector in it', V.corners.length >= 8, true);
   expect('V label is on the first piece (S-)', V.center, [box('S-').x + 0.5, box('S-').y + box('S-').h / 2]);
   expect('a group in one piece has no connector', links(rects(['T-', 'P-', 'H-']), NEIGHBOUR_GAP), []);
-  expect('S- and T- are not neighbours (diagonal)', adjacent(box('S-'), box('T-'), NEIGHBOUR_GAP), false);
+  expect('S- is tall: as high as the star', box('S-').h, box('*').h);
+  expect('S- and T- are neighbours (S- is tall)', adjacent(box('S-'), box('T-'), NEIGHBOUR_GAP), true);
   expect('S- and K- are', adjacent(box('S-'), box('K-'), NEIGHBOUR_GAP), true);
+
+  // the join key + is its own tall column between H-/R- and the star, and is in no group
+  expect('+ is as tall as the star', box('+').h, box('*').h);
+  near('+ is one column right of H-', box('+').x - box('H-').x, 1.16);
+  near('the star is one column right of +', box('*').x - box('+').x, 1.16);
+  expect('no group has the join key', DEFAULTS.some(([k]) => k.includes('+')), false);
+  expect('+ and * lit together merge nothing', labels('+*'), []);
+  expect('+ beside H R merges nothing but L', labels('+HR'), ['L']);
+  expect('+ lights alone with V (S- and R- bridged)', [lone('+SR'), labels('+SR')], [['+'], ['V']]);
+  const vLink = links(rects(['S-', 'R-']), NEIGHBOUR_GAP)[0];
+  expect('the V connector stays left of the + column', vLink.x + vLink.w <= box('+').x, true);
   expect('a thumb is not next to a finger', adjacent(box('A'), box('K-'), NEIGHBOUR_GAP), false);
 
   // thumb paddles: the round ends in the middle go, quarter circles stay at the outer bottom corners

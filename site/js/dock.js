@@ -1,5 +1,5 @@
 // "Try it": a small typing pad, collapsed until asked for. Open it with the button or the `?` key,
-// then type on the keyboard (Plover QWERTY, Q is the join key): the board glows the keys you hold
+// then type on the keyboard (Plover QWERTY, T and G are the join key): the board glows the keys you hold
 // and the pad shows each stroke and what it translates to.
 
 import { createBoard } from './board.js';
@@ -25,7 +25,7 @@ export function initDock() {
   };
   const panel = el('section', { class: 'dock__panel', hidden: true, 'aria-label': 'Try it' },
     el('div', { class: 'dock__head' }, el('strong', {}, 'Try it'),
-      el('span', { class: 'boardbox__hint' }, 'Plover QWERTY; Q is the join key.'),
+      el('span', { class: 'boardbox__hint' }, 'Plover QWERTY; T and G are the join key, Y and H the star.'),
       el('button', { class: 'btn', type: 'button', onclick: () => { strokes = []; paint(); } }, 'Clear'),
       el('button', { class: 'btn', type: 'button', 'aria-label': 'close', onclick: () => toggle(false) }, '×')),
     host, live, out, tape);
