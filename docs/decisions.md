@@ -3127,3 +3127,39 @@ more often than the earlier pool's). Contested after peeling 18,690 to 19,101 (t
 ceiling is 19,500: 400 of headroom left, so the next big source needs the ceiling or a smaller
 vocabulary). *inconvenience* became one stroke, so the `in-` example in the lessons is *indistinct*.
 
+## Borrowed phrases feed the phrase pass (2026-11-16)
+
+**The question.** "how can I use the new dictionary to potentially take some inspiration from their
+briefs ... Josiah is pretty aggressive right", then "build anything you want, and choose what is best".
+Measured first (`Josiah` against the built dictionary): 677 words where Josiah is a stroke or two keys
+shorter, mostly arbitrary one-stroke forms of words already one stroke (*like* `KWH`, *by* `P`); and
+**8,606 one-stroke phrases lyk has no entry for**, among them the commonest pairs said (*to the*, *on
+the*, *to be*, *do not*, *with the*, *out of*, *going to*). The phrase pass only merged two words' own
+strokes, so a pair whose strokes overlap, or whose merge another word holds, never got one. Words
+were not worth building (Josiah's single-word briefs are the stroke-saving ones the pool already
+takes); phrases were.
+
+**The change.** `Gold::phrases`: every one-stroke phrase of two plain lowercase words that Plover,
+Lapwing and the fifteen theories write (read from the files like the rest, kept in the lookup cache,
+magic unchanged because the key includes the files). `enumerate_phrase_candidates` offers for each of
+the top 20,000 pairs the merge first and the borrowed outlines after it, cheapest first, deduplicated
+fully (a non-adjacent duplicate made the arbitration crown the later copy and skip the merge, which
+broke *of the* `-FT`); the pass commits the first whose stroke it can have, once per pair
+(`done`). A borrowed outline is dropped when some pair's own merge produces the same stroke, so a
+commoner borrowed pair cannot take it from the derivable one (two theories write `ST` for *is the*,
+which is said more than *it is*; *it is* stays `ST`). The takeover rules (top 1,000, protected top
+5,000, worth more than the word loses) are unchanged.
+
+**Measured.** Phrases 5,207 to 7,373, 89 took a stroke from a rarer word; strokes 1.003, keys 3.282,
+comfort 92.78 to 92.56 (better); contested 19,101 (unchanged); use-weighted solver 92.6%, taught
+98.5%, giant 85.5% (unchanged). 241 of 242 tests; the 242nd is the contested ceiling still at 18,000.
+The two phrase tests that pin *of the* `-FT`, *in the* `TPH-T` and *it is* `ST` pass unchanged.
+
+**The answer to "intuitive".** A merge can be worked out; a borrowed phrase has to be memorized, so the
+merge is always tried first and a borrowed outline is only a fallback. The real step toward an
+intuitive whole language is the phrasing grammar of lessons 19 and 20 (slots for who, what, how),
+which the generator does not build yet; it is the next highest-value build.
+
+**What regresses if undone.** Delete `Gold::phrases` use in `enumerate_phrase_candidates`: the commonest
+pairs that cannot merge (*to the*, *on the*) lose their one-stroke phrase.
+

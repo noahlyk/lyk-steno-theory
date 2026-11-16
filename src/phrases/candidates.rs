@@ -3,8 +3,8 @@
 //! the one invariant `generate` guarantees (see `site/reference/phrases.json`).
 
 use crate::analysis::Setup;
-use crate::generate::{Entry, Origin, entry_word, typable};
-use crate::stroke::{Stroke, render_outline};
+use crate::generate::{Entry, Origin, candidate_cost, entry_word, typable};
+use crate::stroke::{Stroke, parse_outline, render_outline};
 use std::collections::HashMap;
 
 /// Each word's own settled *primary* outline, single-stroke only - exactly the entry `generate`'s
@@ -112,13 +112,36 @@ pub fn enumerate_phrase_candidates(
 ) -> Vec<((String, String), Vec<Stroke>, u64)> {
     let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
     by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-    by_count
+    // (candidate, whether it is the merge of the two words' own strokes)
+    let all: Vec<(((String, String), Vec<Stroke>, u64), bool)> = by_count
         .into_iter()
         .take(top_n)
-        .filter_map(|((w1, w2), &count)| {
-            phrase_candidate_outline(single, any_len, entry_word(w1), entry_word(w2)).map(|outline| ((w1.clone(), w2.clone()), outline, count))
+        .flat_map(|((w1, w2), &count)| {
+            // The merged outline of the two words' own strokes, and every one-stroke phrase some
+            // dictionary writes for the pair (`to the` `O*T`), the merge first (it can be worked out
+            // from the two words, a borrowed one cannot) and the borrowed ones cheapest first: the
+            // pass commits the first whose stroke it can have, and the pair only once.
+            let merged = phrase_candidate_outline(single, any_len, entry_word(w1), entry_word(w2));
+            let mut written: Vec<Vec<Stroke>> = setup
+                .gold
+                .phrases
+                .get(&format!("{w1} {w2}"))
+                .into_iter()
+                .flatten()
+                .filter_map(|text| parse_outline(text))
+                .filter(|outline| typable(outline))
+                .collect();
+            written.sort_by_key(|outline| (candidate_cost(outline), render_outline(outline)));
+            let mut options: Vec<(Vec<Stroke>, bool)> = merged.into_iter().map(|o| (o, true)).chain(written.into_iter().map(|o| (o, false))).collect();
+            let mut seen: std::collections::HashSet<Vec<Stroke>> = std::collections::HashSet::new();
+            options.retain(|(outline, _)| seen.insert(outline.clone()));
+            options.into_iter().map(|(outline, merged)| (((w1.clone(), w2.clone()), outline, count), merged)).collect::<Vec<_>>()
         })
-        .collect()
+        .collect();
+    // A borrowed phrase never competes with a stroke some pair's own merge produces: the merge can
+    // be worked out, and a commoner borrowed pair on the same stroke would take it from it.
+    let derived: std::collections::HashSet<String> = all.iter().filter(|(_, merged)| *merged).map(|(c, _)| render_outline(&c.1)).collect();
+    all.into_iter().filter(|(c, merged)| *merged || !derived.contains(&render_outline(&c.1))).map(|(c, _)| c).collect()
 }
 
 /// For one pass's full list of eligible phrase candidates (phrase words, merged outline, the

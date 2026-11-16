@@ -45,11 +45,14 @@ pub fn theory_files(dicts: &Path) -> Vec<std::path::PathBuf> {
 
 /// Every outline all the other theories write for each plain word, merged, shortest first. A
 /// missing folder or file is no error: the pool is then just Plover and Lapwing.
-fn load_extra(dicts: &Path) -> Result<(HashMap<String, Vec<String>>, HashSet<String>)> {
+fn load_extra(dicts: &Path) -> Result<(HashMap<String, Vec<String>>, HashSet<String>, HashMap<String, Vec<String>>)> {
     let mut merged: HashMap<String, Vec<String>> = HashMap::new();
     let mut support: HashMap<String, u8> = HashMap::new();
+    let mut phrases: HashMap<String, Vec<String>> = HashMap::new();
     for file in theory_files(dicts) {
-        for (word, outlines) in all_outlines(&load_dictionary(&file)?) {
+        let dict = load_dictionary(&file)?;
+        merge_phrases(&mut phrases, phrase_outlines(&dict));
+        for (word, outlines) in all_outlines(&dict) {
             let seen = support.entry(word.clone()).or_default();
             *seen = seen.saturating_add(1);
             let held = merged.entry(word).or_default();
@@ -64,7 +67,33 @@ fn load_extra(dicts: &Path) -> Result<(HashMap<String, Vec<String>>, HashSet<Str
         outlines.sort_by_key(|o| (o.split('/').count(), o.len(), o.clone()));
     }
     let corroborated = support.into_iter().filter(|&(_, n)| n >= 2).map(|(word, _)| word).collect();
-    Ok((merged, corroborated))
+    Ok((merged, corroborated, phrases))
+}
+
+/// `more` folded into `into`, an outline once.
+fn merge_phrases(into: &mut HashMap<String, Vec<String>>, more: HashMap<String, Vec<String>>) {
+    for (text, outlines) in more {
+        let held = into.entry(text).or_default();
+        for outline in outlines {
+            if !held.contains(&outline) {
+                held.push(outline);
+            }
+        }
+    }
+}
+
+/// Every one-stroke outline a dictionary has for each plain two-word phrase (`to the`), keyed by
+/// the phrase's text: lowercase letters and apostrophes only, a single space between.
+pub fn phrase_outlines(dict: &BTreeMap<String, String>) -> HashMap<String, Vec<String>> {
+    let word = |w: &str| !w.is_empty() && w.chars().all(|c| c.is_ascii_lowercase() || c == '\'') && w.chars().any(|c| c.is_ascii_lowercase());
+    let mut phrases: HashMap<String, Vec<String>> = HashMap::new();
+    for (outline, text) in dict {
+        let Some((a, b)) = text.split_once(' ') else { continue };
+        if word(a) && word(b) && parse_outline(outline).is_some_and(|o| o.len() == 1) {
+            phrases.entry(text.clone()).or_default().push(outline.clone());
+        }
+    }
+    phrases
 }
 
 /// Every word a dictionary writes with a capital first letter and the rest lowercase (`Matt`),
@@ -128,6 +157,9 @@ pub struct Gold {
     /// What every other theory in `data/dictionaries/theory-*.json` writes for each word: a pool of
     /// extra briefs for the generator to weigh, never a column in the comparison tables
     pub extra: HashMap<String, Vec<String>>,
+    /// The one-stroke phrases (`to the`) every dictionary writes, Plover and Lapwing and the other
+    /// theories together: candidates for the phrase pass, ranked there by how often the pair is said
+    pub phrases: HashMap<String, Vec<String>>,
     /// The words two or more of those theories write: trusted as words, though no frequency list
     /// or pronunciation may know them (`Gold::vocabulary`)
     corroborated: HashSet<String>,
@@ -147,11 +179,15 @@ impl Gold {
             lapwing: all_outlines(&lapwing),
             extra: HashMap::new(),
             corroborated: HashSet::new(),
+            phrases: HashMap::new(),
             plover_pieces: pieces(&plover),
             lapwing_pieces: pieces(&lapwing),
             names: HashSet::new(),
         };
-        (gold.extra, gold.corroborated) = load_extra(&dicts)?;
+        (gold.extra, gold.corroborated, gold.phrases) = load_extra(&dicts)?;
+        for dict in [&plover, &lapwing] {
+            merge_phrases(&mut gold.phrases, phrase_outlines(dict));
+        }
         gold.names = capitalized(&plover)
             .chain(capitalized(&lapwing))
             .filter(|word| !gold.plover.contains_key(word) && !gold.lapwing.contains_key(word))
@@ -232,7 +268,7 @@ impl Gold {
 
     /// Both dictionaries as `lookup`'s cache keeps them (see `crate::lookup_cache`).
     pub fn write(&self, w: &mut Writer) {
-        for words in [&self.plover, &self.lapwing, &self.extra] {
+        for words in [&self.plover, &self.lapwing, &self.extra, &self.phrases] {
             w.map(words, |w, outlines| w.strs(outlines));
         }
         for pieces in [&self.plover_pieces, &self.lapwing_pieces] {
@@ -259,6 +295,7 @@ impl Gold {
         let plover = r.map(Reader::strings)?;
         let lapwing = r.map(Reader::strings)?;
         let extra = r.map(Reader::strings)?;
+        let phrases = r.map(Reader::strings)?;
         let mut pieces = || -> Option<Pieces> {
             let n = r.count()?;
             let suffixes = (0..n).map(|_| Some((r.string()?, r.strokes()?))).collect::<Option<_>>()?;
@@ -269,7 +306,7 @@ impl Gold {
         let (plover_pieces, lapwing_pieces) = (pieces()?, pieces()?);
         let names = r.strings()?.into_iter().collect();
         let corroborated = r.strings()?.into_iter().collect();
-        Some(Self { plover, lapwing, extra, corroborated, plover_pieces, lapwing_pieces, names })
+        Some(Self { plover, lapwing, extra, phrases, corroborated, plover_pieces, lapwing_pieces, names })
     }
 }
 

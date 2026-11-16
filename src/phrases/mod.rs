@@ -257,8 +257,9 @@ pub fn place(
     };
 
     let mut placed = Placed::default();
+    let mut done: HashSet<(String, String)> = HashSet::new();
     for (i, ((w1, w2), outline, count)) in candidates.into_iter().enumerate() {
-        if !is_winner[i] || pass.gone.contains(entry_word(&w1)) || pass.gone.contains(entry_word(&w2)) {
+        if !is_winner[i] || done.contains(&(w1.clone(), w2.clone())) || pass.gone.contains(entry_word(&w1)) || pass.gone.contains(entry_word(&w2)) {
             placed.skipped += 1;
             continue;
         }
@@ -273,6 +274,7 @@ pub fn place(
             placed.displaced += 1;
         }
         pass.commit(&w1, &w2, text, outline);
+        done.insert((w1, w2));
         placed.added += 1;
     }
 

@@ -149,10 +149,10 @@ of very common words dominate it and a long tail of rare ones barely move it:
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.85 | 3.19 | 3.59 |
+| 1 | 2.84 | 3.19 | 3.59 |
 | 2 | 4.77 | 4.70 | 5.00 |
-| 3 | 4.78 | 4.92 | 5.25 |
-| 4+ | 5.26 | 5.22 | 5.48 |
+| 3 | 4.73 | 4.92 | 5.25 |
+| 4+ | 5.25 | 5.22 | 5.48 |
 <!-- lyk:usage-table:end -->
 
 One-syllable words drop sharply under this weighting for every theory, not just Lyk, because a

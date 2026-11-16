@@ -174,7 +174,28 @@
   },
   {
    "t": "p",
-   "x": "The current build has 5,720 phrase entries. In the measured build with these limits, 127 phrases took a stroke from a rarer word and 134 words carried a star because of a phrase, 15 of them in the top 5,000. Every phrase is still two strokes you already know, joined into one: *in the* is the stroke for *in* plus the stroke for *the*."
+   "x": "The current build has 7,373 phrase entries: 5,207 are merges and the rest are borrowed (next section). 89 phrases took a stroke from a rarer word. A merge is two strokes you already know, joined into one: *in the* is the stroke for *in* plus the stroke for *the*."
+  },
+  {
+   "t": "h",
+   "x": "Phrases borrowed from other dictionaries"
+  },
+  {
+   "t": "p",
+   "x": "Plover, Lapwing and the fifteen other theories ([other theories' briefs](#/ref/collisions)) also write two-word phrases as one stroke: `O*T` for *to the*, `TKW-PBLT` for *do not*. Some pairs cannot merge (the two strokes share a key) or merge onto a stroke a word holds. For those the pass offers the one-stroke phrases the dictionaries write, in the same arbitration as a merge, ranked by how often the pair is said. The rules:"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**The merge comes first.** If the pair merges and the stroke is free (or a word gives it up), the pair is the merge. A borrowed outline is a fallback, tried cheapest first, and a pair is committed once.",
+    "**A borrowed phrase never competes with a merge for a stroke.** If any pair's own merge produces that stroke, the borrowed outline is dropped. Two theories write `ST` for *is the*, which is said more often than *it is*, but *it is* is [[ST]] because it is `T` plus `S`.",
+    "**The takeover limits are the same.** A borrowed pair takes a stroke from a word only in the 1,000 commonest candidates, never from a top-5,000 word's primary, and only when it is worth more than the word loses.",
+    "**Only one-stroke, typable outlines of two plain lowercase words.** A phrase with a number or a capital is skipped, and so is anything on a key lyk does not have."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "What it gives: phrases went from 5,207 to 7,373 and comfort per word from 92.8 to 92.6, with every other guard and the solver numbers unchanged. [[to the|TOTD]], [[on the|O*LT]] and [[to be|TORB]] now have one-stroke phrases. A borrowed phrase has to be memorized; a merge can be worked out, which is why the merge is tried first."
   },
   {
    "t": "h",
