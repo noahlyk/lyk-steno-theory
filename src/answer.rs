@@ -44,6 +44,9 @@ pub struct Cell {
 pub enum Mark {
     /// A word's best outlines, or (empty `word`) another outline that types it properly
     Entry,
+    /// A command whose text contains the query (`tape` finds `{:tape:toggle}`), after the exact
+    /// answers; only lyk's column is filled
+    Command,
     /// A word that starts with the query, offered after the exact answers
     Completion,
     /// What a stroke types; the row's word is the text, or a note that it types nothing
@@ -134,6 +137,8 @@ pub struct Lookup<'a> {
     outlines: HashMap<&'a str, Vec<&'a [Stroke]>>,
     /// Every word with an outline
     words: Vec<&'a str>,
+    /// Every command and the outline that does it, fewest strokes first
+    commands: Vec<(String, Vec<Stroke>)>,
     /// The backups `built::load` leaves out, when the dictionary was read back from `out/lyk`
     backups: Option<&'a Backups>,
     /// The solver keymux runs on a miss (see `site/reference/fallback.json`), when one is built:
@@ -193,6 +198,7 @@ impl<'a> Lookup<'a> {
             stems,
             outlines,
             words,
+            commands: generate::reserved_commands().unwrap_or_default(),
             backups,
             solver: std::sync::OnceLock::new(),
             load_solver: None,
@@ -365,6 +371,19 @@ impl<'a> Lookup<'a> {
             && word.chars().count() >= MIN_PREFIX
         {
             let lower = word.to_lowercase();
+            let commands = self
+                .commands
+                .iter()
+                .filter(|(text, _)| text.to_lowercase().contains(&lower))
+                .take(ask.extra)
+                .map(|(text, outline)| {
+                    let cell = Cell { strokes: outline.clone(), how: How::Entry };
+                    Row { word: text.clone(), cells: [Some(cell), None, None], mark: Mark::Command }
+                });
+            // Right after the word's best outline: a word can have dozens of others, and a command
+            // listed behind them would be off the screen
+            let at = rows.len().min(1);
+            rows.splice(at..at, commands);
             let plain = |w: &str| w.chars().all(|c| c.is_alphanumeric() || c == '\'' || c == '-');
             for completion in self
                 .words
@@ -443,6 +462,37 @@ mod tests {
         assert!(completions.windows(2).all(|p| (p[0].len(), p[0]) <= (p[1].len(), p[1])));
         // a phrase has none
         assert!(lookup().answer("tell me", ALL).rows.iter().all(|r| r.mark != Mark::Completion));
+    }
+
+    // The entries are dictionary metas, not format strings.
+    #[allow(clippy::literal_string_with_formatting_args)]
+    #[test]
+    fn a_command_is_found_by_the_name_in_it() {
+        let answer = lookup().answer("tape", ALL);
+        let commands: Vec<(&str, String)> = answer
+            .rows
+            .iter()
+            .filter(|r| r.mark == Mark::Command)
+            .map(|r| (r.word.as_str(), text(r.cells[0].as_ref())))
+            .collect();
+        assert!(commands.contains(&("{:tape:toggle}", "PHRO*T".to_owned())), "{commands:?}");
+        assert!(commands.contains(&("{:tape:clear}", "PHRO*TZ".to_owned())), "{commands:?}");
+        assert!(commands.iter().all(|(word, _)| !word.contains("firstup") && !word.contains("transparent")));
+        // right after the word's best outline, ahead of its other outlines and its completions
+        let marks: Vec<Mark> = answer.rows.iter().map(|r| r.mark).collect();
+        assert_eq!(marks[0], Mark::Entry);
+        assert_eq!(marks[1], Mark::Command);
+        // the three that flip the overlay's parts are all findable
+        for (name, outline) in [("overlay", "PHRO*L"), ("keyboard", "PHRO*B")] {
+            let found = lookup().answer(name, ALL);
+            assert!(
+                found.rows.iter().any(|r| r.mark == Mark::Command && text(r.cells[0].as_ref()) == outline),
+                "{name}"
+            );
+        }
+        // fast mode and phrases skip them
+        assert!(lookup().answer("tape", Ask { fast: true, ..ALL }).rows.iter().all(|r| r.mark != Mark::Command));
+        assert!(lookup().answer("the tape", ALL).rows.iter().all(|r| r.mark != Mark::Command));
     }
 
     #[test]

@@ -175,6 +175,45 @@ const KEY_WEIGHT: u32 = 1_000;
 /// that costs more than two extra keys. See `site/reference/syllables.json`.
 pub const FAMILY_DISCOUNT: u32 = 2_000;
 
+/// Whether a reserved entry's text is a command: only `{:...}`, `{PLOVER:...}` and `{#...}` metas,
+/// which act on the engine or the keyboard and type nothing. Punctuation and fingerspelling are not.
+fn is_command(text: &str) -> bool {
+    text.starts_with('{')
+        && text.ends_with('}')
+        && text.split('}').filter(|part| !part.is_empty()).all(|part| {
+            let meta = part.trim_start_matches('{');
+            meta.starts_with(':')
+                || meta.starts_with('#')
+                || meta.get(..7).is_some_and(|head| head.eq_ignore_ascii_case("PLOVER:"))
+        })
+}
+
+/// Every command a real keymux config gives a stroke to (`{:tape:toggle}`, `{#Control_L(v)}`) with
+/// its outline, fewest strokes first, then fewest keys. The text is as the dictionary has it
+/// without the `{:firstup}` and `{:transparent}` markers, which say how a command repeats or
+/// joins, not what it does. This is what `lookup` searches when it is asked for `tape`.
+// The markers are dictionary metas, not format strings.
+#[allow(clippy::literal_string_with_formatting_args)]
+pub fn reserved_commands() -> Result<Vec<(String, Vec<Stroke>)>> {
+    let mut found = Vec::new();
+    for (kind, json) in RESERVED {
+        let table: std::collections::BTreeMap<String, String> = serde_json::from_str(json)
+            .with_context(|| format!("rules/reserved: {kind} dictionary"))?;
+        for (outline_text, text) in table {
+            let Some(outline) = parse_outline(&outline_text) else {
+                continue;
+            };
+            if !is_command(&text) {
+                continue;
+            }
+            let shown = text.replace("{:firstup}", "").replace("{:transparent}", "");
+            found.push((if shown.is_empty() { text } else { shown }, outline));
+        }
+    }
+    found.sort_by_cached_key(|(text, outline)| (outline.len(), keys(outline), text.clone()));
+    Ok(found)
+}
+
 /// Every outline a real keymux config already gives to a command, a punctuation mark, or
 /// fingerspelling - never available to a word, whatever the rules would have generated for it.
 /// Pulled out of [`generate`] so a test can confirm the invariant it exists to guarantee (no

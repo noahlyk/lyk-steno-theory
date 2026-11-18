@@ -103,7 +103,7 @@
     ],
     [
      "`lookup [WORD|PHRASE|STROKES] [--show-keys] [--fast] [--rebuild]` (alias `keys`)",
-     "A word, a phrase (its own entry first when it has one, then word by word: `lookup \"to the\"` shows the phrase `TOTD`, then *to* and *the*), or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
+     "A word, a phrase (its own entry first when it has one, then word by word: `lookup \"to the\"` shows the phrase `TOTD`, then *to* and *the*), or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. A single word of two letters or more also finds the keymux commands whose text contains it, in lyk's column only, right after the word's best outline: `lookup tape` shows `{:tape:toggle}` `[[PHRO*T]]` and `{:tape:clear}` `[[PHRO*TZ]]`, `lookup overlay` the three overlay controls, `lookup keyboard` the diagram toggle, `lookup control` the Control shortcuts (only entries made of `{:...}`, `{PLOVER:...}` and `{#...}` metas; the `{:firstup}` and `{:transparent}` markers are not shown). Keymux's live lookup does the same. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
     ],
     [
      "`resolve [STROKES] [--rebuild]` (alias `stroke`)",
