@@ -79,6 +79,9 @@ pub fn merge_into_host_first_stroke(filler: Stroke, host: &[Stroke]) -> Option<V
     typable(&outline).then_some(outline)
 }
 
+/// A two-word phrase, the outline that writes it and how often the pair occurs.
+type Candidate = ((String, String), Vec<Stroke>, u64);
+
 /// The generalized form of [`phrase_candidate`]: eligible whenever *at least one* of `w1`/`w2` has
 /// a single-stroke primary (`single`) and the other has a primary of *any* length, one or more
 /// strokes (`any_len`) - the single-stroke side's whole primary is OR'd into the other's own first
@@ -113,7 +116,7 @@ pub fn enumerate_phrase_candidates(
     let mut by_count: Vec<(&(String, String), &u64)> = setup.bigrams.iter().collect();
     by_count.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
     // (candidate, whether it is the merge of the two words' own strokes)
-    let all: Vec<(((String, String), Vec<Stroke>, u64), bool)> = by_count
+    let all: Vec<(Candidate, bool)> = by_count
         .into_iter()
         .take(top_n)
         .flat_map(|((w1, w2), &count)| {

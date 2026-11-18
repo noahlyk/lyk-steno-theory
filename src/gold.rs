@@ -34,18 +34,21 @@ pub fn theory_files(dicts: &Path) -> Vec<std::path::PathBuf> {
         .flatten()
         .map(|entry| entry.path())
         .filter(|path| {
-            path.file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with("theory-") && n.ends_with(".json"))
+            path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("theory-"))
+                && path.extension().is_some_and(|e| e.eq_ignore_ascii_case("json"))
         })
         .collect();
     files.sort();
     files
 }
 
+/// What the other theories add: every outline per word, the words enough of them vouch for, and their
+/// one-stroke phrases.
+type Extra = (HashMap<String, Vec<String>>, HashSet<String>, HashMap<String, Vec<String>>);
+
 /// Every outline all the other theories write for each plain word, merged, shortest first. A
 /// missing folder or file is no error: the pool is then just Plover and Lapwing.
-fn load_extra(dicts: &Path) -> Result<(HashMap<String, Vec<String>>, HashSet<String>, HashMap<String, Vec<String>>)> {
+fn load_extra(dicts: &Path) -> Result<Extra> {
     let mut merged: HashMap<String, Vec<String>> = HashMap::new();
     let mut support: HashMap<String, u8> = HashMap::new();
     let mut phrases: HashMap<String, Vec<String>> = HashMap::new();
