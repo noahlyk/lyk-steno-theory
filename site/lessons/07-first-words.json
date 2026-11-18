@@ -1,14 +1,14 @@
 {
   "id": "07-first-words",
   "title": "Your first words",
-  "goal": "A one-syllable word is one stroke: the sounds it starts with, its vowel, the sounds it ends with. Say it, split it, strike it.",
+  "goal": "A one-syllable word is one stroke: starting sounds, vowel, ending sounds.",
   "blocks": [
     { "t": "h", "x": "Say it, split it, strike it" },
     { "t": "list", "ordered": true, "items": [
-      "Say the word slowly. Find the **vowel sound**.",
-      "What comes before it? Those are left-hand keys (lesson 3).",
-      "What comes after? Those are right-hand keys (lessons 5 and 6).",
-      "Strike all of it at once."
+      "Say the word slowly; find the **vowel sound**.",
+      "Sounds before it: left-hand keys (lesson 3).",
+      "Sounds after it: right-hand keys (lessons 5 and 6).",
+      "Strike all at once."
     ] },
     { "t": "table", "head": ["Word", "Start", "Vowel", "End", "Stroke"], "rows": [
       ["{{cat}}", "K", "A", "T", "[[cat|KAT]]"],
@@ -22,11 +22,11 @@
       ["{{hand}}", "H", "A", "PBD", "[[hand|HAPBD]]"],
       ["{{best}}", "PW", "E", "FT", "[[best|PWEFT]]"]
     ] },
-    { "t": "p", "x": "No vowel in your head? Say the word and **feel** where it opens your mouth: that is the vowel. A word with no start or no end just leaves that hand off ([[at|AT]], [[out|OUT]])." },
-    { "t": "try", "title": "Say it, split it, strike it", "items": [["cat", "KAT"], ["dog", "TKOG"], ["map", "PHAP"], ["ship", "SHEUP"], ["sun", "SUPB"]], "x": "Five to start with. The keys light up after a miss." },
-    { "t": "note", "kind": "rule", "x": "You are not memorising a word list here. You are learning to **derive** a stroke from a sound. That skill is what you fall back on for any word you have not memorised." },
+    { "t": "p", "x": "To find the vowel, say the word and **feel** where it opens the mouth. A word with no start or no end omits that hand ([[at|AT]], [[out|OUT]])." },
+    { "t": "try", "title": "Say it, split it, strike it", "items": [["cat", "KAT"], ["dog", "TKOG"], ["map", "PHAP"], ["ship", "SHEUP"], ["sun", "SUPB"]], "x": "Five to start. Keys light up after a miss." },
+    { "t": "note", "kind": "rule", "x": "This is not a word list to memorise: it teaches **deriving** a stroke from a sound, the fallback for any unmemorised word." },
     { "t": "h", "x": "One stroke or more?" },
-    { "t": "p", "x": "If everything fits in steno order, it is one stroke. A word with two or more syllables usually needs more: you will build those with the join key from lesson 10. Many common ones already have a memorised one-stroke form, which is next." }
+    { "t": "p", "x": "If everything fits in steno order, it is one stroke. A word of two or more syllables usually needs more, built with the join key (lesson 10). Many common ones have a memorised one-stroke form (next lesson)." }
   ],
   "drill": {
     "title": "First words",

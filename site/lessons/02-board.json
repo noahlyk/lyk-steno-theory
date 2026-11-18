@@ -1,28 +1,28 @@
 {
   "id": "02-board",
   "title": "The board",
-  "goal": "A stroke is a chord: several keys down at once, then released together.",
+  "goal": "A stroke is a chord: keys down together, released together.",
   "blocks": [
     { "t": "h", "x": "Three zones" },
     { "t": "table", "head": ["Zone", "Keys", "Job"], "rows": [
-      ["Left hand (amber)", "`S T K P W H R`", "The sounds a syllable **starts** with."],
+      ["Left hand (amber)", "`S T K P W H R`", "Sounds a syllable **starts** with."],
       ["Thumbs (blue)", "`A O E U`", "The **vowel**."],
-      ["Right hand (purple)", "`F R P B L G T S D Z`", "The sounds a syllable **ends** with."],
-      ["Join key and star (green)", "`+`, `*`", "`+` is the left index finger's inner column (`T` and `G` on a keyboard), a tall key between the `H`/`R` column and the star. Struck with a stroke to continue a word. `*` is the right index finger's tall key, the tiebreaker (lesson 9)."]
+      ["Right hand (purple)", "`F R P B L G T S D Z`", "Sounds a syllable **ends** with."],
+      ["Join key and star (green)", "`+`, `*`", "`+`: left index finger's inner column (`T` and `G` on a keyboard), a tall key between the `H`/`R` column and the star; struck with a stroke to continue a word. `*`: right index finger's tall key, the tiebreaker (lesson 9)."]
     ] },
-    { "t": "p", "x": "The left pinky's `S-` is one tall key, as in standard steno. `+` and `*` are tall keys too: `+` sits at the left index finger's inner column, `*` at the right index finger's, so each index finger has two columns. The bar across the top is the `#` number bar, which lyk strokes do not use. Keys are grey until they are part of a stroke: colour only ever means *held*. The rest are top and bottom pairs. Each finger owns a column: the top key is `T P H` / `F P L T D`, the bottom `K W R` / `R B G S Z`." },
-    { "t": "explore", "x": "Strike keys on your keyboard. The label shows the stroke in steno order, and what the dictionary calls it if it is a word." },
-    { "t": "note", "x": "The board draws some keys held together as one bigger key, the way a steno typist reads them: `T P H` lights as a single `N`, `P H` as `M`, `A O` as `AO`. It is only the picture; the stroke is the same keys. The full list is in the [cheat sheet](#/ref/cheatsheet)." },
+    { "t": "p", "x": "The left pinky's `S-` is one tall key, as in standard steno. `+` and `*` are tall keys too: `+` at the left index finger's inner column, `*` at the right index finger's, so each index finger has two columns. The top bar is the `#` number bar, unused by lyk. Keys are grey until part of a stroke: colour means *held*. The rest are top and bottom pairs; each finger owns a column: top key `T P H` / `F P L T D`, bottom `K W R` / `R B G S Z`." },
+    { "t": "explore", "x": "Strike keys. The label shows the stroke in steno order and, if it is a word, its dictionary entry." },
+    { "t": "note", "x": "The board draws some co-held keys as one bigger key: `T P H` lights as a single `N`, `P H` as `M`, `A O` as `AO`. Display only; the stroke is the same keys. Full list: [cheat sheet](#/ref/cheatsheet)." },
     { "t": "h", "x": "Steno order" },
-    { "t": "p", "x": "However you press them, keys are always written left to right in the same order:" },
+    { "t": "p", "x": "Keys are always written in this order, however pressed:" },
     { "t": "table", "rows": [["`S T K P W H R`", "`A O * E U`", "`F R P B L G T S D Z`"]] },
-    { "t": "p", "x": "That is why [[PHAP]] is *map* and not *pam*. The same letter can sit on both sides (`R`, `P`, `T`, `S`), so a stroke with no vowel and only right-hand keys is written with a hyphen: [[-T]] is T on the right, [[T]] is T on the left." },
-    { "t": "note", "x": "Hands only move one way: left hand starts the sound, right hand ends it. If a word's sounds come in that order, it fits in one stroke." },
+    { "t": "p", "x": "Hence [[PHAP]] is *map*, not *pam*. A letter can sit on both sides (`R`, `P`, `T`, `S`), so a stroke of right-hand keys only, with no vowel, takes a hyphen: [[-T]] is T on the right, [[T]] is T on the left." },
+    { "t": "note", "x": "Left hand starts the sound, right hand ends it. A word whose sounds come in that order fits in one stroke." },
     { "t": "h", "x": "Strike, then release" },
     { "t": "list", "items": [
-      "Press all the keys of a stroke at roughly the same time. Order does not matter.",
-      "The stroke is sent when **every** key is up again.",
-      "Hold `T` or `G` (the `+` key, the left index finger's inner column) with a stroke for the join key. [[+-G]] is `T` and `L` together: `L` is the right-hand `-G` key."
+      "Press a stroke's keys at about the same time; order does not matter.",
+      "The stroke is sent when **every** key is up.",
+      "Hold `T` or `G` (the `+` key, left index finger's inner column) with a stroke for the join key. [[+-G]] is `T` and `L` together: `L` is the right-hand `-G` key."
     ] },
     { "t": "quiz", "q": "How is T on the right hand written alone?", "opts": ["[[T]]", "[[-T]]", "[[T-]]"], "a": 1, "why": "The hyphen says: right-hand keys only." }
   ],

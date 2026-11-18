@@ -1,10 +1,10 @@
 {
   "id": "16-letters",
   "title": "Letters and modifiers",
-  "goal": "For a name, an acronym or a shortcut key: spell it letter by letter, or chord Ctrl, Alt and friends.",
+  "goal": "Spell a name or acronym letter by letter; chord Ctrl, Alt and other modifiers for shortcuts.",
   "blocks": [
     { "t": "h", "x": "Fingerspelling in running text" },
-    { "t": "p", "x": "Each letter is a chord, plus the star to glue it to the letters beside it. Add `-P` for a capital." },
+    { "t": "p", "x": "Each letter is a chord plus the star, which glues it to adjacent letters. Add `-P` for a capital." },
     { "t": "table", "head": ["Letter", "Stroke", "Letter", "Stroke", "Letter", "Stroke"], "rows": [
       ["a", "[[A*]]", "j", "[[SKWR*]]", "s", "[[S*]]"],
       ["b", "[[PW*]]", "k", "[[K*]]", "t", "[[T*]]"],
@@ -16,10 +16,10 @@
       ["h", "[[H*]]", "q", "[[KW*]]", "z", "[[STKPW*]]"],
       ["i", "[[*EU]]", "r", "[[R*]]", "capital A", "[[A*P]]"]
     ] },
-    { "t": "p", "x": "The letter chords are the same ones you used for starting sounds: `PW` is *b*, `TK` is *d*, `STKPW` is *z*. Letters glue to each other and to nothing else, so `KR*P` `A*` `T*` types *Cat*." },
+    { "t": "p", "x": "Letter chords are the starting-sound chords: `PW` is *b*, `TK` is *d*, `STKPW` is *z*. Letters glue only to each other, so `KR*P` `A*` `T*` types *Cat*." },
     { "t": "explore", "x": "Strike a letter with the star to see it." },
     { "t": "h", "x": "Modifiers: Ctrl, Alt, Super, Shift" },
-    { "t": "p", "x": "A shortcut is a letter chord, then right-hand keys for the modifiers, then the ender `LGTS`. The ender stops a word from firing it by accident." },
+    { "t": "p", "x": "A shortcut is a letter chord, right-hand modifier keys, then the ender `LGTS`, which stops a word firing it by accident." },
     { "t": "table", "head": ["Right-hand key", "Modifier"], "rows": [["`R`", "Shift"], ["`B`", "Alt"], ["`P`", "Super"], ["`F`", "Ctrl"]] },
     { "t": "table", "head": ["Shortcut", "Stroke"], "rows": [
       ["Ctrl+S", "[[S-FLGTS]]"],
@@ -28,10 +28,10 @@
       ["Super+V", "[[SR-PLGTS]]"],
       ["Shift+B", "[[PW-RLGTS]]"]
     ] },
-    { "t": "p", "x": "Modifiers combine: `KPWR*EFPBLGTS` is Ctrl+Super+Alt+Up. Digits work the same way: `AO` plus the bottom-row left keys as binary, `R`=1, `W`=2, `K`=4, `S`=8, added together." },
+    { "t": "p", "x": "Modifiers combine: `KPWR*EFPBLGTS` is Ctrl+Super+Alt+Up. Digits: `AO` plus the bottom-row left keys as binary, `R`=1, `W`=2, `K`=4, `S`=8, added together." },
     { "t": "h", "x": "Spelling mode" },
-    { "t": "p", "x": "A few words have no pronunciation on record anywhere, so there is no sound to derive them from. Spelling mode is the deliberate way in: a run starts with the `~` marker instead of `+`, and then **every stroke is one letter chord** (`A` is *a*, `PW` is *b*, ...). Every stroke after the first still carries the join key." },
-    { "t": "note", "kind": "warn", "x": "`~` has no physical key bound to it in the live config yet. Today it is a rule the generator and fallback know, not something you can type." }
+    { "t": "p", "x": "A few words have no pronunciation on record, so no sound to derive them from. Spelling mode covers them: a run starts with the `~` marker instead of `+`, then **every stroke is one letter chord** (`A` is *a*, `PW` is *b*, ...). Every stroke after the first still carries the join key." },
+    { "t": "note", "kind": "warn", "x": "`~` has no physical key in the live config yet: it is a rule the generator and fallback know, not typable." }
   ],
   "drill": {
     "title": "Fingerspelling",

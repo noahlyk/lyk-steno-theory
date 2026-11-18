@@ -1,7 +1,7 @@
 {
  "id": "spelling",
  "title": "Spelling disambiguation",
- "goal": "Every spelling rule: when a sound takes different keys because of how the word is written, with the keys and an example word for each.",
+ "goal": "Every spelling rule: when a sound takes different keys because of how the word is written, with keys and an example.",
  "blocks": [
   {
    "t": "h",
@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Spelling picks between ways to write a sound. A spelling rule looks at the whole word, its start, its end, the sound before, or a prefix on an unstressed first vowel. When one fits, the sound becomes a named variant (`UW.oo`) with its own keys. Every choice is one line in `rules/plover.toml`, and `!explain` shows which fired."
+   "x": "Spelling picks between ways to write a sound. A rule looks at the whole word, its start, its end, the sound before, or a prefix on an unstressed first vowel. When one fits, the sound becomes a named variant (`UW.oo`) with its own keys. Each rule is one line in `rules/plover.toml`; `!explain` shows which fired."
   },
   {
    "t": "p",
@@ -22,13 +22,13 @@
   {
    "t": "list",
    "items": [
-    "The first rule for a sound whose condition fits wins. The tables below are in that order for each sound.",
-    "**the word contains / starts / ends**: the letters are in the spelling. \"Starts\" and \"ends\" also require the sound to be the first or last sound of the word.",
+    "The first rule whose condition fits wins; the tables are in that order for each sound.",
+    "**the word contains / starts / ends**: the letters are in the spelling. \"Starts\" and \"ends\" also require the sound to be the word's first or last.",
     "**prefix**: the sound is the word's first vowel, it is unstressed, and the word starts with those letters (`be-` in *believe*, not in *bee*).",
     "**after / before**: the sound before, or the final sound after.",
     "**not**: none of the listed letters may be in the word.",
-    "**two or more syllables**: a one-syllable word never uses the rule.",
-    "**only when another word would take the same stroke**: used only to tell sound-alike words apart. The word is written this way when another word would otherwise have the same outline. Which of the two words gets the shorter form falls out of the solve described in [when two words sound the same](#/ref/collisions)."
+    "**two or more syllables**: never applies to a one-syllable word.",
+    "**only when another word would take the same stroke**: tells sound-alikes apart; the word is written this way when another word would otherwise have the same outline. Which word gets the shorter form: [when two words sound the same](#/ref/collisions)."
    ],
    "ordered": false
   },
@@ -103,7 +103,7 @@
   },
   {
    "t": "p",
-   "x": "Listed in the order the rules are tried. The sound is the plain vowel of [phonetic rules](#/ref/phonetic-rules); the variant keys replace its keys."
+   "x": "In trial order. The sound is the plain vowel of [phonetic rules](#/ref/phonetic-rules); the variant keys replace its keys."
   },
   {
    "t": "table",
@@ -362,7 +362,7 @@
   },
   {
    "t": "p",
-   "x": "In joined strokes only (never in a primary outline) a long `o` written with the plain letter also gets the plain keys: `control` is [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]. The rule: sound `OW`, word contains `o` and none of `oa`, `!ow`, `!oe`, `!ou`, `!oo`, `!oi`, `ough`."
+   "x": "In joined strokes only (never a primary outline), a long `o` spelled with the plain letter also gets the plain keys: `control` is [[control|KOPB/+TROL]] as well as [[control|KOPB/+TROEL]]. The rule: sound `OW`, word contains `o` and none of `oa`, `!ow`, `!oe`, `!ou`, `!oo`, `!oi`, `ough`."
   },
   {
    "t": "h",
@@ -370,7 +370,7 @@
   },
   {
    "t": "p",
-   "x": "Words that sound the same are told apart by this: [[sail|SAEUL]] and [[sale|SAEL]], [[dear|TKAER]] and [[deer|TKAOER]], [[stair|STAEUR]] and [[stare|STAER]], [[load|HROD]] and [[lode|HROED]], [[write|WREU]] and [[right|ROEUT]]. Pairs that spell the same pattern get a star instead: see [when two words sound the same](#/ref/collisions)."
+   "x": "Sound-alikes told apart by this: [[sail|SAEUL]] and [[sale|SAEL]], [[dear|TKAER]] and [[deer|TKAOER]], [[stair|STAEUR]] and [[stare|STAER]], [[load|HROD]] and [[lode|HROED]], [[write|WREU]] and [[right|ROEUT]]. Pairs that spell the same pattern get a star instead: see [when two words sound the same](#/ref/collisions)."
   }
  ]
 }

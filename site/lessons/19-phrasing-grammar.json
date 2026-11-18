@@ -9,12 +9,12 @@
     },
     {
       "t": "p",
-      "x": "Today a phrase is two words whose keys do not collide ({{of the}} is [[of the|-FT]]). That can never reach the pairs people say most: *I* is [[I|EU]], and its vowels clash with almost every verb. The phrasing grammar solves it by giving each part of the phrase its own region of the board, so every combination is one stroke and none can overlap. [[=it was|KPWHEB]] is *it* + past + *be*; [[=I know|SWR-PB]] is *I* + *know*."
+      "x": "Today a phrase is two words whose keys do not collide ({{of the}} is [[of the|-FT]]). That cannot reach the most-said pairs: *I* is [[I|EU]], whose vowels clash with almost every verb. The grammar gives each part of the phrase its own region of the board, so every combination is one stroke and none overlap. [[=it was|KPWHEB]] is *it* + past + *be*; [[=I know|SWR-PB]] is *I* + *know*."
     },
     {
       "t": "note",
       "kind": "warn",
-      "x": "**Status: designed and measured, not built into the dictionary yet.** The generator does not make these strokes (plans/08, awaiting typing). Every stroke here is checked against the generator's own prototype (`tools/phrasing_prototype.py`), not against the built dictionary, so they are drawn with a dashed edge and Lookup will not find them. A few are strokes other entries hold today (see the next chapter). Learn this for the day it ships, or try it with the trial dictionary described there."
+      "x": "**Status: designed and measured, not in the dictionary yet.** The generator does not make these strokes (plans/08, awaiting typing). They are checked against the generator's prototype (`tools/phrasing_prototype.py`), not the built dictionary, so they are drawn with a dashed edge and Lookup will not find them. A few are strokes other entries hold today (see the next chapter). Try them with the trial dictionary described there."
     },
     {
       "t": "grammar"
@@ -55,7 +55,7 @@
     },
     {
       "t": "p",
-      "x": "About 36 things to learn (8 starters, 5 modals with `E` and `*`, 3 special verbs, 20 verbs) give 3,758 phrases. A phrase is one stroke in steno order as always: the starter, then the vowels and star, then the verb."
+      "x": "About 36 things to learn (8 starters, 5 modals with `E` and `*`, 3 special verbs, 20 verbs) give 3,758 phrases. A phrase is one stroke in steno order: starter, vowels and star, verb."
     },
     {
       "t": "h",
@@ -63,7 +63,7 @@
     },
     {
       "t": "p",
-      "x": "A starter is a left-bank chord that no English word starts with, so a phrase never collides with a word's own stroke."
+      "x": "A starter is a left-bank chord no English word starts with, so a phrase never collides with a word's stroke."
     },
     {
       "t": "table",
@@ -176,7 +176,7 @@
     {
       "t": "note",
       "kind": "rule",
-      "x": "`E` is the past everywhere: *could* is *can* in the past, *would* is *will*'s, *should* is *shall*'s, *might* is *may*'s, exactly as English builds them. The star means *not* and nothing else in a phrase."
+      "x": "`E` is the past everywhere: *could* is *can* in the past, *would* is *will*'s, *should* is *shall*'s, *might* is *may*'s, as in English. The star means *not* and nothing else in a phrase."
     },
     {
       "t": "h",

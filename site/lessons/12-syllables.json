@@ -1,11 +1,11 @@
 {
   "id": "12-syllables",
   "title": "Long words, syllable by syllable",
-  "goal": "Any word can be typed from its sound: one syllable per stroke, split where you hear a break, the join key on every stroke after the first.",
+  "goal": "Type any word from its sound: one syllable per stroke, split at each break, join key on every stroke after the first.",
   "blocks": [
     { "t": "h", "x": "The method" },
     { "t": "list", "ordered": true, "items": [
-      "Say the word slowly and split it where you hear a break.",
+      "Say it slowly; split where you hear a break.",
       "Strike each syllable like a one-syllable word (lesson 7).",
       "Hold the join key on every stroke after the first."
     ] },
@@ -15,18 +15,18 @@
       ["{{complete}}", "com · plete", "[[complete|KOPL/+PHRAOET]]"],
       ["{{compromise}}", "com · pro · mise", "[[compromise|KOPL/+PRO/+PHAOEUZ]]"]
     ] },
-    { "t": "note", "kind": "warn", "x": "Without `+`, each stroke is a word of its own (*column*, *prah*, *meyez*). The join key is the whole point." },
+    { "t": "note", "kind": "warn", "x": "Without `+`, each stroke is a separate word (*column*, *prah*, *meyez*)." },
     { "t": "h", "x": "Weak syllables" },
     { "t": "list", "items": [
-      "**A weak last syllable drops its vowel**, exactly like an ending: [[table|TAEU/+-BL]], [[lemon|HRE/+PH-PB]].",
+      "**A weak last syllable drops its vowel**, like an ending: [[table|TAEU/+-BL]], [[lemon|HRE/+PH-PB]].",
       "**A weak vowel you do strike is `U`** (a weak short i is `EU`) as you hear it, **or the letter the word spells it with**: *profitable* is [[profitable|PRAF/+U/+TU/+-BL]] and [[profitable|PRAF/+O/+TO/+-BL]].",
       "**A weak last syllable that fits on the stroke before it can fold onto it**: [[sensible|SEPB/+SU/+-BL]] or [[sensible|SEPB/+SUBL]]."
     ] },
     { "t": "h", "x": "Split anywhere you hear a break" },
-    { "t": "p", "x": "There is more than one right answer, and every one is in the dictionary. *lem-on* is [[lemon|HREPL/+UPB]] and *le-mon* is [[lemon|HRE/+PHUPB]]. *compromise* can be *com-pro-mise*, [[compromise|KOPL/+PR/+PHAOEUZ]] (*comp-ro-mise*) or [[compromise|KOPL/+PROPL/+AOEUZ]] (*compro-mise*). Any run of consonants that can start a syllable may go to the next stroke, or stay." },
+    { "t": "p", "x": "Several splits are valid; all are in the dictionary. *lem-on* is [[lemon|HREPL/+UPB]] and *le-mon* is [[lemon|HRE/+PHUPB]]. *compromise* can be *com-pro-mise*, [[compromise|KOPL/+PR/+PHAOEUZ]] (*comp-ro-mise*) or [[compromise|KOPL/+PROPL/+AOEUZ]] (*compro-mise*). Any consonant run that can start a syllable may go to the next stroke or stay." },
     { "t": "h", "x": "Any length" },
-    { "t": "p", "x": "A stroke is any run of sounds with one vowel at most, so three, four, five, six strokes all work: *complete* is [[complete|KU/+PH/+HRAOET]], [[complete|K/+UPL/+PHRAOET]], [[complete|KU/+-PL/+-P/+HRAOET]]. The cheapest few of each length are in the dictionary. Use fewer strokes when you can." },
-    { "t": "note", "kind": "rule", "x": "This is why you are never stuck. If a word has no memorised outline, say it and strike its syllables. Every word of two syllables or more in the dictionary can be reached at least one of these ways." },
+    { "t": "p", "x": "A stroke is any run of sounds with at most one vowel, so three to six strokes all work: *complete* is [[complete|KU/+PH/+HRAOET]], [[complete|K/+UPL/+PHRAOET]], [[complete|KU/+-PL/+-P/+HRAOET]]. The cheapest few of each length are in the dictionary. Prefer fewer strokes." },
+    { "t": "note", "kind": "rule", "x": "A word with no memorised outline: say it, strike its syllables. Every dictionary word of two or more syllables is reachable by at least one of these splits." },
     { "t": "quiz", "q": "What is missing from `PHU/SHE/TAOE` for *machete*?", "opts": ["a vowel", "the join key `+` on strokes 2 and 3", "a star"], "a": 1, "why": "It is [[PHU/+SHE/+TAOE]]. Without the `+`, each stroke would be a separate word." }
   ],
   "drill": {

@@ -1,10 +1,10 @@
 {
   "id": "14-phrases",
   "title": "Phrases",
-  "goal": "Two common words can share one stroke when their keys do not collide. It is a real two-to-one saving.",
+  "goal": "Two common words share one stroke when their keys do not collide: two strokes become one.",
   "blocks": [
     { "t": "h", "x": "The idea" },
-    { "t": "p", "x": "*of* is [[of|-F]] and *the* is [[the|-T]]. They share no key, so pressing both at once, [[of the|-FT]], is a stroke nothing else uses. That makes *of the* one stroke instead of two. It is the commonest word pair in the language." },
+    { "t": "p", "x": "*of* is [[of|-F]], *the* is [[the|-T]]. They share no key, so pressing both, [[of the|-FT]], is a stroke nothing else uses: *of the*, the commonest word pair in the language, in one stroke instead of two." },
     { "t": "table", "head": ["Phrase", "Stroke", "From"], "rows": [
       ["{{of the}}", "[[of the|-FT]]", "`-F` + `-T`"],
       ["{{in the}}", "[[in the|TPH-T]]", "`TPH` + `-T`"],
@@ -20,10 +20,10 @@
       ["{{we are}}", "[[we are|WRE]]", "`R` + `WE`"],
       ["{{want to}}", "[[want to|WOT]]", "`W-T` + `O`"]
     ] },
-    { "t": "p", "x": "A phrase is the **union of the keys** of the two words' own strokes. If you know the two words, you can work the phrase out; if the keys would collide, no phrase exists." },
-    { "t": "note", "kind": "rule", "x": "Striking the two words one after the other still works. The phrase stroke is only a faster way in, so you can adopt phrases one at a time." },
+    { "t": "p", "x": "A phrase is the **union of the keys** of the two words' strokes. It can be derived from the two words; if the keys collide, no phrase exists." },
+    { "t": "note", "kind": "rule", "x": "Striking the two words in sequence still works; the phrase stroke is an optional shortcut, adoptable one phrase at a time." },
     { "t": "h", "x": "Phrases that carry on" },
-    { "t": "p", "x": "Some phrases are the first stroke of a longer word with a word fused in: *the utility* is [[the utility|AOUT/+EULT]]. Those are pure bonuses; learn the two-word ones first." },
+    { "t": "p", "x": "Some phrases are the first stroke of a longer word with a word fused in: *the utility* is [[the utility|AOUT/+EULT]]. Learn the two-word ones first." },
     { "t": "try", "title": "Phrases", "items": [["of the", "-FT"], ["in the", "TPH-T"], ["it is", "ST"], ["you are", "RU"], ["for the", "-RT"], ["and the", "SKP-T"]], "x": "Six phrases of two words each." }
   ],
   "drill": {

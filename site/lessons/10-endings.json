@@ -1,10 +1,10 @@
 {
   "id": "10-endings",
   "title": "Endings",
-  "goal": "A word you know, then one more stroke for its ending, with the join key held. Most endings are a single stroke.",
+  "goal": "A known word, then one more stroke for its ending, with the join key held. Most endings are a single stroke.",
   "blocks": [
     { "t": "h", "x": "The rule" },
-    { "t": "p", "x": "Strike the stem the way you always do, then the ending's stroke **with `+`**. An ending is a syllable with its vowel dropped when that is still unique, so the chords are the same consonant keys you already know." },
+    { "t": "p", "x": "Strike the stem as usual, then the ending's stroke **with `+`**. An ending is a syllable with its vowel dropped when that stays unique, so the chords are the same consonant keys." },
     { "t": "join", "stems": [["walk", "WAUBG"], ["play", "PHRAEU"], ["look", "HRAOBG"], ["dog", "TKOG"], ["rain", "RAEUPB"], ["pay", "PAEU"]],
       "ends": [["-ing", "+-G"], ["-ed", "+-D"], ["-s", "+-S"], ["-z (dogs)", "+-Z"], ["-er", "+-R"], ["-ly", "+-L"], ["-y", "+AOE"], ["-ment", "+-PLT"], ["-ness", "+-PBS"]] },
     { "t": "h", "x": "The common endings" },
@@ -25,7 +25,7 @@
       ["-tion", "[[+-GS]]", "[[nation|TPHAEU/+-GS]]"]
     ] },
     { "t": "h", "x": "Endings that keep a vowel" },
-    { "t": "p", "x": "When dropping the vowel would land on another ending's stroke, it stays, so the two can be told apart." },
+    { "t": "p", "x": "If dropping the vowel would land on another ending's stroke, the vowel stays." },
     { "t": "table", "head": ["Ending", "Stroke", "Example"], "rows": [
       ["-ish", "[[+-RB]]", "[[foolish|TPAOL/+-RB]]"],
       ["-ist", "[[+EUFT]]", "[[artist|ART/+EUFT]]"],
@@ -49,7 +49,7 @@
       ["-ary, -ery, -ory", "[[+-R/+AOE]]", "[[dictionary|TKEUBG/+-GS/+-R/+AOE]]"]
     ] },
     { "t": "p", "x": "Endings stack: *needless* + `+-L`; *myself* is two words. A suffix stroke is read correctly even where the dictionary has no entry: `STKPW/+-D` still reads as *zed*, never *zd*." },
-    { "t": "note", "kind": "rule", "x": "If a word has its own one-stroke outline, use that. The join is the way in for the words you have not memorised: any stem you know, plus an ending." }
+    { "t": "note", "kind": "rule", "x": "If a word has its own one-stroke outline, use it. The join covers unmemorised words: any known stem plus an ending." }
   ],
   "drill": {
     "title": "Stem and ending",

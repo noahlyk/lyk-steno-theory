@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Every stroke after the first of a word carries the join key `+` (the left index finger's inner column: `T` and `G` on a keyboard). A stroke without it always starts a new word. Word boundaries are written explicitly, never inferred."
+   "x": "Every stroke after the first of a word carries the join key `+` (the left index finger's inner column: `T` and `G` on a keyboard). A stroke without it always starts a new word: boundaries are written, never inferred."
   },
   {
    "t": "h",
@@ -42,7 +42,7 @@
   },
   {
    "t": "p",
-   "x": "A theory with no join key must give the suffix the bare key (Plover's `-D` is always `{^ed}`), so *do* cannot have it. Here a word and an ending share the key. They do for many:"
+   "x": "Without a join key the suffix takes the bare key (Plover's `-D` is always `{^ed}`), so *do* cannot have it. Here a word and an ending share the key, for many keys:"
   },
   {
    "t": "table",
@@ -101,10 +101,10 @@
   {
    "t": "list",
    "items": [
-    "A continuation stroke (a suffix struck on its own, or the consonants of a syllable that did not fit on the stroke before) is never a word of its own, so it can be as short as one key: [[+-G]] for *-ing*, [[+-D]] for *-ed*. It cannot collide with an unrelated one- or two-key word that has the same letters. See [the suffix table](#/ref/suffixes) and [syllables and folding](#/ref/syllables).",
+    "A continuation stroke (a suffix struck on its own, or the consonants of a syllable that did not fit on the stroke before) is never a word, so it can be one key: [[+-G]] for *-ing*, [[+-D]] for *-ed*. It cannot collide with an unrelated one- or two-key word that has the same letters. See [the suffix table](#/ref/suffixes) and [syllables and folding](#/ref/syllables).",
     "A suffix's own chord reads as its suffix after *any* stroke, dictionary entry or not. See [the solver](#/ref/fallback).",
-    "A stem's own outline and a continuation stroke can have the same keys with no clash: only the join key tells them apart.",
-    "No vowel has to be dropped to mark a mid-word stroke, so *forget* and *forgot* style pairs never collide because of a boundary."
+    "A stem's outline and a continuation stroke can share keys without clashing; only the join key tells them apart.",
+    "No vowel is dropped to mark a mid-word stroke, so *forget*/*forgot* pairs never collide over a boundary."
    ],
    "ordered": false
   },
@@ -114,7 +114,7 @@
   },
   {
    "t": "p",
-   "x": "Keymux learns the join key from the steno layer's config: `extra_keys: ['+']` adds the key and `join_keys: ['+']` marks it as a join key (Keymux 1b9cf76 or later; the key's physical position goes in `layout_overrides`: `+` on the left index finger's inner column, the star on the right index only, and `overlay_overrides` draws `+` as its own column before the star; see below). A stroke with it down is only ever looked up glued onto the strokes before it. When no joined outline matches (`TEST/+-D` does not exist), it falls back to its own entry, and every suffix has one, defined as `{^text}`, so the ending still attaches to the previous word. See [the suffix table](#/ref/suffixes)."
+   "x": "Keymux learns the join key from the steno layer's config: `extra_keys: ['+']` adds the key and `join_keys: ['+']` marks it as a join key (Keymux 1b9cf76 or later; the key's physical position goes in `layout_overrides`: `+` on the left index finger's inner column, the star on the right index only, and `overlay_overrides` draws `+` as its own column before the star; see below). A stroke with it down is only looked up glued onto the strokes before it. With no joined match (`TEST/+-D` does not exist), it falls back to its own entry; every suffix has one, defined as `{^text}`, so the ending still attaches to the previous word. See [the suffix table](#/ref/suffixes)."
   },
   {
    "t": "p",
@@ -130,11 +130,11 @@
   },
   {
    "t": "p",
-   "x": "You can strike `+` in every continuation stroke, or **hold it down** across them. Held, `+` stays in each stroke while the other keys come and go: each stroke is sent as its other keys come up, `+` part of it, so `THAS`, then `+` held while you strike `EUFG`, is `THAS/+EUFG`, and a long word is struck syllable after syllable with `+` never let go. Letting go of `+` on its own sends nothing. A word's first stroke is struck without `+`, as ever; only the strokes after it are joined."
+   "x": "Strike `+` in every continuation stroke, or **hold it down** across them. Held, `+` stays in each stroke while the other keys come and go: each stroke is sent as its other keys come up, `+` included. `THAS`, then `+` held while striking `EUFG`, is `THAS/+EUFG`; a long word is struck syllable by syllable with `+` never released. Releasing `+` alone sends nothing. A word's first stroke is struck without `+`; only later strokes are joined."
   },
   {
    "t": "p",
-   "x": "`deploy` puts a small mod in the steno folder, the sticky-plus file (`06-lyk-sticky-plus.rs`). The engine asks it, each time a key comes up with others still down, whether to send the stroke now (its `send_early` hook), and it says yes when `+` is the only one left. It needs a keymux with plugin `send_early` support; an older keymux does not load it, and `+` then behaves as before (a stroke with `+` held goes when `+` comes up)."
+   "x": "`deploy` puts a small mod in the steno folder, the sticky-plus file (`06-lyk-sticky-plus.rs`). Each time a key comes up with others still down, the engine asks it whether to send the stroke now (its `send_early` hook); it says yes when `+` is the only key left. Needs a keymux with plugin `send_early` support; an older keymux does not load it, and `+` behaves as before (a stroke with `+` held goes when `+` comes up)."
   },
   {
    "t": "h",
@@ -142,7 +142,7 @@
   },
   {
    "t": "p",
-   "x": "**Lock: tap `+` on its own** inside a run and what the run types now is kept: the strokes after it only add to it, and the solver reads them as going on from it (`HRAOBG/+/+UP` is *look* kept, then *lookup*). Letting go of a held `+` after its strokes is not a tap and locks nothing; tap it fresh. **`+*` puts the star on the stroke before**, struck late (`+-T` then `+*` is `+*T`). Both are the solver's: see [the solver](#/ref/fallback)."
+   "x": "**Lock: tap `+` on its own** inside a run and what the run types now is kept: the strokes after it only add to it, and the solver reads them as going on from it (`HRAOBG/+/+UP` is *look* kept, then *lookup*). Releasing a held `+` after its strokes is not a tap and locks nothing; tap it fresh. **`+*` puts the star on the stroke before**, struck late (`+-T` then `+*` is `+*T`). Both are the solver's: see [the solver](#/ref/fallback)."
   },
   {
    "t": "h",
@@ -150,7 +150,7 @@
   },
   {
    "t": "p",
-   "x": "Wherever another page says a stroke \"joins the one before it\", \"continues\" or is a \"continuation stroke\", this key is doing it. Every way to build a word with it is on [every way to join a word](#/ref/ways-to-join). Commands, punctuation and fingerspelling are pinned before any word gets an outline: see [reserved strokes](#/ref/reserved-strokes). [Lesson 10](#/lesson/10-endings) teaches endings by hand."
+   "x": "Wherever a page says a stroke \"joins the one before it\", \"continues\" or is a \"continuation stroke\", this key does it. Every way to build a word with it: [every way to join a word](#/ref/ways-to-join). Commands, punctuation and fingerspelling are pinned before any word gets an outline: see [reserved strokes](#/ref/reserved-strokes). [Lesson 10](#/lesson/10-endings) teaches endings by hand."
   }
  ]
 }

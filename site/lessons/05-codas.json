@@ -1,7 +1,7 @@
 {
   "id": "05-codas",
   "title": "Ending sounds",
-  "goal": "The right hand mirrors the left: the consonants a syllable ends with. The hyphen is back.",
+  "goal": "The right hand mirrors the left: the consonants a syllable ends with, written with a hyphen.",
   "blocks": [
     { "t": "h", "x": "The ending consonants" },
     { "t": "table", "head": ["Sound", "Keys", "Example", "Sound", "Keys", "Example"], "rows": [
@@ -15,14 +15,14 @@
       ["sh", "[[-RB]]", "[[cash|KARB]]", "ch", "[[-FP]]", "[[catch|KAFP]]"],
       ["j", "[[-PBLG]]", "[[bridge|PWREUPBLG]]", "r", "[[-R]]", "see lesson 6"]
     ] },
-    { "t": "p", "x": "Two sounds share a key, because a word never needs both: **f and v** are `-F`, and the two *th* sounds are `*T`. `-S` is the *s* of *bus*; `-Z` is the *z* of *buzz*, also the plural in *dogs*." },
+    { "t": "p", "x": "Two sounds share a key because a word never needs both: **f and v** are `-F`; the two *th* sounds are `*T`. `-S` is the *s* of *bus*; `-Z` is the *z* of *buzz*, also the plural in *dogs*." },
     { "t": "explore" },
     { "t": "h", "x": "Spelling beats sound for two endings" },
     { "t": "table", "head": ["Ending", "Keys", "Example"], "rows": [
       ["-ing is always G, not ng", "[[-G]]", "[[walking|WAUG]]"],
       ["-ed is always D, even when it sounds like t", "[[-D]]", "[[played|PHRAEUD]]"]
     ] },
-    { "t": "note", "x": "You do not need to learn the right hand separately from the left: it is the same sounds, in the same neighbour pairs, on the other side. The hyphen keeps them apart on paper only." }
+    { "t": "note", "x": "The right hand is the left's sounds and neighbour pairs, mirrored. The hyphen only separates the sides on paper." }
   ],
   "drill": {
     "title": "Words by their ending",

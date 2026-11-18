@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "A prefix is written one of two ways. Seven have keys of their own that fold onto the left hand of the next stroke, so the word stays one stroke. Every common prefix also has a stroke of its own, struck first, with the rest of the word joined after it. The folded form is in the dictionary when the keys fit; the prefix stroke always works."
+   "x": "A prefix is written one of two ways. Seven have keys of their own that fold onto the next stroke's left hand, keeping the word one stroke. Every common prefix also has a stroke of its own, struck first, with the rest joined after it. The folded form is in the dictionary when the keys fit; the prefix stroke always works."
   },
   {
    "t": "h",
@@ -75,10 +75,10 @@
   {
    "t": "list",
    "items": [
-    "The first row that matches the word's spelling and sounds wins, so a prefix that starts a longer one is checked after it: `inter`, `!under`, `!over` and `mis` come before `!un`, or every `under-` word would be read as `un-` plus a leftover syllable.",
+    "The first matching row wins, so a prefix that starts a longer one is checked after it: `inter`, `!under`, `!over` and `mis` come before `!un`, or every `under-` word would read as `un-` plus a leftover syllable.",
     "`over-`, `under-` and `inter-` end in the r-coloured vowel, which their keys already include. `over-` reuses the onset of V ([[SR]]). `under-` and `inter-` use the onsets of their consonants (N + D is [[TPH]] + [[TK]]; N + T is [[TPH]] + [[T]]) plus a left-hand [[R]] for the vowel, which also keeps `inter-` distinct from `un-`.",
     "`mis-` is written like `dis-`: M's onset [[PH]] plus a left-hand [[S]] for the coda.",
-    "`un-` is just the onset of N, [[TPH]], with no vowel kept, the same way a suffix drops its vowel."
+    "`un-` is the onset of N, [[TPH]], with no vowel kept, as a suffix drops its vowel."
    ],
    "ordered": false
   },
@@ -93,7 +93,7 @@
   },
   {
    "t": "p",
-   "x": "If the prefix's keys clash with the first stroke of the stem's own, the prefix is struck as a stroke of its own and the stem's whole outline follows, joined. *unclear*: the prefix's [[TPH]] shares the `H` of *clear* [[KHR]], so it is [[unclear|UPB/+KHRAOER]]. *decode* is [[decode|TKE/+KOED]]."
+   "x": "If the prefix's keys clash with the stem's first stroke, the prefix is its own stroke and the stem's whole outline follows, joined. *unclear*: the prefix's [[TPH]] shares the `H` of *clear* [[KHR]], so it is [[unclear|UPB/+KHRAOER]]. *decode* is [[decode|TKE/+KOED]]."
   },
   {
    "t": "h",
@@ -101,7 +101,7 @@
   },
   {
    "t": "p",
-   "x": "Every common prefix has a stroke of its own, whether or not a fold would also work. Struck first, then the stem (or the stem's own strokes) with the join key held. Where the prefix is a word (*un*, *dis*, *mis*, *over*, *under*), the stroke is that word's own outline."
+   "x": "Every common prefix has its own stroke, whether or not a fold also works: struck first, then the stem (or its strokes) with the join key held. Where the prefix is a word (*un*, *dis*, *mis*, *over*, *under*), the stroke is that word's outline."
   },
   {
    "t": "table",
@@ -206,7 +206,7 @@
   {
    "t": "note",
    "kind": "rule",
-   "x": "You never need to know which form a word has. The prefix stroke followed by the stem always works. Two words that are one word (*myself*, *outside*) are done the same way: the second word joined."
+   "x": "The prefix stroke followed by the stem always works, whichever form a word has. Compounds (*myself*, *outside*) work the same way: the second word joined."
   },
   {
    "t": "h",
@@ -228,7 +228,7 @@
   },
   {
    "t": "p",
-   "x": "A separate backup covers a word whose leading sound sits in front of another word's exact pronunciation, whether or not that sound is one of the prefixes above: *never* is the extra sound N in front of *ever*'s sounds, [[never|TPH/+EFR]]. It can only land on the same stroke as the matched word's first one, the same way a fixed prefix folds onto the next stroke's left hand. See [syllables and folding](#/ref/syllables) and [every way to join a word](#/ref/ways-to-join)."
+   "x": "A separate backup covers a word whose leading sound precedes another word's exact pronunciation, prefix or not: *never* is the extra sound N before *ever*'s sounds, [[never|TPH/+EFR]]. It can only land on the matched word's first stroke, as a fixed prefix folds onto the next stroke's left hand. See [syllables and folding](#/ref/syllables) and [every way to join a word](#/ref/ways-to-join)."
   },
   {
    "t": "h",

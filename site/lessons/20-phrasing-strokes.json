@@ -1,7 +1,7 @@
 {
   "id": "20-phrasing-strokes",
   "title": "Phrasing in practice",
-  "goal": "Whole phrases as single strokes: worked examples, what it saves, and how to try the grammar today.",
+  "goal": "Worked examples, savings, and how to try the grammar today.",
   "blocks": [
     {
       "t": "h",
@@ -70,7 +70,7 @@
     },
     {
       "t": "p",
-      "x": "Keys in steno order: left bank (starter), vowels and star, then the right bank. When there are no vowels or star, a `-` marks the start of the right bank, as in {{I am}} [[SWR-B]]."
+      "x": "Steno order: left bank (starter), vowels and star, right bank. With no vowels or star, `-` marks the start of the right bank, as in {{I am}} [[SWR-B]]."
     },
     {
       "t": "h",
@@ -86,7 +86,7 @@
     },
     {
       "t": "p",
-      "x": "37 of the 3,758 grammar strokes are held by something today: 19 merged two-word phrases and 18 short forms, extras and backups of rare words. The generator will place the grammar first so the displaced words settle on their next outline. In the prototype no word is left without an outline."
+      "x": "Today 37 of the 3,758 grammar strokes are held by other entries: 19 merged two-word phrases and 18 short forms, extras and backups of rare words. The generator will place the grammar first; displaced words take their next outline. In the prototype no word is left without an outline."
     },
     {
       "t": "h",
@@ -117,7 +117,7 @@
     },
     {
       "t": "p",
-      "x": "Measured by `tools/phrasing_prototype.py` over today's dictionary with today's merged phrases taken first. By tier, starter plus auxiliary alone saves 0.6%; adding *be*, *have* and *have been* takes it to 1.4%; the 20 verbs to 2.1%. Five verbs (*say*, *see*, *know*, *think*, *go*) are 46% of the verbs' share. The novels are third-person past narration, so everyday first- and second-person present typing has more of these pairs per word and this undercounts it."
+      "x": "Measured by `tools/phrasing_prototype.py` over today's dictionary, today's merged phrases first. By tier: starter plus auxiliary alone saves 0.6%; adding *be*, *have*, *have been*, 1.4%; the 20 verbs, 2.1%. Five verbs (*say*, *see*, *know*, *think*, *go*) are 46% of the verbs' share. The novels are third-person past narration; everyday first- and second-person present typing has more of these pairs per word, so this undercounts."
     },
     {
       "t": "h",
@@ -129,7 +129,7 @@
     },
     {
       "t": "p",
-      "x": "The trial folder is the whole `02-lyk-*` set with the displaced entries removed and the grammar added as `02-lyk-grammar.json`. `lyk deploy` puts the normal dictionary back (it removes any `02-lyk-` file it did not write)."
+      "x": "The trial folder is the `02-lyk-*` set minus the displaced entries, plus the grammar as `02-lyk-grammar.json`. `lyk deploy` restores the normal dictionary (it removes any `02-lyk-` file it did not write)."
     },
     {
       "t": "h",
@@ -147,7 +147,7 @@
     {
       "t": "note",
       "kind": "rule",
-      "x": "When it ships, the generator will read `rules/grammar.toml` and write the strokes into the dictionary, and this chapter's strokes will then be checked against the built dictionary like every other lesson. Until then they are the grammar, not dictionary entries."
+      "x": "When it ships, the generator reads `rules/grammar.toml` and writes the strokes into the dictionary, and this chapter's strokes are then checked against the built dictionary like other lessons. Until then they are grammar, not dictionary entries."
     },
     {
       "t": "h",
@@ -155,7 +155,7 @@
     },
     {
       "t": "p",
-      "x": "These forty come up most in running text (counted over the Gutenberg corpus), commonest first: the chapter drill below is exactly this list."
+      "x": "The forty commonest in running text (Gutenberg corpus count), commonest first; the drill below is exactly this list."
     }
   ],
   "drill": {

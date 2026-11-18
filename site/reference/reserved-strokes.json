@@ -1,7 +1,7 @@
 {
  "id": "reserved-strokes",
  "title": "Reserved strokes",
- "goal": "Know what is pinned before any word is placed, so you know why no word ever takes a punctuation, command or letter stroke.",
+ "goal": "What is pinned before any word is placed, and why no word takes a punctuation, command or letter stroke.",
  "blocks": [
   {
    "t": "h",
@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Every command, punctuation mark and fingerspelled letter in a real keymux config for lyk is pinned **before any word is placed**, ahead of even briefs. A word can never silently take over a stroke such as [[TP-BG]] (`!`)."
+   "x": "Every command, punctuation mark and fingerspelled letter in a keymux config for lyk is pinned **before any word is placed**, ahead of briefs. No word can take a stroke such as [[TP-BG]] (`!`)."
   },
   {
    "t": "table",
@@ -49,15 +49,15 @@
    "items": [
     "Nothing generated competes with a reserved stroke: not a word's plain outline, not a brief, not a star form, not an alternate pronunciation, not a phrase, not a backup.",
     "A word that wanted a reserved stroke moves to its next-cheapest outline. Examples: [[captain|KAPT]] would have been `K*P` (the glued capital K), and [[eh|A*EU]] would have been `*E` (the glued letter e).",
-    "A reserved stroke can be given back to words only by removing it from the reserved file. [[up|-P]] and [[am|-PL]] sit on `-P` and `-PL` for that reason: the period has its one stroke, [[TP-PL]], and does not need them.",
-    "**One stroke per output.** No two outlines in these three files type the same thing: every mark, command and modifier chord has exactly one stroke, the one struck most in the typed tape, else the one with the fewest keys. `cargo test` asserts it (`every_reserved_output_has_exactly_one_outline`), so a second stroke for a mark cannot creep back in. The strokes this freed (the alternate periods, commas, question marks and so on, and the thousands of modifier chords that only differed by a key the dictionary ignores) belong to words and phrases now."
+    "A reserved stroke goes back to words only by removing it from the reserved file. [[up|-P]] and [[am|-PL]] sit on `-P` and `-PL` because the period has its one stroke, [[TP-PL]].",
+    "**One stroke per output.** No two outlines in these three files type the same thing: every mark, command and modifier chord has one stroke, the one struck most in the typed tape, else the fewest keys. `cargo test` asserts it (`every_reserved_output_has_exactly_one_outline`). The strokes this freed (alternate periods, commas, question marks, and thousands of modifier chords differing only by a key the dictionary ignores) belong to words and phrases."
    ],
    "ordered": false
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "The build refuses to run if a brief named `[word]` in `rules/briefs.toml` has a literal outline that is reserved. Before that check, `up` silently lost `-P` and fell back to the two-key `UP`."
+   "x": "The build refuses to run if a brief named `[word]` in `rules/briefs.toml` has a reserved literal outline. (Before the check, `up` lost `-P` and fell back to the two-key `UP`.)"
   },
   {
    "t": "p",

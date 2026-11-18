@@ -1,7 +1,7 @@
 {
  "id": "fallback",
  "title": "The solver: what a miss types",
- "goal": "Know what keymux types for a stroke or `+` run the dictionary does not have, how the solver works that out, what it costs to type loosely, and the plain read-back it falls back on.",
+ "goal": "What keymux types for a stroke or `+` run the dictionary lacks, how the solver reads it, what loose typing costs, and the plain read-back it falls back on.",
  "blocks": [
   {
    "t": "h",
@@ -9,16 +9,16 @@
   },
   {
    "t": "p",
-   "x": "lyk ships a keymux plugin, **the solver** (`05-lyk-solver.rs`, with its lexicon in `05-lyk-solver.bin` beside it). keymux asks it about anything every dictionary missed: a single stroke, or a `+` run, which is always one word. It answers with the word (or the word and its suffixes) those strokes most likely mean, read from the same tables the generator writes with. Nothing has to be a dictionary entry for it to type: an outline the generator never listed still types its word when its keys say that word's sounds."
+   "x": "lyk ships a keymux plugin, **the solver** (`05-lyk-solver.rs`, lexicon in `05-lyk-solver.bin` beside it). keymux asks it about anything every dictionary missed: a single stroke, or a `+` run, which is always one word. It answers with the word (or word plus suffixes) the strokes most likely mean, read from the tables the generator writes with. No dictionary entry is needed: an outline the generator never listed still types its word when its keys say that word's sounds."
   },
   {
    "t": "list",
    "items": [
-    "**It answers again on every stroke.** A `+` run has no word boundary inside it, so keymux hands the solver the whole run after each new stroke and the new answer replaces the old one. A word can read as something else halfway through (`KOPL/+PU` reads *champa*) and settles on the right one when the run is done (`KOPL/+PU/+TER` *computer*).",
-    "**It never overrides the dictionary.** keymux asks the dictionary files first; the solver only sees what none of them has.",
-    "**It is what makes `+` a join key.** keymux itself gives no key a meaning; the solver's `joins` answer is what tells keymux that a `+` stroke continues the word before it and is never a word of its own.",
-    "**Spelling mode is unchanged.** A run that starts with `~` is read one letter a stroke from `rules/spelling.toml` ([spelling mode](#/ref/spelling-mode)).",
-    "**A run struck right after the stroke `#` alone is a name.** The solver reads the stroke just before the run from keymux's stroke history; if it is `#` alone, the run is read by a second model that holds the names alone, with the same rules and costs, never by the words ([the name lane](#/ref/names)). The `#` itself is a silent dictionary entry. No other run touches the names model."
+    "**It answers again on every stroke.** A `+` run has no word boundary inside it, so keymux hands the solver the whole run after each stroke and the new answer replaces the old. A word can read as something else midway (`KOPL/+PU` reads *champa*) and settles when the run is done (`KOPL/+PU/+TER` *computer*).",
+    "**It never overrides the dictionary.** keymux asks the dictionary files first; the solver sees only what none has.",
+    "**It makes `+` a join key.** keymux gives no key a meaning; the solver's `joins` answer tells keymux a `+` stroke continues the word before it and is never a word of its own.",
+    "**Spelling mode is unchanged.** A run starting with `~` is read one letter a stroke from `rules/spelling.toml` ([spelling mode](#/ref/spelling-mode)).",
+    "**A run struck right after the stroke `#` alone is a name.** The solver reads the stroke before the run from keymux's stroke history; if it is `#` alone, a second model holding only the names reads the run, with the same rules and costs, never the words ([the name lane](#/ref/names)). The `#` itself is a silent dictionary entry. No other run touches the names model."
    ],
    "ordered": false
   },
@@ -32,22 +32,22 @@
   },
   {
    "t": "p",
-   "x": "Each stroke is read back into every run of sounds its keys can write, not just one:"
+   "x": "Each stroke is read back into every run of sounds its keys can write:"
   },
   {
    "t": "list",
    "items": [
-    "**Each bank, every way it splits into chords** of the onset and coda tables (`PHR` is M R or P L; `-PBLG` is JH, or N JH, or the keys one at a time), up to 48 ways a bank. Bigger chords are tried first.",
+    "**Each bank, every way it splits into chords** of the onset and coda tables (`PHR` is M R or P L; `-PBLG` is JH, or N JH, or the keys one at a time), up to 48 ways a bank. Bigger chords first.",
     "**The vowel keys as any vowel they write**: as heard (`O` is the vowel of *hot*), or as a spelling the rules give them (`O` is also the *o* of *control*, `AE` the *ea* of *mean*).",
     "**A vowel and the consonant after it together** where the rules have that chord (`AR`, `OPBG`, `AEUR`), and a vowel whose own chord reaches into the right hand (`UR` is the ER of *turn*, `EUR` the *ir* of *bird*). A vowel key alone never stands for such a vowel.",
     "**A prefix chord, on a run's first stroke only**: the keys of a prefix entry of `rules/plover.toml` read as the prefix's sounds before the rest of the onset (`KP` is *ex-*: `KPEL` *excel*, `KPOT/+EUBG` *exotic*; also `STK` *dis-*, `TPHR` *inter-*, `TKPHR` *under-*, `SR` *over-*, `SPH` *mis-*, `TPH` *un-*). Costs 1. The keys keep their plain reading too.",
     "**The star** as part of a chord (`*T` is TH) or, when nothing claims it, as the homophone marker, which writes no sound.",
-    "**`+*` puts the star on the stroke before**, struck late: `H/+E/+HR/+-T/+*` reads as `H/+E/+HR/+*T`, *health*. Anywhere in a run, as many times as strokes have no star yet.",
-    "**Lock: `+` alone keeps the text so far.** Whatever the run types when you strike it stays, and the strokes after it only add to it, read as the first piece already struck: `HRAOBG/+/+UP` is *look* locked, then *up*, and *lookup* wins because the whole spells a word; `PROB/+/+-BL` is *prob* + *-able*, *probable*, the known word and endings rule as ever. Nothing after a lock can rewrite what it kept (`KAT/+` stays *cat* whatever follows), and locks stack: each keeps everything before it (`KAT/+/+-S/+` is *cats*, kept).",
-    "**The consonants after the vowel in every order**, three or fewer: the keys are in steno order, the sounds need not be (`PWERT` is *better*).",
+    "**`+*` puts the star on the stroke before**, struck late: `H/+E/+HR/+-T/+*` reads as `H/+E/+HR/+*T`, *health*. Anywhere in a run, once per stroke that has no star yet.",
+    "**Lock: `+` alone keeps the text so far.** What the run types when you strike it stays; later strokes only add to it, read as the first piece already struck: `HRAOBG/+/+UP` is *look* locked, then *up*, and *lookup* wins because the whole spells a word; `PROB/+/+-BL` is *prob* + *-able*, *probable* (known word and endings rule). Nothing after a lock rewrites what it kept (`KAT/+` stays *cat* whatever follows). Locks stack, each keeping everything before it (`KAT/+/+-S/+` is *cats*, kept).",
+    "**The consonants after the vowel in every order**, three or fewer: keys are in steno order, sounds need not be (`PWERT` is *better*).",
     "**A chord that shares the vowel's `R` key** (`V.rv` `-FRB`, `CH.rch` `-FRPB`) is also that R and its consonant, free: `-S/+TAFRBZ` is *starves*, `-BG/+AFRBD` *carved*.",
     "**A left-hand stroke alone, after the first, is the word's next consonants in any order, free**: the left bank can only strike them in steno order (`KUR/+STKPWHR` is *curls*, its L Z struck Z then L).",
-    "Of a stroke's readings, the 40 cheapest within 4 of the best are tried; of equal cost, those with the fewest sounds first (`STKPWHR` as Z L before J DH P). A first stroke's 3 best readings with a prefix chord in it are tried as well, cap or not (`STKERT/+AEU/+-GS` *dissertation*, `STPHAOUT/+UBL` *unsuitable*)."
+    "Of a stroke's readings, the 40 cheapest within 4 of the best are tried; equal cost: fewest sounds first (`STKPWHR` as Z L before J DH P). A first stroke's 3 best readings containing a prefix chord are also tried, cap or not (`STKERT/+AEU/+-GS` *dissertation*, `STPHAOUT/+UBL` *unsuitable*)."
    ],
    "ordered": false
   },
@@ -57,7 +57,7 @@
   },
   {
    "t": "p",
-   "x": "The lexicon is every word among the 100,000 commonest that has a pronunciation (the generator's own vocabulary), each written into one tree twice: by its pronunciation, and by a reading of its spelling (each letter a sound, a vowel letter short, long or weak, as the generator's spelled backups read it). The run's sounds are matched along that tree, and every way they differ from a word costs something:"
+   "x": "The lexicon is every word among the 100,000 commonest that has a pronunciation (the generator's vocabulary), each written into one tree twice: by pronunciation, and by a reading of its spelling (each letter a sound, a vowel letter short, long or weak, as the generator's spelled backups read it). The run's sounds are matched along that tree; every difference from a word costs:"
   },
   {
    "t": "table",
@@ -71,7 +71,7 @@
      "0"
     ],
     [
-     "a vowel struck as the word spells it, not as it is heard (`O` for the *o* of *control*); a single vowel letter only for a vowel spelled with that letter alone (*said*'s *ai* is not an `EU`)",
+     "a vowel struck as the word spells it, not as heard (`O` for the *o* of *control*); a single vowel letter only for a vowel spelled with that letter alone (*said*'s *ai* is not an `EU`)",
      "1"
     ],
     [
@@ -103,15 +103,15 @@
      "1"
     ],
     [
-     "a sound of the word the run skipped: a reduced vowel (unstressed `AH`, `IH`, `ER`) / any other unstressed or a secondary-stressed vowel / a stressed vowel / `HH` or the `Y` glide / any other consonant",
+     "a sound of the word the run skipped: a reduced vowel (unstressed `AH`, `IH`, `ER`) / any other unstressed or secondary-stressed vowel / a stressed vowel / `HH` or the `Y` glide / any other consonant",
      "1 / 3 / 8 / 2 / 4"
     ],
     [
-     "the word's last vowel skipped when it is not a reduced one (the *-ly* of *probably*, the *-y* of its spelling): on top of the above",
+     "the word's last vowel skipped when not a reduced one (the *-ly* of *probably*, the *-y* of its spelling); on top of the above",
      "2"
     ],
     [
-     "the consonant the word ends on skipped (*problem*'s M, so `PRO/+-BL` is *probably*, 9, not *problem*, 10): on top of the above",
+     "the consonant the word ends on skipped (*problem*'s M, so `PRO/+-BL` is *probably*, 9, not *problem*, 10); on top of the above",
      "1"
     ],
     [
@@ -127,7 +127,7 @@
      "2"
     ],
     [
-     "the word's rarity: half a point for every doubling of its rank (*the* 0, rank 1,000 about 5, rank 50,000 about 8)",
+     "the word's rarity: half a point per doubling of its rank (*the* 0, rank 1,000 about 5, rank 50,000 about 8)",
      "0 to 8"
     ]
    ]
@@ -135,11 +135,11 @@
   {
    "t": "list",
    "items": [
-    "At most three sounds of a word in a row are skipped, and a word starts with at most one skipped sound, a weak one (the *a-* of *about*).",
+    "At most three sounds of a word in a row are skipped; a word starts with at most one skipped sound, a weak one (the *a-* of *about*).",
     "**A tie goes to the commoner word.** Rarity is rounded to whole points, so homophones often cost the same: `AEU/+T` is *eight*, not *ate*; `TA/+P` *tape*, not *tap*; `PWO/+-R/+-G` *boring* (*bore* + *-ing*), not *baring*. Unless the word before the run says otherwise ([the word before](#/ref/fallback/the-word-before-the-run)).",
     "**An abbreviation said in full** (*tv* also said *television*: more sounds than twice its letters plus one) is not matched by those sounds: they type the full word.",
-    "**Every stroke is used.** A stroke of a run must match at least one sound of the word it is read into (or be a suffix chord or a known outline): a stroke you strike is never explained away as sounds the word does not have. Sounds can be doubled or missing; the order is kept (only the consonants of one stroke may swap, as above).",
-    "The cheapest reading wins. Two words that read the same go to the commoner one: a homophone struck with no spelling cue types the commoner word, unless the word typed before it favours the other (below)."
+    "**Every stroke is used.** A stroke of a run must match at least one sound of the word it is read into (or be a suffix chord or known outline): a struck stroke is never explained away as sounds the word lacks. Sounds can be doubled or missing; order is kept (only one stroke's consonants may swap, as above).",
+    "The cheapest reading wins. Words that read the same go to the commoner: a homophone struck with no spelling cue types the commoner word, unless the word typed before favours the other (below)."
    ],
    "ordered": false
   },
@@ -149,7 +149,7 @@
   },
   {
    "t": "p",
-   "x": "A run can be read as several pieces, each a word, a suffix, a morpheme or a known outline, joined with no space:"
+   "x": "A run can be read as several pieces, each a word, suffix, morpheme or known outline, joined with no space:"
   },
   {
    "t": "table",
@@ -166,17 +166,17 @@
     ],
     [
      "a suffix chord ([suffix table](#/ref/suffixes), one or two strokes)",
-     "any stroke after the first that carries `+`, unconditionally; the stroke may still be read as sounds instead",
+     "any stroke after the first that carries `+`, unconditionally; the stroke may still be read as sounds",
      "1"
     ],
     [
-     "a folded plural: a stroke struck with `-S` or `-Z`, read as its other sounds and then *-s* (below)",
+     "a folded plural: a stroke struck with `-S` or `-Z`, read as its other sounds then *-s* (below)",
      "on a stroke whose other sounds end a lexicon word, never a morpheme",
      "1, as the `+-S` chord"
     ],
     [
      "a hard suffix: the chord with `*` added to its first stroke (`+*D`, the suffix sheet's own entry)",
-     "the same, and the stroke is never read as sounds: it is the suffix",
+     "the same; the stroke is never read as sounds: it is the suffix",
      "0"
     ],
     [
@@ -185,7 +185,7 @@
      "the word's rarity, plus 10 after the first piece"
     ],
     [
-     "a misstroke: a stroke one key more or one key fewer than a known one-stroke outline",
+     "a misstroke: a stroke one key more or fewer than a known one-stroke outline",
      "one stroke, anywhere a known outline could be",
      "5, plus the same as a known outline"
     ],
@@ -199,14 +199,14 @@
   {
    "t": "list",
    "items": [
-    "**A known outline can carry on into a longer word.** After a known outline, the strokes that follow may go on with the same word's sounds instead of starting a new piece: `AUGS` is *audition*, so `AUGS/+AOEUPBG` reads *auditioning*, priced as *auditioning* plus 1. It also carries on into any longer word **spelled** from it, however that word says those letters, when the outline's word is 3 letters or more and the longer word goes on with a vowel letter: `KWEULD` is *liquid*, so `KWEULD/+ARB/+UPB` reads *liquidation* (said *liquad-*), and *inc* goes on into *incorporate*. At most 8 such places per outline, its own word's sounds first, then the most common longer words.",
-    "**An outline the rules teach a word, struck whole, is that word, before anything else**: `WAUT/+-R` is *water*, never *wait* + *-er*. The plugin carries every lexicon word's taught outlines (its outline and its homophone variant), the ones the lessons have you strike syllable by syllable; an outline a dictionary entry holds stays that entry's, and two words taught the same outline give it to the commoner (*theater* over *theatre*).",
-    "**Then a word you know plus ending chords, when they spell a real word, is that word.** `PROB/+-BL` is *prob* + *-able*: *probable*, whatever the sounds might also say. When they spell no word (`PRO/+-BL`, *pro* + *able*), the run is read by its sounds (*pro-bly*: *probably*). Only an outline you struck counts, never a misstroke guess one key off it: `SKRAEPL/+-Z` is *screams*, not *cream* + *s*. Three rules, in order: a brief or a taught outline, struck whole, is its word; a known word plus endings is that word; otherwise the sounds decide.",
-    "**Pieces that spell a word are that word**, never cheaper than the pieces themselves: *part* + `+-S` is as rare as *parts*, and a rare piece does not become a common word by spelling one. *part* + `+-S` is *parts*, priced at the rarity of *parts*, not of *part*.",
-    "**Words joined that spell a real word the lexicon lacks are that word.** The plugin also carries a list of real spellings down to rank 250,000 of the frequency list (no sounds, only the spelling): `HRAOBG/+UP` is *look* + *up*, *lookup* (rank 121,405), not *lockup*. Each join costs 2 there, not 10, and the word is priced at its own rarity, never below its pieces'. Only words joined to words: a stem and suffix chords must spell a lexicon word, since the list's tail holds misspellings (*regreting*).",
-    "**Pieces that spell no word** cost 6 more: allowed, for a word the lexicon lacks, but only when nothing that is a word reads as well. A word and a plural *-s* (the `+-S` or `+-Z` chord, or a folded plural) that spell no word cost 4, as a built word does ([giant words](#/ref/fallback/giant-words-prefixes-a-word-suffixes)): *stopover* + *-s* is *stopovers*.",
-    "**A plural folds on a word's last stroke.** A stroke struck with `-S` or `-Z` is read as well as its other sounds and then *-s*: the word those sounds end takes the plural (spelled at the seam as a suffix is, below), for 1, as if `+-S` had been struck after it. So `STOP/+OEFRZ` is *stopovers* and `A/+PWAPBD/+-PB/+PHUPBTS` is *abandonments*, not *abandonment* with an S it does not have (6). The plural goes on a lexicon word read by its sounds or spelling, never on a morpheme (the table has its plurals), and only on a stroke with another sound before the S or Z; on the Z only when that sound is voiced, as the plural is said (*stopovers*; `SHAEPZ` stays *shape*, not *shapes*).",
-    "A word piece only ends at a stroke boundary, but for a folded plural's word; a suffix chord is always the suffix, never its bare consonants."
+    "**A known outline can carry on into a longer word.** After a known outline, the following strokes may continue the same word's sounds instead of starting a new piece: `AUGS` is *audition*, so `AUGS/+AOEUPBG` reads *auditioning*, priced as *auditioning* plus 1. It also carries on into any longer word **spelled** from it, however that word says those letters, when the outline's word is 3 letters or more and the longer word continues with a vowel letter: `KWEULD` is *liquid*, so `KWEULD/+ARB/+UPB` reads *liquidation* (said *liquad-*); *inc* continues into *incorporate*. At most 8 such places per outline: its own word's sounds first, then the most common longer words.",
+    "**An outline the rules teach a word, struck whole, is that word, before anything else**: `WAUT/+-R` is *water*, never *wait* + *-er*. The plugin carries every lexicon word's taught outlines (its outline and homophone variant), the ones the lessons have you strike syllable by syllable; an outline a dictionary entry holds stays that entry's; two words taught the same outline give it to the commoner (*theater* over *theatre*).",
+    "**Then a known word plus ending chords that spell a real word is that word.** `PROB/+-BL` is *prob* + *-able*: *probable*, whatever the sounds might also say. When they spell no word (`PRO/+-BL`, *pro* + *able*), the run is read by sounds (*pro-bly*: *probably*). Only a struck outline counts, never a misstroke guess one key off it: `SKRAEPL/+-Z` is *screams*, not *cream* + *s*. Three rules, in order: a brief or taught outline, struck whole, is its word; a known word plus endings is that word; otherwise the sounds decide.",
+    "**Pieces that spell a word are that word**, never cheaper than the pieces themselves: *part* + `+-S` is as rare as *parts*; a rare piece does not become a common word by spelling one. *part* + `+-S` is *parts*, priced at the rarity of *parts*, not *part*.",
+    "**Words joined that spell a real word the lexicon lacks are that word.** The plugin also carries a list of real spellings down to rank 250,000 of the frequency list (spelling only, no sounds): `HRAOBG/+UP` is *look* + *up*, *lookup* (rank 121,405), not *lockup*. Each join costs 2 there, not 10; the word is priced at its own rarity, never below its pieces'. Only words joined to words: a stem and suffix chords must spell a lexicon word, since the list's tail holds misspellings (*regreting*).",
+    "**Pieces that spell no word** cost 6 more: allowed for a word the lexicon lacks, but only when no real word reads as well. A word and a plural *-s* (the `+-S` or `+-Z` chord, or a folded plural) that spell no word cost 4, as a built word does ([giant words](#/ref/fallback/giant-words-prefixes-a-word-suffixes)): *stopover* + *-s* is *stopovers*.",
+    "**A plural folds on a word's last stroke.** A stroke struck with `-S` or `-Z` is read as its other sounds and also then *-s*: the word those sounds end takes the plural (spelled at the seam as a suffix is, below), for 1, as if `+-S` had followed. `STOP/+OEFRZ` is *stopovers*; `A/+PWAPBD/+-PB/+PHUPBTS` is *abandonments*, not *abandonment* with an S it lacks (6). The plural goes on a lexicon word read by sounds or spelling, never on a morpheme (the table has its plurals), and only on a stroke with another sound before the S or Z; on the Z only when that sound is voiced, as the plural is said (*stopovers*; `SHAEPZ` stays *shape*, not *shapes*).",
+    "A word piece ends only at a stroke boundary, except for a folded plural's word; a suffix chord is always the suffix, never its bare consonants."
    ],
    "ordered": false
   },
@@ -216,20 +216,20 @@
   },
   {
    "t": "p",
-   "x": "A word no lexicon holds (most of Monkeytype's `english_450k`) is struck piece by piece, each piece by its sounds, and read as **prefixes, then one word, then suffixes**: *antidisestablishmentarianism* is *anti* + *dis* + *establish* + *ment* + *arian* + *ism*, each struck as the rules teach its sounds, every stroke after the first joined. Strike `+` alone after any piece to lock what is typed so far, as ever."
+   "x": "A word no lexicon holds (most of Monkeytype's `english_450k`) is struck piece by piece, each by its sounds, and read as **prefixes, then one word, then suffixes**: *antidisestablishmentarianism* is *anti* + *dis* + *establish* + *ment* + *arian* + *ism*, each struck as the rules teach its sounds, every stroke after the first joined. `+` alone after any piece locks what is typed so far."
   },
   {
    "t": "list",
    "ordered": false,
    "items": [
-    "**Order.** A prefix starts the run or follows a prefix. A suffix follows the word or another suffix. The word between is a lexicon word or a known outline of **4 letters or more** (*a* + *less* is never read). A run that ends on a prefix is no reading.",
+    "**Order.** A prefix starts the run or follows a prefix. A suffix follows the word or another suffix. The word between is a lexicon word or a known outline of **4 letters or more** (*a* + *less* is never read). A run ending on a prefix is no reading.",
     "**A suffix chord that writes a suffix morpheme is that morpheme** (`+EUFT` *-ist*, `+AEUGS` *-ation*, `+-PLT` *-ment*, `+-PBS` *-ness*, `+-LS` *-less*, `+AOEUZ` *-ize*, `+SH-P` *-ship*, `+HAOD` *-hood*, `+EUZ/+-PL` *-ism*, `+U/+TEU` *-ity*, `+-BG/+UL` *-ical*): suffix morphemes may follow it (`ABS/+HRAOUT/+EUFT/+EU/+KHREU` is *absolute* + *-ist* + *-ically*), and so may suffix chords, as after any chord (`KAEUR/+-LS/+-PBS` *carelessness*).",
-    "**No suffix chord after a suffix morpheme**, no suffix morpheme after any other suffix chord, and nothing but a word or another prefix after a prefix: the table has the plurals itself (*-nesses*, *-isms*), and a prefix wants a word (`PHAOEU/+-BG/+R/+O/+-PB` is *micron*, not *micro* + *-en*).",
+    "**No suffix chord after a suffix morpheme**, no suffix morpheme after any other suffix chord, and only a word or another prefix after a prefix: the table has the plurals itself (*-nesses*, *-isms*), and a prefix wants a word (`PHAOEU/+-BG/+R/+O/+-PB` is *micron*, not *micro* + *-en*).",
     "**Every consonant of a morpheme is struck.** An unstressed vowel may be left out, as the rules fold it (`EUFPL` for *-ism*, `TPHUSZ` for *-nesses*), but not a morpheme's only vowel (`HE/+-D` is never *hood*) and never a stressed one.",
-    "**A morpheme is read by its spelling too**, letter by letter as a word's spelling is (each letter a sound, a doubled consonant one sound or two), every sound struck, for 3 more: `TPHESZ` is *-ness* as *n-e-s-s*, so `KHAOEURBD/+TPHESZ` is *childishness*, not *childish* + *-nesses*.",
-    "**The word and its chords spell a word.** In a reading built of morphemes, the word with any suffix chords on it must spell a lexicon word, as a stem and its chords alone must (*anti* + *conventional*, not *anti* + *convention* + `+-L`); and after the word's first suffix come only suffixes (*curry* + *-ation* + `+-FT` builds nothing). A reading that breaks either costs 4 and 6.",
+    "**A morpheme is also read by its spelling**, letter by letter as a word's spelling is (each letter a sound, a doubled consonant one sound or two), every sound struck, for 3 more: `TPHESZ` is *-ness* as *n-e-s-s*, so `KHAOEURBD/+TPHESZ` is *childishness*, not *childish* + *-nesses*.",
+    "**The word and its chords spell a word.** In a reading built of morphemes, the word with any suffix chords on it must spell a lexicon word, as a stem and its chords alone must (*anti* + *conventional*, not *anti* + *convention* + `+-L`); after the word's first suffix come only suffixes (*curry* + *-ation* + `+-FT` builds nothing). A reading that breaks either costs 4 and 6.",
     "**Spelling at the seams** is a suffix chord's (below): a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*).",
-    "**A word you know still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*. A plural *-s* at the end counts as a suffix here: a word or a built word and *-s* that spell no word cost 4 too."
+    "**A known word still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*. A plural *-s* at the end counts as a suffix here: a word or built word and *-s* that spell no word cost 4 too."
    ]
   },
   {
@@ -524,7 +524,7 @@
   },
   {
    "t": "p",
-   "x": "The sounds are ARPAbet (the pronunciation dictionary's): a digit marks a vowel and its stress, 1 or 2 stressed, 0 not. The short endings (*-s*, *-ed*, *-ing*, *-er*, *-ly* …) are not here: they are suffix chords ([suffix table](#/ref/suffixes)). A piece of one syllable with fewer than three sounds is never a morpheme: it would start or end half the words of the language."
+   "x": "The sounds are ARPAbet (the pronunciation dictionary's): a digit marks a vowel's stress, 1 or 2 stressed, 0 not. The short endings (*-s*, *-ed*, *-ing*, *-er*, *-ly* …) are not here: they are suffix chords ([suffix table](#/ref/suffixes)). A one-syllable piece with fewer than three sounds is never a morpheme: it would start or end half the words of the language."
   },
   {
    "t": "p",
@@ -583,7 +583,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "Not covered: a doubled final consonant (`!run` + `!ing`) and the `dye`/`singe` exceptions. A word like *running* is normally read whole from its sounds, so this only shows when the stem and suffix are read as pieces."
+   "x": "Not covered: a doubled final consonant (`!run` + `!ing`) and the `dye`/`singe` exceptions. A word like *running* is normally read whole from its sounds; this shows only when stem and suffix are read as pieces."
   },
   {
    "t": "h3",
@@ -591,7 +591,7 @@
   },
   {
    "t": "p",
-   "x": "keymux hands the solver the text typed just before the run (at most its last 256 bytes; nothing after a wall, when what came before is unknown). Its **last word** re-ranks the readings by how often each reading's first word follows it in the web's bigram counts (Google's web pairs, `data/frequency/bigrams_en.txt`, every pair seen 100,000 times or more): `-PB/+OE/+*` alone is *no*; after *I don't* it is *know*. `WAOE/+RE` alone is *where*; after *they* it is *were*."
+   "x": "keymux hands the solver the text typed just before the run (at most its last 256 bytes; nothing after a wall, where what came before is unknown). Its **last word** re-ranks the readings by how often each reading's first word follows it in the web's bigram counts (Google's web pairs, `data/frequency/bigrams_en.txt`, every pair seen 100,000 times or more): `-PB/+OE/+*` alone is *no*; after *I don't* it is *know*. `WAOE/+RE` alone is *where*; after *they* it is *were*."
   },
   {
    "t": "table",
@@ -628,7 +628,7 @@
   },
   {
    "t": "p",
-   "x": "Each reading's **first word** (its text up to a space, up to an apostrophe, without a last character that is no letter or digit, lowercase: *we're* is *we*, *dr.* is *dr*) is scored against the word before:"
+   "x": "Each reading's **first word** (its text up to a space or apostrophe, minus a last character that is no letter or digit, lowercase: *we're* is *we*, *dr.* is *dr*) is scored against the word before:"
   },
   {
    "t": "table",
@@ -639,11 +639,11 @@
    "rows": [
     [
      "listed",
-     "its pointwise mutual information: log2 of how much more often the pair occurs than the two words' counts make chance, `count(pair) × all pairs / (count(word before as a first word) × count(reading's word as a second word))`, each count summed over the list with every case it is written in folded together"
+     "its pointwise mutual information: log2 of how much more often the pair occurs than the two words' counts predict by chance, `count(pair) × all pairs / (count(word before as a first word) × count(reading's word as a second word))`, each count summed over the list with every case folded together"
     ],
     [
      "not listed, the reading's word a second word somewhere",
-     "the same with the pair's count taken as 50,000 (half the list's cut), but never above 0: counts only against a pair of words common enough that the list would hold them together"
+     "the same with the pair's count taken as 50,000 (half the list's cut), never above 0: counts only against a pair of words common enough that the list would hold them together"
     ],
     [
      "the reading's word no pair's second word",
@@ -655,10 +655,10 @@
    "t": "list",
    "ordered": false,
    "items": [
-    "**The score moves the cost by 0.3 points a bit**, to a tenth of a point, at most **4 points** either way. `-PB/+OE/+*` after *I don't*: *know* costs 4 and *no* 3, but *t know* is 5.3 bits likelier than chance, so *know* ranks at 4 − 1.6 = 2.4 and wins. A word's rarity costs 0.5 a halving of how common it is: the same scale.",
-    "**It only reorders within a rule.** The three rules come first: a brief or a taught outline struck whole is still its word, and a known word plus endings still beats any reading by sounds, whatever comes before. Within the readings by sounds the order is the cost less the score, then the commoner word.",
+    "**The score moves the cost by 0.3 points a bit**, to a tenth of a point, at most **4 points** either way. `-PB/+OE/+*` after *I don't*: *know* costs 4 and *no* 3, but *t know* is 5.3 bits likelier than chance, so *know* ranks at 4 − 1.6 = 2.4 and wins. A word's rarity costs 0.5 per halving of how common it is: the same scale.",
+    "**It only reorders within a rule.** The three rules come first: a brief or taught outline struck whole is still its word, and a known word plus endings still beats any reading by sounds, whatever comes before. Within readings by sounds the order is cost less score, then the commoner word.",
     "**It never decides whether a word is typed.** The floor below goes by the best reading's own cost.",
-    "**After a lone `+`** the text locked in is itself read after the word before the run, and the locked text and what follows are scored as one word against it.",
+    "**After a lone `+`** the locked text is itself read after the word before the run, and the locked text and what follows are scored as one word against it.",
     "Only the one word before counts, and only for the reading's first word: no pair inside a reading is scored."
    ]
   },
@@ -668,7 +668,7 @@
   },
   {
    "t": "p",
-   "x": "When no reading costs 40 or less, plus 6 for each stroke (the best reading's own cost, the word before left out), the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 24 strokes is read on its first 24, the strokes after them read back as keys and added on: none is dropped. keymux asks again on every stroke; the solver goes on from the run it read last where the two agree, so each stroke is one stroke's work however long the run (1.1 ms a stroke on average in wasm), with the same answer as reading the run afresh."
+   "x": "When no reading costs 40 or less, plus 6 per stroke (the best reading's own cost, the word before left out), the solver types the run's keys read back as plain sounds instead (below): a run that sounds like no word types what its keys say, not a far-fetched word. A run longer than 24 strokes is read on its first 24; the strokes after are read back as keys and added on: none is dropped. keymux asks again on every stroke; the solver continues from the run it read last where the two agree, so each stroke is one stroke's work however long the run (1.1 ms a stroke on average in wasm), with the same answer as reading the run afresh."
   },
   {
    "t": "h",
@@ -676,14 +676,14 @@
   },
   {
    "t": "p",
-   "x": "Each stroke's plainest reading, its sounds spelled plainly (not real orthography: no word is on record to give one). It is what the solver types below its floor, and what `!resolve` and `!lookup` print for a miss when no solver is built."
+   "x": "Each stroke's plainest reading: its sounds spelled plainly (not real orthography: no word is on record to give one). It is what the solver types below its floor, and what `!resolve` and `!lookup` print for a miss when no solver is built."
   },
   {
    "t": "list",
    "items": [
     "A vowelless stroke reads with no invented vowel: `-T` alone reads `!t`.",
     "A suffix chord after the first stroke reads as its suffix: `+-D` reads `!ed`, not `!d`.",
-    "Every key means something on its own and every one of the 15 non-empty vowel-key combinations is a vowel, so almost every stroke reads as something. The only stroke with no reading is one with no onset, vowel or coda once the star and join keys are set aside."
+    "Every key means something alone and every one of the 15 non-empty vowel-key combinations is a vowel, so almost every stroke reads as something. The only stroke with no reading has no onset, vowel or coda once the star and join keys are set aside."
    ],
    "ordered": false
   },
@@ -697,7 +697,7 @@
   },
   {
    "t": "p",
-   "x": "`deploy` ships **no backups**. Any outline that sounds like a word is read by the solver, so keymux holds no list of the dozens of ways into each word: a word keeps its primary outline and its other entries (short forms, alternates, extras), and every other outline types whatever the solver reads it as. `build` still writes the generated backups to `out/lyk/02-lyk-backups.json`, never deployed: they are the solver's test set (`solve --eval` reads every Nth one and checks it types its word, 85% do) and the catalogue `lookup` and this site list ways into a word from. An outline whose backup word differs from what the solver reads types the solver's word."
+   "x": "`deploy` ships **no backups**. The solver reads any outline that sounds like a word, so keymux holds no list of the dozens of ways into each word: a word keeps its primary outline and its other entries (short forms, alternates, extras); every other outline types what the solver reads it as. `build` still writes the generated backups to `out/lyk/02-lyk-backups.json`, never deployed: they are the solver's test set (`solve --eval` reads every Nth one and checks it types its word, 85% do) and the catalogue `lookup` and this site list ways into a word from. An outline whose backup word differs from the solver's reading types the solver's word."
   },
   {
    "t": "h",

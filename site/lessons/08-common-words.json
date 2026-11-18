@@ -1,11 +1,11 @@
 {
   "id": "08-common-words",
   "title": "The common words",
-  "goal": "The words you type most are briefs: short, memorised, often one or two keys. Learn them by frequency, ten at a time.",
+  "goal": "The most-typed words are briefs: short, memorised, often one or two keys. Learn by frequency, ten at a time.",
   "blocks": [
     { "t": "h", "x": "Why briefs" },
-    { "t": "p", "x": "A **brief** is a word's outline taken from Plover or Lapwing, or the cheapest one lyk's rules can find. It is free to be a pure shortcut with no phonetic link to its word. [[it|T]] is just `T`, [[the|-T]] is the right-hand `T`, [[a|A]] is `A`." },
-    { "t": "note", "kind": "rule", "x": "Every word has one primary outline. Speed is measured on the fastest outline of each word. Extra outlines never take a stroke another word needs, so what you learn here is never overwritten." },
+    { "t": "p", "x": "A **brief** is a word's outline taken from Plover or Lapwing, or the cheapest one lyk's rules find. It may be a pure shortcut with no phonetic link to its word: [[it|T]] is `T`, [[the|-T]] is the right-hand `T`, [[a|A]] is `A`." },
+    { "t": "note", "kind": "rule", "x": "Every word has one primary outline; speed is measured on each word's fastest. Extra outlines never take a stroke another word needs, so these are never overwritten." },
     { "t": "h", "x": "The smallest words" },
     { "t": "table", "head": ["Word", "Stroke", "Word", "Stroke", "Word", "Stroke"], "rows": [
       ["{{a}}", "[[a|A]]", "{{he}}", "[[he|E]]", "{{to}}", "[[to|O]]"],
@@ -41,13 +41,13 @@
     ] },
     { "t": "h", "x": "How to learn them" },
     { "t": "list", "items": [
-      "Ten at a time. Drill, then move on; the **Practice** tab mixes in everything you have done.",
-      "Rows that look odd (*the* on a bare `-T`) are on purpose: the commonest words get the cheapest keys.",
-      "Past the 550 commonest words every sound at the start of a word has its own keys (*grab* is `TKPWRAB`, with the whole `TKPW` for G), so there is nothing to memorise but the rules.",
-      "Stuck on a word? **Lookup** shows its fastest outline and the other ways in.",
-      "Each of these also has joins and extras. You will never need them for a word you have memorised."
+      "Ten at a time. Drill, then move on; the **Practice** tab mixes in all earlier material.",
+      "Odd-looking rows (*the* on a bare `-T`) are deliberate: the commonest words get the cheapest keys.",
+      "Past the 550 commonest words every word-initial sound has its own keys (*grab* is `TKPWRAB`, the whole `TKPW` for G); only the rules need memorising.",
+      "**Lookup** shows a word's fastest outline and the alternatives.",
+      "Each also has joins and extras, not needed for a memorised word."
     ] },
-    { "t": "try", "title": "The smallest words", "items": [["a", "A"], ["the", "-T"], ["of", "-F"], ["and", "SKP"], ["to", "O"], ["in", "TPH"], ["it", "T"], ["is", "S"]], "x": "Eight of the commonest words in English." }
+    { "t": "try", "title": "The smallest words", "items": [["a", "A"], ["the", "-T"], ["of", "-F"], ["and", "SKP"], ["to", "O"], ["in", "TPH"], ["it", "T"], ["is", "S"]], "x": "Eight of the commonest English words." }
   ],
   "drill": {
     "title": "Common words",

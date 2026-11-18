@@ -1,7 +1,7 @@
 {
  "id": "build-and-files",
  "title": "Build, files and tools",
- "goal": "Run the program, know what each command and option does, where the data comes from, what each dictionary file holds, and how to measure a change.",
+ "goal": "Run the program; each command and option; where the data comes from; what each dictionary file holds; how to measure a change.",
  "blocks": [
   {
    "t": "h",
@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "lyk is steno with explicit word boundaries: every stroke after the first of a word carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from what Plover and Lapwing already do and measured against them. It is written in Rust with the rules as data. American English only. See [the join key](#/ref/join-key)."
+   "x": "lyk is steno with explicit word boundaries: every stroke after a word's first carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from Plover's and Lapwing's outlines and measured against them. Rust, rules as data. American English only. See [the join key](#/ref/join-key)."
   },
   {
    "t": "h",
@@ -18,11 +18,11 @@
   {
    "t": "list",
    "items": [
-    "**Optimized for speed, not for being guessable.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs the least to type. Nothing has to be derivable from the word's sound or spelling.",
-    "**One primary outline per word, extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed, so they cost no other word anything.",
-    "**An explicit join key.** Continuation strokes are never mistaken for words, which is what lets a suffix be one key.",
-    "**Measured, not asserted.** `!score` and `build --report` print cost and match-rate against Plover and Lapwing on the same words. The benchmark tables are in the repository README and are checked by `score --check-readme`.",
-    "**A miss types its word.** A stroke or `+` run the dictionary lacks is read by the solver, a keymux plugin lyk ships, as the word its keys sound like; `resolve` and `lookup` print the same answer: see [the solver](#/ref/fallback)."
+    "**Optimized for speed, not guessability.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs least to type. Nothing need be derivable from the word's sound or spelling.",
+    "**One primary outline per word; extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed.",
+    "**An explicit join key.** Continuation strokes are never mistaken for words, so a suffix can be one key.",
+    "**Measured.** `!score` and `build --report` print cost and match-rate against Plover and Lapwing on the same words. Benchmark tables are in the repository README, checked by `score --check-readme`.",
+    "**A miss types its word.** A stroke or `+` run the dictionary lacks is read by the solver (a keymux plugin lyk ships) as the word its keys sound like; `resolve` and `lookup` print the same answer: see [the solver](#/ref/fallback)."
    ],
    "ordered": false
   },
@@ -63,7 +63,7 @@
     ],
     [
      "`!build`",
-     "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)), and print what was written: the total and one line per file, with `(unchanged)` on a file whose bytes did not change. One extra warning line appears only when a word is stranded on a worse outline than its own plain reading. See [build output](#/ref/build-and-files/build-output)."
+     "Briefs plus rules produce `out/lyk/02-lyk-*.json` (see [the files](#/ref/build-and-files/the-dictionary-files)) and print what was written: the total and one line per file, `(unchanged)` on a file whose bytes did not change. One extra warning line only when a word is stranded on a worse outline than its own plain reading. See [build output](#/ref/build-and-files/build-output)."
     ],
     [
      "`!deploy`",
@@ -87,7 +87,7 @@
     ],
     [
      "`learn`",
-     "Which keys Plover and Lapwing use for each sound group. This is how most rules were found: it counts the keys they use where they agree."
+     "Which keys Plover and Lapwing use for each sound group, counting where they agree. Most rules were found this way."
     ],
     [
      "`build --report`",
@@ -103,7 +103,7 @@
     ],
     [
      "`lookup [WORD|PHRASE|STROKES] [--show-keys] [--fast] [--rebuild]` (alias `keys`)",
-     "A word, a phrase (its own entry first when it has one, then word by word: `lookup \"to the\"` shows the phrase `TOTD`, then *to* and *the*), or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. A single word of two letters or more also finds the keymux commands whose text contains it, in lyk's column only, right after the word's best outline: `lookup tape` shows `{:tape:toggle}` `[[PHRO*T]]` and `{:tape:clear}` `[[PHRO*TZ]]`, `lookup overlay` the three overlay controls, `lookup keyboard` the diagram toggle, `lookup control` the Control shortcuts (only entries made of `{:...}`, `{PLOVER:...}` and `{#...}` metas; the `{:firstup}` and `{:transparent}` markers are not shown). Keymux's live lookup does the same. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
+     "A word, a phrase (its own entry first when it has one, then word by word: `lookup \"to the\"` shows the phrase `TOTD`, then *to* and *the*), or (all capitals) a stroke, answered from the built dictionary in lyk, Plover and Lapwing side by side. Example: `lookup \"everybody's\"`. A single word of two letters or more also finds the keymux commands whose text contains it, in lyk's column only, right after the word's best outline: `lookup tape` shows `{:tape:toggle}` `[[PHRO*T]]` and `{:tape:clear}` `[[PHRO*TZ]]`, `lookup overlay` the three overlay controls, `lookup keyboard` the diagram toggle, `lookup control` the Control shortcuts (only entries made of `{:...}`, `{PLOVER:...}` and `{#...}` metas; `{:firstup}` and `{:transparent}` are not shown). Keymux's live lookup does the same. With nothing after it, the interactive session: type, and the answer follows every key. `keys` is the same command under keymux's name. See [the interactive session](#/ref/build-and-files/the-interactive-session)."
     ],
     [
      "`resolve [STROKES] [--rebuild]` (alias `stroke`)",
@@ -140,7 +140,7 @@
     ],
     [
      "Bigram frequency",
-     "Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](#/ref/phrases)."
+     "Norvig's Google Books Ngrams (`count_2w.txt`); picks the word pairs that become [phrases](#/ref/phrases)."
     ],
     [
      "Dictionaries to match",
@@ -154,7 +154,7 @@
   },
   {
    "t": "p",
-   "x": "`!build` does not write one big dictionary. It writes several small Plover JSON files, one for each **way an entry came about**, and `!deploy` puts them in keymux's folder next to the reserved-stroke files. What a stroke means does not depend on the split."
+   "x": "`!build` writes several small Plover JSON files, one per **way an entry came about**; `!deploy` puts them in keymux's folder next to the reserved-stroke files. The split does not change what a stroke means."
   },
   {
    "t": "table",
@@ -203,19 +203,19 @@
   },
   {
    "t": "p",
-   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` (the [reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`), the [name lane](#/ref/names)'s `03-lyk-names.json` (lyk's own outlines for names, `#/` and an outline) and `03-lyk-names-borrowed.json` (Lapwing's, only for a name the rules cannot strike; written by `!build` and shipped by `!deploy`), and the solver plugin, `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly the first time it loads it and whenever it changes, see [the solver](#/ref/fallback))."
+   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` ([reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`); the [name lane](#/ref/names)'s `03-lyk-names.json` (lyk's own outlines for names, `#/` and an outline) and `03-lyk-names-borrowed.json` (Lapwing's, only for a name the rules cannot strike), both written by `!build` and shipped by `!deploy`; and the solver plugin `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly on first load and on every change, see [the solver](#/ref/fallback))."
   },
   {
    "t": "p",
-   "x": "Two small files also land in `out/lyk/`, neither a dictionary and neither shipped by `!deploy`: `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so the time says when the dictionary was last checked against the rules; it holds only the source hash, see Version below)."
+   "x": "Two small files also land in `out/lyk/`, neither a dictionary, neither shipped by `!deploy`: `family.json` (which entries of `!words` are a family's shape, so a dictionary read back ranks them as the generator did) and `.built` (rewritten by every `!build`, even when no dictionary file changed, so its time says when the dictionary was last checked against the rules; holds only the source hash, see Version below)."
   },
   {
    "t": "list",
    "items": [
-    "The generator keeps exactly one word per outline, so **no outline appears in two files** and the load order never changes what a stroke types. `!build` checks this.",
+    "The generator keeps exactly one word per outline: **no outline appears in two files**, so load order never changes what a stroke types. `!build` checks this.",
     "Which file an entry goes in is decided in one place, `Role::of` in `src/output.rs`, from the entry's `Origin`.",
-    "The file name tells you what kind of outline you are looking at: a `+` outline in `backups` is a fallback, and the same word's primary is in `!words`.",
-    "keymux caches and reloads per file. A change that moves only some entries rewrites only those files, and `!build` compares bytes first, so a file whose content did not change is not rewritten and keymux sees nothing to do for it."
+    "The file name says the kind of outline: a `+` outline in `backups` is a fallback; the same word's primary is in `!words`.",
+    "keymux caches and reloads per file. A change moving only some entries rewrites only those files; `!build` compares bytes first, so an unchanged file is not rewritten and keymux has nothing to do for it."
    ],
    "ordered": false
   },
@@ -225,15 +225,15 @@
   },
   {
    "t": "p",
-   "x": "These three read back the dictionary `!build` already wrote to `out/lyk` instead of generating it again: a few seconds at most, not tens of seconds, and the same outline for every word (a test writes a build, reads it back and compares every word). If the stamp in `out/lyk` says other rules or another generator made it, a dim note says so (see Version below); `--rebuild` generates from scratch for that case. With no built dictionary they generate, as before. `lookup` and `resolve` also keep what they read in `out/cache/` (the gold dictionaries, the pronunciations, the read-back entries, the backups sorted by word), made again on the first lookup after the program or any file it came from changes, so a lookup takes about a tenth of a second rather than two."
+   "x": "These three read back the dictionary `!build` wrote to `out/lyk` instead of regenerating: a few seconds at most, not tens, with the same outline for every word (a test writes a build, reads it back and compares every word). If the stamp in `out/lyk` says other rules or another generator made it, a dim note says so (see Version below); `--rebuild` generates from scratch. With no built dictionary they generate. `lookup` and `resolve` also keep what they read in `out/cache/` (the gold dictionaries, the pronunciations, the read-back entries, the backups sorted by word), remade on the first lookup after the program or any source file changes; a lookup takes about a tenth of a second rather than two."
   },
   {
    "t": "list",
    "items": [
-    "**A word that is not an entry is composed from entries.** `everybody's` is not in the dictionary as one word, but `everybody` (`EFB`) is, and `'s` is a standalone suffix stroke (`+-PBTS`), so the answer is `EFB/+-PBTS`, two strokes, and is labelled `composed`. A word of two dictionary words (`noone`: `no` then `+one`) works the same way. The fewest strokes win, then the fewest keys, then the fewest pieces; the rules' syllable-by-syllable reading is used only if it costs less, and a tie goes to the pieces.",
-    "**The join key is written out.** Every stroke after a word's first carries `+`, in the rules' own readings too, as it does in the dictionary files.",
-    "**Plover and Lapwing get the same treatment.** Where a theory has no entry for a word, `quote` and `lookup` compose one from that theory's own words and its own suffix strokes (`{^s}`, `{^'s}`, `{^ing}`), with its `{^}` stroke between two words, since neither has a join key. A `-` in their column now means they genuinely cannot write the word that way.",
-    "A composition needs both pieces to be dictionary words of at least two letters (or a suffix after the first piece), so no stray letter is ever a \"word\"."
+    "**A word that is not an entry is composed from entries.** `everybody's` is not a dictionary word, but `everybody` (`EFB`) is and `'s` is a standalone suffix stroke (`+-PBTS`): the answer is `EFB/+-PBTS`, two strokes, labelled `composed`. A word of two dictionary words (`noone`: `no` then `+one`) works the same way. Fewest strokes wins, then fewest keys, then fewest pieces; the rules' syllable-by-syllable reading is used only if it costs less; a tie goes to the pieces.",
+    "**The join key is written out.** Every stroke after a word's first carries `+`, in the rules' own readings too, as in the dictionary files.",
+    "**Plover and Lapwing get the same treatment.** Where a theory has no entry for a word, `quote` and `lookup` compose one from that theory's own words and suffix strokes (`{^s}`, `{^'s}`, `{^ing}`), with its `{^}` stroke between two words (neither has a join key). A `-` in their column means they cannot write the word that way.",
+    "A composition needs both pieces to be dictionary words of at least two letters (or a suffix after the first piece): no stray letter is a \"word\"."
    ],
    "ordered": false
   },
@@ -243,21 +243,21 @@
   },
   {
    "t": "p",
-   "x": "`lookup` (alias `keys`), `resolve` (alias `stroke`), `explain`, `ergonomics`, `paths` and `family` take a word or a stroke. Run with one, they print their answer and exit. Run with **nothing** after the name, each opens the same session: a `›` prompt, and under it the answer for what is typed so far, redrawn in place on every key. It is keymux's `steno lookup` / `keys` / `stroke` line for line (`src/answer.rs`, `src/view.rs` and `src/interactive.rs` mirror keymux's `steno/answer.rs`, `view.rs` and `interactive.rs`), with one difference: keymux resolves its one engine setup, and this shows all three theories. It reads the built dictionary in `out/lyk`, so it starts in a second or two and each key is instant; `--rebuild` generates from scratch instead."
+   "x": "`lookup` (alias `keys`), `resolve` (alias `stroke`), `explain`, `ergonomics`, `paths` and `family` take a word or a stroke and print their answer and exit. With **nothing** after the name, each opens the same session: a `›` prompt, and under it the answer for what is typed so far, redrawn in place on every key. It matches keymux's `steno lookup` / `keys` / `stroke` line for line (`src/answer.rs`, `src/view.rs` and `src/interactive.rs` mirror keymux's `steno/answer.rs`, `view.rs` and `interactive.rs`), except that keymux resolves its one engine setup and this shows all three theories. It reads the built dictionary in `out/lyk`: starts in a second or two, each key instant; `--rebuild` generates from scratch."
   },
   {
    "t": "list",
    "items": [
-    "**The screen.** One line is the prompt (`› ` and your query); under it the answer, and a dim line of hints closes it. It never switches screens, so what you keep stays in your scrollback, and it never grows past the terminal's height (a line `… N more lines` says what was cut). A burst of keys (a paste, a held Backspace) costs one search.",
-    "**The table.** Columns `word`, `lyk`, `plover`, `lapwing` (each outline column at least 12 wide, as in `quote`), and `keys` when shown. A word's first row has its best outline in each theory; each row after it (the word column blank) is another outline that types it, fewest strokes first, backups included: all of lyk's, and all of Plover's and Lapwing's. A `-` is a theory with no outline there. A single word of two letters or more is followed by up to eight longer words that start with it (dimmed; shortest first, then alphabetical), each with its best outline in the three theories.",
-    "**A word that is not an entry** is composed from entries when that takes no more strokes than the rules' reading, with a note under the table: `everybody's was not a whole entry - composed (lyk: everybody + 's; plover: everybody + 's; lapwing: everybody + 's)`, naming each theory that composed it. Otherwise lyk shows the rules' own phonetic reading, or spelling mode for a word with no pronunciation, in quotes with a note (`has no dictionary entry - shown ...`). A word nothing can write shows `no stroke`. A real entry always wins.",
-    "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading of it with a note when it is not an entry, or `(no translation)`. Under it are the dimmed entries nearest to it (same number of strokes, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column.",
-    "**Totals.** Under the table: `keys (best outline of each word): N in S strokes` for lyk, then `keys (shared vocabulary only, fair comparison): lyk-vs-plover ... lyk-vs-lapwing ...` as `quote` prints it, counting only the words both theories write. Completions and nearby entries are not counted.",
-    "**Colour, where the terminal has it** (`NO_COLOR` and a pipe turn it off): each key is coloured by part of the keyboard (green left hand, yellow vowels, red right hand, cyan `*`, `#` and the `+`/`~` marks), the `/` between strokes is dim, and keys one finger plays together (`T K`, `P W`, `H R`, `A O`, `E U`, `F R`, `P B`, `L G`, `T S`, `D Z`) are underlined as one run. Colour never changes the text.",
-    "**Keys.** Any character adds to the query (lookups are case-sensitive for the stroke test: capitals with no lowercase read as a stroke). Backspace, Ctrl-W, Ctrl-U delete a character, a word, the whole query. Tab shows or hides the `keys` column: the QWERTY keys that press lyk's outline, the join key `+` on `T` (the left index finger's inner column; `G` presses it too) and the star on `Y` (the right index; `H` too), `S-` on `A` (`Q` presses it too). Ctrl-F toggles the best outline of each word only. Enter leaves and keeps the answer on screen (and, in `explain`, `ergonomics`, `paths` and `family`, then runs that command's report for the line; `family` and `paths` generate the dictionary the first time). Esc, Ctrl-C, Ctrl-D leave and clear the screen it used.",
+    "**The screen.** One prompt line (`› ` and your query), the answer under it, a dim line of hints at the end. It never switches screens, so what you keep stays in scrollback, and never grows past the terminal's height (a line `… N more lines` says what was cut). A burst of keys (a paste, a held Backspace) costs one search.",
+    "**The table.** Columns `word`, `lyk`, `plover`, `lapwing` (each outline column at least 12 wide, as in `quote`), and `keys` when shown. A word's first row has its best outline in each theory; each later row (word column blank) is another outline that types it, fewest strokes first, backups included: all of lyk's, Plover's and Lapwing's. `-` is a theory with no outline there. A single word of two letters or more is followed by up to eight longer words starting with it (dimmed; shortest first, then alphabetical), each with its best outline in the three theories.",
+    "**A word that is not an entry** is composed from entries when that takes no more strokes than the rules' reading, with a note under the table: `everybody's was not a whole entry - composed (lyk: everybody + 's; plover: everybody + 's; lapwing: everybody + 's)`, naming each theory that composed it. Otherwise lyk shows the rules' phonetic reading, or spelling mode for a word with no pronunciation, in quotes with a note (`has no dictionary entry - shown ...`). A word nothing can write shows `no stroke`. A real entry always wins.",
+    "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading with a note when it is not an entry, or `(no translation)`. Under it, dimmed, the nearest entries (same stroke count, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column.",
+    "**Totals.** Under the table: `keys (best outline of each word): N in S strokes` for lyk, then `keys (shared vocabulary only, fair comparison): lyk-vs-plover ... lyk-vs-lapwing ...` as `quote` prints it, counting only words both theories write. Completions and nearby entries are not counted.",
+    "**Colour, where the terminal has it** (`NO_COLOR` and a pipe turn it off): each key is coloured by keyboard part (green left hand, yellow vowels, red right hand, cyan `*`, `#` and the `+`/`~` marks), the `/` between strokes is dim, and keys one finger plays together (`T K`, `P W`, `H R`, `A O`, `E U`, `F R`, `P B`, `L G`, `T S`, `D Z`) are underlined as one run. Colour never changes the text.",
+    "**Keys.** Any character adds to the query (the stroke test is case-sensitive: capitals with no lowercase read as a stroke). Backspace, Ctrl-W, Ctrl-U delete a character, a word, the whole query. Tab shows or hides the `keys` column: the QWERTY keys that press lyk's outline, the join key `+` on `T` (the left index finger's inner column; `G` presses it too), the star on `Y` (the right index; `H` too), `S-` on `A` (`Q` too). Ctrl-F toggles best outline of each word only. Enter leaves and keeps the answer on screen (in `explain`, `ergonomics`, `paths` and `family` it then runs that command's report for the line; `family` and `paths` generate the dictionary the first time). Esc, Ctrl-C, Ctrl-D leave and clear the screen it used.",
     "**Flags.** `--show-keys` starts with the keys column shown and `--fast` with only best outlines, on `lookup` and `keys`; `resolve`/`stroke` have neither.",
-    "**Bare or with an argument.** Bare opens the session (it needs a terminal at both ends). With an argument the same table prints once, plain when piped. With input piped in and nothing after the name, one query is read per line, each answer is printed followed by a blank line, and an empty line or the end of the input stops it. A query that is only whitespace prints `Nothing to look up`.",
-    "**Where it differs from keymux** (all because lyk has three theories and no keyboard config): a column per theory; the second totals line; the composed note names the theory; one `keys` column, for lyk; the keys column uses the default QWERTY layout and the author's `+` on `T`/`G` and star on `Y`/`H` rather than reading a keymux config; a stroke query fills lyk's column alone; lookups are on lowercased words (the dictionary has no capitalized entries); a word the dictionary lacks can be shown as the rules' reading, which keymux has no notion of."
+    "**Bare or with an argument.** Bare opens the session (needs a terminal at both ends). With an argument the same table prints once, plain when piped. With input piped in and nothing after the name, one query is read per line, each answer printed followed by a blank line; an empty line or end of input stops it. A whitespace-only query prints `Nothing to look up`.",
+    "**Where it differs from keymux** (lyk has three theories and no keyboard config): a column per theory; the second totals line; the composed note names the theory; one `keys` column, for lyk; the keys column uses the default QWERTY layout and the author's `+` on `T`/`G` and star on `Y`/`H` instead of reading a keymux config; a stroke query fills lyk's column alone; lookups are on lowercased words (no capitalized entries); a word the dictionary lacks can be shown as the rules' reading, which keymux does not do."
    ],
    "ordered": false
   },
@@ -267,7 +267,7 @@
   },
   {
    "t": "p",
-   "x": "The version is not written anywhere: `build.rs` asks git when the program is compiled and bakes the answer into the binary, the way keymux does. `lyk-steno-theory --version` (or `-V`) and the hidden `version` command (in no help or menu) print the same line: `lyk-steno-theory <version>`. `build` prints it as the first line of its output too (also with `--report`)."
+   "x": "The version is written nowhere: `build.rs` asks git when the program is compiled and bakes the answer into the binary, as keymux does. `lyk-steno-theory --version` (or `-V`) and the hidden `version` command (in no help or menu) print `lyk-steno-theory <version>`. `build` prints it as the first line of its output (also with `--report`)."
   },
   {
    "t": "table",
@@ -282,11 +282,11 @@
   },
   {
    "t": "p",
-   "x": "Tags are read only when named `v` and a number (`git describe --match 'v[0-9]*'`); `LYK_VERSION=1.2.0` in the environment at compile time overrides everything. A plain `cargo build` or `cargo run` after a commit, a checkout or an edit to `src/`, `rules/` or `Cargo.toml` shows the new version with no `cargo clean`; it works inside a linked worktree."
+   "x": "Tags are read only when named `v` and a number (`git describe --match 'v[0-9]*'`); `LYK_VERSION=1.2.0` in the environment at compile time overrides everything. A plain `cargo build` or `cargo run` after a commit, checkout or edit to `src/`, `rules/` or `Cargo.toml` shows the new version without `cargo clean`; works inside a linked worktree."
   },
   {
    "t": "p",
-   "x": "**The stale check.** `build` writes `out/lyk/.built`: one line, `source=<hash>`, a content hash of what decides the dictionary's bytes: every `.rs` file under `src/`, every file under `rules/`, `Cargo.toml` and `Cargo.lock` (relative names and contents), computed by `build.rs` when the program is compiled. Docs, `site/`, the README, `docs/`, `plans/` and the git commit are not in it, so a docs-only commit never makes `out/lyk` look stale and any change to the rules or the generator does. `lookup`, `resolve`, `explain`, `quote`, `ergonomics`, `paths` and `family` compare it with the running binary's own hash when they read `out/lyk` back, and print one dim line on stderr if it differs: `note: out/lyk may not match this code: the rules or the generator changed after it was built; run build (or pass --rebuild)` (or `it was built before builds recorded the source they came from` for an older stamp). It prints once per run (the interactive session checks once at the start), never when stdout is not a terminal, and never when either hash is `none` (no `src/` or `rules/` to hash). `--no-stale-check` or `LYK_NO_STALE_NOTE=1` silences it; `--rebuild` generates from scratch instead of reading `out/lyk`. `build` and `deploy` always generate, so they never check. The version line (the git hash) is for `--version` and the `build` header only; it is not compared."
+   "x": "**The stale check.** `build` writes `out/lyk/.built`: one line, `source=<hash>`, a content hash (computed by `build.rs` at compile time) of what decides the dictionary's bytes: every `.rs` file under `src/`, every file under `rules/`, `Cargo.toml` and `Cargo.lock` (relative names and contents). Docs, `site/`, the README, `docs/`, `plans/` and the git commit are not in it: a docs-only commit never makes `out/lyk` look stale; any change to rules or generator does. `lookup`, `resolve`, `explain`, `quote`, `ergonomics`, `paths` and `family` compare it with the running binary's hash when they read `out/lyk` back, and print one dim line on stderr if it differs: `note: out/lyk may not match this code: the rules or the generator changed after it was built; run build (or pass --rebuild)` (or `it was built before builds recorded the source they came from` for an older stamp). It prints once per run (the interactive session checks once at the start), never when stdout is not a terminal, never when either hash is `none` (no `src/` or `rules/` to hash). `--no-stale-check` or `LYK_NO_STALE_NOTE=1` silences it; `--rebuild` generates from scratch instead of reading `out/lyk`. `build` and `deploy` always generate, so never check. The version line (the git hash) is for `--version` and the `build` header only; it is not compared."
   },
   {
    "t": "h3",
@@ -294,7 +294,7 @@
   },
   {
    "t": "p",
-   "x": "`!build` and `!deploy` are quiet: the version line, the `wrote N entries` line, one line per file (`(unchanged)` when nothing changed), and a `warning:` line only if a word is stranded on a worse outline. The diagnostics are `build --report`; the health conditions they showed are asserted by tests that stay silent unless one fails (`cargo test --release`; skipped with a message if `data/` is missing)."
+   "x": "`!build` and `!deploy` are quiet: the version line, the `wrote N entries` line, one line per file (`(unchanged)` when nothing changed), and a `warning:` line only if a word is stranded on a worse outline. Diagnostics are `build --report`; the health conditions they showed are asserted by tests that stay silent unless one fails (`cargo test --release`; skipped with a message if `data/` is missing)."
   },
   {
    "t": "table",
@@ -319,7 +319,7 @@
   },
   {
    "t": "p",
-   "x": "`!deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed the same way every time, so the same dictionary always gives the same bytes."
+   "x": "`!deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed identically each time, so the same dictionary gives the same bytes."
   },
   {
    "t": "h",
@@ -327,7 +327,7 @@
   },
   {
    "t": "p",
-   "x": "Python 3, no dependencies, in `tools/`. Every tool reads the built dictionary in `out/lyk/` (run `cargo run --release -- build` first) and the data in `data/`, from wherever it is run. `lyk_out.py` is the shared loader, not a tool."
+   "x": "Python 3, no dependencies, in `tools/`. Each tool reads the built dictionary in `out/lyk/` (run `cargo run --release -- build` first) and the data in `data/`, from wherever it is run. `lyk_out.py` is the shared loader, not a tool."
   },
   {
    "t": "table",
@@ -378,7 +378,7 @@
    "t": "list",
    "items": [
     "`cargo run --release -- score --check-readme` checks the README's tables.",
-    "To check that a change moved no word at all, compare a hash of the output: `sha256sum out/lyk/*.json`."
+    "To check that a change moved no word, compare a hash of the output: `sha256sum out/lyk/*.json`."
    ],
    "ordered": false
   }

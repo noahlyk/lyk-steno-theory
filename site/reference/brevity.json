@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Each brevity step is a transformation of a word's full outline that you can do by hand. A step applies to a word only if the word is common enough (its place in the frequency list is below the step's rank), has enough syllables, and the result is typable and free. The steps are listed from `rules/plover.toml` (the `brevity` table), shortest idea last."
+   "x": "Each brevity step transforms a word's full outline by hand. A step applies only if the word is common enough (its place in the frequency list is below the step's rank), has enough syllables, and the result is typable and free. Steps are from `rules/plover.toml` (the `brevity` table), shortest idea last."
   },
   {
    "t": "table",
@@ -79,7 +79,7 @@
   {
    "t": "note",
    "kind": "rule",
-   "x": "The skeleton with the stressed vowel is the one short form a learner can derive without seeing it: keep every consonant, keep the stressed vowel, drop the rest. `!shell`, `!ends` and the vowel-less skeleton drop consonants too, and which ones is not predictable, so they are a privilege of the 8,000 commonest words. They are the one place a sound may still be dropped for a stroke: the faithful rule ([faithful outlines](#/ref/collisions)) applies to gold briefs, and these forms are not changed by it."
+   "x": "The skeleton with the stressed vowel is derivable: keep every consonant and the stressed vowel, drop the rest. `!shell`, `!ends` and the vowel-less skeleton also drop consonants, unpredictably, so only the 8,000 commonest words get them. They are the one place a sound may still be dropped for a stroke: the faithful rule ([faithful outlines](#/ref/collisions)) applies to gold briefs, not these forms."
   },
   {
    "t": "p",
@@ -100,9 +100,9 @@
   {
    "t": "list",
    "items": [
-    "A short form never takes an outline that any word has by the rules, so the forms a learner can work out stay theirs.",
-    "When a short form is taken, a star on it is tried before giving up: a star costs a key, a longer form costs a stroke.",
-    "A one-syllable word's starred stroke is kept for the word that sounds like it. A short form pays half a stroke extra to take one, so it does only when its next form is a whole stroke longer and it is said far more often (*attack* keeps [[TA*BG]] over *tack*). See [when two words sound the same](#/ref/collisions)."
+    "A short form never takes an outline that some word has by the rules.",
+    "When a short form is taken, a star on it is tried first: a star costs a key, a longer form a stroke.",
+    "A one-syllable word's starred stroke is kept for the word that sounds like it. A short form pays half a stroke extra to take one, so it takes one only when its next form is a whole stroke longer and it is said far more often (*attack* keeps [[TA*BG]] over *tack*). See [when two words sound the same](#/ref/collisions)."
    ],
    "ordered": false
   },
@@ -116,7 +116,7 @@
     "Settling runs its family passes with a word past rank 8,000 holding its skeleton back.",
     "Then the 5,000 commonest words are locked to whatever they settled on, and one last pass runs with every skeleton in.",
     "A locked word keeps its outline exactly, nobody else may take it, and no locked word may take another's.",
-    "Afterwards, any word left on a worse outline than one of its own candidates that nobody holds moves to it, so no word is stranded."
+    "Afterwards, a word on a worse outline than one of its own unheld candidates moves to it, so no word is stranded."
    ],
    "ordered": false
   },
@@ -131,10 +131,10 @@
   {
    "t": "list",
    "items": [
-    "Every word keeps every short form still free beside its rule outline, once its primary is settled. The dictionary holds both ends of the spectrum, and the cheapest counts toward `!cheapest` regardless.",
-    "This pass runs strictly after every word's primary outline is final, so a common word's bonus short form can never take text a rarer word needed as its primary.",
-    "It also runs after the alternate-pronunciation and [backup](#/ref/syllables) passes, so a stem-plus-ending join ([[looks|HRAOBG/+-S]]) or another pronunciation's reading is never blocked by a one-off short form that wanted the same text. When the predictable form and the memorised one collide, the predictable one holds it.",
-    "A word pinned to a literal `[word]` override (see [briefs](#/ref/briefs)) is the one exception: its single entry is a human decision, not reopened by a bonus short form."
+    "Once its primary is settled, every word keeps every still-free short form beside its rule outline. The dictionary holds both; the cheapest counts toward `!cheapest` regardless.",
+    "This pass runs after every primary outline is final, so a bonus short form never takes text a rarer word needed as its primary.",
+    "It runs after the alternate-pronunciation and [backup](#/ref/syllables) passes, so a stem-plus-ending join ([[looks|HRAOBG/+-S]]) or another pronunciation's reading is never blocked by a short form wanting the same text. When the predictable and memorised forms collide, the predictable one holds it.",
+    "A word pinned to a literal `[word]` override (see [briefs](#/ref/briefs)) is the exception: its single entry is a human decision a bonus short form does not reopen."
    ],
    "ordered": false
   },

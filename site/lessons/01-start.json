@@ -1,17 +1,17 @@
 {
   "id": "01-start",
   "title": "Learn your first sounds",
-  "goal": "One idea runs through all of lyk. Learn it, and the rest is vocabulary.",
+  "goal": "One idea runs through lyk; the rest is vocabulary.",
   "blocks": [
     { "t": "h", "x": "The one idea" },
-    { "t": "p", "x": "lyk is steno where **every stroke after the first of a word carries a join key (`+`)**. A stroke without it always starts a new word. Nothing has to be guessed from the keys." },
-    { "t": "p", "x": "The whole benefit in one key, the right-hand `D`:" },
+    { "t": "p", "x": "**Every stroke after a word's first carries a join key (`+`).** A stroke without it always starts a new word." },
+    { "t": "p", "x": "The right-hand `D` as example:" },
     { "t": "table", "head": ["You strike", "It reads", "Why"], "rows": [
       ["[[do|-D]]", "do", "No `+`, so it is a word: *do*."],
-      ["[[ended|ED/+-D]]", "ended", "The same `-D` with `+` is the ending *-ed*."],
-      ["[[end|ED]] [[do|-D]]", "end do", "Without `+`, the same two strokes are two words."]
+      ["[[ended|ED/+-D]]", "ended", "Same `-D` with `+`: the ending *-ed*."],
+      ["[[end|ED]] [[do|-D]]", "end do", "Without `+`, two words."]
     ] },
-    { "t": "p", "x": "Other theories give the ending `-D` (*-ed*) the key, so *do* cannot be one. Here the join key tells them apart, so a word and an ending can share a key. Many do:" },
+    { "t": "p", "x": "Other theories give the ending `-D` (*-ed*) the key, so *do* cannot have it. Here the join key separates them, so a word and an ending can share a key:" },
     { "t": "table", "head": ["Key", "Alone: a word", "With `+`: an ending"], "rows": [
       ["`-D`", "[[do|-D]]", "[[+-D]] -ed"],
       ["`-G`", "[[go|-G]]", "[[+-G]] -ing"],
@@ -21,33 +21,33 @@
       ["`-PB`", "[[an|-PB]]", "[[+-PB]] -en"],
       ["`-F`", "[[of|-F]]", "[[+-F]] -ive"]
     ] },
-    { "t": "p", "x": "So an ending can be a single key, with no extra keys or dropped vowels to keep it from being read as a word." },
+    { "t": "p", "x": "An ending is a single key; no extra keys or dropped vowels keep it from reading as a word." },
     { "t": "h", "x": "Reading an outline" },
     { "t": "list", "items": [
       "`/` separates the strokes of one word: [[WAUBG/+-G]].",
-      "`+` in front of a stroke is the join key, struck together with that stroke's other keys.",
-      "Keys always appear in **steno order**: `S T K P W H R`, then `A O * E U`, then `F R P B L G T S D Z`.",
-      "A `-` marks a stroke with only right-hand keys: [[-G]] is the G on the right, not on the left."
+      "`+` before a stroke is the join key, struck with that stroke's other keys.",
+      "Keys appear in **steno order**: `S T K P W H R`, then `A O * E U`, then `F R P B L G T S D Z`.",
+      "`-` marks a stroke of right-hand keys only: [[-G]] is G on the right, not the left."
     ] },
-    { "t": "note", "kind": "rule", "x": "Every word has exactly **one primary** one-stroke outline, the one this course teaches. Extra outlines exist, but they only take strokes nobody else needs, so you never have to choose." },
-    { "t": "explore", "x": "Try the board: strike keys together on your keyboard or steno machine. T and G are the join key." },
-    { "t": "h", "x": "How to learn it" },
+    { "t": "note", "kind": "rule", "x": "Every word has exactly **one primary** one-stroke outline, the one taught here. Extra outlines only take strokes nobody else needs; no choice is required." },
+    { "t": "explore", "x": "Try the board: strike keys together on a keyboard or steno machine. T and G are the join key." },
+    { "t": "h", "x": "Order of learning" },
     { "t": "list", "ordered": true, "items": [
-      "**Board and sounds (lessons 2 to 7).** Learn where each sound lives. Drill until a chord comes out without thinking.",
-      "**Common words (8 and 9).** A few hundred briefs cover most of what you type. They are memorised, not derived.",
-      "**The join key (10 to 13).** Endings, prefixes, syllables. This is how you type any word you have not memorised, so you are never stuck.",
+      "**Board and sounds (lessons 2 to 7).** Learn where each sound lives; drill until chords are automatic.",
+      "**Common words (8 and 9).** A few hundred briefs cover most typing; memorise them.",
+      "**The join key (10 to 13).** Endings, prefixes, syllables: how to type any unmemorised word.",
       "**Beyond words (14 to 16).** Phrases, punctuation, commands, letters.",
       "**Practice (17 and 18).** Edge cases, then a daily routine."
     ] },
-    { "t": "p", "x": "Each lesson is short on purpose. Read it, point at the strokes, do the **drill** at the bottom. A drill passes at 90% right on the first try; your best score is saved in this browser." },
+    { "t": "p", "x": "Per lesson: read, point at the strokes, do the **drill** at the bottom. A drill passes at 90% right on the first try; the best score is saved in this browser." },
     { "t": "h", "x": "Setup" },
-    { "t": "p", "x": "This site reads an ordinary keyboard the way Plover's QWERTY mode does: hold the keys of a stroke together, then let go. The home row and the row above it are the consonants, `C V` and `N M` the vowels, `Y H` the star, and **`T G` is the join key** (the `+`, the left index finger's inner column; `Q` and `A` both press the tall `S-`)." },
+    { "t": "p", "x": "This site reads an ordinary keyboard like Plover's QWERTY mode: hold a stroke's keys together, then release. The home row and the row above are the consonants, `C V` and `N M` the vowels, `Y H` the star, and **`T G` is the join key** (the `+`, the left index finger's inner column; `Q` and `A` both press the tall `S-`)." },
     { "t": "table", "head": ["Keys", "Steno"], "rows": [
       ["`T G`", "+ (join)"], ["`Q` `A`", "S-"], ["`W` `S`", "T- K-"], ["`E` `D`", "P- W-"], ["`R` `F`", "H- R-"],
       ["`C` `V`", "A O"], ["`Y H`", "*"], ["`N` `M`", "E U"],
       ["`U` `J`", "-F -R"], ["`I` `K`", "-P -B"], ["`O` `L`", "-L -G"], ["`P` `;`", "-T -S"], ["`[` `'`", "-D -Z"]
     ] },
-    { "t": "p", "x": "On a real steno keyboard, use the dictionary files this project builds (see the main README) and bind the `+` key to your left index finger's inner column (see the [join key](#/ref/join-key) page)." },
+    { "t": "p", "x": "On a steno keyboard, use the dictionary files this project builds (see the main README) and bind `+` to the left index finger's inner column ([join key](#/ref/join-key))." },
     { "t": "quiz", "q": "Which one starts a new word?", "opts": ["[[+-G]]", "[[WAUBG]]", "[[+AOE]]"], "a": 1, "why": "Only a stroke without the join key begins a word." }
   ]
 }

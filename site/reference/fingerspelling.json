@@ -1,7 +1,7 @@
 {
  "id": "fingerspelling",
  "title": "Fingerspelling, numbers and modifiers",
- "goal": "Spell any word letter by letter, press Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols, and know the rule that generates all 1,665 modifier strokes.",
+ "goal": "Letter-by-letter spelling, Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols; the rule behind all 1,665 modifier strokes.",
  "blocks": [
   {
    "t": "h",
@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "There are two fingerspelling systems, for two different jobs:"
+   "x": "Two fingerspelling systems:"
   },
   {
    "t": "table",
@@ -22,7 +22,7 @@
    "rows": [
     [
      "Glued letters",
-     "spelling a name, acronym or any word the dictionary lacks, in the text",
+     "names, acronyms, words the dictionary lacks, in the text",
      "a letter chord plus `*` (52 strokes)",
      "`rules/reserved/punctuation.json`"
     ],
@@ -36,7 +36,7 @@
   },
   {
    "t": "p",
-   "x": "Both are reserved ahead of every word ([reserved strokes](#/ref/reserved-strokes)). The modifier dictionary is forked from Lapwing's \"Emily's Modifier Dictionary\"; it is plain Plover fingerspelling plus a chorded Ctrl/Alt/Super/Shift ending, independent of the theory, and works the same under lyk."
+   "x": "Both are reserved ahead of every word ([reserved strokes](#/ref/reserved-strokes)). The modifier dictionary is forked from Lapwing's \"Emily's Modifier Dictionary\": Plover fingerspelling plus a chorded Ctrl/Alt/Super/Shift ending; independent of the theory."
   },
   {
    "t": "h",
@@ -44,7 +44,7 @@
   },
   {
    "t": "p",
-   "x": "Each letter is one chord, the same chords as the starting sounds (`PW` is *b*, `TK` is *d*, `STKPW` is *z*). The table gives the bare chord, the glued form, the glued capital and the Shift+letter stroke."
+   "x": "Each letter is one chord, the same as the starting sounds (`PW` b, `TK` d, `STKPW` z). Columns: bare chord, glued form, glued capital, Shift+letter stroke."
   },
   {
    "t": "table",
@@ -243,12 +243,12 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "The letter *y* is `KWR*` when glued but `KWH` in the modifier dictionary and in [spelling mode](#/ref/spelling-mode). Every other letter has the same chord in all three."
+   "x": "*y* is `KWR*` glued but `KWH` in the modifier dictionary and [spelling mode](#/ref/spelling-mode). Every other letter has the same chord in all three."
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "`LGTS` strokes with a vowel-only chord have no hyphen: `A`, `E`, `U`, `EU` are written `AFLGTS`, `EFLGTS`, `UFLGTS`, `EUFLGTS`. Chords ending in a consonant key need the hyphen: `S-FLGTS`, `KR-FLGTS`."
+   "x": "`LGTS` strokes with a vowel-only chord have no hyphen: `A`, `E`, `U`, `EU` are written `AFLGTS`, `EFLGTS`, `UFLGTS`, `EUFLGTS`. Chords ending in a consonant key need it: `S-FLGTS`, `KR-FLGTS`."
   },
   {
    "t": "h",
@@ -256,7 +256,7 @@
   },
   {
    "t": "p",
-   "x": "To spell a word in the text, strike the letter's chord with the star. The star glues it to the letters beside it and to nothing else. Add `-P` for a capital."
+   "x": "Letter chord plus `*` glues the letter to adjacent letters only. Add `-P` for a capital."
   },
   {
    "t": "table",
@@ -280,12 +280,12 @@
   },
   {
    "t": "p",
-   "x": "Letters glue to each other: [[KR*P]] [[A*]] [[T*]] writes ` Cat` as one word (the first letter starts a new word, so the space comes before it)."
+   "x": "Letters glue to each other: [[KR*P]] [[A*]] [[T*]] writes ` Cat` as one word (the first letter starts a new word, so the space precedes it)."
   },
   {
    "t": "note",
    "kind": "rule",
-   "x": "The 52 strokes (26 lowercase, 26 capital) are reserved ahead of every word, so a word that wanted one moves to its next-cheapest outline: [[captain|KAPT]] instead of `K*P`, [[eh|A*EU]] instead of `*E`."
+   "x": "The 52 strokes (26 lowercase, 26 capital) are reserved ahead of every word; a word that wanted one takes its next-cheapest outline: [[captain|KAPT]] instead of `K*P`, [[eh|A*EU]] instead of `*E`."
   },
   {
    "t": "p",
@@ -293,11 +293,11 @@
   },
   {
    "t": "p",
-   "x": "A word with no outline of its own (see [briefs](#/ref/briefs)) is costed by the generator as exactly this: one stroke per letter."
+   "x": "A word with no outline (see [briefs](#/ref/briefs)) is costed as one stroke per letter."
   },
   {
    "t": "p",
-   "x": "There is no physical key for [spelling mode](#/ref/spelling-mode) yet, so glued letters are how you spell a word out today."
+   "x": "No physical key for [spelling mode](#/ref/spelling-mode) yet; spell with glued letters."
   },
   {
    "t": "h",
@@ -305,7 +305,7 @@
   },
   {
    "t": "p",
-   "x": "Every lookup this dictionary answers is written as:"
+   "x": "Every stroke:"
   },
   {
    "t": "pre",
@@ -314,9 +314,9 @@
   {
    "t": "list",
    "items": [
-    "The ender `LGTS` (the right hand's bottom four keys, `-LGTS`) is on every one of the 1,665 strokes. It exists only so that an ordinary word's outline never collides with a modifier chord.",
-    "At least one modifier key must be held. A bare letter or symbol with no modifier is not this dictionary's job.",
-    "The output is wrapped in `{^}` on both sides, so it attaches to nothing and adds no space."
+    "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,665 strokes; it keeps ordinary outlines from colliding with modifier chords.",
+    "At least one modifier key must be held; a bare letter or symbol is not this dictionary's job.",
+    "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space."
    ],
    "ordered": false
   },
@@ -351,7 +351,7 @@
   },
   {
    "t": "p",
-   "x": "Any combination is allowed (15 non-empty combinations). Add them in steno order `F R P B` before `LGTS`. They wrap the key innermost-first as Shift, then Alt, then Super, then Ctrl outermost."
+   "x": "Any of 15 non-empty combinations, in steno order `F R P B` before `LGTS`. Wrapping, innermost first: Shift, Alt, Super, Ctrl."
   },
   {
    "t": "table",
@@ -456,7 +456,7 @@
   },
   {
    "t": "p",
-   "x": "Modifiers alone (no character) are strokes of their own: [[-FLGTS]] [[-RLGTS]] [[-BLGTS]] [[-PLGTS]] are Ctrl, Shift, Alt and Super pressed with nothing else; the other combinations work the same way."
+   "x": "Modifiers alone are strokes: [[-FLGTS]] [[-RLGTS]] [[-BLGTS]] [[-PLGTS]] are Ctrl, Shift, Alt, Super; other combinations likewise."
   },
   {
    "t": "h3",
@@ -464,7 +464,7 @@
   },
   {
    "t": "p",
-   "x": "A stroke is read in six parts, in this order: left-hand consonants, `A`/`O`, `*` or `-`, `E`/`U`, modifier keys `F R P B`, ender `LGTS`. The first three groups choose what is pressed:"
+   "x": "Six parts, in order: left-hand consonants, `A`/`O`, `*` or `-`, `E`/`U`, modifier keys `F R P B`, ender `LGTS`. The first three groups select what is pressed:"
   },
   {
    "t": "table",
@@ -498,7 +498,7 @@
   },
   {
    "t": "p",
-   "x": "Any chord that is not in the tables is not a stroke. Total: 111 base chords times 15 modifier combinations = 1,665 strokes. Each is the one stroke for its output: the chords that other keys would make equal (an extra `T`, `E` or `U`) are not strokes."
+   "x": "Chords not in the tables are not strokes. 111 base chords times 15 modifier combinations = 1,665 strokes. One stroke per output: chords equivalent to another (an extra `T`, `E` or `U`) are not strokes."
   },
   {
    "t": "h",
@@ -506,7 +506,7 @@
   },
   {
    "t": "p",
-   "x": "Strike `AO` with no `E`, `U` or star. The left hand's bottom row counts in binary: **`R`=1, `W`=2, `K`=4, `S`=8**, added together. Digits are valid up to 9. Only the keys of the table below are strokes: an extra `T`, `H` or `P` is not."
+   "x": "Strike `AO` with no `E`, `U` or star. The left hand's bottom row counts in binary: **`R`=1, `W`=2, `K`=4, `S`=8**, summed. Digits up to 9. Only the table's chords are strokes; an extra `T`, `H` or `P` is not."
   },
   {
    "t": "table",
@@ -570,7 +570,7 @@
   },
   {
    "t": "p",
-   "x": "Holding `T` and `P` as well makes the same count a function key (zero-indexed, so `TPAO` is F0), up to F12:"
+   "x": "Adding `T` and `P` makes the count a function key (zero-indexed: `TPAO` is F0), up to F12:"
   },
   {
    "t": "table",
@@ -635,7 +635,7 @@
   },
   {
    "t": "p",
-   "x": "A star in the stroke switches the chord from letters and digits to this table. The vowels `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. An `E`, `U` or `EU` struck as well makes no stroke. The strokes below are shown with Ctrl (`F`); use any other modifier combination in its place."
+   "x": "A star switches the chord from letters and digits to this table. `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. `E`, `U` or `EU` as well makes no stroke. Strokes are shown with Ctrl (`F`); any other modifier combination substitutes."
   },
   {
    "t": "table",
