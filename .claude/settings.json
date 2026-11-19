@@ -1,0 +1,23 @@
+{
+  "worktree": { "baseRef": "head" },
+  "permissions": {
+    "deny": ["Read(./.env)", "Read(./.env.*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/docs-sync-reminder.sh\"" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/docs-check-on-stop.sh\"" }
+        ]
+      }
+    ]
+  }
+}

@@ -2,3 +2,5 @@
 target/
 out/
 __pycache__/
+.claude/worktrees/
+.claude/settings.local.json
