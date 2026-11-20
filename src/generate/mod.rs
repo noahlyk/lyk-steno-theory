@@ -175,26 +175,23 @@ const KEY_WEIGHT: u32 = 1_000;
 /// that costs more than two extra keys. See `site/reference/syllables.json`.
 pub const FAMILY_DISCOUNT: u32 = 2_000;
 
-/// Whether a reserved entry's text is a command: only `{:...}`, `{PLOVER:...}` and `{#...}` metas,
-/// which act on the engine or the keyboard and type nothing. Punctuation and fingerspelling are not.
-fn is_command(text: &str) -> bool {
-    text.starts_with('{')
-        && text.ends_with('}')
-        && text.split('}').filter(|part| !part.is_empty()).all(|part| {
-            let meta = part.trim_start_matches('{');
-            meta.starts_with(':')
-                || meta.starts_with('#')
-                || meta.get(..7).is_some_and(|head| head.eq_ignore_ascii_case("PLOVER:"))
-        })
+/// One reserved entry (a command, punctuation mark, fingerspelled letter or OS shortcut), as
+/// `lookup` searches it.
+pub struct Reserved {
+    /// The text as the dictionary has it: `{:firstup}{#Left}{^}`
+    pub text: String,
+    /// What `lookup` shows: the text without the `{:firstup}` and `{:transparent}` markers, which
+    /// say how an entry repeats or joins, not what it does
+    pub shown: String,
+    pub outline: Vec<Stroke>,
 }
 
-/// Every command a real keymux config gives a stroke to (`{:tape:toggle}`, `{#Control_L(v)}`) with
-/// its outline, fewest strokes first, then fewest keys. The text is as the dictionary has it
-/// without the `{:firstup}` and `{:transparent}` markers, which say how a command repeats or
-/// joins, not what it does. This is what `lookup` searches when it is asked for `tape`.
+/// Every entry a real keymux config gives a stroke to - commands (`{:tape:toggle}`,
+/// `{#Control_L(v)}`), punctuation, fingerspelling and OS shortcuts - fewest strokes first, then
+/// fewest keys. This is what `lookup` searches for anything that is not a word.
 // The markers are dictionary metas, not format strings.
 #[allow(clippy::literal_string_with_formatting_args)]
-pub fn reserved_commands() -> Result<Vec<(String, Vec<Stroke>)>> {
+pub fn reserved_entries() -> Result<Vec<Reserved>> {
     let mut found = Vec::new();
     for (kind, json) in RESERVED {
         let table: std::collections::BTreeMap<String, String> = serde_json::from_str(json)
@@ -203,14 +200,12 @@ pub fn reserved_commands() -> Result<Vec<(String, Vec<Stroke>)>> {
             let Some(outline) = parse_outline(&outline_text) else {
                 continue;
             };
-            if !is_command(&text) {
-                continue;
-            }
             let shown = text.replace("{:firstup}", "").replace("{:transparent}", "");
-            found.push((if shown.is_empty() { text } else { shown }, outline));
+            let shown = if shown.is_empty() { text.clone() } else { shown };
+            found.push(Reserved { text, shown, outline });
         }
     }
-    found.sort_by_cached_key(|(text, outline)| (outline.len(), keys(outline), text.clone()));
+    found.sort_by_cached_key(|r| (r.outline.len(), keys(&r.outline), r.shown.clone()));
     Ok(found)
 }
 

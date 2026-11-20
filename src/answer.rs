@@ -19,6 +19,9 @@ pub const THEORIES: [&str; 3] = ["lyk", "plover", "lapwing"];
 /// Words that merely start with the query are only offered from this length on.
 const MIN_PREFIX: usize = 2;
 
+/// A part of a non-word entry's text is only matched from this length on (`ca` is not every `{:case}`).
+const MIN_PART: usize = 3;
+
 /// How a theory's outline for a word came to be.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum How {
@@ -44,8 +47,9 @@ pub struct Cell {
 pub enum Mark {
     /// A word's best outlines, or (empty `word`) another outline that types it properly
     Entry,
-    /// A command whose text contains the query (`tape` finds `{:tape:toggle}`), after the exact
-    /// answers; only lyk's column is filled
+    /// An entry that is not a word (command, suffix, prefix, punctuation, fingerspelling) whose
+    /// text is or contains the query (`tape` finds `{:tape:toggle}`, `^ing` finds `{^ing}`), after
+    /// the exact answers; only lyk's column is filled
     Command,
     /// A word that starts with the query, offered after the exact answers
     Completion,
@@ -124,6 +128,17 @@ pub struct Ask {
     pub extra: usize,
 }
 
+/// An entry that is not a word: a command, suffix, prefix, punctuation mark, fingerspelled letter.
+struct Special {
+    /// As shown: the dictionary's text without the `{:firstup}` and `{:transparent}` markers
+    text: String,
+    /// As the dictionary has it
+    raw: String,
+    /// `text` lowercased without braces and `^` (see `Lookup::bare`)
+    norm: String,
+    outline: Vec<Stroke>,
+}
+
 /// The built dictionary, indexed for lookups. Built once per command; cheap enough to ask per
 /// keystroke.
 pub struct Lookup<'a> {
@@ -137,8 +152,8 @@ pub struct Lookup<'a> {
     outlines: HashMap<&'a str, Vec<&'a [Stroke]>>,
     /// Every word with an outline
     words: Vec<&'a str>,
-    /// Every command and the outline that does it, fewest strokes first
-    commands: Vec<(String, Vec<Stroke>)>,
+    /// Every entry that is not a word, reserved first, fewest strokes first
+    specials: Vec<Special>,
     /// The backups `built::load` leaves out, when the dictionary was read back from `out/lyk`
     backups: Option<&'a Backups>,
     /// The solver keymux runs on a miss (see `site/reference/fallback.json`), when one is built:
@@ -198,7 +213,7 @@ impl<'a> Lookup<'a> {
             stems,
             outlines,
             words,
-            commands: generate::reserved_commands().unwrap_or_default(),
+            specials: Self::specials(entries),
             backups,
             solver: std::sync::OnceLock::new(),
             load_solver: None,
@@ -341,6 +356,71 @@ impl<'a> Lookup<'a> {
         lists
     }
 
+    /// Every entry that is not a word: the reserved ones and the dictionary's own whose text has
+    /// a suffix, or a brace, a `^` or any mark beyond letters, digits, `'` and `-` (suffixes, prefixes,
+    /// `Jr.`), fewest strokes first.
+    fn specials(entries: &[Entry]) -> Vec<Special> {
+        let plain = |w: &str| w.chars().all(|c| c.is_alphanumeric() || c == '\'' || c == '-' || c == ' ');
+        let mut found: Vec<Special> = generate::reserved_entries()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|r| Special { norm: Self::bare(&r.shown), text: r.shown, raw: r.text, outline: r.outline })
+            .collect();
+        let mut own: Vec<Special> = entries
+            .iter()
+            .filter(|e| e.origin == Origin::Suffix || !plain(&e.word))
+            .map(|e| {
+                // The generator keeps a suffix bare (`ing`); the dictionary writes it `{^ing}`
+                let text = if e.origin == Origin::Suffix { format!("{{^{}}}", e.word) } else { e.word.clone() };
+                Special { norm: Self::bare(&text), raw: text.clone(), text, outline: e.outline.clone() }
+            })
+            .collect();
+        own.sort_by_cached_key(|s| (s.outline.len(), generate::keys(&s.outline), s.text.clone()));
+        own.dedup_by(|a, b| a.text == b.text && a.outline == b.outline);
+        found.extend(own);
+        found
+    }
+
+    /// `text` lowercased without the marks that say how an entry joins or acts (`{`, `}`, `^`, `#`):
+    /// `{^ing}` and `^ing` are both `ing`.
+    fn bare(text: &str) -> String {
+        text.chars().filter(|c| !matches!(c, '{' | '}' | '^' | '#')).collect::<String>().to_lowercase()
+    }
+
+    /// The non-word entries `query` names, best match first: rank 0 its exact text, 1 its text
+    /// without braces and `^`, 2 a part of that text. At most `limit`, each with its rank.
+    fn special_rows(&self, query: &str, limit: usize) -> Vec<(u8, Row)> {
+        let bare = Self::bare(query);
+        if bare.is_empty() {
+            return Vec::new();
+        }
+        let mut found: Vec<(u8, &Special)> = self
+            .specials
+            .iter()
+            .filter_map(|s| {
+                let rank = if s.text.to_lowercase() == query || s.raw.to_lowercase() == query {
+                    0
+                } else if s.norm == bare {
+                    1
+                } else if bare.chars().count() >= MIN_PART && s.norm.contains(&bare) {
+                    2
+                } else {
+                    return None;
+                };
+                Some((rank, s))
+            })
+            .collect();
+        found.sort_by_key(|(rank, _)| *rank); // stable: fewest strokes first within a rank
+        found
+            .into_iter()
+            .take(limit)
+            .map(|(rank, s)| {
+                let cell = Cell { strokes: s.outline.clone(), how: How::Entry };
+                (rank, Row { word: s.text.clone(), cells: [Some(cell), None, None], mark: Mark::Command })
+            })
+            .collect()
+    }
+
     fn reverse_rows(&self, text: &str, ask: Ask) -> Answer {
         let words: Vec<&str> = text.split_whitespace().collect();
         let mut rows = Vec::new();
@@ -371,15 +451,12 @@ impl<'a> Lookup<'a> {
             && word.chars().count() >= MIN_PREFIX
         {
             let lower = word.to_lowercase();
-            let commands = self
-                .commands
-                .iter()
-                .filter(|(text, _)| text.to_lowercase().contains(&lower))
-                .take(ask.extra)
-                .map(|(text, outline)| {
-                    let cell = Cell { strokes: outline.clone(), how: How::Entry };
-                    Row { word: text.clone(), cells: [Some(cell), None, None], mark: Mark::Command }
-                });
+            let found = self.special_rows(&lower, ask.extra);
+            // A query that is an entry's own text (`{^ing}`, `^ing`) is not a missing word
+            if found.iter().any(|(rank, _)| *rank <= 1) && rows.first().is_some_and(|r| r.mark == Mark::Missing) {
+                rows.remove(0);
+            }
+            let commands: Vec<Row> = found.into_iter().map(|(_, row)| row).collect();
             // Right after the word's best outline: a word can have dozens of others, and a command
             // listed behind them would be off the screen
             let at = rows.len().min(1);
@@ -493,6 +570,42 @@ mod tests {
         // fast mode and phrases skip them
         assert!(lookup().answer("tape", Ask { fast: true, ..ALL }).rows.iter().all(|r| r.mark != Mark::Command));
         assert!(lookup().answer("the tape", ALL).rows.iter().all(|r| r.mark != Mark::Command));
+    }
+
+    /// The `(text, outline)` of every non-word row of `query`'s answer.
+    fn specials_of(query: &str) -> Vec<(String, String)> {
+        lookup()
+            .answer(query, ALL)
+            .rows
+            .iter()
+            .filter(|r| r.mark == Mark::Command)
+            .map(|r| (r.word.clone(), text(r.cells[0].as_ref())))
+            .collect()
+    }
+
+    // The entries are dictionary metas, not format strings.
+    #[allow(clippy::literal_string_with_formatting_args)]
+    #[test]
+    fn any_entry_is_found_by_its_text_with_or_without_its_marks() {
+        // a suffix: its exact text, without the braces, without the `{}`, and as a bare word
+        for query in ["{^ing}", "^ing", "ing"] {
+            let found = specials_of(query);
+            assert!(found.first().is_some_and(|(t, o)| t == "{^ing}" && o.starts_with('+') && o.ends_with('G')), "{query}: {found:?}");
+        }
+        // a query that is an entry's own text is not reported as a missing word
+        let answer = lookup().answer("^ing", ALL);
+        assert_eq!(answer.rows[0].mark, Mark::Command);
+        assert!(answer.rows.iter().all(|r| r.mark != Mark::Missing));
+        // exact text ranks ahead of a partial match, ignoring case
+        assert_eq!(specials_of("{:TAPE:toggle}")[0].1, "PHRO*T");
+        // punctuation and fingerspelling, not only commands
+        let punctuation = specials_of("{>}{&e}");
+        assert!(punctuation.iter().any(|(t, o)| t == "{>}{&e}" && o == "*E"), "{punctuation:?}");
+        assert!(!specials_of("control").is_empty());
+        // fast mode, one-letter queries and marks alone find none
+        assert!(lookup().answer("^ing", Ask { fast: true, ..ALL }).rows.iter().all(|r| r.mark != Mark::Command));
+        assert!(specials_of("^").is_empty());
+        assert!(specials_of("{}").is_empty());
     }
 
     #[test]
