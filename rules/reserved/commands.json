@@ -63,7 +63,7 @@
 "SP-S": "{^^}",
 "HRO*ER": "{:case:lower_first_char}",
 "HRO*ERD": "{:retro_case:lower_first_char}",
-"PHRUP": "{:transparent}{PLOVER:LOOKUP}",
+"PHRUP": "{:transparent}{:lookup:open}",
 "PHR*UP": "{:firstup}{:transparent}{:lookup:toggle}",
 "PHRUPD": "{:firstup}{:transparent}{:lookup:close}",
 "PHRO*L": "{:firstup}{:transparent}{:overlay:toggle}",

@@ -978,7 +978,7 @@
     ],
     [
      "[[PHRUP]]",
-     "`{:transparent}{PLOVER:LOOKUP}`",
+     "`{:transparent}{:lookup:open}`",
      "Open the live lookup (does nothing if it is already open)",
      "no: opening an open lookup does nothing, and it is the widest stroke here"
     ],
@@ -1031,7 +1031,7 @@
   },
   {
    "t": "p",
-   "x": "A stroke carrying `{:transparent}` is invisible to the translation history. A lookup mid-join does not break it: `THAS`, [[PHRUP]], then `+EUFG` still joins as if the lookup had not been struck, and `*` after the lookup skips past it. Keymux already treats an entry that is exactly `{plover:lookup}` as transparent; the marker makes it explicit, and the other controls need it. The marker sits **in front of** the command, like `{:firstup}`, types nothing and changes no spacing. Related Keymux markers no lyk stroke uses: `{:barrier}` (end any join here), `{:nobarrier}`, and `{:back}` (erase and let undo bring it back)."
+   "x": "A stroke carrying `{:transparent}` is invisible to the translation history. A lookup mid-join does not break it: `THAS`, [[PHRUP]], then `+EUFG` still joins as if the lookup had not been struck, and `*` after the lookup skips past it. Every control needs it. The marker sits **in front of** the command, like `{:firstup}`, types nothing and changes no spacing. Related Keymux markers no lyk stroke uses: `{:barrier}` (end any join here), `{:nobarrier}`, and `{:back}` (erase and let undo bring it back)."
   },
   {
    "t": "h3",
@@ -1118,7 +1118,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `engine`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 15 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError` in plain Plover, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 14 entries removed (for [[PHRUP]] remove only the `{:transparent}` marker: `{PLOVER:LOOKUP}` is plain Plover); or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged for Plover; Keymux is the target engine."
+   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `engine`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 16 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError` in plain Plover, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 15 entries removed (for [[PHRUP]] use `{PLOVER:LOOKUP}`, Plover's own lookup); or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged for Plover; Keymux is the target engine."
   }
  ]
 }

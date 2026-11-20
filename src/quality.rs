@@ -275,7 +275,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         serde_json::from_str(include_str!("../rules/reserved/punctuation.json")).expect("punctuation parse");
     let reserved = generate::reserved_outlines().expect("reserved dictionaries parse");
     let expected = [
-        ("PHRUP", "{:transparent}{PLOVER:LOOKUP}"),
+        ("PHRUP", "{:transparent}{:lookup:open}"),
         ("PHR*UP", "{:firstup}{:transparent}{:lookup:toggle}"),
         ("PHRUPD", "{:firstup}{:transparent}{:lookup:close}"),
         ("PHRO*L", "{:firstup}{:transparent}{:overlay:toggle}"),
@@ -298,15 +298,14 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         assert!(seen.insert(outline.clone()), "duplicate {outline}");
         assert!(!rest.contains("{:transparent}"), "{outline}: marker twice");
         let body = rest.trim_start_matches(['{', ':']).trim_end_matches('}');
-        let valid = body.eq_ignore_ascii_case("PLOVER:LOOKUP")
-            || matches!(
-                body,
-                "overlay:show" | "overlay:hide" | "overlay:toggle"
-                    | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
-                    | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
-                    | "lookup:open" | "lookup:close" | "lookup:toggle"
-                    | "engine:unload"
-            );
+        let valid = matches!(
+            body,
+            "overlay:show" | "overlay:hide" | "overlay:toggle"
+                | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
+                | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
+                | "lookup:open" | "lookup:close" | "lookup:toggle"
+                | "engine:unload"
+        );
         assert!(valid && rest.matches('{').count() == 1, "{outline}: {value:?} is not a Keymux control");
     }
     assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented ten");
