@@ -14,9 +14,9 @@ pub const VERSION: &str = env!("LYK_VERSION");
 /// The hash of the generator's inputs this binary was compiled from, baked in by `build.rs`.
 pub const SOURCE_HASH: &str = env!("LYK_SOURCE_HASH");
 
-/// `lyk-steno-theory 0.1.0+g0a1387f`
+/// `lyk 0.1.0+g0a1387f`
 pub fn version_line() -> String {
-    format!("{} {VERSION}", env!("CARGO_PKG_NAME"))
+    format!("lyk {VERSION}")
 }
 
 static STALE_CHECK_OFF: AtomicBool = AtomicBool::new(false);
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn the_version_line_names_the_program_and_the_baked_in_version() {
         let line = version_line();
-        assert!(line.starts_with("lyk-steno-theory "), "{line}");
+        assert!(line.starts_with("lyk "), "{line}");
         assert!(line.ends_with(VERSION) && !VERSION.is_empty());
     }
 

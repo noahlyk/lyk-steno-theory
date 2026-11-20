@@ -5,3 +5,6 @@ __pycache__/
 .claude/worktrees/
 .claude/settings.local.json
 /site/local/
+/pkg/
+/dist/
+*.pkg.tar.*

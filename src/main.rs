@@ -22,6 +22,7 @@ mod lookup_cache;
 mod names;
 mod num;
 mod output;
+mod paths;
 mod phrases;
 mod prose;
 mod gold;
@@ -46,11 +47,12 @@ use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(version = version::VERSION, about)]
+#[command(name = "lyk", version = version::VERSION, about)]
 struct Cli {
-    /// Where the downloaded data lives
-    #[arg(long, global = true, default_value = "data")]
-    data: PathBuf,
+    /// Where the downloaded data lives (default: `LYK_DATA`, else `data` in a checkout, else
+    /// `$XDG_DATA_HOME/lyk/data`; `where` shows it)
+    #[arg(long, global = true)]
+    data: Option<PathBuf>,
     /// Rules to use instead of the built-in ones
     #[arg(long, global = true)]
     rules: Option<PathBuf>,
@@ -68,6 +70,8 @@ enum Command {
     /// Print the version (the same as `--version`)
     #[command(hide = true)]
     Version,
+    /// Show the folders in use (data, out, dictionary, deploy target) and what decided each
+    Where,
     /// Download the pronunciation, frequency, Plover/Lapwing and other theories' data (American English)
     Fetch,
     /// Say what was loaded, and how well the pronunciations cover Plover and Lapwing
@@ -133,7 +137,7 @@ enum Command {
     Build {
         /// The folder to write the Plover JSON dictionary files to, one per role (`02-lyk-words.json`,
         /// `02-lyk-backups.json`, ...); a file that would come out the same is left untouched
-        #[arg(long, default_value = "out/lyk")]
+        #[arg(long, default_value = paths::built_dir_text())]
         out: PathBuf,
         /// Words to cover, most common first. 100,000 is already in Plover/Lapwing's own
         /// ballpark and builds in a few seconds; raising it further has diminishing returns,
@@ -192,7 +196,7 @@ enum Command {
         #[arg(long)]
         misses: Option<PathBuf>,
         /// The built dictionary to read the known outlines from
-        #[arg(long, default_value = "out/lyk")]
+        #[arg(long, default_value = paths::built_dir_text())]
         dir: PathBuf,
         /// Words in the solver's lexicon, most common first
         #[arg(long, default_value_t = 100_000)]
@@ -300,7 +304,7 @@ enum Command {
         #[arg(long, default_value_t = 1)]
         seed: u64,
         /// The built dictionary to read
-        #[arg(long, default_value = "out/lyk")]
+        #[arg(long, default_value = paths::built_dir_text())]
         dir: PathBuf,
         /// Words in the dictionary, most common first (`build`'s own default)
         #[arg(long, default_value_t = 100_000)]
@@ -373,7 +377,7 @@ enum Command {
         #[arg(long, default_value = "~/.local/state/keymux/steno-tape.txt")]
         tape: PathBuf,
         /// The built dictionary
-        #[arg(long, default_value = "out/lyk")]
+        #[arg(long, default_value = paths::built_dir_text())]
         dict: PathBuf,
         /// Only the last N days of typing on the tape
         #[arg(long)]
@@ -439,15 +443,28 @@ fn expand_home(path: &Path) -> PathBuf {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     version::silence_stale_note(cli.no_stale_check || std::env::var_os("LYK_NO_STALE_NOTE").is_some_and(|v| !v.is_empty() && v != "0"));
+    paths::set_data_flag(cli.data.as_deref());
+    let data_dir = paths::data_dir();
+    let needs_data = !matches!(
+        cli.command,
+        Command::Version | Command::Where | Command::Fetch | Command::Mistakes { .. } | Command::Deploy { rollback: true, .. }
+    );
+    if needs_data {
+        paths::require_data(&data_dir)?;
+    }
     let setup =
-        |common: Option<usize>| analysis::Setup::load(&cli.data, cli.rules.as_deref(), common);
+        |common: Option<usize>| analysis::Setup::load(&data_dir, cli.rules.as_deref(), common);
     match &cli.command {
         Command::Version => {
             println!("{}", version::version_line());
             Ok(())
         }
-        Command::Fetch => fetch::run(&cli.data),
-        Command::Report => data::report(&cli.data),
+        Command::Where => {
+            print!("{}", paths::report(&expand_home(Path::new("~/.config/keymux/steno/lyk"))));
+            Ok(())
+        }
+        Command::Fetch => fetch::run(&data_dir),
+        Command::Report => data::report(&data_dir),
         Command::Score {
             common,
             briefs,
@@ -508,16 +525,16 @@ fn main() -> Result<()> {
         }
         Command::Solve { outline, eval, tape, misses, dir, common, plugin, answers, taught, compounds, giant, giant_count, context, names, after, name } => solve::run(&setup(Some(*common))?, &solve::Options {
             outline: outline.as_deref(), eval: *eval, tape: tape.as_deref(), misses: misses.as_deref(), dir, common: *common, plugin: plugin.as_deref(), answers: answers.as_deref(), taught: *taught, compounds: *compounds,
-            giant: giant.as_deref(), giant_count: *giant_count, context: *context, names: *names, corpus: &cli.data.join("corpus"), after, name: *name,
+            giant: giant.as_deref(), giant_count: *giant_count, context: *context, names: *names, corpus: &data_dir.join("corpus"), after, name: *name,
         }),
         Command::Resolve { outline, common, briefs, rebuild } => {
             let options = commands::LookupOptions { stroke_mode: true, ..Default::default() };
-            commands::run_lookup(&setup, (&cli.data, cli.rules.as_deref()), outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+            commands::run_lookup(&setup, (&data_dir, cli.rules.as_deref()), outline.as_deref(), options, *common, briefs.as_deref(), *rebuild)
         }
         Command::Lookup { query, show_keys, fast, common, briefs, rebuild } => {
             let query = (!query.is_empty()).then(|| query.join(" "));
             let options = commands::LookupOptions { show_keys: *show_keys, fast: *fast, stroke_mode: false };
-            commands::run_lookup(&setup, (&cli.data, cli.rules.as_deref()), query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+            commands::run_lookup(&setup, (&data_dir, cli.rules.as_deref()), query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
         }
         Command::VerifyLookup { full, common_words, random, seed, dir, common } => {
             let sampling = if *full {
@@ -525,7 +542,7 @@ fn main() -> Result<()> {
             } else {
                 verify_lookup::Sampling { common: *common_words, rest: *random, seed: *seed, ..verify_lookup::Sampling::FAST }
             };
-            verify_lookup::run(&setup(Some(*common))?, (&cli.data, cli.rules.as_deref()), dir, *common, sampling)
+            verify_lookup::run(&setup(Some(*common))?, (&data_dir, cli.rules.as_deref()), dir, *common, sampling)
         }
         Command::Paths { word, limit, common, briefs, rebuild } => {
             commands::run_paths(&setup, word.as_deref(), *limit, *common, briefs.as_deref(), *rebuild)
@@ -576,7 +593,7 @@ mod tests {
     #[test]
     fn the_version_subcommand_works_but_is_in_no_help() {
         let mut command = Cli::command();
-        assert!(Cli::try_parse_from(["lyk-steno-theory", "version"]).is_ok());
+        assert!(Cli::try_parse_from(["lyk", "version"]).is_ok());
         let top = command.render_help().to_string();
         let long = command.render_long_help().to_string();
         for help in [top, long] {
@@ -587,7 +604,7 @@ mod tests {
 
     #[test]
     fn the_version_flag_prints_the_baked_in_version() {
-        let err = Cli::try_parse_from(["lyk-steno-theory", "-V"]).err().unwrap();
+        let err = Cli::try_parse_from(["lyk", "-V"]).err().unwrap();
         assert_eq!(err.to_string().trim(), version::version_line());
     }
 }

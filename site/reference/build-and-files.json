@@ -32,7 +32,7 @@
   },
   {
    "t": "p",
-   "x": "Run each as `cargo run --release -- COMMAND`."
+   "x": "Run each as `lyk COMMAND` once installed, or `cargo run --release -- COMMAND` in a checkout."
   },
   {
    "t": "table",
@@ -44,6 +44,10 @@
     [
      "`fetch`",
      "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Plover and Lapwing, and the fifteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
+    ],
+    [
+     "`where`",
+     "Show the version and the folders in use (data, out, dictionary, deploy target), the rule that chose each, and whether it exists (see [install and paths](#/ref/build-and-files/install-and-paths))."
     ],
     [
      "`report`",
@@ -126,6 +130,41 @@
   {
    "t": "p",
    "x": "`--rules FILE` and `--briefs FILE` make a command use your own rules and briefs."
+  },
+  {
+   "t": "h",
+   "x": "Install and paths"
+  },
+  {
+   "t": "p",
+   "x": "The binary is `lyk` (package `lyk-steno-theory`). Install it with `make install` (`PREFIX=/usr/local` by default, `DESTDIR` honoured; `make uninstall` removes it), with `makepkg -si` (the `PKGBUILD` builds the checkout you are in; optional dependencies: `keymux` for `deploy`, `python` for `tools/`, `nodejs` for `site/check.mjs`), or from a release tarball (`lyk-VERSION-ARCH.tar.gz`: the binary, README and LICENSE). The rules are compiled into the binary; nothing but the data below is read at run time. Then `lyk fetch`, `lyk build`, `lyk deploy`."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Folder",
+    "Resolution, first match wins",
+    "In a checkout",
+    "Installed"
+   ],
+   "rows": [
+    [
+     "data (`fetch` writes it)",
+     "`--data DIR`, `LYK_DATA`, a checkout's `data`, XDG",
+     "`data`",
+     "`$XDG_DATA_HOME/lyk/data` (`~/.local/share/lyk/data`)"
+    ],
+    [
+     "out (`build` writes it)",
+     "`LYK_OUT`, a checkout's `out`, XDG",
+     "`out`",
+     "`$XDG_STATE_HOME/lyk/out` (`~/.local/state/lyk/out`)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "A checkout is the current folder when its `Cargo.toml` names `lyk-steno-theory` and it has `rules/`; then `data/` and `out/` are relative to it, as always. Under out: `lyk/` is the built dictionary (`build --out` and the `--dir`/`--dict` options default to it), `cache/` the lookup cache, `mistakes/` the tape reports. `lyk where` prints the version, the mode, every folder in use with the rule that chose it, and whether it exists. With no data, every command that needs it stops with a message pointing at `lyk fetch`. `deploy` writes `~/.config/keymux/steno/lyk` (`--to`) and needs `keymux` installed for validation. Environment: `LYK_VERSION` sets the version a build reports (release builds), `LYK_NO_STALE_NOTE=1` silences the stale note."
   },
   {
    "t": "h",
@@ -281,7 +320,7 @@
   },
   {
    "t": "p",
-   "x": "The version is written nowhere: `build.rs` asks git when the program is compiled and bakes the answer into the binary, as keymux does. `lyk-steno-theory --version` (or `-V`) and the hidden `version` command (in no help or menu) print `lyk-steno-theory <version>`. `build` prints it as the first line of its output (also with `--report`)."
+   "x": "The version is written nowhere: `build.rs` asks git when the program is compiled and bakes the answer into the binary, as keymux does. `lyk --version` (or `-V`) and the hidden `version` command (in no help or menu) print `lyk <version>`. `build` prints it as the first line of its output (also with `--report`)."
   },
   {
    "t": "table",

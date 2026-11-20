@@ -47,7 +47,7 @@ pub fn deploy(
     validate: Validate,
 ) -> Result<()> {
     let to = expand_home(to)?;
-    let words_out = PathBuf::from("out/lyk");
+    let words_out = crate::paths::built_dir();
     generate::build(setup, briefs, common, &words_out, None, false)?;
 
     // Every generated file. The backups are not shipped: the solver plugin reads any outline that
@@ -114,7 +114,7 @@ fn built_solver() -> Option<crate::rules::solve::Model> {
 }
 
 fn read_solver() -> Option<crate::rules::solve::Model> {
-    let blob = std::fs::read(Path::new(BUILT_DIR).join(crate::rules::solve::plugin::BLOB_FILE)).ok()?;
+    let blob = std::fs::read(built_dir().join(crate::rules::solve::plugin::BLOB_FILE)).ok()?;
     crate::rules::solve::Model::load(&blob)
 }
 
@@ -130,7 +130,9 @@ fn read_solver_early() {
 }
 
 /// Where `build` writes the dictionary, and so where the query commands read it back from.
-pub const BUILT_DIR: &str = "out/lyk";
+pub fn built_dir() -> PathBuf {
+    crate::paths::built_dir()
+}
 
 /// Every entry of lyk's dictionary. Read back from what `build` already wrote to [`BUILT_DIR`]
 /// (milliseconds) unless `rebuild` is set or nothing is built yet, then generated from scratch
@@ -142,7 +144,8 @@ pub fn dictionary_entries(
     common: usize,
     rebuild: bool,
 ) -> Result<Vec<generate::Entry>> {
-    let dir = Path::new(BUILT_DIR);
+    let dir = built_dir();
+    let dir = dir.as_path();
     if !rebuild && built::exists(dir) {
         if let Some(note) = crate::version::stale_note(dir) {
             eprintln!("{note}");
@@ -156,7 +159,8 @@ pub fn dictionary_entries(
 /// The backups the lookup lists as further ways to type a word, when the dictionary is read
 /// back from `out/lyk` (a rebuilt one already has them all as entries).
 fn read_back_backups(rebuild: bool) -> Option<built::Backups> {
-    let dir = Path::new(BUILT_DIR);
+    let dir = built_dir();
+    let dir = dir.as_path();
     (!rebuild && built::exists(dir)).then(|| built::Backups::load(dir).ok()).flatten()
 }
 
@@ -197,13 +201,14 @@ pub fn run_lookup(
         println!("Nothing to look up");
         return Ok(());
     }
-    let dir = Path::new(BUILT_DIR);
+    let dir = built_dir();
+    let dir = dir.as_path();
     let crate::lookup_cache::Loaded { setup, entries, backups, cheapest } = if !rebuild && built::exists(dir) {
         read_solver_early();
         if let Some(note) = crate::version::stale_note(dir) {
             eprintln!("{note}");
         }
-        crate::lookup_cache::load(sources.0, sources.1, common, dir, Path::new(crate::lookup_cache::DIR))?
+        crate::lookup_cache::load(sources.0, sources.1, common, dir, &crate::paths::cache_dir())?
     } else {
         let setup = setup(Some(common))?;
         let entries = dictionary_entries(&setup, briefs_path, common, rebuild)?;

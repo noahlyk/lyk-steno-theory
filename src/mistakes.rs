@@ -20,7 +20,7 @@ use crate::stroke::Stroke;
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// A retry later than this many seconds after the last stroke is no retry.
 const GAP: i64 = 15;
@@ -982,7 +982,7 @@ pub fn run(opt: &Options) -> Result<()> {
     let (events, days) = window(all, opt.last, since, anchor);
     let dict = Dict::load(opt.dict)?;
     let rep = analyse(&events, &days, &dict, opt);
-    let out_dir = PathBuf::from("out/mistakes");
+    let out_dir = crate::paths::mistakes_dir();
     let write = |path: &Path, body: &str| -> Result<()> {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)?;

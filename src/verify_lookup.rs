@@ -392,7 +392,7 @@ pub fn check(lookup: &Lookup<'_>, setup: &Setup, deployed: &Deployed, model: &Mo
 
 /// The `verify-lookup` command.
 pub fn run(setup: &Setup, sources: (&Path, Option<&Path>), dir: &Path, common: usize, sampling: Sampling) -> Result<()> {
-    let loaded = crate::lookup_cache::load(sources.0, sources.1, common, dir, Path::new(crate::lookup_cache::DIR))?;
+    let loaded = crate::lookup_cache::load(sources.0, sources.1, common, dir, &crate::paths::cache_dir())?;
     let blob = std::fs::read(dir.join(crate::rules::solve::plugin::BLOB_FILE))
         .with_context(|| format!("the solver in {} (run build)", dir.display()))?;
     let model = Model::load(&blob).context("the solver blob does not load")?;

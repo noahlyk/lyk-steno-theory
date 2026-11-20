@@ -1,4 +1,4 @@
-//! What `lookup` reads, kept in [`DIR`] in a form it reads back in milliseconds.
+//! What `lookup` reads, kept in `out/cache` (see `paths`) in a form it reads back in milliseconds.
 //!
 //! A lookup needs both reference dictionaries, every pronunciation and the dictionary `build`
 //! wrote, and parsing them from their text files takes about two seconds, most of it the 130 MB
@@ -24,8 +24,7 @@ use std::fmt::Write as _;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-/// Where the caches live: beside the built dictionary, never under `data/`.
-pub const DIR: &str = "out/cache";
+/// The cache files, in `paths::cache_dir()` beside the built dictionary, never under `data/`.
 const LOOKUP_FILE: &str = "lookup.bin";
 const BACKUPS_FILE: &str = "backups.bin";
 const LOOKUP_MAGIC: &[u8] = b"lyk lookup cache 2\n";
