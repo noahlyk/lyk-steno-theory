@@ -1,0 +1,44 @@
+name: Check
+
+# The bar every change is held to: no clippy finding (the crate's own lint configuration is in
+# Cargo.toml), every test green, the lesson site's checks, and the README tables matching the
+# numbers. Called by the branch and release workflows, so a release never ships what a branch
+# push couldn't. (pages.yml keeps its own lighter site check, so a site-only change deploys fast.)
+#
+# The tests read the downloaded data (pronunciations, frequencies, the other theories), which is
+# not in the repository: `lyk fetch` downloads it (about 75 MB) and the cache below keeps it
+# between runs. It changes only when fetch.rs does, so a run never re-downloads for no reason.
+# The data comes from upstream's main branches: if Plover or Lapwing change a dictionary, the
+# README check can move without any change here, which is why that step alone does not block.
+on:
+  workflow_call:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install system dependencies
+        run: pacman -Syu --noconfirm base-devel git rust nodejs
+      - uses: actions/checkout@v5
+      - name: Clippy
+        run: cargo clippy --release --all-targets --locked -- -D warnings
+      - name: Restore the downloaded data
+        id: data
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: lyk-data-${{ hashFiles('src/fetch.rs') }}
+      - name: Download the data
+        if: steps.data.outputs.cache-hit != 'true'
+        run: cargo run --release --locked -- fetch
+      - name: Tests
+        run: cargo test --release --locked -- --test-threads=4
+      - name: Lessons parse, strokes are valid, words are in the data
+        run: node site/check.mjs
+      - name: The stroke engine reads the dictionary back
+        run: node site/test.mjs
+      - name: README tables match the numbers
+        # Needs the data to be the same as when the README was written: see the header.
+        continue-on-error: true
+        run: cargo run --release --locked -- score --check-readme

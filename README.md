@@ -67,7 +67,27 @@ The numbers ("Where lyk stands" above, [the full benchmarks](#full-benchmarks)) 
   the word its keys sound like (beam search over every word's pronunciation, about 2 ms a run), so
   `deploy` ships no backups; see [the solver](https://noahlyk.github.io/lyk-steno-theory/#/ref/fallback).
 
+## Install
+
+The binary is `lyk`. Needs a Rust toolchain.
+
+```
+make install                   # to /usr/local/bin (PREFIX=/usr and DESTDIR work; make uninstall removes it)
+make pkg && sudo pacman -U dist/lyk-steno-theory-*.pkg.tar.zst   # Arch package of this checkout (or makepkg -si)
+```
+
+Or unpack a release tarball (`lyk-VERSION-ARCH.tar.gz` on the releases page) and copy `lyk` onto
+your `PATH`. Then, from any folder: `lyk fetch`, `lyk build`, `lyk deploy` (needs
+[keymux](https://github.com/noahlyk/keymux)). `lyk where` shows the folders in use.
+
+Installed, the data is kept in `${XDG_DATA_HOME:-~/.local/share}/lyk/data` and the build output
+in `${XDG_STATE_HOME:-~/.local/state}/lyk/out`; inside a checkout it is `data/` and `out/` as
+below. `LYK_DATA`, `LYK_OUT` or `--data DIR` override either (see the Reference, Build and files,
+Install and paths). `make check` runs what CI runs.
+
 ## Use
+
+The commands below use `cargo run --release --` in a checkout; installed, write `lyk` instead.
 
 ```
 cargo run --release -- fetch               # download the data into data/ (safe to re-run), the other theories included

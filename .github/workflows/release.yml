@@ -1,0 +1,58 @@
+name: Release
+
+# Pushing a tag `v1.2.3` checks that commit, builds the binary with that version baked in
+# (LYK_VERSION), builds the Arch package from the same checkout, and attaches the tarball, the
+# package and their checksums to a GitHub release. Nothing is published anywhere else.
+on:
+  push:
+    tags: ['v[0-9]*']
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  build:
+    needs: [check]
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    permissions:
+      contents: write
+    steps:
+      - name: Install system dependencies
+        run: pacman -Syu --noconfirm base-devel git rust github-cli
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Version from the tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - name: Build binary
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          LYK_VERSION="$VERSION" cargo build --release --locked
+      - name: Create tarball
+        run: |
+          ARCH=$(uname -m)
+          DIR="lyk-${VERSION}-${ARCH}"
+          mkdir -p "$DIR"
+          cp target/release/lyk README.md "$DIR/"
+          [ -f LICENSE ] && cp LICENSE "$DIR/"
+          tar -czf "$DIR.tar.gz" -C "$DIR" .
+          sha256sum "$DIR.tar.gz" > "$DIR.sha256"
+      - name: Build the Arch package
+        # makepkg refuses root: build as a user, from the same checkout. pkgver() on a tagged
+        # commit gives exactly the tag's version.
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -c "git config --global --add safe.directory '$GITHUB_WORKSPACE' && cd '$GITHUB_WORKSPACE' && BUILDDIR=/tmp/makepkg PKGDEST='$GITHUB_WORKSPACE/dist' makepkg -f --nodeps"
+          cd dist && for p in *.pkg.tar.*; do sha256sum "$p" > "$p.sha256"; done
+      - name: Create GitHub release
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh release delete "$GITHUB_REF_NAME" --yes 2>/dev/null || true
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Release $GITHUB_REF_NAME" \
+            lyk-*.tar.gz lyk-*.sha256 dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

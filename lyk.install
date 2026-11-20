@@ -1,0 +1,33 @@
+post_install() {
+    echo ""
+    echo "==> lyk installed. Next steps:"
+    echo ""
+    echo "    lyk fetch      # download the pronunciation, frequency and dictionary data (once)"
+    echo "    lyk build      # generate the dictionary from the rules"
+    echo "    lyk deploy     # copy it into keymux's config (needs keymux installed and"
+    echo "                   #   ~/.config/keymux set up: run 'keymux init' first)"
+    echo ""
+    echo "==> Where things live (change with LYK_DATA / LYK_OUT, or 'lyk --data DIR'):"
+    echo "    data:    \${XDG_DATA_HOME:-~/.local/share}/lyk/data"
+    echo "    output:  \${XDG_STATE_HOME:-~/.local/state}/lyk/out"
+    echo "    deploy:  ~/.config/keymux/steno/lyk"
+    echo "    'lyk where' prints the folders in use."
+    echo ""
+    echo "==> Undo a deploy:  lyk deploy --rollback"
+    echo ""
+}
+
+post_upgrade() {
+    echo ""
+    echo "==> lyk upgraded. The rules may have changed: run 'lyk build' (or 'lyk deploy') again."
+    echo "    A dictionary built by an older lyk is flagged as stale by the query commands."
+    echo ""
+}
+
+pre_remove() {
+    echo ""
+    echo "==> Removing lyk leaves your files alone. Delete them yourself if you want them gone:"
+    echo "    rm -r \${XDG_DATA_HOME:-~/.local/share}/lyk \${XDG_STATE_HOME:-~/.local/state}/lyk"
+    echo "    The deployed dictionary in ~/.config/keymux/steno/lyk stays too (keymux keeps typing it)."
+    echo ""
+}

@@ -1,0 +1,41 @@
+name: Check and build branch
+
+# Every push to a branch other than main is checked, and then built into a tarball so the binary
+# can be tried without a toolchain. (This repository takes no pull requests.)
+on:
+  push:
+    branches-ignore: [main]
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+
+  build:
+    needs: [check]
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install system dependencies
+        run: pacman -Syu --noconfirm base-devel git rust
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Build binary
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cargo build --release --locked
+      - name: Create tarball
+        run: |
+          ARCH=$(uname -m)
+          mkdir -p "lyk-linux-${ARCH}"
+          cp target/release/lyk README.md "lyk-linux-${ARCH}/"
+          [ -f LICENSE ] && cp LICENSE "lyk-linux-${ARCH}/"
+          tar -czf "lyk-linux-${ARCH}.tar.gz" -C "lyk-linux-${ARCH}" .
+          sha256sum "lyk-linux-${ARCH}.tar.gz" > "lyk-linux-${ARCH}.sha256"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: lyk-linux
+          path: |
+            lyk-linux-*.tar.gz
+            lyk-linux-*.sha256
