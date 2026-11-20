@@ -11,28 +11,28 @@
       ["{{and the}}", "[[and the|SKP-T]]", "`SKP` + `-T`"],
       ["{{for the}}", "[[for the|-RT]]", "`-R` + `-T`"],
       ["{{from the}}", "[[from the|PR-T]]", "`PR` + `-T`"],
-      ["{{it is}}", "[[it is|ST]]", "`T` + `S`"],
       ["{{is a}}", "[[is a|SA]]", "`S` + `A`"],
+      ["{{is the}}", "[[is the|S-T]]", "`S` + `-T`"],
       ["{{that is}}", "[[that is|STA]]", "`TA` + `S`"],
-      ["{{it was}}", "[[it was|T-Z]]", "`T` + `-Z`"],
-      ["{{there is}}", "[[there is|STHR]]", "`THR` + `S`"],
-      ["{{you are}}", "[[you are|RU]]", "`R` + `U`"],
-      ["{{we are}}", "[[we are|WRE]]", "`R` + `WE`"],
+      ["{{this is}}", "[[this is|STH]]", "`TH` + `S`"],
+      ["{{and a}}", "[[and a|SKPA]]", "`SKP` + `A`"],
+      ["{{if the}}", "[[if the|TP-T]]", "`TP` + `-T`"],
       ["{{want to}}", "[[want to|WOT]]", "`W-T` + `O`"]
     ] },
     { "t": "p", "x": "A phrase is the **union of the keys** of the two words' strokes. It can be derived from the two words; if the keys collide, no phrase exists." },
+    { "t": "note", "kind": "rule", "x": "Pairs that start with a pronoun (*it is*, *you are*, *we are*, *there was*) are not merged strokes: the [phrasing grammar](#/lesson/19-phrasing-grammar) writes them, with a stroke for every pronoun, tense and verb." },
     { "t": "note", "kind": "rule", "x": "Striking the two words in sequence still works; the phrase stroke is an optional shortcut, adoptable one phrase at a time." },
     { "t": "h", "x": "Phrases that carry on" },
     { "t": "p", "x": "Some phrases are the first stroke of a longer word with a word fused in: *the utility* is [[the utility|AOUT/+EULT]]. Learn the two-word ones first." },
-    { "t": "try", "title": "Phrases", "items": [["of the", "-FT"], ["in the", "TPH-T"], ["it is", "ST"], ["you are", "RU"], ["for the", "-RT"], ["and the", "SKP-T"]], "x": "Six phrases of two words each." }
+    { "t": "try", "title": "Phrases", "items": [["of the", "-FT"], ["in the", "TPH-T"], ["is the", "S-T"], ["and a", "SKPA"], ["for the", "-RT"], ["and the", "SKP-T"]], "x": "Six phrases of two words each." }
   ],
   "drill": {
     "title": "Phrases",
     "pass": 90,
     "repeat": 2,
     "items": [
-      ["of the", "-FT"], ["in the", "TPH-T"], ["and the", "SKP-T"], ["for the", "-RT"], ["from the", "PR-T"], ["it is", "ST"],
-      ["is a", "SA"], ["that is", "STA"], ["it was", "T-Z"], ["there is", "STHR"], ["you are", "RU"], ["we are", "WRE"], ["want to", "WOT"]
+      ["of the", "-FT"], ["in the", "TPH-T"], ["and the", "SKP-T"], ["for the", "-RT"], ["from the", "PR-T"], ["is the", "S-T"],
+      ["is a", "SA"], ["that is", "STA"], ["this is", "STH"], ["and a", "SKPA"], ["if the", "TP-T"], ["want to", "WOT"]
     ]
   }
 }

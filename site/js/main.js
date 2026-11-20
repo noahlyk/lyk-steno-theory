@@ -1,6 +1,7 @@
 // The app shell: a hash router and the pages (lesson map, lesson, practice, lookup, key chart, progress).
 
-import { chart, dictionary, index, lesson } from './data.js';
+import { chart, dictionary, grammar, index, lesson } from './data.js';
+import { describe, explain, index as grammarIndex, leading, tokens } from './phrasing.js';
 import { createDrill, stopAllDrills } from './drill.js';
 import { clearDrills, fetchLocal, loadSaved, normalise, saveDrills } from './mydrills.js';
 import { keysChapter } from './chapter0.js';
@@ -152,7 +153,7 @@ async function practicePage() {
   const withDrills = [];
   for (const l of all) {
     const data = await lesson(l.id);
-    if (data.drill && !['none', 'grammar'].includes(data.drill.check)) withDrills.push({ ...l, items: data.drill.items });
+    if (data.drill && data.drill.check !== 'none') withDrills.push({ ...l, items: data.drill.items });
   }
   const missedKeys = Object.keys(store.missed);
   const upTo = el('select', { 'aria-label': 'words up to lesson' }, withDrills.map((l, i) => el('option', { value: i }, `Lessons 1 to ${l.num}`)));
@@ -231,6 +232,10 @@ async function lookupPage() {
     out.replaceChildren();
     if (!q) return;
     const { words, reverse } = await dictionary();
+    // the phrasing grammar: a phrase it writes (or the start of one), or a stroke it builds
+    const g = /\s|^[A-Z*+-]+$/.test(q) ? await grammar() : null;
+    const phrase = g ? leading(g, q) : null;
+    const made = g && !/\s/.test(q) ? explain(g, q.toUpperCase()) : null;
     const hits = [];
     const lower = q.toLowerCase();
     if (words.has(lower)) hits.push(lower);
@@ -241,12 +246,27 @@ async function lookupPage() {
       if (w.startsWith(lower) && !hits.includes(w)) hits.push(w);
     }
     const asked = q.toUpperCase();
-    if (parseOutline(asked)) {
+    if (phrase) {
+      const parts = explain(g, phrase.stroke);
+      out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `${phrase.text}  (the phrasing grammar)`),
+        ...row('one stroke', [phrase.stroke]),
+        ...(parts ?? []).flatMap((p) => row(p.kind === 'not' ? 'not' : `${p.kind}: ${p.says}`, [p.keys])),
+        el('p', { class: 'hit__note' }, parts ? describe(parts) : ''),
+        phrase.covered < phrase.total ? el('p', { class: 'hit__note' }, `The grammar covers the first ${phrase.covered} of ${phrase.total} words; the rest (${phrase.rest}) is written word by word below.`) : null));
+      for (const w of tokens(q).slice(0, 12)) if (words.has(w) && !hits.includes(w)) hits.push(w);
+    } else if (made) {
+      const text = grammarIndex(g).byStroke.get(asked);
+      out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `${text ?? asked}  (the phrasing grammar)`),
+        ...row('one stroke', [asked]),
+        ...made.flatMap((p) => row(p.kind === 'not' ? 'not' : `${p.kind}: ${p.says}`, [p.keys])),
+        el('p', { class: 'hit__note' }, describe(made))));
+    }
+    if (parseOutline(asked) && !made) {
       out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `the stroke ${asked}`),
         ...row(asOutline ? 'reads as' : 'not in this dictionary, but you can see its keys', [asked]),
         asOutline ? el('div', { class: 'hit__list' }, asOutline.slice(0, 6).map((w) => el('span', { class: 'word' }, w))) : null));
     }
-    if (!hits.length && !parseOutline(asked)) out.append(el('p', {}, 'Not in this dictionary. `resolve` still reads back any stroke the dictionary misses, and any word can be joined from its syllables.'));
+    if (!hits.length && !parseOutline(asked) && !phrase) out.append(el('p', {}, 'Not in this dictionary. `resolve` still reads back any stroke the dictionary misses, and any word can be joined from its syllables.'));
     for (const w of hits) {
       const outs = words.get(w);
       const one = outs.filter((o) => !o.includes('/'));

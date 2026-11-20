@@ -1,7 +1,7 @@
 {
   "id": "20-phrasing-strokes",
   "title": "Phrasing in practice",
-  "goal": "Worked examples, savings, and how to try the grammar today.",
+  "goal": "Worked examples, what it saves, and what the grammar leaves out.",
   "blocks": [
     {
       "t": "h",
@@ -15,55 +15,55 @@
       ],
       "rows": [
         [
-          "[[=it was|KPWHEB]]",
+          "[[it was|KPWHEB]]",
           "it + past + be"
         ],
         [
-          "[[=it is|KPWH-B]]",
+          "[[it is|KPWH-B]]",
           "it + be"
         ],
         [
-          "[[=I am|SWR-B]]",
+          "[[I am|SWR-B]]",
           "I + be"
         ],
         [
-          "[[=I am not|SWR*B]]",
+          "[[I am not|SWR*B]]",
           "I + not + be"
         ],
         [
-          "[[=I know|SWR-PB]]",
+          "[[I know|SWR-PB]]",
           "I + know"
         ],
         [
-          "[[=I don't know|SWR*PB]]",
+          "[[I don't know|SWR*PB]]",
           "I + not + know"
         ],
         [
-          "[[=I didn't know|SWR*EPB]]",
+          "[[I didn't know|SWR*EPB]]",
           "I + past + not + know"
         ],
         [
-          "[[=it would be|KPWHOEB]]",
+          "[[it would be|KPWHOEB]]",
           "it + would + be"
         ],
         [
-          "[[=he had been|STWHEFB]]",
+          "[[he had been|STWHEFB]]",
           "he + past + have been"
         ],
         [
-          "[[=I couldn't have been|SWRA*EFB]]",
+          "[[I couldn't have been|SWRA*EFB]]",
           "I + could + not + have been"
         ],
         [
-          "[[=they weren't|STWHR*EB]]",
+          "[[they weren't|STWHR*EB]]",
           "they + past + not + be"
         ],
         [
-          "[[=you see|KPWR-SZ]]",
+          "[[you see|KPWR-SZ]]",
           "you + see"
         ],
         [
-          "[[=I do|SWR]]",
+          "[[I do|SWR]]",
           "I alone"
         ]
       ]
@@ -78,15 +78,15 @@
     },
     {
       "t": "p",
-      "x": "*there* takes *be*, *have been* and the modals only, not the other verbs, and no bare *do*: [[=there is|STHR-B]], [[=there was|STHREB]], [[=there would be|STHROEB]], [[=there must have been|STHRAUFB]]."
+      "x": "*there* takes *be*, *have been* and the modals only, not the other verbs, and no bare *do*: [[there is|STHR-B]], [[there was|STHREB]], [[there would be|STHROEB]], [[there must have been|STHRAUFB]]."
     },
     {
       "t": "h",
-      "x": "What it takes from today's dictionary"
+      "x": "Where it sits in the dictionary"
     },
     {
       "t": "p",
-      "x": "Today 37 of the 3,758 grammar strokes are held by other entries: 19 merged two-word phrases and 18 short forms, extras and backups of rare words. The generator will place the grammar first; displaced words take their next outline. In the prototype no word is left without an outline."
+      "x": "The generator fixes the grammar's 3,758 strokes before any word settles, as it does the suffix strokes, so every one is placed and a word whose own candidates landed on one took its next outline: 122 words changed an outline, and of the 5,000 commonest only {{pity}} and {{impress}} moved their primary. The merged two-word phrases leave the texts the grammar writes to it (*it is* is [[it is|KPWH-B]]). Every word keeps an outline."
     },
     {
       "t": "h",
@@ -97,39 +97,39 @@
       "head": [
         "Text",
         "Words",
-        "Strokes today",
+        "Strokes without the grammar",
         "With the grammar"
       ],
       "rows": [
         [
           "Five Gutenberg novels",
           "712,328",
-          "667,147",
-          "653,013 (2.1% fewer)"
+          "618,285",
+          "608,651 (1.6% fewer)"
         ],
         [
           "Quote passages",
-          "3,104",
-          "3,136",
-          "3,115 (0.7% fewer)"
+          "3,105",
+          "2,976",
+          "2,960 (0.5% fewer)"
         ]
       ]
     },
     {
       "t": "p",
-      "x": "Measured by `tools/phrasing_prototype.py` over today's dictionary, today's merged phrases first. By tier: starter plus auxiliary alone saves 0.6%; adding *be*, *have*, *have been*, 1.4%; the 20 verbs, 2.1%. Five verbs (*say*, *see*, *know*, *think*, *go*) are 46% of the verbs' share. The novels are third-person past narration; everyday first- and second-person present typing has more of these pairs per word, so this undercounts."
+      "x": "Measured by `python3 tools/phrasing_prototype.py --savings BEFORE` against a build made without the grammar, the merged two-word phrases counted in both. The novels are third-person past narration; everyday first- and second-person present typing has more of these pairs per word, so this undercounts: the extracted quote passages of the test corpus, which are speech, spend 17% fewer strokes with phrases and grammar than word by word."
     },
     {
       "t": "h",
-      "x": "Trying it today"
+      "x": "Looking one up"
     },
     {
       "t": "pre",
-      "x": "cargo run --release -- build\npython3 tools/phrasing_prototype.py         # writes out/grammar-trial/\ncp out/grammar-trial/02-lyk-*.json ~/.config/keymux/steno/lyk/"
+      "x": "lyk lookup \"they wouldn't\"\nlyk lookup \"I do not know\"\nlyk lookup SWRAB"
     },
     {
       "t": "p",
-      "x": "The trial folder is the `02-lyk-*` set minus the displaced entries, plus the grammar as `02-lyk-grammar.json`. `lyk deploy` restores the normal dictionary (it removes any `02-lyk-` file it did not write)."
+      "x": "The lookup puts the grammar's stroke first, marked as a phrase, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word on its own. It ignores case and punctuation and reads *I'm*, *they're* and a spelt-out *not*. Given a stroke it says which phrase it is and what each key group says. The site's Lookup does the same."
     },
     {
       "t": "h",
@@ -145,11 +145,6 @@
       ]
     },
     {
-      "t": "note",
-      "kind": "rule",
-      "x": "When it ships, the generator reads `rules/grammar.toml` and writes the strokes into the dictionary, and this chapter's strokes are then checked against the built dictionary like other lessons. Until then they are grammar, not dictionary entries."
-    },
-    {
       "t": "h",
       "x": "The commonest phrases"
     },
@@ -160,7 +155,6 @@
   ],
   "drill": {
     "title": "The commonest phrases",
-    "check": "grammar",
     "pass": 90,
     "repeat": 1,
     "items": [

@@ -155,7 +155,7 @@ fn lane_outline(outline: &[Stroke]) -> String {
 pub fn generate(setup: &Setup, entries: &[Entry], names: &[Name]) -> Result<Lane> {
     let mut own_outlines: HashMap<&str, Vec<&Entry>> = HashMap::new();
     for e in entries {
-        if !matches!(e.origin, Origin::Backup | Origin::Phrase | Origin::Suffix) {
+        if !matches!(e.origin, Origin::Backup | Origin::Phrase | Origin::Grammar | Origin::Suffix) {
             own_outlines.entry(e.word.as_str()).or_default().push(e);
         }
     }

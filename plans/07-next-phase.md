@@ -150,8 +150,8 @@ around predictability: **a `+` entry should always decompose into pieces a learn
 
 ### 5. Phrasing grammar (the real route to Magnum speed)
 
-**Designed and measured 2026-11-04: [`08-phrasing-grammar.md`](08-phrasing-grammar.md)**, with a
-prototype to type (`tools/phrasing_prototype.py`). Built once it survives typing.
+**Designed and measured 2026-11-04: [`08-phrasing-grammar.md`](08-phrasing-grammar.md)**; built
+2026-11-20 (`rules/grammar.toml`, `src/phrases/grammar.rs`, `02-lyk-phrasing.json`).
 
 Rule-based, learnable phrases: starter (I/you/he/we/they) + auxiliary (can/will/don't/did/would) +
 common verb in one stroke, built from disjoint key regions instead of per-bigram luck. First write the

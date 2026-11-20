@@ -29,6 +29,7 @@ const fn origin_of(role: Role) -> Origin {
         Role::Backups => Origin::Backup,
         Role::Extras => Origin::Extra,
         Role::Phrases => Origin::Phrase,
+        Role::Phrasing => Origin::Grammar,
         Role::Suffixes => Origin::Suffix,
     }
 }
@@ -85,6 +86,10 @@ pub fn load(dir: &Path) -> Result<Vec<Entry>> {
         .and_then(|text| serde_json::from_str(&text).ok())
         .unwrap_or_default();
     for role in Role::ALL.into_iter().filter(|r| *r != Role::Backups) {
+        // A dictionary built before the phrasing grammar has no file for it
+        if role == Role::Phrasing && !dir.join(role.file_name()).is_file() {
+            continue;
+        }
         let text = read(dir, role)?;
         for (outline, word) in pairs(&text) {
             let Some(strokes) = parse_outline(outline) else { continue };

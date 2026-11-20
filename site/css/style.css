@@ -283,6 +283,7 @@ button.key { cursor: pointer; }
 .hit { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 0.9rem; }
 .hit__word { font-weight: 650; color: var(--heading); font-size: 1.05rem; }
 .hit__label { font-size: 0.8rem; color: var(--muted); margin: 0.35rem 0 0.1rem; }
+.hit__note { font-size: 0.85rem; color: var(--muted); margin: 0.35rem 0 0; }
 .hit__list { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .chart h3 { margin-top: 1.6rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.9rem; color: var(--muted); }
@@ -314,7 +315,6 @@ button.key { cursor: pointer; }
 .refhit__text { display: block; font-size: 0.9rem; color: var(--muted); }
 .hit .refhit { margin-top: 0.4rem; }
 pre.formula { font-family: var(--mono); font-size: 0.88rem; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem 0.9rem; overflow-x: auto; line-height: 1.55; margin: 0.8rem 0; }
-.stroke--grammar { border-style: dashed; }
 .gcomp__row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: end; }
 .gcomp__pick { display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); font-weight: 650; }
 .gcomp__pick select { font: inherit; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }

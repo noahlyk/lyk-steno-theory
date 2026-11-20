@@ -441,7 +441,7 @@ fn write_context(b: &mut Blob, bigrams: &[(String, String, u64)], outputs: &Hash
 pub fn stems(entries: &[Entry]) -> Vec<(Vec<Stroke>, String)> {
     entries
         .iter()
-        .filter(|e| !matches!(e.origin, Origin::Backup | Origin::Phrase | Origin::Suffix))
+        .filter(|e| !matches!(e.origin, Origin::Backup | Origin::Phrase | Origin::Grammar | Origin::Suffix))
         .map(|e| (e.outline.clone(), e.word.clone()))
         .collect()
 }

@@ -1,0 +1,224 @@
+# The phrasing grammar: a starter (left bank) + an auxiliary (vowels; the star is "not") + a verb
+# (right bank) in one stroke. Reference page "Phrases"; built by `src/phrases/grammar.rs`.
+#
+# Every chord below is a part, not a phrase: a phrase's stroke is the keys of its parts together.
+# The verbs carry no code. A lexical verb's right-bank code is worked out from its sounds, in the
+# order listed (commonest first): its own final consonants (the coda `rules/plover.toml` gives
+# them), or its first consonant when it ends in a vowel; when a commoner verb (or `be`, `have`,
+# `have been`) has that code, the verb's first consonant is added; when that is taken too, `-Z`.
+
+# the key that makes a phrase past
+past = "E"
+# the key that negates the phrase
+not = "*"
+# added after the first-consonant step when the code is still taken
+extra = "-Z"
+
+# Starters: no English word starts with one of these chords. `person` picks the verb forms
+# (`1s` I, `2` you, `3s` he/she/it/there, `pl` we/they). `only` limits what may follow a starter
+# when it is not a modal or a bare auxiliary: *there* takes *be* and *have been* only.
+[[starter]]
+word = "I"
+chord = "SWR"
+person = "1s"
+
+[[starter]]
+word = "you"
+chord = "KPWR"
+person = "2"
+
+[[starter]]
+word = "he"
+chord = "STWH"
+person = "3s"
+
+[[starter]]
+word = "she"
+chord = "SKWH"
+person = "3s"
+
+[[starter]]
+word = "it"
+chord = "KPWH"
+person = "3s"
+
+[[starter]]
+word = "we"
+chord = "TWR"
+person = "pl"
+
+[[starter]]
+word = "they"
+chord = "STWHR"
+person = "pl"
+
+[[starter]]
+word = "there"
+chord = "STHR"
+person = "3s"
+only = ["be", "have been"]
+
+# Modals: vowel keys; `past` is the form with the past key added, `negative` the form with the
+# star, `past_negative` both. A modal without a past (*must*) has no `E` forms.
+[[modal]]
+name = "can"
+keys = "A"
+present = "can"
+past = "could"
+negative = "can't"
+past_negative = "couldn't"
+
+[[modal]]
+name = "will"
+keys = "O"
+present = "will"
+past = "would"
+negative = "won't"
+past_negative = "wouldn't"
+
+[[modal]]
+name = "shall"
+keys = "U"
+present = "shall"
+past = "should"
+negative = "shall not"
+past_negative = "shouldn't"
+
+[[modal]]
+name = "may"
+keys = "AO"
+present = "may"
+past = "might"
+negative = "may not"
+past_negative = "might not"
+
+[[modal]]
+name = "must"
+keys = "AU"
+present = "must"
+negative = "mustn't"
+
+# The three verbs that are not lexical. `-F` is also `have` alone; `have been` is `have` + `be`.
+[be]
+code = "-B"
+# by person: 1s, 2, 3s, pl
+present = { "1s" = "am", "2" = "are", "3s" = "is", "pl" = "are" }
+present_negative = { "1s" = "am not", "2" = "aren't", "3s" = "isn't", "pl" = "aren't" }
+past = { "1s" = "was", "2" = "were", "3s" = "was", "pl" = "were" }
+past_negative = { "1s" = "wasn't", "2" = "weren't", "3s" = "wasn't", "pl" = "weren't" }
+
+[have]
+code = "-F"
+been_code = "-FB"
+base = "have"
+third = "has"
+past = "had"
+negative = "n't"
+
+# The verb in no verb slot: *do* (*I do*, *he does*, *I did*; with the star *I don't*).
+[do]
+base = "do"
+third = "does"
+past = "did"
+negative = "n't"
+
+# The lexical verbs, commonest first. The forms are the plain English ones; the code is derived.
+[[verb]]
+base = "say"
+third = "says"
+past = "said"
+
+[[verb]]
+base = "go"
+third = "goes"
+past = "went"
+
+[[verb]]
+base = "get"
+third = "gets"
+past = "got"
+
+[[verb]]
+base = "make"
+third = "makes"
+past = "made"
+
+[[verb]]
+base = "know"
+third = "knows"
+past = "knew"
+
+[[verb]]
+base = "think"
+third = "thinks"
+past = "thought"
+
+[[verb]]
+base = "take"
+third = "takes"
+past = "took"
+
+[[verb]]
+base = "see"
+third = "sees"
+past = "saw"
+
+[[verb]]
+base = "come"
+third = "comes"
+past = "came"
+
+[[verb]]
+base = "want"
+third = "wants"
+past = "wanted"
+
+[[verb]]
+base = "look"
+third = "looks"
+past = "looked"
+
+[[verb]]
+base = "tell"
+third = "tells"
+past = "told"
+
+[[verb]]
+base = "feel"
+third = "feels"
+past = "felt"
+
+[[verb]]
+base = "mean"
+third = "means"
+past = "meant"
+
+[[verb]]
+base = "need"
+third = "needs"
+past = "needed"
+
+[[verb]]
+base = "like"
+third = "likes"
+past = "liked"
+
+[[verb]]
+base = "hear"
+third = "hears"
+past = "heard"
+
+[[verb]]
+base = "seem"
+third = "seems"
+past = "seemed"
+
+[[verb]]
+base = "find"
+third = "finds"
+past = "found"
+
+[[verb]]
+base = "give"
+third = "gives"
+past = "gave"

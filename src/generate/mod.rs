@@ -124,6 +124,10 @@ pub enum Origin {
     /// anything. Never a stem a continuation stroke can follow — see `single_stroke_stems`'s own
     /// exclusion filter and `site/reference/phrases.json`, which this whole mechanism is documented in.
     Phrase,
+    /// A phrase the phrasing grammar writes (starter + auxiliary + verb, one stroke): `i was`,
+    /// `they wouldn't`. Its stroke is made of its parts' keys, not of any word's stroke. Placed
+    /// before the merged pairs and never taken by them (see `crate::phrases::grammar`).
+    Grammar,
     /// Another single-stroke way to write a word, added last of all: a candidate (a gold brief,
     /// the plain rules reading, a spelling variant, an `-S` respelling, a family shape) that lost
     /// its word's primary slot but whose stroke nobody else ended up needing. It never takes a
@@ -160,6 +164,8 @@ pub struct Generated {
     pub phrases_skipped: usize,
     /// Of the phrase entries added, how many took their stroke from a rarer word.
     pub phrases_displaced: usize,
+    /// What the phrasing grammar's placement did (see [`crate::phrases::grammar::Placed`])
+    pub grammar: crate::phrases::grammar::Placed,
     /// How many [`Origin::Extra`] entries were added after everything else.
     pub extras_added: usize,
     /// Every word that is another word plus a regular ending, by word - see `crate::family`.
@@ -347,6 +353,10 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         book.fix(word, candidate.outline, candidate.origin, &format!("{word:?}'s brief (in rules/briefs.toml)"))?;
     }
 
+    // The phrasing grammar's strokes are fixed the same way, before any word settles: a word whose
+    // own candidates land on a starter chord settles on its next outline. See `crate::phrases::grammar`.
+    let grammar = crate::phrases::grammar::fix(setup, &mut book).map_err(anyhow::Error::msg)?;
+
     let competing: Vec<(&str, usize)> =
         words.iter().map(|(w, r)| (w.as_str(), *r)).filter(|(w, _)| !is_literal_override(w)).collect();
     let names: Vec<&str> = competing.iter().map(|(w, _)| *w).collect();
@@ -415,6 +425,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         phrases_added: phrases.added,
         phrases_skipped: phrases.skipped,
         phrases_displaced: phrases.displaced,
+        grammar,
         extras_added,
         links,
         prefix_links,

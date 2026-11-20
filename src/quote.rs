@@ -158,18 +158,18 @@ pub fn rows_for(setup: &Setup, lyk: &std::collections::HashMap<&str, &[Stroke]>,
         .collect()
 }
 
-/// Every [`Origin::Phrase`] entry in a generated dictionary, by the exact two-word text it covers,
-/// to the single stroke that writes it - built once per `Generated` and shared across every
-/// passage scored, the same way `lyk` (`generate::cheapest`) already is. See
-/// `total_keys_with_phrases`, the only consumer.
-pub fn phrase_map(entries: &[Entry]) -> HashMap<(String, String), Vec<Stroke>> {
+/// The most words one phrase entry covers: the phrasing grammar's longest (*I couldn't have been*).
+const LONGEST_PHRASE: usize = 5;
+
+/// Every [`Origin::Phrase`] and [`Origin::Grammar`] entry in a generated dictionary, by the exact
+/// words it covers (two for a merged pair, two to five for the grammar's), to the stroke that
+/// writes it - built once per `Generated` and shared across every passage scored, the same way
+/// `lyk` (`generate::cheapest`) already is. See `total_cost_with_phrases`, the only consumer.
+pub fn phrase_map(entries: &[Entry]) -> HashMap<Vec<String>, Vec<Stroke>> {
     entries
         .iter()
-        .filter(|e| e.origin == Origin::Phrase)
-        .filter_map(|e| {
-            let (w1, w2) = e.word.split_once(' ')?;
-            Some(((w1.to_owned(), w2.to_owned()), e.outline.clone()))
-        })
+        .filter(|e| matches!(e.origin, Origin::Phrase | Origin::Grammar))
+        .map(|e| (e.word.split(' ').map(str::to_owned).collect(), e.outline.clone()))
         .collect()
 }
 
@@ -201,7 +201,7 @@ pub fn phrase_map(entries: &[Entry]) -> HashMap<(String, String), Vec<Stroke>> {
 pub fn total_cost_with_phrases(
     setup: &Setup,
     lyk: &std::collections::HashMap<&str, &[Stroke]>,
-    phrases: &HashMap<(String, String), Vec<Stroke>>,
+    phrases: &HashMap<Vec<String>, Vec<Stroke>>,
     text: &str,
 ) -> (u64, u64, u32) {
     let words: Vec<String> = text.split_whitespace().filter_map(clean).collect();
@@ -210,13 +210,15 @@ pub fn total_cost_with_phrases(
     let mut phrase_hits = 0u32;
     let mut i = 0;
     while i < words.len() {
-        if i + 1 < words.len()
-            && let Some(outline) = phrases.get(&(words[i].clone(), words[i + 1].clone()))
-        {
+        // the longest phrase that starts here
+        let found = (2..=LONGEST_PHRASE.min(words.len() - i))
+            .rev()
+            .find_map(|n| phrases.get(&words[i..i + n]).map(|outline| (n, outline)));
+        if let Some((n, outline)) = found {
             total_strokes += outline.len() as u64;
             total_keys += u64::from(generate::keys(outline));
             phrase_hits += 1;
-            i += 2;
+            i += n;
             continue;
         }
         if let Some((s, k)) = cost(&outline_of(setup, lyk, &words[i])) {

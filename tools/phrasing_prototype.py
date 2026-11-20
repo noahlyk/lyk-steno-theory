@@ -1,10 +1,13 @@
-"""Prototype of the phrasing grammar in plans/08-phrasing-grammar.md, for typing it before it is
-built into the generator. Usage: python3 tools/phrasing_prototype.py [OUT_DIR=out/grammar-trial]
+"""The phrasing grammar of plans/08-phrasing-grammar.md as the spec the generator is checked against:
+`entries()` writes every (stroke, text) from the tables below, independently of `rules/grammar.toml`
+and `src/phrases/grammar.rs`.
 
-One stroke = a starter (left bank) + an auxiliary (vowels; the star is "not") + a verb (right
-bank). Writes OUT_DIR/02-lyk-grammar.json and copies of out/lyk's role files without the entries
-the grammar takes over, so the folder can be deployed as a whole; prints what it displaced, the
-strokes it saves on the corpora, and a practice list."""
+    python3 tools/phrasing_prototype.py [DIR]       # DIR defaults to out/lyk: every stroke of DIR/02-lyk-phrasing.json
+                                                    # against the prototype's; exit 1 on any difference
+    python3 tools/phrasing_prototype.py --savings BEFORE   # strokes the corpora save, a build without the grammar (BEFORE)
+                                                           # against out/lyk
+
+The prototype also drew the first typing trial; that folder is no longer made (`lyk deploy` ships the grammar)."""
 import collections, glob, json, os, re, shutil, sys
 import lyk_out
 
@@ -120,46 +123,39 @@ def entries():
     return out
 
 
-# --- what it does to today's dictionary --------------------------------------------------------
+# --- checking the generator against it, and what it saves ---------------------------------------
 
-def main():
-    out_dir = sys.argv[1] if len(sys.argv) > 1 else lyk_out.path('out', 'grammar-trial')
-    grammar = entries()
-    assert len(set(grammar.values())) == len(grammar), 'two strokes write the same phrase'
-    files = lyk_out.role_files()
-    holders = {o: (w, role) for role, d in files.items() for o, w in d.items()}
-    by_word = lyk_out.outlines_by_word(files)
-    rank = lyk_out.ranks()
-    displaced = sorted(((rank.get(holders[o][0], 10**6), holders[o][0], o, holders[o][1], text)
-                        for o, text in grammar.items() if o in holders))
-    print(f"{len(grammar)} grammar strokes; {len(displaced)} take a stroke something has today:")
-    kinds = collections.Counter(role for _, _, _, role, _ in displaced)
-    print('  by role:', dict(kinds))
-    stranded = []
-    for r, word, o, role, text in displaced:
-        others = [x for rs in by_word[word].values() for x in rs if x != o]
-        if role != 'phrases' and not others:
-            stranded.append(word)
-        if role != 'phrases' and r < 20000:
-            print(f"  {word:>14} #{r:<6} {o:<10} ({role}) -> {text!r}; still has {lyk_out.fastest(others) if others else 'NOTHING'}")
-    print('  words left with no outline:', stranded or 'none')
+def cross_check(directory):
+    """Every stroke the generator wrote to `directory/02-lyk-phrasing.json` against this prototype's:
+    prints each difference and returns how many there are."""
+    built = json.load(open(os.path.join(directory, '02-lyk-phrasing.json')))
+    spec = entries()
+    assert len(set(spec.values())) == len(spec), 'two strokes write the same phrase'
+    bad = 0
+    for outline in sorted(set(spec) | set(built)):
+        if spec.get(outline) != built.get(outline):
+            bad += 1
+            print(f'  {outline}: prototype {spec.get(outline)!r}, generator {built.get(outline)!r}')
+    print(f'{len(spec)} prototype strokes, {len(built)} generator strokes, {bad} different')
+    return bad
 
-    # the trial folder: every role file minus what the grammar takes, plus the grammar
-    if os.path.isdir(out_dir):
-        shutil.rmtree(out_dir)
-    os.makedirs(out_dir)
-    for role, d in files.items():
-        kept = {o: w for o, w in d.items() if o not in grammar}
-        json.dump(kept, open(os.path.join(out_dir, f'02-lyk-{role}.json'), 'w'), indent=0, sort_keys=True)
-    json.dump(dict(sorted(grammar.items())), open(os.path.join(out_dir, '02-lyk-grammar.json'), 'w'), indent=0)
-    print(f"wrote {out_dir}")
 
-    # strokes saved, over today's dictionary with today's phrases
-    cost = {}
-    for word, roles in by_word.items():
-        cost[word.lower()] = min(o.count('/') + 1 for rs in roles.values() for o in rs)
-    pairs = {tuple(w.lower().split()): o.count('/') + 1 for o, w in files['phrases'].items()}
-    phr = {tuple(t.lower().split()): o for o, t in grammar.items()}
+def savings(before_dir, after_dir):
+    """Strokes the corpora take walked word by word with the phrases of `before_dir` (a build without the
+    grammar), against the same walk over `after_dir` (a build with it): the longest phrase first."""
+    before_files = lyk_out.role_files(before_dir)
+    after_files = lyk_out.role_files(after_dir)
+
+    def costs(files):
+        by_word = lyk_out.outlines_by_word(files)
+        return {w.lower(): min(o.count('/') + 1 for rs in roles.values() for o in rs) for w, roles in by_word.items()}
+
+    def pairs(files):
+        return {tuple(w.lower().split()): o.count('/') + 1 for o, w in files['phrases'].items()}
+
+    cost_before, cost_after = costs(before_files), costs(after_files)
+    pairs_before, pairs_after = pairs(before_files), pairs(after_files)
+    phr = {tuple(t.lower().split()): o for o, t in after_files.get('phrasing', {}).items()}
     longest = max(len(p) for p in phr)
     for kind in ('gutenberg', 'quotes'):
         text = ''
@@ -171,26 +167,38 @@ def main():
             text = '\n'.join(re.findall(r'"((?:[^"\\]|\\.)*)"', q))
         words = re.findall(r"[a-z]+(?:'[a-z]+)?", text.replace('’', "'").lower())
 
-        def walk(use_grammar):
+        def walk(cost, pair, use_grammar):
             strokes, i, hits = 0, 0, collections.Counter()
             while i < len(words):
                 for n in (range(longest, 1, -1) if use_grammar else ()):
                     if tuple(words[i:i + n]) in phr:
-                        strokes += 1; hits[tuple(words[i:i + n])] += 1; i += n
+                        strokes += 1
+                        hits[tuple(words[i:i + n])] += 1
+                        i += n
                         break
                 else:
-                    if tuple(words[i:i + 2]) in pairs:
-                        strokes += pairs[tuple(words[i:i + 2])]; i += 2
+                    if tuple(words[i:i + 2]) in pair:
+                        strokes += pair[tuple(words[i:i + 2])]
+                        i += 2
                     else:
-                        strokes += cost.get(words[i], 2); i += 1
+                        strokes += cost.get(words[i], 2)
+                        i += 1
             return strokes, hits
-        before, _ = walk(False)
-        after, hits = walk(True)
-        print(f"{kind}: {len(words)} words, {before} -> {after} strokes ({100 * (before - after) / before:.2f}% fewer)")
+        was, _ = walk(cost_before, pairs_before, False)
+        now, hits = walk(cost_after, pairs_after, True)
+        print(f"{kind}: {len(words)} words, {was} -> {now} strokes ({100 * (was - now) / was:.2f}% fewer)")
         if kind == 'gutenberg':
-            print('practice, commonest first:')
+            print('commonest in running text:')
             for p, n in hits.most_common(40):
                 print(f"  {phr[p]:<12} {' '.join(p)}")
+
+
+def main():
+    args = sys.argv[1:]
+    if args[:1] == ['--savings']:
+        savings(args[1] if len(args) > 1 else lyk_out.path('out', 'before'), lyk_out.path('out', 'lyk'))
+    else:
+        sys.exit(1 if cross_check(args[0] if args else lyk_out.path('out', 'lyk')) else 0)
 
 
 if __name__ == '__main__':

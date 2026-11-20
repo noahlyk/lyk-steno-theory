@@ -13,11 +13,13 @@ fn outlines(word: &str) -> Vec<(String, Origin)> {
 }
 
 #[test]
-fn a_phrase_takes_a_backup_stroke_and_the_word_keeps_its_own_outline() {
-    // `sit`'s backup `ST` (`s` + `it`) is worth less than "it is" on the same stroke
-    assert!(outlines("it is").contains(&("ST".to_owned(), Origin::Phrase)));
+fn a_text_the_grammar_writes_is_left_to_it_and_not_also_a_merged_pair() {
+    // "it is" is the grammar's `KPWH-B`; the merged `ST` (`T` + `S`) is not made, and `sit` keeps
+    // that stroke as the backup (`s` + `it`) it is
+    let it_is = outlines("it is");
+    assert_eq!(it_is, vec![("KPWH-B".to_owned(), Origin::Grammar)], "{it_is:?}");
     let sit = outlines("sit");
-    assert!(!sit.iter().any(|(o, _)| o == "ST"), "{sit:?}");
+    assert!(sit.contains(&("ST".to_owned(), Origin::Backup)), "{sit:?}");
     assert!(sit.iter().any(|(_, origin)| matches!(origin, Origin::Rules | Origin::Brief | Origin::Spelling)), "{sit:?}");
 }
 

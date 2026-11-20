@@ -33,8 +33,8 @@
     { "t": "table", "head": ["Kind", "Examples", "Full rules"], "rows": [
       ["Sounded out: start, vowel, end", "[[cat|KAT]] [[dog|TKOG]]", "[Phonetic rules](#/ref/phonetic-rules)"],
       ["Brief: the commonest words", "[[the|-T]] [[of|-F]] [[and|SKP]] [[to|O]] [[a|A]] [[in|TPH]] [[is|S]] [[it|T]] [[for|-R]]", "[Briefs](#/ref/briefs)"],
-      ["Phrase: two words merged", "[[of the|-FT]] [[in the|TPH-T]] [[it is|ST]] [[you are|RU]]", "[Phrase-briefing](#/ref/phrases)"],
-      ["Phrasing grammar: starter, auxiliary, not, verb", "designed, not in the dictionary yet", "[Lesson 19](#/lesson/19-phrasing-grammar)"]
+      ["Phrase: two words merged", "[[of the|-FT]] [[in the|TPH-T]] [[is the|S-T]] [[and a|SKPA]]", "[Phrase-briefing](#/ref/phrases)"],
+      ["Phrasing grammar: starter, auxiliary, not, verb in one stroke", "[[it was|KPWHEB]] [[I know|SWR-PB]] [[they wouldn't|STWHRO*E]]", "[The phrasing grammar](#/ref/phrases/the-phrasing-grammar), [lesson 19](#/lesson/19-phrasing-grammar)"]
     ] },
     { "t": "h", "x": "Longer words: the join key" },
     { "t": "table", "head": ["You want", "You strike", "Full rules"], "rows": [

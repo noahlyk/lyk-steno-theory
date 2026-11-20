@@ -8,6 +8,7 @@
 //! strokes".
 
 mod candidates;
+pub mod grammar;
 
 pub use candidates::*;
 
@@ -221,10 +222,14 @@ pub fn place(
     natural: &dyn Fn(&str) -> Option<Vec<Stroke>>,
     literal: &dyn Fn(&str) -> bool,
 ) -> Placed {
+    // The texts the phrasing grammar writes (`grammar`) are left to it
+    let written: HashSet<String> = grammar::texts(entries).into_iter().map(str::to_owned).collect();
     let candidates = {
         let single = primary_single_strokes(entries);
         let any_len = primary_outlines(entries);
-        enumerate_phrase_candidates(setup, &single, &any_len, PHRASE_TOP_N)
+        let mut all = enumerate_phrase_candidates(setup, &single, &any_len, PHRASE_TOP_N);
+        all.retain(|((w1, w2), _, _)| !written.contains(&format!("{w1} {w2}")));
+        all
     };
     let is_winner = arbitrate_phrase_round(&candidates);
     let protected: HashSet<&str> = {

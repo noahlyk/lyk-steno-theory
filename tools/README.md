@@ -10,7 +10,7 @@ Python 3, no dependencies. Every one reads the built dictionary in `out/lyk/` (r
 | `diff_builds.py BEFORE [AFTER] [N]` | What a change did: per-file entry and word counts, the words only one build has, and every word whose fastest outline changed, commonest first, with counts for the top 1,000 / 5,000 / 20,000. |
 | `coverage.py [word ...]` | How many words of two syllables or more can be joined in, by frequency band: one-stroke share, joined share, stem-plus-ending share, joined ways in per word ([joins](site/reference/ways-to-join.json)). |
 | `markers.py [N]` | Words still on a bare `/+*` marker, by band, real words against names, and who holds the plain and starred stroke each real word wanted ([collisions](site/reference/collisions.json)). |
-| `phrasing_prototype.py [OUT_DIR]` | The phrasing grammar ([plans/08](../plans/08-phrasing-grammar.md)) as a trial folder to deploy and type: displaced entries, strokes saved on the corpora, a practice list. |
+| `phrasing_prototype.py [DIR]`, `--savings BEFORE` | The phrasing grammar ([plans/08](../plans/08-phrasing-grammar.md)) as an independent spec: checks every stroke of `DIR/02-lyk-phrasing.json` (default `out/lyk`) against it, exit 1 on any difference; `--savings BEFORE` walks the corpora with a build without the grammar and with it. |
 | `site_data.py [--check]` | Writes the data the [lessons site](../site/README.md) runs on, and checks every outline the lessons teach against the built dictionary. Exits non-zero on any wrong one. |
 | `phrase_sim.py [protect_rank] [show]` | Simulates letting phrases take strokes from words ([plans/06](../plans/06-phrase-briefs.md)). |
 

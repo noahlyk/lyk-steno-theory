@@ -255,7 +255,7 @@ fn check_query(
     let answer = lookup.answer(query, Ask { fast: false, stroke_mode: false, extra: 4 });
     let mut word = String::new();
     let mut best_seen = false;
-    for Row { word: row_word, cells, mark } in &answer.rows {
+    for Row { word: row_word, cells, mark, .. } in &answer.rows {
         if !matches!(mark, Mark::Entry | Mark::Missing | Mark::Completion) {
             continue;
         }

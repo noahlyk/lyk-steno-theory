@@ -1,9 +1,8 @@
 // The phrasing grammar's composer: pick a starter, an auxiliary, "not" and a verb, see the one
 // stroke and the phrase it writes. The strokes are not computed here: they come from
-// data/grammar.json, which tools/site_data.py writes from the generator's own prototype
-// (tools/phrasing_prototype.py). This file only works out the English text of a choice, and
-// check.mjs proves every choice's text is a phrase in that file, and every phrase is reachable.
-// The grammar is not in the built dictionary yet (plans/08); nothing here claims it is.
+// data/grammar.json, which tools/site_data.py writes from the built dictionary's 02-lyk-phrasing.json
+// and rules/grammar.toml. This file only works out the English text of a choice, and check.mjs
+// proves every choice's text is a phrase in that file, and every phrase is reachable.
 
 import { createBoard } from './board.js';
 import { el } from './dom.js';
@@ -76,7 +75,7 @@ export function grammarComposer() {
       el('div', { class: 'gcomp__row' }, lab('Starter', whoS), lab('Auxiliary', auxS), lab('Verb', verbS),
         el('label', { class: 'gcomp__pick gcomp__not' }, notB, el('span', {}, ' not (*)'))),
       out, el('div', { class: 'boardbox__scroll' }, boardHost),
-      el('p', { class: 'boardbox__hint' }, 'The board shows the keys; nothing on it is clickable. These strokes are the grammar, not dictionary entries: it is not built into the dictionary yet.'));
+      el('p', { class: 'boardbox__hint' }, 'The board shows the keys; nothing on it is clickable. Every stroke the composer makes is a dictionary entry.'));
     const run = () => {
       const who = g.starters[Number(whoS.value)];
       const [keys, past] = aux[Number(auxS.value)];

@@ -33,18 +33,21 @@ pub enum Role {
     Extras,
     /// Two common words in one stroke
     Phrases,
+    /// The phrasing grammar: starter + auxiliary + verb in one stroke
+    Phrasing,
     /// Standalone suffix strokes
     Suffixes,
 }
 
 impl Role {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Words,
         Self::Short,
         Self::Alternates,
         Self::Backups,
         Self::Extras,
         Self::Phrases,
+        Self::Phrasing,
         Self::Suffixes,
     ];
 
@@ -57,6 +60,7 @@ impl Role {
             Self::Backups => "02-lyk-backups.json",
             Self::Extras => "02-lyk-extras.json",
             Self::Phrases => "02-lyk-phrases.json",
+            Self::Phrasing => "02-lyk-phrasing.json",
             Self::Suffixes => "02-lyk-suffixes.json",
         }
     }
@@ -75,6 +79,7 @@ impl Role {
             Origin::Backup => Self::Backups,
             Origin::Extra => Self::Extras,
             Origin::Phrase => Self::Phrases,
+            Origin::Grammar => Self::Phrasing,
             Origin::Suffix => Self::Suffixes,
         }
     }

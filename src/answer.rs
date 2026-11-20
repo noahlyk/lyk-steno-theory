@@ -8,7 +8,8 @@
 
 use crate::analysis::Setup;
 use crate::built::Backups;
-use crate::generate::{self, Entry, Origin};
+use crate::generate::{self, Entry, Origin, written};
+use crate::phrases::grammar::{PartKind, Phrase, Phrasing};
 use crate::reverse::{self, Query, WordLookup};
 use crate::stroke::{self, Stroke, render_outline};
 use std::collections::HashMap;
@@ -56,6 +57,9 @@ pub enum Mark {
     Command,
     /// A word that starts with the query, offered after the exact answers
     Completion,
+    /// A phrase the phrasing grammar writes in one stroke (`I was`), ahead of its words; only lyk's
+    /// column is filled and `detail` says which key group says what
+    Phrasing,
     /// What a stroke types; the row's word is the text, or a note that it types nothing
     Forward,
     /// An entry one key or two from the stroke asked for
@@ -72,6 +76,8 @@ pub struct Row {
     /// lyk, Plover, Lapwing; `None` where that theory has nothing. A stroke query fills lyk alone.
     pub cells: [Option<Cell>; 3],
     pub mark: Mark,
+    /// Lines printed under the table about this row (what the phrasing grammar says it is made of)
+    pub detail: Vec<String>,
 }
 
 /// What a query found.
@@ -171,6 +177,8 @@ pub struct Lookup<'a> {
     /// the first miss that needs it, so a lookup that never misses never pays for it
     solver: std::sync::OnceLock<Option<crate::rules::solve::Model>>,
     load_solver: Option<fn() -> Option<crate::rules::solve::Model>>,
+    /// The phrasing grammar as this dictionary has it (`None` for one built before it existed)
+    phrasing: Option<Phrasing>,
 }
 
 impl<'a> Lookup<'a> {
@@ -238,6 +246,7 @@ impl<'a> Lookup<'a> {
             backups,
             solver: std::sync::OnceLock::new(),
             load_solver: None,
+            phrasing: Phrasing::read(entries),
         }
     }
 
@@ -306,11 +315,18 @@ impl<'a> Lookup<'a> {
             .by_outline
             .get(strokes)
             .map_or_else(reading, |word| (format!("{word:?}"), How::Entry));
-        Row { word, cells: [Some(Cell { strokes: strokes.to_vec(), how }), None, None], mark }
+        Row { word, cells: [Some(Cell { strokes: strokes.to_vec(), how }), None, None], mark, detail: Vec::new() }
     }
 
     fn forward(&self, strokes: &[Stroke], ask: Ask) -> Answer {
-        let mut rows = vec![self.forward_row(strokes, Mark::Forward)];
+        let mut first = self.forward_row(strokes, Mark::Forward);
+        if let [stroke] = strokes
+            && let Some(phrase) = self.phrasing.as_ref().and_then(|p| p.stroke(*stroke))
+        {
+            first.word = format!("{:?}", written(&phrase.text));
+            first.detail = grammar_detail(phrase, None);
+        }
+        let mut rows = vec![first];
         if !ask.fast {
             for outline in self.nearest(strokes, ask.extra) {
                 rows.push(self.forward_row(&outline, Mark::Nearby));
@@ -556,20 +572,56 @@ impl<'a> Lookup<'a> {
             .take(limit)
             .map(|(rank, s)| {
                 let cell = Cell { strokes: s.outline.clone(), how: How::Entry };
-                (rank, Row { word: s.text.clone(), cells: [Some(cell), None, None], mark: Mark::Command })
+                (rank, Row { word: s.text.clone(), cells: [Some(cell), None, None], mark: Mark::Command, detail: Vec::new() })
             })
             .collect()
+    }
+
+    /// The row for the longest start of the query that the phrasing grammar writes, and how many
+    /// words it covers: `i was`, `They wouldn't!`, `she has been going` (covering `she has been`).
+    fn grammar_row(&self, words: &[&str]) -> Option<(usize, Row)> {
+        let phrasing = self.phrasing.as_ref()?;
+        let tokens = grammar_tokens(words);
+        let as_typed = phrasing.leading(&tokens);
+        // `I do not know` is `I don't know`: the same words with the negative spelt out. Each
+        // contracted token stands for the words it came from.
+        let (contracted, spans) = contract_not(&tokens);
+        let contracted = phrasing.leading(&contracted).map(|(n, phrase)| (spans[..n].iter().sum::<usize>(), phrase));
+        let (covered, phrase) = match (as_typed, contracted) {
+            (Some(a), Some(b)) => if b.0 > a.0 { b } else { a },
+            (a, b) => a.or(b)?,
+        };
+        let partial = (covered < tokens.len()).then(|| (covered, tokens.len(), tokens[covered..].join(" ")));
+        let row = Row {
+            word: written(&phrase.text),
+            cells: [Some(Cell { strokes: vec![phrase.stroke], how: How::Entry }), None, None],
+            mark: Mark::Phrasing,
+            detail: grammar_detail(phrase, partial),
+        };
+        Some((covered, row))
     }
 
     fn reverse_rows(&self, text: &str, ask: Ask) -> Answer {
         let words: Vec<&str> = text.split_whitespace().collect();
         let mut rows = Vec::new();
+        // What the phrasing grammar writes of the query comes first (the whole of it, or its start)
+        let grammar = self.grammar_row(&words);
+        let whole = grammar.as_ref().is_some_and(|(covered, _)| *covered == words.len());
+        // A query the grammar reads has its punctuation ignored by the per-word rows as well
+        let cleaned: String;
+        let text = if grammar.is_some() {
+            cleaned = words.iter().map(|w| w.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'')).collect::<Vec<_>>().join(" ");
+            cleaned.as_str()
+        } else {
+            text
+        };
+        rows.extend(grammar.map(|(_, row)| row));
         // A phrase that is an entry of its own (`to the`, one stroke) comes first, then each word
-        if words.len() >= 2 {
+        if words.len() >= 2 && !whole {
             let phrase = words.join(" ").to_lowercase();
             if let Some(outline) = self.dictionary.get(phrase.as_str()) {
                 let cell = Cell { strokes: outline.to_vec(), how: How::Entry };
-                rows.push(Row { word: phrase, cells: [Some(cell), None, None], mark: Mark::Entry });
+                rows.push(Row { word: phrase, cells: [Some(cell), None, None], mark: Mark::Entry, detail: Vec::new() });
             }
         }
         for found in reverse::reverse_phrase(self.setup, &self.dictionary, text) {
@@ -578,7 +630,7 @@ impl<'a> Lookup<'a> {
             let [plover, lapwing] = Self::gold_cells(&found);
             let cells = [listing.first().cloned(), plover, lapwing];
             if cells.iter().all(Option::is_none) {
-                rows.push(Row { word: word.to_owned(), cells, mark: Mark::Missing });
+                rows.push(Row { word: word.to_owned(), cells, mark: Mark::Missing, detail: Vec::new() });
                 continue;
             }
             let gold = if ask.fast {
@@ -586,11 +638,11 @@ impl<'a> Lookup<'a> {
             } else {
                 self.gold_others(&word.to_lowercase(), &[cells[1].clone(), cells[2].clone()])
             };
-            rows.push(Row { word: word.to_owned(), cells, mark: Mark::Entry });
+            rows.push(Row { word: word.to_owned(), cells, mark: Mark::Entry, detail: Vec::new() });
             let ours = if ask.fast { &[][..] } else { listing.get(1..).unwrap_or_default() };
             for n in 0..ours.len().max(gold[0].len()).max(gold[1].len()) {
                 let theirs = |t: usize| gold[t].get(n).map(|o| Cell { strokes: o.clone(), how: How::Entry });
-                rows.push(Row { word: String::new(), cells: [ours.get(n).cloned(), theirs(0), theirs(1)], mark: Mark::Entry });
+                rows.push(Row { word: String::new(), cells: [ours.get(n).cloned(), theirs(0), theirs(1)], mark: Mark::Entry, detail: Vec::new() });
             }
         }
         if let [word] = words.as_slice()
@@ -622,11 +674,102 @@ impl<'a> Lookup<'a> {
                     word: (*completion).to_owned(),
                     cells: [Some(cell), gold(plover), gold(lapwing)],
                     mark: Mark::Completion,
+                    detail: Vec::new(),
                 });
             }
         }
         Answer { rows, problem: None }
     }
+}
+
+/// The words of a query as the grammar's texts have them: lowercase, a curly apostrophe straight,
+/// punctuation gone, the contractions that are one word each (`I'm`, `they're`, `I've`, `I'll`)
+/// spelt out.
+fn grammar_tokens(words: &[&str]) -> Vec<String> {
+    let mut tokens = Vec::new();
+    for word in words {
+        let clean: String = word
+            .to_lowercase()
+            .chars()
+            .map(|c| if c == '\u{2019}' || c == '\u{2018}' { '\'' } else { c })
+            .map(|c| if c.is_alphanumeric() || c == '\'' { c } else { ' ' })
+            .collect();
+        for token in clean.split_whitespace() {
+            let token = token.trim_matches('\'');
+            if token.is_empty() {
+                continue;
+            }
+            let split = [("'m", "am"), ("'re", "are"), ("'ve", "have"), ("'ll", "will")]
+                .iter()
+                .find_map(|(tail, full)| token.strip_suffix(tail).filter(|head| !head.is_empty()).map(|head| (head, *full)));
+            match split {
+                Some((head, full)) => {
+                    tokens.push(head.to_owned());
+                    tokens.push(full.to_owned());
+                }
+                None => tokens.push(token.to_owned()),
+            }
+        }
+    }
+    tokens
+}
+
+/// `tokens` with each spelt-out negative contracted (`do not` is `don't`, `will not` is `won't`,
+/// `can not` and `cannot` are `can't`; the grammar's own `shall not`, `may not`, `might not` and
+/// `am not` stay), and how many of `tokens` each one stands for.
+fn contract_not(tokens: &[String]) -> (Vec<String>, Vec<usize>) {
+    let mut out: Vec<String> = Vec::new();
+    let mut spans: Vec<usize> = Vec::new();
+    for token in tokens {
+        let joined = match (out.last().map(String::as_str), token.as_str()) {
+            (Some("will"), "not") => Some("won't".to_owned()),
+            (Some("can"), "not") => Some("can't".to_owned()),
+            (Some(prev @ ("is" | "are" | "was" | "were" | "do" | "does" | "did" | "has" | "have" | "had" | "could" | "would" | "should" | "must")), "not") => {
+                Some(format!("{prev}n't"))
+            }
+            _ => None,
+        };
+        match joined {
+            Some(contracted) => {
+                out.pop();
+                out.push(contracted);
+                if let Some(span) = spans.last_mut() {
+                    *span += 1;
+                }
+            }
+            None if token == "cannot" => {
+                out.push("can't".to_owned());
+                spans.push(1);
+            }
+            None => {
+                out.push(token.clone());
+                spans.push(1);
+            }
+        }
+    }
+    (out, spans)
+}
+
+/// The lines under a phrase's row: what each group of keys says, and for a query the grammar
+/// covers only the start of (`(covered, words, rest)`), how much it covers.
+fn grammar_detail(phrase: &Phrase, partial: Option<(usize, usize, String)>) -> Vec<String> {
+    let parts: Vec<String> = phrase
+        .parts
+        .iter()
+        .map(|p| if p.kind == PartKind::Not { format!("{} not", p.keys) } else { format!("{} {} ({})", p.keys, p.kind.name(), p.says) })
+        .collect();
+    let keys: Vec<&str> = phrase.parts.iter().map(|p| p.keys.as_str()).collect();
+    let mut lines = vec![
+        format!("  {}: one stroke of the phrasing grammar, {}", written(&phrase.text), keys.join(" + ")),
+        format!("    {}", parts.join(" + ")),
+    ];
+    if let Some((covered, total, rest)) = partial {
+        lines.push(format!(
+            "  the grammar covers the first {covered} of {total} words ({}); the rest ({rest}) is per word below",
+            written(&phrase.text)
+        ));
+    }
+    lines
 }
 
 #[cfg(test)]
@@ -791,6 +934,67 @@ mod tests {
             .sum();
         assert_eq!(totals.keys, best);
         assert!(totals.strokes >= 3);
+    }
+
+    #[test]
+    fn a_phrase_the_grammar_writes_comes_first_with_its_parts() {
+        let answer = lookup().answer("They wouldn't!", ALL);
+        let first = &answer.rows[0];
+        assert_eq!((first.word.as_str(), first.mark), ("they wouldn't", Mark::Phrasing));
+        assert_eq!(text(first.cells[0].as_ref()), "STWHRO*E");
+        assert_eq!(
+            first.detail,
+            [
+                "  they wouldn't: one stroke of the phrasing grammar, STWHR + OE + *",
+                "    STWHR starter (they) + OE auxiliary (would) + * not"
+            ]
+        );
+        // each word still follows, the punctuation ignored, and the phrase is not counted in the totals
+        let words: Vec<&str> = answer.rows.iter().filter(|r| r.mark == Mark::Entry && !r.word.is_empty()).map(|r| r.word.as_str()).collect();
+        assert_eq!(words, ["They", "wouldn't"]);
+        assert_eq!(answer.totals().strokes, 2);
+        // the grammar's text is not also answered as a plain entry
+        assert_eq!(answer.rows.iter().filter(|r| r.word.contains("wouldn't") && r.word.contains(' ')).count(), 1);
+    }
+
+    #[test]
+    fn a_phrase_the_grammar_covers_only_at_its_start_says_how_much() {
+        let answer = lookup().answer("she has been going", ALL);
+        let first = &answer.rows[0];
+        assert_eq!((first.word.as_str(), first.mark), ("she has been", Mark::Phrasing));
+        assert_eq!(text(first.cells[0].as_ref()), "SKWH-FB");
+        assert!(
+            first.detail.iter().any(|l| l == "  the grammar covers the first 3 of 4 words (she has been); the rest (going) is per word below"),
+            "{:?}",
+            first.detail
+        );
+        assert!(answer.rows.iter().any(|r| r.word == "going" && r.mark == Mark::Entry));
+    }
+
+    #[test]
+    fn a_spelt_out_not_and_a_contraction_read_as_the_grammars_text() {
+        let lookup = lookup();
+        let first = |query: &str| lookup.answer(query, ALL).rows.into_iter().next().unwrap();
+        let spelt = first("I do not know");
+        assert_eq!((spelt.word.as_str(), spelt.mark), ("I don't know", Mark::Phrasing));
+        assert_eq!(text(spelt.cells[0].as_ref()), "SWR*PB");
+        // all four words are covered: no "the rest" line
+        assert!(spelt.detail.iter().all(|l| !l.contains("the rest")), "{:?}", spelt.detail);
+        let contracted = first("I\u{2019}m going home");
+        assert_eq!((contracted.word.as_str(), contracted.mark), ("I am", Mark::Phrasing));
+        // a single word and a phrase the grammar does not write have none
+        assert_eq!(first("cat").mark, Mark::Entry);
+        assert!(lookup.answer("cats and dogs", ALL).rows.iter().all(|r| r.mark != Mark::Phrasing));
+    }
+
+    #[test]
+    fn a_grammar_stroke_is_explained_part_by_part() {
+        let answer = lookup().answer("SWRAB", ALL);
+        let first = &answer.rows[0];
+        assert_eq!((first.word.as_str(), first.mark), ("\"I can be\"", Mark::Forward));
+        assert_eq!(first.detail[1], "    SWR starter (I) + A auxiliary (can) + -B verb (be)");
+        // a stroke that is not the grammar's has no such lines
+        assert!(lookup().answer("KAT", ALL).rows[0].detail.is_empty(), "KAT is not a grammar stroke");
     }
 
     #[test]

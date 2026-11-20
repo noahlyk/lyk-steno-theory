@@ -36,14 +36,10 @@ export function inline(text) {
 
 export function chip(spec, { styled = false } = {}) {
   const bar = spec.indexOf('|');
-  let word = bar < 0 ? null : spec.slice(0, bar);
+  const word = bar < 0 ? null : spec.slice(0, bar);
   const outline = bar < 0 ? spec : spec.slice(bar + 1);
-  // `=it was|KPWHEB`: a phrasing-grammar stroke, not a dictionary entry (drawn with a dashed edge)
-  const grammar = word?.startsWith('=') ?? false;
-  if (grammar) word = word.slice(1);
   // the hover board (popover.js) reads data-outline; an outline that is not a stroke has none
-  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}${grammar ? ' stroke--grammar' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null,
-    title: grammar ? 'a phrasing-grammar stroke: not in the dictionary yet' : null },
+  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null },
     styled ? outlineEl(outline) : outline);
   return word ? [el('span', { class: 'word' }, word), ' ', node] : [node];
 }

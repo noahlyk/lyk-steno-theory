@@ -133,7 +133,7 @@ times as it is said (common words dominate, rare ones barely move it):
 <!-- lyk:usage-table:start -->
 | Syllables | Keys/Stroke (Lyk, by frequency) | Keys/Stroke (Plover, by frequency) | Keys/Stroke (Lapwing, by frequency) |
 |---|---|---|---|
-| 1 | 2.85 | 3.19 | 3.59 |
+| 1 | 2.84 | 3.19 | 3.59 |
 | 2 | 4.77 | 4.70 | 5.00 |
 | 3 | 4.73 | 4.92 | 5.25 |
 | 4+ | 5.25 | 5.22 | 5.48 |

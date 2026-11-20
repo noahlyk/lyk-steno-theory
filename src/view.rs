@@ -274,6 +274,7 @@ impl View {
                 self.color,
             ));
         }
+        lines.extend(answer.rows.iter().flat_map(|row| row.detail.iter().cloned()));
         let totals = answer.totals();
         if totals.strokes > 0 {
             lines.push(String::new());
@@ -463,7 +464,7 @@ mod tests {
     #[test]
     fn a_missing_word_says_no_stroke_and_a_bad_stroke_says_why() {
         let missing = View { show_keys: false, color: false }.lines(&Answer {
-            rows: vec![Row { word: "zzz".into(), cells: [None, None, None], mark: Mark::Missing }],
+            rows: vec![Row { word: "zzz".into(), cells: [None, None, None], mark: Mark::Missing, detail: Vec::new() }],
             problem: None,
         });
         assert!(missing[1].starts_with("zzz") && missing[1].contains("no stroke"), "{missing:?}");
@@ -496,6 +497,7 @@ mod tests {
                 }),
             ],
             mark: Mark::Entry,
+            detail: Vec::new(),
         };
         let lines = View { show_keys: false, color: false }
             .lines(&Answer { rows: vec![composed], problem: None });
@@ -513,8 +515,8 @@ mod tests {
     fn a_solver_read_outline_is_dim_and_noted() {
         let cell = |outline: &str, how| Some(Cell { strokes: crate::stroke::parse_outline(outline).unwrap(), how });
         let rows = vec![
-            Row { word: "well".into(), cells: [cell("WEL", How::Entry), None, None], mark: Mark::Entry },
-            Row { word: String::new(), cells: [cell("WE/+-L", How::Solver), None, None], mark: Mark::Entry },
+            Row { word: "well".into(), cells: [cell("WEL", How::Entry), None, None], mark: Mark::Entry, detail: Vec::new() },
+            Row { word: String::new(), cells: [cell("WE/+-L", How::Solver), None, None], mark: Mark::Entry, detail: Vec::new() },
         ];
         let answer = Answer { rows, problem: None };
         let coloured = View { show_keys: false, color: true }.lines(&answer);

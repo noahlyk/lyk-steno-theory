@@ -1,11 +1,11 @@
 {
  "id": "phrases",
  "title": "Phrase-briefing",
- "goal": "Two common words as one stroke: what qualifies, how the stroke is built, which words may lose a stroke to a phrase, limits.",
+ "goal": "Two common words as one stroke (merged pairs), and the phrasing grammar (starter + auxiliary + verb as one stroke): what qualifies, how the stroke is built, which words may lose a stroke, limits.",
  "blocks": [
   {
    "t": "p",
-   "x": "A **phrase entry** is two already-settled words merged into one shorter outline: 2 strokes become 1 for a common pair. Phrase entries are ordinary dictionary entries: strike the chord, get both words. The *phrasing grammar* (one stroke built from pronoun, verb and tense keys) is separate: see [lesson 19](#/lesson/19-phrasing-grammar) and [lesson 20](#/lesson/20-phrasing-strokes)."
+   "x": "A **phrase entry** is two already-settled words merged into one shorter outline: 2 strokes become 1 for a common pair. Phrase entries are ordinary dictionary entries: strike the chord, get both words. The *phrasing grammar* (one stroke built from a pronoun, auxiliary and verb keys: *I was*, *they wouldn't*, *she has been*) is the section [The phrasing grammar](#/ref/phrases/the-phrasing-grammar); [lesson 19](#/lesson/19-phrasing-grammar) and [lesson 20](#/lesson/20-phrasing-strokes) teach it."
   },
   {
    "t": "h",
@@ -48,9 +48,9 @@
      "[[SKP]] (and) + [[-T]] (the)"
     ],
     [
-     "[[it is|ST]]",
-     "[[ST]]",
-     "[[T]] (it) + [[S]] (is)"
+     "[[is the|S-T]]",
+     "[[S-T]]",
+     "[[S]] (is) + [[-T]] (the)"
     ]
    ]
   },
@@ -124,7 +124,7 @@
   },
   {
    "t": "p",
-   "x": "The word list is all lowercase, including the pronoun. The dictionary's *I* is capitalized, *I* [[EU]]; the bare letter is fingerspelled. A bigram containing *i* is looked up as *I*, and its phrase is written capitalized: *I would* [[WOEU]], not \"i would\". Same for *I'm*, *I'd*, *I've*, *I'll*. Most pairs starting with *I* get no phrase entry: [[EU]] shares its vowel keys with almost every verb."
+   "x": "The word list is all lowercase, including the pronoun. The dictionary's *I* is capitalized, *I* [[EU]]; the bare letter is fingerspelled. A bigram containing *i* is looked up as *I*, and its phrase is written capitalized: *I would* is [[I would|SWROE]], not \"i would\". Same for *I'm*, *I'd*, *I've*, *I'll*. [[EU]] shares its vowel keys with almost every verb, so a merged *I* pair is rare; the grammar writes *I* + verb instead."
   },
   {
    "t": "h",
@@ -132,7 +132,7 @@
   },
   {
    "t": "p",
-   "x": "A pair whose merged stroke a word already holds can take it. `it is` is `T` + `S` = [[ST]]; it displaced a backup of *sit*. The pair takes the stroke when"
+   "x": "A pair whose merged stroke a word already holds can take it. `in the` is `TPH` + `-T` = [[TPH-T]]; it displaced *antonio*, which moved to another outline. The pair takes the stroke when"
   },
   {
    "t": "pre",
@@ -174,7 +174,7 @@
   },
   {
    "t": "p",
-   "x": "Current build: 7,373 phrase entries, 5,207 merges and the rest borrowed (next section). 89 phrases took a stroke from a rarer word. A merge joins two strokes you know into one: *in the* is the stroke for *in* plus the stroke for *the*."
+   "x": "Current build: 7,213 merged and borrowed phrase entries (`02-lyk-phrases.json`) and 3,758 grammar phrases (`02-lyk-phrasing.json`). 87 merged phrases took a stroke from a rarer word. A merge joins two strokes you know into one: *in the* is the stroke for *in* plus the stroke for *the*."
   },
   {
    "t": "h",
@@ -188,14 +188,14 @@
    "t": "list",
    "items": [
     "**The merge comes first.** If the pair merges and the stroke is free (or a word gives it up), the pair is the merge. A borrowed outline is a fallback, tried cheapest first; a pair is committed once.",
-    "**A borrowed phrase never competes with a merge for a stroke.** If any pair's own merge produces that stroke, the borrowed outline is dropped. Two theories write `ST` for *is the*, said more often than *it is*, but *it is* is [[ST]] because it is `T` plus `S`.",
+    "**A borrowed phrase never competes with a merge for a stroke.** If any pair's own merge produces that stroke, the borrowed outline is dropped.",
     "**Same takeover limits.** A borrowed pair takes a stroke from a word only among the 1,000 commonest candidates, never from a top-5,000 word's primary, and only when worth more than the word loses.",
     "**Only one-stroke, typable outlines of two plain lowercase words.** A phrase with a number or a capital is skipped, as is anything on a key lyk does not have."
    ]
   },
   {
    "t": "p",
-   "x": "Effect: phrases 5,207 to 7,373, comfort per word 92.8 to 92.6, every other guard and the solver numbers unchanged. [[to the|TOTD]], [[on the|O*LT]] and [[to be|TORB]] have one-stroke phrases. A borrowed phrase must be memorized; a merge can be worked out, hence the merge first."
+   "x": "[[to the|TOTD]], [[on the|O*LT]] and [[to be|TORB]] have one-stroke phrases. A borrowed phrase must be memorized; a merge can be worked out, hence the merge first."
   },
   {
    "t": "h",
@@ -205,9 +205,343 @@
    "t": "list",
    "items": [
     "**Both words multi-stroke.** At least one side must be a one-stroke filler.",
-    "**Three or more words.** No chaining of phrases (unlike backups, which chain: *green* + *house* = *greenhouse*, then + `+-Z`).",
+    "**Three or more words in a merged pair.** No chaining of merged phrases (unlike backups, which chain: *green* + *house* = *greenhouse*, then + `+-Z`). The grammar writes two to five words.",
     "**A backup or short form as a component.** Only primaries are used.",
     "**Removing a join-key boundary inside an existing multi-stroke word.** A different mechanism."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "The phrasing grammar"
+  },
+  {
+   "t": "p",
+   "x": "One stroke writes a **starter** (who), an **auxiliary** (when, which modal, not) and a **verb**, each on its own region of the board, so no combination overlaps another: [[I was|SWREB]], [[they wouldn't|STWHRO*E]], [[she has been|SKWH-FB]]. 8 starters, 5 modals, 3 special verbs and 20 verbs (about 36 parts) give **3,758 phrases**, all written to `02-lyk-phrasing.json` by `src/phrases/grammar.rs` from the tables in `rules/grammar.toml`. Typing it is taught in [lesson 19](#/lesson/19-phrasing-grammar) and [lesson 20](#/lesson/20-phrasing-strokes)."
+  },
+  {
+   "t": "h3",
+   "x": "The four parts"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Part",
+    "Keys",
+    "Says"
+   ],
+   "rows": [
+    [
+     "**Starter**",
+     "left bank",
+     "who: *I*, *you*, *he*, *she*, *it*, *we*, *they*, *there*"
+    ],
+    [
+     "**Auxiliary**",
+     "vowels `A O E U`",
+     "present, past (`E`), or the modal *can* *will* *shall* *may* *must*"
+    ],
+    [
+     "**Not**",
+     "star `*`",
+     "the negative of the rest, and nothing else"
+    ],
+    [
+     "**Verb**",
+     "right bank",
+     "*be*, *have*, *have been*, or one of 20 verbs; none for the bare auxiliary (*I do*, *I can*)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "A phrase is the keys of its parts together: starter, then vowels and star, then verb, in steno order (`-` only where the right bank has no vowel or star before it: [[SWR-B]])."
+  },
+  {
+   "t": "h3",
+   "x": "Starters"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Starter",
+    "Chord",
+    "Person for the verb forms"
+   ],
+   "rows": [
+    [
+     "{{I}}",
+     "[[SWR]]",
+     "I (*am*)"
+    ],
+    [
+     "{{you}}",
+     "[[KPWR]]",
+     "you (*are*)"
+    ],
+    [
+     "{{he}}",
+     "[[STWH]]",
+     "he, she, it, there (*is*, *has*, *does*)"
+    ],
+    [
+     "{{she}}",
+     "[[SKWH]]",
+     "third singular"
+    ],
+    [
+     "{{it}}",
+     "[[KPWH]]",
+     "third singular"
+    ],
+    [
+     "{{we}}",
+     "[[TWR]]",
+     "we (*are*)"
+    ],
+    [
+     "{{they}}",
+     "[[STWHR]]",
+     "they (*are*)"
+    ],
+    [
+     "{{there}}",
+     "[[STHR]]",
+     "third singular; only *be*, *have been* and the modals, never a bare *do* or another verb"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Auxiliary vowels"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Vowels",
+    "Present",
+    "With `E` (past)",
+    "With `*` (not)",
+    "With `*E`"
+   ],
+   "rows": [
+    [
+     "(none)",
+     "*do* / *does*, or the verb in the present",
+     "*did*, or the verb in the past",
+     "*don't* / *doesn't*",
+     "*didn't*"
+    ],
+    [
+     "[[A]]",
+     "*can*",
+     "*could* [[AE]]",
+     "*can't*",
+     "*couldn't*"
+    ],
+    [
+     "[[O]]",
+     "*will*",
+     "*would* [[OE]]",
+     "*won't*",
+     "*wouldn't*"
+    ],
+    [
+     "[[U]]",
+     "*shall*",
+     "*should* [[EU]]",
+     "*shall not*",
+     "*shouldn't*"
+    ],
+    [
+     "[[AO]]",
+     "*may*",
+     "*might* [[AOE]]",
+     "*may not*",
+     "*might not*"
+    ],
+    [
+     "[[AU]]",
+     "*must*",
+     "none",
+     "*mustn't*",
+     "none"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Verb forms"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Slot",
+    "Forms written (present, third singular, past, negative)"
+   ],
+   "rows": [
+    [
+     "no verb, no modal",
+     "*do* / *does* / *did*; with the star *don't* / *doesn't* / *didn't*"
+    ],
+    [
+     "*be*",
+     "*am*, *is*, *are* / *was*, *were*; negative *am not*, *isn't*, *aren't* / *wasn't*, *weren't*"
+    ],
+    [
+     "*have*",
+     "*have*, *has* / *had*; negative *haven't*, *hasn't* / *hadn't*"
+    ],
+    [
+     "*have been*",
+     "the *have* form + *been*: *he has been*, *I hadn't been*"
+    ],
+    [
+     "a lexical verb",
+     "base, third singular (*says*), past (*said*); with the star *don't say*, *doesn't say*, *didn't say*"
+    ],
+    [
+     "after a modal",
+     "the bare verb: *I can be*, *I couldn't have been*, *I will go*; the negative is the modal's own (*can't*, *won't*)"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "The verb codes"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Verb",
+    "Code",
+    "Verb",
+    "Code"
+   ],
+   "rows": [
+    [
+     "*be*",
+     "[[-B]]",
+     "*want*",
+     "[[-PBT]]"
+    ],
+    [
+     "*have*",
+     "[[-F]]",
+     "*look*",
+     "[[-BLG]]"
+    ],
+    [
+     "*have been*",
+     "[[-FB]]",
+     "*tell*",
+     "[[-L]]"
+    ],
+    [
+     "*say*",
+     "[[-S]]",
+     "*feel*",
+     "[[-FL]]"
+    ],
+    [
+     "*go*",
+     "[[-G]]",
+     "*mean*",
+     "[[-PBL]]"
+    ],
+    [
+     "*get*",
+     "[[-T]]",
+     "*need*",
+     "[[-D]]"
+    ],
+    [
+     "*make*",
+     "[[-BG]]",
+     "*like*",
+     "[[-BLGZ]]"
+    ],
+    [
+     "*know*",
+     "[[-PB]]",
+     "*hear*",
+     "[[-R]]"
+    ],
+    [
+     "*think*",
+     "[[-PBG]]",
+     "*seem*",
+     "[[-PLS]]"
+    ],
+    [
+     "*take*",
+     "[[-BGT]]",
+     "*find*",
+     "[[-PBD]]"
+    ],
+    [
+     "*see*",
+     "[[-SZ]]",
+     "*give*",
+     "[[-FG]]"
+    ],
+    [
+     "*come*",
+     "[[-PL]]",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The codes are worked out by a rule, not listed (`Grammar::derive_codes`); the verbs are taken in the order of `rules/grammar.toml`, commonest first, after *be*, *have* and *have been*:"
+  },
+  {
+   "t": "list",
+   "ordered": true,
+   "items": [
+    "The code is the verb's **final consonants** written on the right bank by the rules (`rules/plover.toml`): *get* [[-T]], *come* [[-PL]], *want* [[-PBT]], *find* [[-PBD]], *think* [[-PBG]] (a star a coda cluster carries is left off: the star is *not*).",
+    "A verb that ends in a vowel uses its **first** consonant: *say* [[-S]], *go* [[-G]], *know* [[-PB]].",
+    "If a commoner verb has that code, add the verb's **first consonant**: *take* [[-BGT]] (*make* has [[-BG]]), *feel* [[-FL]] (*tell* has [[-L]]), *give* [[-FG]] (*have* has [[-F]]), *mean* [[-PBL]], *seem* [[-PLS]], *look* [[-BLG]].",
+    "If that is taken too, add **[[-Z]]**: *see* [[-SZ]], *like* [[-BLGZ]]."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Where the grammar is placed"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Before any word settles**, like the standalone suffixes: after the reserved strokes, the suffixes, the pronoun *I* and every hand-written `[word]` outline in `rules/briefs.toml`, and before the words' own candidates compete. The words never see a starter stroke as free.",
+    "**A held stroke is never taken.** A stroke already held by a reserved entry, a suffix or a hand-written brief leaves its phrase out (none does: all 3,758 are placed); `lyk build --report` lists any phrase left out and what holds its stroke. A word whose own candidates land on a grammar stroke has not got it yet, so it settles on its next outline.",
+    "**The words that moved.** 122 words changed an outline that is not a backup; of the 5,000 commonest only [[pity|P*EUTD]] (was `KPWR`) and [[impress|EUPL/+PRES]] (was `KPWRES`) changed their primary. Every word keeps an outline; the weighted keys per stroke is unchanged (3.252).",
+    "**Merged pairs leave these texts to the grammar.** A pair the grammar writes (*it is*, *I was*, *he could*) gets no merged stroke; 149 merged phrases that wrote one of its texts were dropped, so *it is* is [[it is|KPWH-B]], not `ST`.",
+    "A grammar phrase is never taken by a merged pair or a borrowed phrase, and is not a stem the stroke read-back continues."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Looking a phrase up"
+  },
+  {
+   "t": "list",
+   "items": [
+    "`lyk lookup \"they wouldn't\"` (and the interactive lookup) puts the grammar's stroke first, marked as a phrase, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word as usual. Case, punctuation, a curly apostrophe, *I'm* / *they're* / *I've* / *I'll* and a spelt-out negative (*do not*, *can not*, *cannot*) are read as the grammar's own text.",
+    "A text the grammar covers only at its start (*she has been going*) names the part it covers (*she has been*, 3 of 4 words) and answers the rest word by word.",
+    "`lyk lookup SWRAB` explains a grammar stroke part by part: *I can be*, `SWR` starter, `A` auxiliary, `-B` verb.",
+    "The lessons site's Lookup does the same from `data/grammar.json`. The keymux live lookup (`keymux steno lookup`) does not: it answers a phrase word by word and does not match a whole phrase entry by its text, so look the stroke up there (it types the phrase, `SWRAB` is *I can be*)."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Not covered by the grammar"
+  },
+  {
+   "t": "list",
+   "items": [
+    "Questions (*do you*, *are you*, *can I*): the starter after the auxiliary.",
+    "*that*, *this*, *what*, *who* as starters; contracted positives (*I'm*, *it's*); other verbs."
    ]
   },
   {
@@ -216,7 +550,7 @@
   },
   {
    "t": "p",
-   "x": "One pass, run once after the backup pass settles and before the \"stranded\" diagnostic is computed; it sees the final dictionary, backups included. Phrase entries have their own origin (`Phrase`); the stroke read-back never treats a phrase as a word: a continuation stroke after `-FT` is not read as *of the* plus an ending. See [the stroke read-back](#/ref/fallback)."
+   "x": "Merged and borrowed phrases are one pass, run once after the backup pass settles and before the \"stranded\" diagnostic is computed; it sees the final dictionary, backups included. The grammar is placed earlier, before any word settles (see [The phrasing grammar](#/ref/phrases/the-phrasing-grammar)), and the merged pass skips every text the grammar writes. Phrase entries have their own origins (`Phrase`, `Grammar`); the stroke read-back never treats a phrase as a word: a continuation stroke after `-FT` is not read as *of the* plus an ending. See [the stroke read-back](#/ref/fallback)."
   },
   {
    "t": "h",
@@ -224,11 +558,11 @@
   },
   {
    "t": "p",
-   "x": "The quote benchmark walks a passage left to right, taking a phrase entry whenever one covers the next two words. Phrases save **strokes**, not keys: a phrase's key count is exactly the sum of its two words' key counts; the stroke count drops by one per hit. A phrase is built from primaries while a word may be credited with a cheaper backup, so the phrase-aware walk can occasionally spend a few more keys than word-by-word, always with fewer strokes."
+   "x": "The quote benchmark walks a passage left to right, taking the longest phrase entry (merged pair or grammar phrase, up to five words) that covers the next words. Phrases save **strokes**, not keys: a merged phrase's key count is exactly the sum of its two words' key counts; the stroke count drops by one per hit (a grammar phrase spends more keys than the words' primaries and saves the strokes of every word it covers but one)."
   },
   {
    "t": "p",
-   "x": "Quote benchmark, all limits above: the phrase-aware walk uses 1,092 strokes on the 103 hand-picked passages and 5,756 on the 416 extracted ones: about 12% and 9% fewer than word by word."
+   "x": "Quote benchmark, merged phrases and grammar together: the phrase-aware walk uses 974 strokes on the 103 hand-picked passages (1,225 word by word) and 4,886 on the 416 extracted ones (5,915): about 20% and 17% fewer. On running prose (five novels, 712,328 words) the grammar saves 1.6% of strokes over the merged phrases alone; passages of speech and messages have more *I*, *you* and *it* pairs per word."
   },
   {
    "t": "p",

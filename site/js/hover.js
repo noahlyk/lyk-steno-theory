@@ -52,11 +52,10 @@ function tag(node, outline) {
 }
 
 function enhanceLeaf(node, dict) {
-  // a `.word` right before its own chip (`[[word|OUTLINE]]`) shows that chip's outline; a
-  // phrasing-grammar chip is not a dictionary entry, so its word claims nothing
+  // a `.word` right before its own chip (`[[word|OUTLINE]]`) shows that chip's outline
   const next = node.nextElementSibling;
   if (node.classList.contains('word') && next?.matches('.stroke')) {
-    if (!next.dataset.outline || next.classList.contains('stroke--grammar')) return false;
+    if (!next.dataset.outline) return false;
     tag(node, next.dataset.outline);
     return true;
   }

@@ -90,6 +90,16 @@ fn print_summary(setup: &Setup, generated: &Generated) {
         "  phrase entries added: {} ({} took the stroke from a rarer word)",
         generated.phrases_added, generated.phrases_displaced
     );
+    let grammar = &generated.grammar;
+    println!(
+        "  phrasing grammar: {} phrases placed (before any word settled), {} left out",
+        grammar.added,
+        grammar.unplaced.len()
+    );
+    println!("    verb codes: {}", grammar.codes.iter().map(|(v, c)| format!("{v} {c}")).collect::<Vec<_>>().join(", "));
+    for (stroke, text, why) in &grammar.unplaced {
+        println!("    left out: {text} ({stroke}): {why}");
+    }
     println!("  extra single-stroke entries added last, in strokes nobody else needed: {}", generated.extras_added);
     println!("  phrase entries skipped as collisions: {}", generated.phrases_skipped);
     println!("  words stranded on a worse outline than their own, unclaimed plain reading: {}", generated.stranded.len());

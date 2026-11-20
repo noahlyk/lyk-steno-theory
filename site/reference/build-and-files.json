@@ -200,7 +200,12 @@
     [
      "`02-lyk-phrases.json`",
      "two common words in one stroke (see [phrases](#/ref/phrases))",
-     "about 5,700"
+     "about 7,200"
+    ],
+    [
+     "`02-lyk-phrasing.json`",
+     "the phrasing grammar: a starter, an auxiliary and a verb in one stroke, 2 to 5 words (see [the phrasing grammar](#/ref/phrases/the-phrasing-grammar))",
+     "3,758 (`rules/grammar.toml`)"
     ],
     [
      "`02-lyk-suffixes.json`",
@@ -259,7 +264,8 @@
     "**The screen.** One prompt line (`› ` and your query), the answer under it, a dim line of hints at the end. It never switches screens, so what you keep stays in scrollback, and never grows past the terminal's height (a line `… N more lines` says what was cut). A burst of keys (a paste, a held Backspace) costs one search.",
     "**The table.** Columns `word`, `lyk`, `plover`, `lapwing` (each outline column at least 12 wide, as in `quote`), and `keys` when shown. A word's first row has its best outline in each theory; each later row (word column blank) is another outline that types it, fewest strokes first, backups included: all of lyk's, Plover's and Lapwing's. `-` is a theory with no outline there. A single word of two letters or more is followed by up to eight longer words starting with it (dimmed; shortest first, then alphabetical), each with its best outline in the three theories.",
     "**A word that is not an entry** is composed from entries when that takes no more strokes than the rules' reading, with a note under the table: `everybody's was not a whole entry - composed (lyk: everybody + 's; plover: everybody + 's; lapwing: everybody + 's)`, naming each theory that composed it. Otherwise lyk shows the rules' phonetic reading, or spelling mode for a word with no pronunciation, in quotes with a note (`has no dictionary entry - shown ...`). A word nothing can write shows `no stroke`. A real entry always wins.",
-    "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading with a note when it is not an entry, or `(no translation)`. Under it, dimmed, the nearest entries (same stroke count, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column.",
+    "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading with a note when it is not an entry, or `(no translation)`. Under it, dimmed, the nearest entries (same stroke count, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column. A stroke the phrasing grammar writes (`SWRAB`, *I can be*) also gets the lines described in the next item.",
+    "**A phrase the phrasing grammar writes** (*I was*, *They wouldn't!*, *she has been*, *I do not know*; case, punctuation, a curly apostrophe, *I'm* / *they're* / *I've* / *I'll* and a spelt-out *not* are read as the grammar's text) puts a row for the phrase first, marked as the grammar's, with its one stroke in the `lyk` column, then each word's rows as usual. Under the table two lines name the parts: `I was: one stroke of the phrasing grammar, SWR + E + -B` and `SWR starter (I) + E auxiliary (past) + -B verb (be)`. A query the grammar covers only at its start (*she has been going*) names the covered part (`the grammar covers the first 3 of 4 words (she has been); the rest (going) is per word below`). A dictionary built before the grammar has no such rows. See [the phrasing grammar](#/ref/phrases/the-phrasing-grammar).",
     "**Totals.** Under the table: `keys (best outline of each word): N in S strokes` for lyk, then `keys (shared vocabulary only, fair comparison): lyk-vs-plover ... lyk-vs-lapwing ...` as `quote` prints it, counting only words both theories write. Completions and nearby entries are not counted.",
     "**Colour, where the terminal has it** (`NO_COLOR` and a pipe turn it off): each key is coloured by keyboard part (green left hand, yellow vowels, red right hand, cyan `*`, `#` and the `+`/`~` marks), the `/` between strokes is dim, and keys one finger plays together (`T K`, `P W`, `H R`, `A O`, `E U`, `F R`, `P B`, `L G`, `T S`, `D Z`) are underlined as one run. Colour never changes the text.",
     "**Keys.** Any character adds to the query (the stroke test is case-sensitive: capitals with no lowercase read as a stroke). Backspace, Ctrl-W, Ctrl-U delete a character, a word, the whole query. Tab shows or hides the `keys` column: the QWERTY keys that press lyk's outline, the join key `+` on `T` (the left index finger's inner column; `G` presses it too), the star on `Y` (the right index; `H` too), `S-` on `A` (`Q` too). Ctrl-F toggles best outline of each word only. Enter leaves and keeps the answer on screen (in `explain`, `ergonomics`, `paths` and `family` it then runs that command's report for the line; `family` and `paths` generate the dictionary the first time). Esc, Ctrl-C, Ctrl-D leave and clear the screen it used.",
@@ -376,8 +382,8 @@
      "Words still on a bare `/+*` marker, by band, real words against names, and who holds the plain and starred stroke each real word wanted (see [collisions](#/ref/collisions))."
     ],
     [
-     "`phrasing_prototype.py [OUT_DIR]`",
-     "The phrasing grammar ([lesson 19](#/lesson/19-phrasing-grammar), [lesson 20](#/lesson/20-phrasing-strokes)) as a trial folder to deploy and type: displaced entries, strokes saved on the corpora, a practice list."
+     "`phrasing_prototype.py [DIR]`, `--savings BEFORE`",
+     "The phrasing grammar's tables as an independent spec: checks every stroke of `DIR/02-lyk-phrasing.json` (default `out/lyk`) against it and exits 1 on any difference; `--savings BEFORE` walks the corpora with a build without the grammar (`BEFORE`) and with it, and lists the commonest phrases in running text."
     ],
     [
      "`site_data.py [--check]`",

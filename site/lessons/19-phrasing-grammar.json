@@ -9,12 +9,12 @@
     },
     {
       "t": "p",
-      "x": "Today a phrase is two words whose keys do not collide ({{of the}} is [[of the|-FT]]). That cannot reach the most-said pairs: *I* is [[I|EU]], whose vowels clash with almost every verb. The grammar gives each part of the phrase its own region of the board, so every combination is one stroke and none overlap. [[=it was|KPWHEB]] is *it* + past + *be*; [[=I know|SWR-PB]] is *I* + *know*."
+      "x": "Today a phrase is two words whose keys do not collide ({{of the}} is [[of the|-FT]]). That cannot reach the most-said pairs: *I* is [[I|EU]], whose vowels clash with almost every verb. The grammar gives each part of the phrase its own region of the board, so every combination is one stroke and none overlap. [[it was|KPWHEB]] is *it* + past + *be*; [[I know|SWR-PB]] is *I* + *know*."
     },
     {
       "t": "note",
-      "kind": "warn",
-      "x": "**Status: designed and measured, not in the dictionary yet.** The generator does not make these strokes (plans/08, awaiting typing). They are checked against the generator's prototype (`tools/phrasing_prototype.py`), not the built dictionary, so they are drawn with a dashed edge and Lookup will not find them. A few are strokes other entries hold today (see the next chapter). Try them with the trial dictionary described there."
+      "kind": "rule",
+      "x": "**In the dictionary.** All 3,758 phrases are entries of `02-lyk-phrasing.json`, built from `rules/grammar.toml` and deployed with the rest. Lookup finds them: type `I was`, `they wouldn't` or a stroke such as `SWRAB`, and it names the starter, auxiliary, not and verb keys. Full rules: [the phrasing grammar](#/ref/phrases/the-phrasing-grammar)."
     },
     {
       "t": "grammar"
@@ -63,7 +63,7 @@
     },
     {
       "t": "p",
-      "x": "A starter is a left-bank chord no English word starts with, so a phrase never collides with a word's stroke."
+      "x": "A starter is a left-bank chord the grammar owns: its phrases are fixed before any word settles, so a phrase never takes a word's stroke (the few words whose own candidates landed on one moved to another outline)."
     },
     {
       "t": "table",
@@ -273,7 +273,7 @@
       "t": "list",
       "ordered": true,
       "items": [
-        "Go down the verbs from the commonest. A verb's code is its **last consonant** on the right bank: *get* [[-T]], *think* [[-PBG]], *come* [[-PL]].",
+        "Go down the verbs from the commonest. A verb's code is its **final consonants** on the right bank, as the rules write them: *get* [[-T]], *come* [[-PL]], *want* [[-PBT]], *find* [[-PBD]], *think* [[-PBG]].",
         "If the word ends in a vowel, use its **first** consonant instead: *say* [[-S]], *go* [[-G]], *know* [[-PB]].",
         "If a commoner verb already has that code, add the verb's **first consonant**: *take* [[-BGT]] (*make* has [[-BG]]); *feel* [[-FL]] (*tell* has [[-L]]).",
         "If that is taken too, add [[-Z]]: *see* [[-SZ]], *like* [[-BLGZ]]."
@@ -290,7 +290,6 @@
     {
       "t": "try",
       "title": "Starter and verb",
-      "check": "grammar",
       "x": "Six strokes: a starter and a verb.",
       "items": [
         [
@@ -322,7 +321,6 @@
   ],
   "drill": {
     "title": "Build the stroke",
-    "check": "grammar",
     "pass": 90,
     "repeat": 2,
     "items": [

@@ -25,7 +25,7 @@ REFERENCE = sorted(p for p in glob.glob(os.path.join(SITE, 'reference', '*.json'
 TOP = 12000  # words in the lookup
 JOINS_PER_WORD = 12  # backups kept per common word for the engine
 # in the order an outline's word is decided when two roles write the same outline
-ENGINE_ROLES = ['words', 'short', 'suffixes', 'phrases', 'extras', 'alternates']
+ENGINE_ROLES = ['words', 'short', 'suffixes', 'phrases', 'phrasing', 'extras', 'alternates']
 LETTER = re.compile(r'^(\{>\})?\{&.\}$')
 
 
@@ -37,11 +37,9 @@ def load_lessons():
     return [json.load(open(f)) for f in LESSONS + REFERENCE]
 
 
-def grammar_entries():
-    """The phrasing grammar's strokes: {phrase: outline}. It is not in the dictionary yet (plans/08), so its
-    claims are written `[[=it was|KPWHEB]]` and checked against the generator's prototype instead."""
-    import phrasing_prototype as g
-    return {text: outline for outline, text in g.entries().items()}
+def grammar_entries(files):
+    """The phrasing grammar's strokes, as the built dictionary has them: {phrase: outline}."""
+    return {text: outline for outline, text in files.get('phrasing', {}).items()}
 
 
 TOKEN = re.compile(r'\[\[(.+?)\]\]')
@@ -71,9 +69,6 @@ def lesson_claims(lesson):
     drill = lesson.get('drill')
     blocks = [b for b in lesson['blocks'] if b.get('t') == 'try'] + ([drill] if drill else [])
     for b in blocks:
-        if b.get('check', 'dict') == 'grammar':
-            for item in b['items']:
-                claims.append(('=' + item[0], item[1], f"{lesson['id']} drill"))
         if b.get('check', 'dict') != 'dict':
             continue
         for item in b['items']:
@@ -186,13 +181,9 @@ def main():
     lessons = load_lessons()
     bad = []
     wanted = set()
-    grammar = grammar_entries()
+    grammar = grammar_entries(files)
     for lesson in lessons:
         for word, outline, where in lesson_claims(lesson):
-            if word.startswith('='):
-                if grammar.get(word[1:]) != outline:
-                    bad.append(f"{where}: grammar phrase {word[1:]!r} is not {outline} (the grammar writes {grammar.get(word[1:])})")
-                continue
             wanted.add(word)
             if outline not in by_word.get(word, {}):
                 here = sorted(by_word.get(word, {}), key=cost)[:4]
@@ -211,7 +202,7 @@ def main():
     words = {}
     for w in pick:
         outs = by_word[w]
-        main = [o for o, r in outs.items() if r & {'words', 'short', 'suffixes', 'phrases'}]
+        main = [o for o, r in outs.items() if r & {'words', 'short', 'suffixes', 'phrases', 'phrasing'}]
         extra = [o for o, r in outs.items() if r & {'extras', 'alternates'} and o not in main]
         joins = [o for o, r in outs.items() if r & {'backups'} and o not in main and o not in extra]
         row = []
@@ -241,13 +232,27 @@ def main():
 
 
 def write_grammar(grammar):
-    """site/data/grammar.json: the grammar's parts and every stroke it writes, for the composer and its drill."""
-    import phrasing_prototype as g
+    """site/data/grammar.json: the grammar's parts (`rules/grammar.toml`), the verb codes the built dictionary
+    has, and every stroke it writes, for the composer and the lookup."""
+    table = tomllib.load(open(path('rules', 'grammar.toml'), 'rb'))
+    starters = [[s['word'], s['chord'], s['person']] for s in table['starter']]
+    first_word, first_chord, first_person = starters[0]
+
+    def code(text):
+        stroke = grammar[f'{first_word} {text}']
+        assert stroke.startswith(first_chord + '-'), (text, stroke)
+        return stroke[len(first_chord):]
+
+    third = first_person == '3s'
+    have = table['have']
+    verbs = [[v['base'], v['third'], v['past'], code(v['third'] if third else v['base'])] for v in table['verb']]
+    be = code(table['be']['present'][first_person])
     data = {
-        'starters': [[w, c, p] for w, (c, p) in g.STARTERS.items()],
-        'modals': [[m, *spec] for m, spec in g.MODALS.items()],
-        'verbs': [[b, s3, ed, code] for b, s3, ed, code in g.VERBS],
-        'special': [['be', g.BE], ['have', g.HAVE], ['have been', g.HAVE_BEEN]],
+        'starters': starters,
+        'modals': [[m['name'], m['keys'], m['present'], m.get('past'), m['negative'], m.get('past_negative')] for m in table['modal']],
+        'verbs': verbs,
+        'special': [['be', be], ['have', code(have['third'] if third else have['base'])],
+                    ['have been', code((have['third'] if third else have['base']) + ' been')]],
         'entries': dict(sorted(grammar.items())),
     }
     with open(os.path.join(SITE, 'data', 'grammar.json'), 'w') as f:

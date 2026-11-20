@@ -2,8 +2,10 @@
 
 Design, measured, with a prototype to type before it is built into the generator; practice sheet:
 https://claude.ai/artifact/9j4iofTdr7nHt5FLG3XULe (build any stroke on a keyboard, drill the commonest). Extends
-[`06-phrase-briefs.md`](06-phrase-briefs.md) step 2. Status: **prototype for typing**
-(`tools/phrasing_prototype.py`); the generator does not make these yet.
+[`06-phrase-briefs.md`](06-phrase-briefs.md) step 2. Status: **built** (2026-11-20): the generator writes
+the 3,758 phrases to `02-lyk-phrasing.json` from `rules/grammar.toml`; `tools/phrasing_prototype.py` is the
+independent spec the output is checked against (no difference). The rules to learn are the Reference
+page `phrases` ("The phrasing grammar"); this file keeps the design and the measurements.
 
 ## Why a grammar, not more merged pairs
 

@@ -3190,3 +3190,34 @@ stroke is also a command or modifier stroke, and every letter has a key besides 
 engine (`site/js/engine.js`) ignores the marker when reading an entry. Cost: a multi-key letter
 chord (`TK`, `KW`) now goes on its first key up, so lifting one key early leaves the other for the
 next stroke. Needs the keymux build with `{:firstup:except=...}` installed before `lyk deploy`.
+
+## The phrasing grammar is built, and fixed before words settle (2026-11-20)
+
+The 3,758 phrases of `plans/08` are a dictionary role of their own, `02-lyk-phrasing.json`, from
+`rules/grammar.toml` (the parts) and `src/phrases/grammar.rs`. Three choices:
+
+- **Fixed first, like the suffixes.** The strokes are claimed in the book after the reserved
+  strokes, the suffixes, `I` and the literal `[word]` briefs, and before any word settles, so a
+  word whose own candidates land on a starter chord settles on its next outline. Placing them last
+  (taking only what is free, or only from rare words) left the commonest *you* phrases out: `KPWR`
+  *you do* is *pity*, `KPWRO` *you will* is *embryo*, `KPWRES` *you said* is *impress*, all stems
+  of families that keep their primary. Cost: 122 words changed a non-backup outline, of the 5,000
+  commonest only *pity* (`P*EUTD`) and *impress* (`EUPL/+PRES`) moved their primary; weighted keys
+  per stroke stayed 3.252. All 3,758 are placed; a phrase whose stroke a reserved entry, a suffix
+  or a literal brief holds is left out and listed by `build --report`.
+- **The codes are derived, not listed.** A verb's code is the keys its final consonants write on
+  the right bank, its first consonant if it ends in a vowel, plus its first consonant when a
+  commoner verb has the code, plus `-Z` when that is taken too. The star a coda cluster carries
+  (*think*, `NG K` is `*PBG`) is left off: the star is *not*. The derivation reproduces the
+  prototype's 23 codes; a test pins them and `tools/phrasing_prototype.py` compares all 3,758
+  strokes (0 different).
+- **The merged-pair pass skips the grammar's texts.** 149 merged phrases wrote one of them
+  (*it is* `ST`, *you are* `RU`, *it was* `T-Z`); they are gone, so one text has one phrase stroke.
+  Lesson 14 and the cheat sheet now teach *is the*, *and a*, *this is*, *if the* as the merged
+  examples. Estimated on the author's tape (aggregate counts only): the grammar's phrases occur
+  about 0.55% of typed words, saving about 0.2% of strokes, low because most of the tape is word
+  lists and commands, not prose.
+
+Lookup (`lyk lookup`, the interactive lookup, the site) lists a phrase's grammar stroke first with
+the part each key group says, and explains a grammar stroke part by part. keymux's own lookup is
+unchanged: it answers a phrase word by word and does not match a phrase entry by its text.

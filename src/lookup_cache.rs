@@ -338,7 +338,7 @@ fn read_pron(r: &mut Reader<'_>) -> Option<Vec<(String, Vec<Vec<String>>)>> {
 }
 
 /// Every origin an entry read back from `out/lyk` can have (see `built::load`).
-const ORIGINS: [Origin; 8] = [
+const ORIGINS: [Origin; 9] = [
     Origin::Rules,
     Origin::Short(Step::Skeleton),
     Origin::Alternate,
@@ -347,6 +347,7 @@ const ORIGINS: [Origin; 8] = [
     Origin::Phrase,
     Origin::Suffix,
     Origin::Family,
+    Origin::Grammar,
 ];
 
 /// `false`, writing nothing usable, when an entry has an origin reading back never gives.

@@ -11,6 +11,7 @@ import { needsHyphen } from './js/steno.js';
 import { decodeReport, REPORT_ID } from './js/hid.js';
 import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
 import { auxChoices, phraseText } from './js/grammar.js';
+import { describe, explain, leading, tokens } from './js/phrasing.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
@@ -38,10 +39,6 @@ let strokes = 0;
 
 function claim(where, word, outline) {
   strokes += 1;
-  if (word?.startsWith('=')) { // a phrasing-grammar stroke: checked against grammar.json (tools/site_data.py checks that against the generator)
-    if (grammar.entries[word.slice(1)] !== outline) fail(`${where}: grammar phrase ${word.slice(1)} is not ${outline}`);
-    return;
-  }
   if (!parseOutline(outline)) fail(`${where}: not a valid outline: ${outline}`);
   if (word && words[word] && !words[word].includes(outline)) {
     // the lookup keeps the fastest few outlines; the full check is tools/site_data.py
@@ -77,7 +74,6 @@ for (const id of listed) {
 
 function drillItems(id, d) {
   if (!d.items?.length) fail(`${id}: empty drill`);
-  if (d.check === 'grammar') for (const [phrase, o] of d.items) if (grammar.entries[phrase] !== o) fail(`${id}: grammar drill: ${phrase} is not ${o}`);
   for (const item of d.items) {
     const outs = Array.isArray(item) ? item.slice(1) : item.o;
     if (!outs.length) fail(`${id}: drill item without an outline`);
@@ -124,8 +120,8 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   }
 }
 
-// the phrasing grammar: the composer's text for every choice is a phrase the generator writes, and every phrase the
-// generator writes is reachable from the composer
+// the phrasing grammar: the composer's text for every choice is a phrase the dictionary has, and every phrase the
+// dictionary has is reachable from the composer
 {
   const reached = new Set();
   const noneWithNo = [];
@@ -133,11 +129,34 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   for (const who of grammar.starters) for (const [keys, past] of auxChoices(grammar)) for (const neg of [false, true]) for (const verb of verbs) {
     const text = phraseText(grammar, who, keys, past, neg, verb);
     if (text === null) continue;
-    if (!(text in grammar.entries)) fail(`grammar: the composer writes "${text}" but the generator has no stroke for it`);
+    if (!(text in grammar.entries)) fail(`grammar: the composer writes "${text}" but the dictionary has no stroke for it`);
     reached.add(text);
   }
   for (const text of Object.keys(grammar.entries)) if (!reached.has(text)) noneWithNo.push(text);
-  if (noneWithNo.length) fail(`grammar: ${noneWithNo.length} generator phrases the composer cannot make, e.g. ${noneWithNo.slice(0, 3).join(', ')}`);
+  if (noneWithNo.length) fail(`grammar: ${noneWithNo.length} dictionary phrases the composer cannot make, e.g. ${noneWithNo.slice(0, 3).join(', ')}`);
+}
+
+// the lookup's reading of the grammar (js/phrasing.js): every stroke is explained part by part, every phrase's text finds
+// itself, and the spoken forms of a query reduce to the grammar's text
+{
+  for (const [text, stroke] of Object.entries(grammar.entries)) {
+    const parts = explain(grammar, stroke);
+    if (!parts) { fail(`phrasing: ${stroke} (${text}) is not explained`); continue; }
+    const found = leading(grammar, text);
+    if (!found || found.text !== text || found.covered !== found.total) fail(`phrasing: "${text}" does not find itself (${found?.text})`);
+  }
+  const same = (query, text, covered) => {
+    const hit = leading(grammar, query);
+    if (hit?.text !== text || hit.covered !== covered) fail(`phrasing: "${query}" should find "${text}" covering ${covered}, got ${hit?.text} covering ${hit?.covered}`);
+  };
+  same('they wouldn\u2019t!', "they wouldn't", 2);
+  same('I do not know', "I don't know", 4);
+  same("I'm going home", 'I am', 2);
+  same('She has been going', 'she has been', 3);
+  if (describe(explain(grammar, 'SWRAB')) !== 'SWR starter (I) + A auxiliary (can) + -B verb (be)') fail(`phrasing: SWRAB is ${describe(explain(grammar, 'SWRAB'))}`);
+  if (describe(explain(grammar, 'SWRA*EFB')) !== 'SWR starter (I) + AE auxiliary (could) + * not + -FB verb (have been)') fail('phrasing: SWRA*EFB is explained wrongly');
+  if (explain(grammar, 'KAT') !== null || explain(grammar, '-B') !== null) fail('phrasing: a stroke that is not the grammar\'s is explained');
+  if (tokens("It's \"fine\"").join(' ') !== "it's fine") fail('phrasing: tokens');
 }
 
 // "Learn the keys": every key-unlock stage has enough words for a lesson, and a perfect typist
