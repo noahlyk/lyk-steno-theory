@@ -50,17 +50,19 @@ spelling = {
         "STKPWHR" : "z", # magnum
         }
 
-# same as emily-symbols format, but modified for use on the left hand
+# same as emily-symbols format, but modified for use on the left hand. Every name must be a key
+# keymux can press (`keymux steno validate` checks): the media Play/Prev/Next/Stop keys and the
+# typographic symbols (notsign, exclamdown, multiply, division, questiondown, guillemotleft,
+# guillemotright, mu) were dropped, as no key of a US keyboard presses them.
 symbols = {
         "TR"    : ["tab", "backspace", "delete", "escape"],
         "KPWR"  : ["up", "left", "right", "down"],
         "TKPWR" : ["page_up", "home", "end", "page_down"],
-        "TKWR"  : ["AudioPlay", "AudioPrev", "AudioNext", "AudioStop"],
         "TKW"   : ["AudioMute", "AudioLowerVolume", "AudioRaiseVolume", ""],
         ""      : ["", "return", "tab", "space"],
 
         # typable symbols
-        "TK"     : ["exclam", "", "notsign", "exclamdown"],
+        "TK"     : ["exclam", "", "", ""],
         "TP"     : ["quotedbl", "", "", ""],
         "TKHR"   : ["numbersign", "", "", ""],
         "KPWH"   : ["dollar", "", "", ""],
@@ -69,20 +71,20 @@ symbols = {
         "T"      : ["apostrophe", "", "", ""],
         "TPH"    : ["parenleft", "less", "bracketleft", "braceleft"],
         "KWR"    : ["parenright", "greater", "bracketright", "braceright"],
-        "H"      : ["asterisk", "", "", "multiply"],
+        "H"      : ["asterisk", "", "", ""],
         "R"      : ["plus", "", "", ""],
         "W"      : ["comma", "", "", ""],
         "PH"     : ["minus", "", "", ""],
         "K"      : ["period", "", "", ""],
-        "KP"     : ["slash", "", "", "division"],
+        "KP"     : ["slash", "", "", ""],
         "HR"     : ["colon", "", "", ""],
         "KW"     : ["semicolon", "", "", ""],
         "PWHR"   : ["equal", "", "", ""],
-        "TPW"    : ["question", "questiondown", "", ""],
+        "TPW"    : ["question", "", "", ""],
         "TKPWHR" : ["at", "", "", ""],
         "TW"     : ["backslash", "", "", ""],
-        "KPR"    : ["asciicircum", "guillemotleft", "guillemotright", ""],
-        "WR"     : ["underscore", "", "", "mu"],
+        "KPR"    : ["asciicircum", "", "", ""],
+        "WR"     : ["underscore", "", "", ""],
         "P"      : ["grave", "", "", ""],
         "PW"     : ["bar", "", "", ""],
         "TPWR"   : ["asciitilde", "", "", ""]
@@ -177,9 +179,10 @@ def lookup(chord):
 
                 # add the 'F' if F number
                 if function:
-                    character = "F" + str(count)
-                    if count > 12:
+                    # the function row is F1-F12: there is no F0 and keymux presses none above F12
+                    if count < 1 or count > 12:
                         raise KeyError
+                    character = "F" + str(count)
                 else:
                     if count > 9:
                         raise KeyError

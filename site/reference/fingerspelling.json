@@ -1,7 +1,7 @@
 {
  "id": "fingerspelling",
  "title": "Fingerspelling, numbers and modifiers",
- "goal": "Letter-by-letter spelling, Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols; the rule behind all 1,665 modifier strokes.",
+ "goal": "Letter-by-letter spelling, Ctrl/Alt/Super/Shift shortcuts, digits, function keys, arrows and symbols; the rule behind all 1,470 modifier strokes.",
  "blocks": [
   {
    "t": "h",
@@ -29,7 +29,7 @@
     [
      "Modifier chords ('Emily's' dictionary)",
      "OS key presses: Ctrl+C, Alt+Tab, Shift+B, F-keys, arrows, media keys",
-     "a chord plus modifier keys plus the ender `LGTS` (1,665 strokes)",
+     "a chord plus modifier keys plus the ender `LGTS` (1,470 strokes)",
      "`rules/reserved/emilys-modifiers.py` and `.json`"
     ]
    ]
@@ -333,7 +333,7 @@
   {
    "t": "list",
    "items": [
-    "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,665 strokes; it keeps ordinary outlines from colliding with modifier chords.",
+    "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,470 strokes; it keeps ordinary outlines from colliding with modifier chords.",
     "At least one modifier key must be held; a bare letter or symbol is not this dictionary's job.",
     "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space.",
     "**First-up.** Every entry starts with `{:firstup:except=-FRPBLGTS}`: the chord is sent when its **first non-exempt** key comes up and the keys still down wait for the next stroke. Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]). Releasing the held keys alone sends nothing.",
@@ -519,7 +519,7 @@
   },
   {
    "t": "p",
-   "x": "Chords not in the tables are not strokes. 111 base chords times 15 modifier combinations = 1,665 strokes. One stroke per output: chords equivalent to another (an extra `T`, `E` or `U`) are not strokes."
+   "x": "Chords not in the tables are not strokes. 98 base chords times 15 modifier combinations = 1,470 strokes. One stroke per output: chords equivalent to another (an extra `T`, `E` or `U`) are not strokes."
   },
   {
    "t": "h",
@@ -591,7 +591,7 @@
   },
   {
    "t": "p",
-   "x": "Adding `T` and `P` makes the count a function key (zero-indexed: `TPAO` is F0), up to F12:"
+   "x": "Adding `T` and `P` makes the count a function key (F1 to F12; the count is the number the chord spells):"
   },
   {
    "t": "table",
@@ -605,50 +605,42 @@
    ],
    "rows": [
     [
-     "F0",
-     "[[TPAOFLGTS]]",
-     "F5",
-     "[[TKPRAOFLGTS]]",
-     "F10",
-     "[[STPWAOFLGTS]]"
-    ],
-    [
      "F1",
      "[[TPRAOFLGTS]]",
-     "F6",
-     "[[TKPWAOFLGTS]]",
-     "F11",
-     "[[STPWRAOFLGTS]]"
+     "F5",
+     "[[TKPRAOFLGTS]]",
+     "F9",
+     "[[STPRAOFLGTS]]"
     ],
     [
      "F2",
      "[[TPWAOFLGTS]]",
-     "F7",
-     "[[TKPWRAOFLGTS]]",
-     "F12",
-     "[[STKPAOFLGTS]]"
+     "F6",
+     "[[TKPWAOFLGTS]]",
+     "F10",
+     "[[STPWAOFLGTS]]"
     ],
     [
      "F3",
      "[[TPWRAOFLGTS]]",
-     "F8",
-     "[[STPAOFLGTS]]",
-     "",
-     ""
+     "F7",
+     "[[TKPWRAOFLGTS]]",
+     "F11",
+     "[[STPWRAOFLGTS]]"
     ],
     [
      "F4",
      "[[TKPAOFLGTS]]",
-     "F9",
-     "[[STPRAOFLGTS]]",
-     "",
-     ""
+     "F8",
+     "[[STPAOFLGTS]]",
+     "F12",
+     "[[STKPAOFLGTS]]"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "A count above 9 is not a digit; a function-key count above 12 is not a stroke."
+   "x": "A count above 9 is not a digit; a function-key count of 0 or above 12 is not a stroke (there is no F0)."
   },
   {
    "t": "h",
@@ -656,7 +648,7 @@
   },
   {
    "t": "p",
-   "x": "A star switches the chord from letters and digits to this table. `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. `E`, `U` or `EU` as well makes no stroke. Strokes are shown with Ctrl (`F`); any other modifier combination substitutes."
+   "x": "A star switches the chord from letters and digits to this table. `A` and `O` select one of up to four variants: none, `A`, `O`, `A` and `O` together. `E`, `U` or `EU` as well makes no stroke. Only keys a US keyboard presses and keymux can send have a stroke: no Audio Play, Prev, Next or Stop, and no typographic symbols (`¬ ¡ × ÷ ¿ « » µ`). Strokes are shown with Ctrl (`F`); any other modifier combination substitutes."
   },
   {
    "t": "table",
@@ -690,13 +682,6 @@
      "`Page Down` [[TKPWRAO*FLGTS]]"
     ],
     [
-     "`TKWR`",
-     "`Audio Play` [[TKWR*FLGTS]]",
-     "`Audio Prev` [[TKWRA*FLGTS]]",
-     "`Audio Next` [[TKWRO*FLGTS]]",
-     "`Audio Stop` [[TKWRAO*FLGTS]]"
-    ],
-    [
      "`TKW`",
      "`Audio Mute` [[TKW*FLGTS]]",
      "`Audio Lower Volume` [[TKWA*FLGTS]]",
@@ -707,8 +692,8 @@
      "`TK`",
      "`!` [[TK*FLGTS]]",
      "",
-     "`¬` [[TKO*FLGTS]]",
-     "`¡` [[TKAO*FLGTS]]"
+     "",
+     ""
     ],
     [
      "`TP`",
@@ -771,7 +756,7 @@
      "`*` [[H*FLGTS]]",
      "",
      "",
-     "`×` [[HAO*FLGTS]]"
+     ""
     ],
     [
      "`R`",
@@ -806,7 +791,7 @@
      "`/` [[KP*FLGTS]]",
      "",
      "",
-     "`÷` [[KPAO*FLGTS]]"
+     ""
     ],
     [
      "`HR`",
@@ -832,7 +817,7 @@
     [
      "`TPW`",
      "`?` [[TPW*FLGTS]]",
-     "`¿` [[TPWA*FLGTS]]",
+     "",
      "",
      ""
     ],
@@ -853,8 +838,8 @@
     [
      "`KPR`",
      "`^` [[KPR*FLGTS]]",
-     "`«` [[KPRA*FLGTS]]",
-     "`»` [[KPRO*FLGTS]]",
+     "",
+     "",
      ""
     ],
     [
@@ -862,7 +847,7 @@
      "`_` [[WR*FLGTS]]",
      "",
      "",
-     "`µ` [[WRAO*FLGTS]]"
+     ""
     ],
     [
      "`P`",

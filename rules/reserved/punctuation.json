@@ -89,7 +89,7 @@
   "STA*R": "{^*^}",
   "STKPW*": "{:firstup:except=*}{>}{&z}",
   "STKPW*P": "{:firstup:except=*}{&Z}",
-  "STKPWHR-FPLT/SKW-TS": "{!'}",
+  "STKPWHR-FPLT/SKW-TS": "{!}{^'}",
   "STPH*FPLTS": "{^)}",
   "STPH-FPLTS": "{(^}",
   "T*": "{:firstup:except=*}{>}{&t}",
