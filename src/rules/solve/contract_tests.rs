@@ -598,11 +598,29 @@ fn context_never_moves_what_is_fixed(count: usize) {
     let sample = mixed_sample(fx, count);
     let suffixes = hard_suffixes(fx);
     let stems = stem_words(fx, count / 8);
+    let entries: std::collections::HashSet<&str> = fx.entries_sorted().into_iter().map(|e| e.0).collect();
     let fixed: Vec<String> = stems
         .iter()
         .enumerate()
         .map(|(n, (stem, _))| format!("{stem}/{}", suffixes[n % suffixes.len()].0))
-        .chain(fx.entries_sorted().into_iter().map(|e| e.0).filter(|o| o.contains("/+") && !o.starts_with('+')).step_by(97).map(str::to_owned))
+        // A known outline and a starred chord that together are not an entry: an entry never reaches
+        // the solver, so only a run that is not one can show the context moving a fixed reading
+        .chain(
+            fx.entries_sorted()
+                .into_iter()
+                .map(|e| e.0)
+                .filter(|o| o.contains("/+") && !o.starts_with('+'))
+                .step_by(97)
+                .filter_map(|outline| {
+                    let head = outline.rsplit_once("/+")?.0;
+                    // A known outline: a head that is read from sounds is the context's to choose
+                    if !entries.contains(head) {
+                        return None;
+                    }
+                    let run = format!("{head}/{}", suffixes[outline.len() % suffixes.len()].0);
+                    (!entries.contains(run.as_str())).then_some(run)
+                }),
+        )
         .collect();
     for context in ["", "the", "to be or not to", "of the", "a"] {
         for outline in &sample {
