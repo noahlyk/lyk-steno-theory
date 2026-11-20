@@ -21,6 +21,7 @@ mod names;
 mod num;
 mod output;
 mod phrases;
+mod prose;
 mod gold;
 mod ipa;
 mod quote;

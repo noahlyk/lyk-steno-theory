@@ -337,7 +337,20 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         words.iter().map(|(w, r)| (w.as_str(), *r)).filter(|(w, _)| !is_literal_override(w)).collect();
     let names: Vec<&str> = competing.iter().map(|(w, _)| *w).collect();
     let candidates = enumerate_in_parallel(&names, |word| enumerate_candidates(setup, briefs, word, &texts));
-    let pools = settle::Pools::new(competing, candidates, common);
+    // A word with no use in prose competes only with its star outlines (see `crate::prose`).
+    let no_prose: Vec<bool> = names.iter().map(|w| crate::prose::no_prose_use(setup, w)).collect();
+    let candidates: Vec<Vec<Candidate>> = candidates
+        .into_iter()
+        .zip(&no_prose)
+        .map(|(list, &noise)| {
+            let starred: Vec<Candidate> = list.iter().filter(|c| matches!(c.origin, Origin::Ladder(_))).cloned().collect();
+            if noise && !starred.is_empty() { starred } else { list }
+        })
+        .collect();
+    let weights: Vec<u64> = competing.iter().map(|(w, _)| setup.count.get(*w).copied().unwrap_or(0).max(1)).collect();
+    let mut pools = settle::Pools::new(competing, candidates, common, weights, HashMap::new());
+    pools.no_prose = no_prose;
+    pools.reserved = fill::reserved_extras(setup, &pools);
 
     let vocabulary = || words.iter().map(|(w, _)| w.as_str());
     let links = crate::family::links(&setup.pron, &setup.count, vocabulary());
@@ -348,7 +361,11 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         crate::family::prefix_links_with(&setup.pron, &setup.count, vocabulary(), crate::family::BACKUP_PREFIXES);
 
     let settled = settle::settle(setup, &pools, &settle::Families { links: &links, prefixes: &prefix_links }, &mut book);
-    fill::alternates(setup, &words, &mut book);
+    // The strokes rare words gave up go to the commoner words' extras before anything else takes them.
+    fill::extras(setup, &pools, &settled.offers, &mut book, Some(&settled.released));
+    let noise: HashSet<&str> = pools.iter().zip(&pools.no_prose).filter(|(_, n)| **n).map(|((w, _), _)| w).collect();
+    let prose_words: Vec<(&String, usize)> = words.iter().filter(|(w, _)| !noise.contains(w.as_str())).copied().collect();
+    fill::alternates(setup, &prose_words, &mut book);
     let ranked: Vec<&str> = words.iter().map(|(w, _)| w.as_str()).collect();
     let backup_skipped = backup::place(
         setup,
@@ -371,8 +388,8 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         };
         crate::phrases::place(setup, &mut book.entries, &mut book.taken, &pool_index, &stems, &natural, &is_literal_override)
     };
-    let extras_added = fill::extras(setup, &pools, &settled.offers, &mut book);
-    let stranded = fill::stranded(setup, &book);
+    let extras_added = fill::extras(setup, &pools, &settled.offers, &mut book, None);
+    let stranded = fill::stranded(setup, &book, &settled.released, &noise);
 
     Ok(Generated {
         entries: book.entries,

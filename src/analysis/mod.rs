@@ -129,6 +129,11 @@ pub struct Setup {
     /// Lapwing's proper nouns (`crate::names`): the outline after `#/` when the file has one, and
     /// the name
     pub proper_nouns: Vec<(Option<String>, String)>,
+    /// How many times each word occurs in the prose of the books in `data/corpus`: evidence a word
+    /// is used in running text (`crate::prose`)
+    pub prose: HashMap<String, u32>,
+    /// Words `CMUdict` does not have, pronounced only by the fallback sources (MFA, `WikiPron`)
+    pub fallback_pron: std::collections::HashSet<String>,
 }
 
 /// How far down the frequency list real spellings are kept for the solver (see `Setup::spellings`).
@@ -178,7 +183,9 @@ impl Setup {
         // replacement: `or_insert` only ever fires for a key `pron` does not already have, so a
         // CMUdict-covered word is completely unaffected. See `data::fallback_pronunciations` and
         // `crate::ipa`.
-        for (word, variants) in fallback_pronunciations(&pron, &mfa?, &wikipron?) {
+        let fallback = fallback_pronunciations(&pron, &mfa?, &wikipron?);
+        let fallback_pron: std::collections::HashSet<String> = fallback.keys().cloned().collect();
+        for (word, variants) in fallback {
             pron.entry(word).or_insert(variants);
         }
         let gold = gold?;
@@ -216,6 +223,8 @@ impl Setup {
             web_bigrams,
             spellings,
             proper_nouns: crate::names::load_proper_nouns(data)?,
+            prose: crate::prose::book_uses(data),
+            fallback_pron,
         })
     }
 
@@ -233,6 +242,8 @@ impl Setup {
             web_bigrams: Vec::new(),
             spellings: Vec::new(),
             proper_nouns: Vec::new(),
+            prose: HashMap::new(),
+            fallback_pron: std::collections::HashSet::new(),
         }
     }
 

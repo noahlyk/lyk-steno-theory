@@ -47,7 +47,7 @@
       {"p": "AOEU", "o": ["AOEU"], "w": "eye"},
       {"p": "AEU", "o": ["AEU"], "w": "day"},
       {"p": "OE", "o": ["OE"], "w": "oh"},
-      {"p": "AO", "o": ["AO"], "w": "ooh"},
+      {"p": "AO", "o": ["AO"], "w": "to a"},
       {"p": "OU", "o": ["OU"], "w": "ow"},
       {"p": "PHAPB", "o": ["PHAPB"], "w": "man"},
       {"p": "HEP", "o": ["HEP"], "w": "help"},

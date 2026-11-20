@@ -121,7 +121,8 @@
     "**At most three per word**, cheapest first, each **within three keys** of the word's own outline.",
     "Star and `/+*` ladder markers are collision fallbacks: excluded.",
     "They run strictly last: they never take a stroke any primary, backup or phrase wanted, and every lookup tool ranks them below the primary. *like* is [[like|HRAOEU]] with other one-stroke outlines as extras.",
-    "The current build has about 10,400 of them."
+    "**Kept from rare words.** A word said at most 200 times that holds the stroke of one of another word's four cheapest extra options, that word being at least 30 times as common, gives the stroke up and the common word gets it as an extra, before short forms and phrases (see [a rare word does not hold a common word's extra](#/ref/collisions)). *ease* has [[ease|AOEZ]] beside [[ease|AEZ]]; the junk *ees* does not.",
+    "The current build has about 33,000 of them."
    ]
   },
   {

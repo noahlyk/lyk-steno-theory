@@ -41,6 +41,32 @@
  },
  {
   "t": "h",
+  "x": "Words with no prose use stay behind the star"
+ },
+ {
+  "t": "p",
+  "x": "A word with **no prose use** is one nothing shows to be read in running text: a vocal noise or sound effect (*ugh*, *hmm*, *shh*, *brr*, *ooh*) or a stray string a pronunciation list carries (*ees*). Such a word competes only with its star ladder outlines, takes no family shape, no extra and no other-pronunciation entry, so it never holds a plain stroke a word that is used might want, and it still has an outline: *ees* is [[ees|AO*EZ]]."
+ },
+ {
+  "t": "list",
+  "items": [
+   "**Stays plain, always:** *oh*, *ah*, *eh*, *uh*, *um*, *yea*, *yeah*, *yeh*, *ok*, *okay*, *hey*, *wow*; and any word that occurs **3 or more times** in the prose of the five bundled books (*mr*, *mrs*, *dr*).",
+   "**Noise letters:** a run of three of one letter (*zzz*, *mmm*), or an exclamation's shape once repeated letters are cut to one (*ahh*, *ooh*, *ohh*, *uhh*, *ugh*, *hmm*, *shh*, *brr*, *grr*, *psst*, *tsk*, *pfft*, *argh*, *eww*).",
+   "**Stray string:** four letters or fewer, said fewer than 1,000 times in the frequency list, written by no steno dictionary (Plover, Lapwing or any other theory), and pronounced only by the fallback sources, not CMUdict.",
+   "A word with no star outline keeps whatever candidates it has. The current build flags about 560 words."
+  ],
+  "ordered": false
+ },
+ {
+  "t": "h",
+  "x": "A rare word does not hold a common word's extra stroke"
+ },
+ {
+  "t": "p",
+  "x": "A common word keeps its plain rules reading and its gold briefs as [extras](#/ref/briefs) even when a cheaper outline is its primary: *ease* is [[ease|AEZ]], and [[ease|AOEZ]] (the reading by the sounds, Lapwing's too) is an extra. A rare word may not hold such a stroke as its primary. After settling, a word said at most **200** times in the frequency list that holds the stroke of one of another word's four cheapest extra options, where that word is said at least **30 times** as often, gives it up. The stroke goes to the common word as an extra, before short forms, other pronunciations and phrases take free strokes. The rare word takes its cheapest other candidate that is free (the star ladder: *ees* is [[ees|AO*EZ]]); with none left it has no primary and is written by its joined backups. A word said more than 200 times is never asked."
+ },
+ {
+  "t": "h",
   "x": "Faithful outlines: a dropped sound must pay"
  },
  {

@@ -45,7 +45,7 @@
     { "t": "table", "head": ["Ending", "Strokes", "Example"], "rows": [
       ["-ism", "[[+EUZ/+-PL]]", "[[tourism|TUR/+EUZ/+-PL]]"],
       ["-ity", "[[+U/+TEU]]", "[[humidity|HAOUPLD/+U/+TEU]]"],
-      ["-ical", "[[+-BG/+UL]]", "[[chemical|KHEPL/+-BG/+UL]]"],
+      ["-ical", "[[+-BG/+UL]]", "[[ethical|*ET/+-BG/+UL]]"],
       ["-ary, -ery, -ory", "[[+-R/+AOE]]", "[[dictionary|TKEUBG/+-GS/+-R/+AOE]]"]
     ] },
     { "t": "p", "x": "Endings stack: *needless* + `+-L`; *myself* is two words. A suffix stroke is read correctly even where the dictionary has no entry: `STKPW/+-D` still reads as *zed*, never *zd*." },

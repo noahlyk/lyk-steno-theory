@@ -287,6 +287,47 @@ mod tests {
     /// Measured 2026-11-08: 16,566 contested after peeling.
     const CONTESTED_MAX: usize = 19_500;
 
+    /// A rare word does not hold a one-stroke outline that a far commoner word has as its own
+    /// extra: `ease` has `AOEZ` (its plain reading), the junk `ees` does not.
+    #[test]
+    fn a_rare_word_does_not_hold_a_stroke_a_common_word_keeps_for_its_extras() {
+        if !have_data() {
+            return;
+        }
+        let entries = &dictionary_fixture::generated().entries;
+        let holder = |text: &str| {
+            entries.iter().find(|e| crate::stroke::render_outline(&e.outline) == text).map(|e| e.word.as_str())
+        };
+        assert_eq!(holder("AOEZ"), Some("ease"), "AOEZ should write ease");
+        assert!(
+            entries.iter().filter(|e| e.word == "ees").all(|e| e.outline.len() > 1 || crate::stroke::render_outline(&e.outline) != "AOEZ"),
+            "ees holds AOEZ"
+        );
+    }
+
+    /// Words with no prose use take only star outlines; ordinary interjections stay plain.
+    #[test]
+    fn a_word_with_no_prose_use_has_only_star_outlines_and_yeah_stays_plain() {
+        if !have_data() {
+            return;
+        }
+        let setup = dictionary_fixture::setup();
+        for word in ["ees", "ugh", "hmm", "shh"] {
+            assert!(crate::prose::no_prose_use(setup, word), "{word} should have no prose use");
+        }
+        for word in ["ease", "yeah", "yea", "oh", "ah", "ok", "okay", "mr"] {
+            assert!(!crate::prose::no_prose_use(setup, word), "{word} should be plain");
+        }
+        let entries = &dictionary_fixture::generated().entries;
+        let plain = |word: &str| {
+            entries.iter().any(|e| {
+                e.word == word
+                    && matches!(e.origin, super::Origin::Rules | super::Origin::Brief | super::Origin::Spelling | super::Origin::Family)
+            })
+        };
+        assert!(!plain("ees") && !plain("ugh"), "a no-prose word holds a plain primary");
+    }
+
     #[test]
     fn no_word_is_stranded_on_a_worse_outline() {
         if !have_data() {

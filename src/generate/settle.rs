@@ -47,13 +47,40 @@ pub struct Pools<'a> {
     /// dictionaries vouch for past the frequency cut) are settled with them but not counted
     /// toward the guards on how much the solver has to arbitrate.
     pub common: usize,
+    /// How often each word is said, at least once (see `problem`).
+    pub weights: Vec<u64>,
+    /// The one-stroke texts a common word keeps for its extras (`fill::reserved_extras`), with the
+    /// count of the commonest word that keeps each.
+    pub reserved: HashMap<String, u64>,
+    /// Which words have no use in ordinary prose (`crate::prose`): only their star outlines compete.
+    pub no_prose: Vec<bool>,
 }
 
+/// A word this many times rarer than the one that keeps a stroke for its extras does not settle
+/// on that stroke (`ease` keeps `AOEZ`; `ees` does not take it) ...
+pub const RESERVE_RATIO: u64 = 30;
+/// ... but only a word said no more often than this: a word people use never gives up its stroke.
+const RESERVE_MAX_COUNT: u64 = 200;
+
 impl<'a> Pools<'a> {
-    pub fn new(words: Vec<(&'a str, usize)>, candidates: Vec<Vec<Candidate>>, common: usize) -> Self {
+    pub fn new(
+        words: Vec<(&'a str, usize)>,
+        candidates: Vec<Vec<Candidate>>,
+        common: usize,
+        weights: Vec<u64>,
+        reserved: HashMap<String, u64>,
+    ) -> Self {
         let texts = candidates.iter().map(|list| list.iter().map(|c| render_outline(&c.outline)).collect()).collect();
-        let (words, ranks) = words.into_iter().unzip();
-        Self { words, ranks, candidates, texts, common }
+        let (words, ranks): (Vec<&str>, Vec<usize>) = words.into_iter().unzip();
+        let no_prose = vec![false; words.len()];
+        Self { words, ranks, candidates, texts, common, weights, reserved, no_prose }
+    }
+
+    /// Whether the `i`th word leaves `text` alone: a rare word (said at most `RESERVE_MAX_COUNT`
+    /// times) and a stroke kept for the extras of a word at least `RESERVE_RATIO` times as common.
+    pub fn barred(&self, i: usize, text: &str) -> bool {
+        self.weights[i] <= RESERVE_MAX_COUNT
+            && self.reserved.get(text).is_some_and(|&by| by >= RESERVE_RATIO.saturating_mul(self.weights[i]))
     }
 
     /// Each word with its candidates.
@@ -73,6 +100,8 @@ pub struct Families<'a> {
 pub struct Settled {
     pub offers: HashMap<String, Vec<Vec<Stroke>>>,
     pub contested: usize,
+    /// The strokes rare words gave up for a commoner word's extras (see [`release`]).
+    pub released: HashSet<String>,
 }
 
 /// A text and the cost it was settled at: a family root's or a locked word's hold on its outline.
@@ -143,8 +172,9 @@ pub fn settle(setup: &Setup, pools: &Pools, families: &Families, book: &mut Book
         let open = open_words(pools, &offers, &holds, book);
         contested = place(setup, open, book, &core);
     }
-    unstrand(pools, base.entries, book);
-    Settled { offers, contested }
+    let released = release(pools, base.entries, book);
+    unstrand(pools, base.entries, book, &released);
+    Settled { offers, contested, released }
 }
 
 /// For every linked family member, every [`crate::family::shapes`] of its root's settled outline
@@ -186,7 +216,7 @@ struct Open<'a> {
 fn open_words<'a>(pools: &Pools<'a>, offers: &HashMap<String, Vec<Vec<Stroke>>>, holds: &Holds, book: &mut Book) -> Vec<Open<'a>> {
     let mut open = Vec::with_capacity(pools.words.len());
     for (i, (word, candidates)) in pools.iter().enumerate() {
-        let family = offers.get(word).into_iter().flatten().map(|outline| {
+        let family = offers.get(word).filter(|_| !pools.no_prose[i]).into_iter().flatten().map(|outline| {
             let candidate =
                 Candidate { outline: outline.clone(), origin: Origin::Family, cost: candidate_cost(outline).saturating_sub(FAMILY_DISCOUNT) };
             (render_outline(outline), candidate)
@@ -430,12 +460,56 @@ fn solve_in_parallel<'a>(problems: &[Problem<'a>]) -> Vec<HashMap<&'a str, usize
     answers.into_iter().map(|a| a.expect("every problem is solved")).collect()
 }
 
+/// A rare word settled on a stroke a far commoner word keeps for its extras (`Pools::barred`)
+/// gives it up: it moves to its cheapest candidate that is free and not kept either, or, with
+/// none, has no primary and is written by its backups. Words are taken in frequency order, so a
+/// stroke one frees is there for the next.
+fn release(pools: &Pools, base: usize, book: &mut Book) -> HashSet<String> {
+    let mut released: HashSet<String> = HashSet::new();
+    let index: HashMap<&str, usize> =
+        book.entries.iter().enumerate().skip(base).map(|(i, entry)| (entry.word.as_str(), i)).collect();
+    let mut gone: HashSet<usize> = HashSet::new();
+    let moves: Vec<(usize, usize)> =
+        pools.iter().enumerate().filter_map(|(p, (word, _))| index.get(word).map(|&i| (p, i))).collect();
+    for (p, i) in moves {
+        let text = render_outline(&book.entries[i].outline);
+        if !pools.barred(p, &text) {
+            continue;
+        }
+        book.taken.remove(&text);
+        released.insert(text.clone());
+        let word = book.entries[i].word.clone();
+        let better = pools.candidates[p]
+            .iter()
+            .zip(&pools.texts[p])
+            .filter(|(_, text)| !book.taken.contains_key(*text) && !released.contains(*text) && !pools.barred(p, text))
+            .min_by(|(a, ta), (b, tb)| a.cost.cmp(&b.cost).then_with(|| ta.cmp(tb)));
+        if let Some((better, text)) = better {
+            book.taken.insert(text.clone(), word);
+            book.entries[i].outline.clone_from(&better.outline);
+            book.entries[i].origin = better.origin;
+        } else {
+            gone.insert(i);
+            book.unresolved.push(word);
+        }
+    }
+    if !gone.is_empty() {
+        let mut at = 0;
+        book.entries.retain(|_| {
+            at += 1;
+            !gone.contains(&(at - 1))
+        });
+    }
+    released
+}
+
 /// A word whose primary costs more than one of its own candidates nobody holds moves to the
 /// cheapest such candidate. The last pass reserves every locked word's and root's text for its
 /// owner even when the owner then moves to something cheaper, which can leave that text free but
 /// unreachable (*spectre* on `SPEBGT/+*R` with `SPEBGT/+-R` free). Moving to an unclaimed text
-/// costs nobody anything; in frequency order, so a text one move frees is there for the next.
-fn unstrand(pools: &Pools, base: usize, book: &mut Book) {
+/// costs nobody anything; in frequency order, so a text one move frees is there for the next. A
+/// stroke a rare word just gave up (`released`) is the common word's, not free.
+fn unstrand(pools: &Pools, base: usize, book: &mut Book, released: &HashSet<String>) {
     let index: HashMap<&str, usize> =
         book.entries.iter().enumerate().skip(base).map(|(i, entry)| (entry.word.as_str(), i)).collect();
     let moves: Vec<(usize, usize)> =
@@ -445,7 +519,7 @@ fn unstrand(pools: &Pools, base: usize, book: &mut Book) {
         let better = pools.candidates[p]
             .iter()
             .zip(&pools.texts[p])
-            .filter(|(c, text)| c.cost < current && !book.taken.contains_key(*text))
+            .filter(|(c, text)| c.cost < current && !book.taken.contains_key(*text) && !released.contains(*text) && !pools.barred(p, text))
             .min_by(|(a, ta), (b, tb)| a.cost.cmp(&b.cost).then_with(|| ta.cmp(tb)));
         if let Some((better, text)) = better {
             let word = book.entries[i].word.clone();

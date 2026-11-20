@@ -13,7 +13,7 @@
     ] },
     { "t": "h", "x": "What a word does instead" },
     { "t": "list", "items": [
-      "**Swap**, still one stroke: the voiced and unvoiced partner trade places. [[cadence|KAEUPBDZ]], [[utters|URTS]], [[silenced|SAOEUPBLTS]].",
+      "**Swap**, still one stroke: the voiced and unvoiced partner trade places. [[cadence|KAEUPBDZ]], [[shutters|SHURTS]], [[silenced|SAOEUPBLTS]].",
       "**Split**, two strokes, if no swap is free: the pinky keys that fit stay, the rest go to a joined stroke. `-SD` becomes `-S` then `+-D`.",
       "A few rare words have no outline at all because their only repair would change a sound. `resolve` reads their strokes back."
     ] },
@@ -32,6 +32,6 @@
     "title": "Swapped endings",
     "pass": 90,
     "repeat": 2,
-    "items": [["cadence", "KAEUPBDZ"], ["utters", "URTS"], ["silenced", "SAOEUPBLTS"]]
+    "items": [["cadence", "KAEUPBDZ"], ["shutters", "SHURTS"], ["silenced", "SAOEUPBLTS"]]
   }
 }

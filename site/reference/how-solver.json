@@ -71,7 +71,8 @@
       "Settling repeats until the offers stop changing, or for at most four passes.",
       "The 5,000 commonest words are locked to what they settled on: nobody else may take those texts, and no locked word may take another's.",
       "One last pass runs with every skeleton in.",
-      "Any word on a worse outline than one of its own candidates that nobody holds (a text a root reserved and then left) moves to it.",
+      "A word said at most 200 times that holds a stroke kept as an extra by a word at least 30 times as common gives it up (see [collisions](#/ref/collisions)): it moves to its cheapest free candidate that is not kept either, or has no primary.",
+      "Any word on a worse outline than one of its own candidates that nobody holds (a text a root reserved and then left) moves to it, but never to a stroke it just gave up.",
       "Everything is then settled again from scratch."
     ] },
     { "t": "h3", "x": "One family, every member" },
