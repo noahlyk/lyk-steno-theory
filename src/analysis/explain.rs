@@ -108,8 +108,7 @@ pub fn mismatches(
         let (plover, lapwing) = setup.gold.shortest(word);
         let sounds = setup.pron[word]
             .first()
-            .map(|s| s.join(" "))
-            .unwrap_or_default();
+            .map_or_default(|s| s.join(" "));
         println!(
             "{word:<12} ours {:<18} plover {:<16} lapwing {:<16} {sounds}",
             candidates.first().map_or("-", String::as_str),

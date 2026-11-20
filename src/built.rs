@@ -254,7 +254,7 @@ mod tests {
         let dog: Vec<String> = backups.outlines("dog").iter().map(|o| crate::stroke::render_outline(o)).collect();
         assert_eq!(dog, ["TKO/+-G", "TK/+O/+-G"]);
         assert_eq!(backups.outlines("i").len(), 1, "keyed lowercase");
-        assert!(backups.outlines("cat").is_empty());
+        assert!(backups.outlines("cat").is_empty(), "cat has backups");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

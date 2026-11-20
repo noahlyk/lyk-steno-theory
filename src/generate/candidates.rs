@@ -356,7 +356,7 @@ impl Pool<'_> {
                 for outline in setup.rules.shorten(*short, self.word, sounds).into_iter().filter(|o| o.len() < full) {
                     let starred =
                         ladder(&outline, setup.rules.join_key()).into_iter().filter(|(n, _)| *n <= 2).map(|(_, o)| o);
-                    for candidate in std::iter::once(outline.clone()).chain(starred) {
+                    for candidate in std::iter::once(outline).chain(starred) {
                         if texts.wanted.contains(&render_outline(&candidate)) || !seen.insert(candidate.clone()) {
                             continue;
                         }

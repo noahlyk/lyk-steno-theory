@@ -309,7 +309,7 @@ impl View {
         if row.mark == Mark::Forward {
             let reading = matches!(row.cells[0].as_ref().map(|c| &c.how), Some(How::Reading));
             return reading.then(|| {
-                let outline = row.cells[0].as_ref().map(|c| render_outline(&c.strokes)).unwrap_or_default();
+                let outline = row.cells[0].as_ref().map_or_default(|c| render_outline(&c.strokes));
                 format!("  {outline} is not an entry - shown as the rules' own reading of it (in quotes)")
             });
         }

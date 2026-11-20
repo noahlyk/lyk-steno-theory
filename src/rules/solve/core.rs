@@ -1653,7 +1653,7 @@ impl Model {
             return self.shown[at].1.clone();
         }
         let mut letters = text.chars();
-        letters.next().map(|c| c.to_uppercase().chain(letters).collect()).unwrap_or_default()
+        letters.next().map_or_default(|c| c.to_uppercase().chain(letters).collect())
     }
 
     /// The id in the bigram table of the word `context` ends on ([`previous_word`]), when it is

@@ -313,7 +313,7 @@ fn eval_context(model: &Model, dir: &Path, corpus: &Path, step: usize, misses: O
                     let mut last: Option<(&str, Vec<solve::Reading>)> = None;
                     part.iter()
                         .map(|&(outline, ref word, before, _)| {
-                            let run: Vec<u32> = parse_outline(outline).map(|s| s.iter().map(|s| s.0).collect()).unwrap_or_default();
+                            let run: Vec<u32> = parse_outline(outline).map_or_default(|s| s.iter().map(|s| s.0).collect());
                             if last.as_ref().is_none_or(|l| l.0 != outline) {
                                 last = Some((outline, model.solve_with(&mut sc, &run, 5)));
                             }

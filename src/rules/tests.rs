@@ -318,7 +318,7 @@ fn every_word_of_two_syllables_has_syllable_paths_a_learner_can_work_out() {
     let compromise = text("compromise", "K AA1 M P R AH0 M AY2 Z");
     assert!(compromise.contains(&"KOPL/PRO/PHAOEUZ".to_owned()), "{compromise:?}");
     // One syllable: nothing to join
-    assert!(text("cat", "K AE1 T").is_empty());
+    assert!(text("cat", "K AE1 T").is_empty(), "cat reads as something");
 }
 
 #[test]
@@ -647,7 +647,7 @@ fn a_sound_out_of_steno_order_costs_but_is_not_refused() {
     let rules = Rules::built_in().unwrap();
     // `-MP` would put the m after the p: PL after P. Offered, and dearer than an in-order writing.
     let paths = rules.lattice_paths("temper", &sounds("T EH1 M P ER0"), &[400; 5]);
-    assert!(!paths.is_empty());
+    assert!(!paths.is_empty(), "no paths");
     assert!(paths.windows(2).all(|w| w[0].0 <= w[1].0));
 }
 
@@ -702,7 +702,7 @@ fn a_word_is_also_spelled_out_a_syllable_at_a_time_from_its_letters() {
     let movement = texts("movement");
     assert!(movement.contains(&"PHOF/PHEPBT".to_owned()), "{movement:?}");
     // a one-vowel word has nothing to spell out in pieces
-    assert!(texts("cat").is_empty());
+    assert!(texts("cat").is_empty(), "cat reads as something");
 }
 
 #[test]

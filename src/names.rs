@@ -67,7 +67,7 @@ pub fn load_proper_nouns(data: &Path) -> Result<Vec<(Option<String>, String)>> {
 
 fn capitalize(key: &str) -> String {
     let mut letters = key.chars();
-    letters.next().map(|c| c.to_uppercase().chain(letters).collect()).unwrap_or_default()
+    letters.next().map_or_default(|c| c.to_uppercase().chain(letters).collect())
 }
 
 /// Whether Lapwing's text is a name to write capitalized: it has a letter, it is not a plain

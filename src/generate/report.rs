@@ -154,12 +154,12 @@ fn tally<'a>(setup: &Setup, generated: &'a Generated, against: Option<&Against>)
         let other = other.unwrap_or_default();
         let weight = setup.count.get(word).copied().unwrap_or(0).to_f64();
         let add = |sum: &mut (f64, f64), (s, k): (usize, u32)| {
-            sum.0 += weight * s.to_f64();
-            sum.1 += weight * f64::from(k);
+            sum.0 = f64::mul_add(weight, s.to_f64(), sum.0);
+            sum.1 = f64::mul_add(weight, f64::from(k), sum.1);
         };
         total.weight += weight;
         add(&mut total.ours, (strokes, key_count));
-        total.comfort += weight * f64::from(crate::ergonomics::weighted_outline(outline));
+        total.comfort = f64::mul_add(weight, f64::from(crate::ergonomics::weighted_outline(outline)), total.comfort);
         add(&mut total.plover, plover);
         add(&mut total.lapwing, lapwing);
         add(&mut total.other, other);
@@ -167,7 +167,7 @@ fn tally<'a>(setup: &Setup, generated: &'a Generated, against: Option<&Against>)
         let band = &mut bands[BANDS.iter().position(|(to, _)| rank < *to).unwrap_or(0)];
         band.weight += weight;
         for (sum, k) in band.keys.iter_mut().zip([key_count, plover.1, lapwing.1, other.1]) {
-            *sum += weight * f64::from(k);
+            *sum = f64::mul_add(weight, f64::from(k), *sum);
         }
         band.words += 1.0;
         for (count, s) in band.one_stroke.iter_mut().zip([strokes, plover.0, lapwing.0]) {

@@ -321,7 +321,8 @@ mod swap_tests {
         assert!(swaps("KAEUPBTZ").contains(&"KAEUPBDZ".to_owned()));
         assert!(swaps("PULSD").contains(&"PULDZ".to_owned()));
         assert!(swaps("PULSD").contains(&"PULTS".to_owned()));
-        assert!(swaps("KAT").is_empty());
+        let found = swaps("KAT");
+        assert!(found.is_empty(), "{found:?}");
         assert!(swaps("KAEUPBTZ").iter().all(|s| Stroke::parse(s).unwrap().typable()));
     }
 }

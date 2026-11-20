@@ -780,7 +780,7 @@ pub fn pack(rules: &Rules, lexicon: &Lexicon, stems: &[(Vec<Stroke>, String)], n
 /// A word with its first letter capitalized.
 fn capitalized(key: &str) -> String {
     let mut letters = key.chars();
-    letters.next().map(|c| c.to_uppercase().chain(letters).collect()).unwrap_or_default()
+    letters.next().map_or_default(|c| c.to_uppercase().chain(letters).collect())
 }
 
 /// The name lane's model (`crate::names`): a model of its own over the names alone, each ranked by

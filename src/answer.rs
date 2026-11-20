@@ -336,7 +336,7 @@ impl<'a> Lookup<'a> {
         let mut lyk: Vec<Vec<Stroke>> = if skip(&best[0]).is_some() {
             let mut all: Vec<Vec<Stroke>> =
                 self.outlines.get(word).into_iter().flatten().map(|o| o.to_vec()).collect();
-            all.extend(self.backups.map(|b| b.outlines(word)).unwrap_or_default());
+            all.extend(self.backups.map_or_default(|b| b.outlines(word)));
             all
         } else {
             Vec::new()
@@ -518,7 +518,7 @@ mod tests {
         assert!(first.cells[0].as_ref().is_some_and(|c| c.how == How::Entry));
         // only the first row carries the word; the others are further outlines of it
         for row in answer.rows.iter().filter(|r| r.mark == Mark::Entry).skip(1) {
-            assert!(row.word.is_empty());
+            assert!(row.word.is_empty(), "{:?}", row.word);
         }
     }
 
@@ -601,11 +601,11 @@ mod tests {
         // punctuation and fingerspelling, not only commands
         let punctuation = specials_of("{>}{&e}");
         assert!(punctuation.iter().any(|(t, o)| t == "{>}{&e}" && o == "*E"), "{punctuation:?}");
-        assert!(!specials_of("control").is_empty());
+        assert!(!specials_of("control").is_empty(), "control finds nothing");
         // fast mode, one-letter queries and marks alone find none
         assert!(lookup().answer("^ing", Ask { fast: true, ..ALL }).rows.iter().all(|r| r.mark != Mark::Command));
-        assert!(specials_of("^").is_empty());
-        assert!(specials_of("{}").is_empty());
+        assert!(specials_of("^").is_empty(), "{:?}", specials_of("^"));
+        assert!(specials_of("{}").is_empty(), "{:?}", specials_of("{}"));
     }
 
     #[test]
@@ -631,7 +631,7 @@ mod tests {
         assert_eq!(lookup().answer("kat", stroke_mode).rows[0].word, "\"cat\"");
         let bad = lookup().answer("cat!", stroke_mode);
         assert_eq!(bad.problem.as_deref(), Some("\"cat!\" is not stroke notation"));
-        assert!(bad.rows.is_empty());
+        assert!(bad.rows.is_empty(), "{:?}", bad.rows.len());
     }
 
     #[test]
@@ -651,6 +651,6 @@ mod tests {
 
     #[test]
     fn nothing_typed_answers_nothing() {
-        assert!(lookup().answer("   ", ALL).rows.is_empty());
+        assert!(lookup().answer("   ", ALL).rows.is_empty(), "blank query answered");
     }
 }
