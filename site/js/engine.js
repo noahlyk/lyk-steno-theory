@@ -208,10 +208,10 @@ export function createEngine({ dict, joins = {}, chart }) {
       const a = bitsList[at];
       const b = bitsList[at + 1];
       const two = suffix2.get(`${a}/${b}`);
-      if (two !== undefined && (a & b & JOIN)) return { text: two, space: false, used: 2, kind: 'suffix' };
+      if (two !== undefined && (a & b & JOIN)) return { text: two, space: false, used: 2, kind: 'suffix', exact: !!(a & STAR) };
     }
     const bits = bitsList[at];
-    if (at > 0 && (bits & JOIN) && suffix.has(bits)) return { text: suffix.get(bits), space: false, used: 1, kind: 'suffix' };
+    if (at > 0 && (bits & JOIN) && suffix.has(bits)) return { text: suffix.get(bits), space: false, used: 1, kind: 'suffix', exact: !!(bits & STAR) };
     const r = resolveStroke(rules, bits);
     if (!r) return null;
     const text = [...r.onset, ...(r.vowel ? [r.vowel] : []), ...r.coda].map(spelling).join('') + (r.marker ? '*' : '');
@@ -228,7 +228,7 @@ export function createEngine({ dict, joins = {}, chart }) {
     if (stem !== undefined) {
       const next = piece(bitsList, 1);
       if (!next) return null;
-      text += dropSilentE(stem, /^[aeiou]/.test(next.text)) + (next.space ? ' ' : '') + next.text;
+      text += (next.exact ? stem : dropSilentE(stem, /^[aeiou]/.test(next.text))) + (next.space ? ' ' : '') + next.text;
       at = 1 + next.used;
       kind = 'stem';
     }
@@ -324,15 +324,16 @@ export function createEngine({ dict, joins = {}, chart }) {
 
   /**
    * What an outline is defined as, in Plover's dictionary syntax where there is one: `{^ed}` for a
-   * continuation stroke that is a suffix (it attaches to the word before), the raw value of a
+   * continuation stroke that is a spelled suffix and `{^}ed` for a starred, exact one (it attaches to the word before), the raw value of a
    * punctuation or command entry (`{.}`), the word of an ordinary entry, and otherwise what the
    * fallback reads the keys as. { text, how: 'suffix' | 'entry' | 'guess' | 'raw' }.
    */
   function define(strokes) {
     const bits = strokes.map(bitsOf);
     const lone = bits.every((b) => b & JOIN);
+    const exact = (bits[0] & STAR) !== 0;
     const sfx = !lone ? undefined : bits.length === 1 ? suffix.get(bits[0]) : bits.length === 2 ? suffix2.get(bits.join('/')) : undefined;
-    if (sfx !== undefined) return { text: `{^${sfx}}`, how: 'suffix' };
+    if (sfx !== undefined) return { text: exact ? `{^}${sfx}` : `{^${sfx}}`, how: 'suffix' };
     const t = outlineText(strokes);
     if (punct.has(t)) return { text: punct.get(t), how: 'entry' };
     if (entries.has(t)) return { text: entries.get(t), how: 'entry' };

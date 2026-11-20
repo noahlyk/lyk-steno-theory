@@ -1946,7 +1946,10 @@ impl Model {
                 };
                 if let Some((piece, hard)) = found {
                     p.arena.push((root.back, piece));
-                    let cost = if hard { 0 } else { self.c.suffix };
+                    // A hard suffix is fixed text; on a known outline (the stem the writer struck as
+                    // it is) it is free, on a word read from sounds a unit dearer, so `run` + `ing`
+                    // is *runing*, not the near-sounding *raining*
+                    let cost = if hard { u32::from(!matches!(p.arena[root.back as usize].1, Piece::Stem(_) | Piece::Suffix(_) | Piece::TwoSuffix(_))) } else { self.c.suffix };
                     out.push(St { node: 0, cost: root.cost + cost, back: (p.arena.len() - 1) as u32, used: true });
                 }
             }
@@ -2052,13 +2055,17 @@ impl Model {
         }
     }
 
-    /// What `pieces` spell together, into `text`: English's spelling at each suffix ([`join_suffix`]).
+    /// What `pieces` spell together, into `text`: English's spelling at each plain suffix
+    /// ([`join_suffix`]); a hard suffix (the starred chord) is glued on exactly.
     fn write_text(&self, pieces: &[Piece], locked: Option<&str>, text: &mut String) {
         text.clear();
         let suffix_morpheme = |p: &Piece| matches!(p, &Piece::Morpheme(w) if self.morpheme(w) == Some(false));
         for (i, &piece) in pieces.iter().enumerate() {
             text.push_str(self.piece_text(piece, locked));
             match pieces.get(i + 1) {
+                // A hard (starred) suffix chord is exact: its ending is glued on as it is, no spelling
+                Some(&Piece::Suffix(s)) if self.suffixes[s as usize].2 => {}
+                Some(&Piece::TwoSuffix(s)) if self.two_suffixes[s as usize].3 => {}
                 Some(&next @ (Piece::Suffix(_) | Piece::TwoSuffix(_))) => join_suffix(text, self.piece_text(next, locked)),
                 Some(&next) if suffix_morpheme(&next) => join_suffix(text, self.piece_text(next, locked)),
                 _ => {}

@@ -1301,6 +1301,29 @@ mod tests {
         }
     }
 
+    /// A defined starred suffix chord is exact: its ending is glued on as it is, in any place of a
+    /// run, with the strokes around it still read; the plain chord is the spelled one.
+    #[test]
+    fn a_starred_suffix_chord_attaches_its_ending_exactly_anywhere_in_a_run() {
+        for (outline, word, rule) in [
+            ("TAOEUP/+*G", "typeing", "no dropped e"),
+            ("TAOEUP/+-G", "typing", "the plain chord is spelled"),
+            ("AEUBG/+*G", "makeing", "no dropped e"),
+            ("WAUBG/+*D", "walked", "nothing to change"),
+            ("RUPB/+*G", "runing", "no doubled n, and not the near-sounding raining"),
+            ("TAOEUP/+*D/+-L", "typeedly", "a starred chord then a plain one"),
+            ("TAOEUP/+*G/+*S", "typeings", "two starred chords in a row"),
+            ("TAOEUP/+*G/+-L", "typeingly", "the star in the middle, a plain chord after"),
+            ("TAOEUP/+-G/+*S", "typings", "a plain chord then a starred one"),
+            ("TAOEUP/+*EUZ/+-PL", "typeism", "a two-stroke starred suffix"),
+            ("AEUBG/+*G/+*S/+TPUL", "makeingsfull", "a starred pair, then sounds after them"),
+        ] {
+            assert_eq!(model().answer(outline).as_deref(), Some(word), "{outline}: {rule}");
+        }
+        // A chord with its own star that is no defined suffix keeps its reading (the TH sound)
+        assert_eq!(model().answer("TAOEUP/+*T").as_deref(), Some("typed"));
+    }
+
     #[test]
     fn plus_star_puts_the_star_on_the_stroke_before() {
         // `+*` is the star struck late: `+-T` then `+*` is `+*T`, the TH of *health*

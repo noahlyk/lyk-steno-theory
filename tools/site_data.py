@@ -156,7 +156,9 @@ def write_engine(files, pick, rank):
             if name == 'emilys-modifiers' and not LETTER.match(value):
                 continue
             reserved.setdefault(outline, value)
-    suffixes = tomllib.load(open(path('rules', 'suffixes.toml'), 'rb'))
+    suffixes = dict(tomllib.load(open(path('rules', 'suffixes.toml'), 'rb')))
+    # the starred chords too: exact suffixes, which the engine glues on with no spelling rules
+    suffixes.update(files.get('suffixes', {}))
     joins = {}
     for outline, word in files.get('backups', {}).items():
         if word in pick and typable(outline) and outline not in seen:

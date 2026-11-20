@@ -116,11 +116,13 @@ pub fn hard_suffix(outline: &[Stroke]) -> Option<Vec<Stroke>> {
     Some(hard)
 }
 
-/// What an entry is defined as in the file. A suffix is an attach, `{^ed}`, so its stroke glues
-/// its text onto whatever word came before it even when no joined outline (`TEST/+-D`) exists;
-/// every other entry is its word as written. [`crate::built`] strips the attach on the way back in.
+/// What an entry is defined as in the file. A suffix is an exact attach, `{^}ed`, so its stroke
+/// glues its text onto whatever word came before it even when no joined outline (`TEST/+*D`)
+/// exists, and with no spelling rules: `{^ed}` would let the engine's orthography reshape the
+/// word (`type` + `{^ing}` is `typing`), `{^}ing` is `typeing`. Every other entry is its word as
+/// written. [`crate::built`] strips the attach on the way back in.
 pub fn definition(entry: &crate::generate::Entry) -> String {
-    if entry.origin == Origin::Suffix { format!("{{^{}}}", entry.word) } else { written(&entry.word) }
+    if entry.origin == Origin::Suffix { format!("{{^}}{}", entry.word) } else { written(&entry.word) }
 }
 
 /// The dictionary in `dir`, one file per role, each sorted by outline so that the same entries

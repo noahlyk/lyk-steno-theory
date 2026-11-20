@@ -371,8 +371,8 @@ impl<'a> Lookup<'a> {
             .iter()
             .filter(|e| e.origin == Origin::Suffix || !plain(&e.word))
             .map(|e| {
-                // The generator keeps a suffix bare (`ing`); the dictionary writes it `{^ing}`
-                let text = if e.origin == Origin::Suffix { format!("{{^{}}}", e.word) } else { e.word.clone() };
+                // The generator keeps a suffix bare (`ing`); the dictionary writes it `{^}ing`
+                let text = if e.origin == Origin::Suffix { format!("{{^}}{}", e.word) } else { e.word.clone() };
                 Special { norm: Self::bare(&text), raw: text.clone(), text, outline: e.outline.clone() }
             })
             .collect();
@@ -591,7 +591,7 @@ mod tests {
         // a suffix: its exact text, without the braces, without the `{}`, and as a bare word
         for query in ["{^ing}", "^ing", "ing"] {
             let found = specials_of(query);
-            assert!(found.first().is_some_and(|(t, o)| t == "{^ing}" && o.starts_with('+') && o.ends_with('G')), "{query}: {found:?}");
+            assert!(found.first().is_some_and(|(t, o)| t == "{^}ing" && o.starts_with('+') && o.ends_with('G')), "{query}: {found:?}");
         }
         // a query that is an entry's own text is not reported as a missing word
         let answer = lookup().answer("^ing", ALL);

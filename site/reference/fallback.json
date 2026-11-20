@@ -176,8 +176,8 @@
     ],
     [
      "a hard suffix: the chord with `*` added to its first stroke (`+*D`, the suffix sheet's own entry)",
-     "the same; the stroke is never read as sounds: it is the suffix",
-     "0"
+     "the same; the stroke is never read as sounds or merged into a neighbour: it is the suffix, its text glued on exactly with no spelling at the seam, in any place of a run",
+     "0 after a known outline or another suffix, 1 after a word read from sounds"
     ],
     [
      "a known outline: the exact outline of any entry of the words, short, alternates or extras files, or one the rules teach a word (`explain`'s \"ours\", two strokes or more: `WAUT/+-R` *water*)",
@@ -228,7 +228,7 @@
     "**Every consonant of a morpheme is struck.** An unstressed vowel may be left out, as the rules fold it (`EUFPL` for *-ism*, `TPHUSZ` for *-nesses*), but not a morpheme's only vowel (`HE/+-D` is never *hood*) and never a stressed one.",
     "**A morpheme is also read by its spelling**, letter by letter as a word's spelling is (each letter a sound, a doubled consonant one sound or two), every sound struck, for 3 more: `TPHESZ` is *-ness* as *n-e-s-s*, so `KHAOEURBD/+TPHESZ` is *childishness*, not *childish* + *-nesses*.",
     "**The word and its chords spell a word.** In a reading built of morphemes, the word with any suffix chords on it must spell a lexicon word, as a stem and its chords alone must (*anti* + *conventional*, not *anti* + *convention* + `+-L`); after the word's first suffix come only suffixes (*curry* + *-ation* + `+-FT` builds nothing). A reading that breaks either costs 4 and 6.",
-    "**Spelling at the seams** is a suffix chord's (below): a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*).",
+    "**Spelling at the seams** is a plain suffix chord's (below): a silent *e* drops before a vowel, a *y* after a consonant turns to *i* (*happy* + *ness*, *happiness*). A hard (starred) suffix has no seam spelling: its ending is glued on exactly (*type* + `+*G` is *typeing*, *type* + [[+-G]] is *typing*).",
     "**A known word still wins.** A reading built of morphemes that spells a lexicon word is that word, at its rarity. One that spells no lexicon word costs 4 more (not the 6 of other pieces that spell no word), so a known word read as well beats it: `TKPWAO/+TK/+TPHESZ` is *goodness*, not *goodnesses*. A plural *-s* at the end counts as a suffix here: a word or built word and *-s* that spell no word cost 4 too."
    ]
   },

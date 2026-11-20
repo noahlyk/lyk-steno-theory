@@ -571,7 +571,7 @@ fn a_sound_alike_word_holds_the_star_and_the_plain_stroke_before_a_short_form_or
 
 /// A suffix stroke attaches to whatever word precedes it, even when no joined outline for that
 /// word exists (`TEST/+-D`): Keymux looks a continuation stroke up on its own when nothing longer
-/// matches, so the entry has to be a pure attach, `{^ed}`, on strokes that all carry the join key.
+/// matches, so the entry has to be an exact attach, `{^}ed`, on strokes that all carry the join key.
 /// Checks every suffix the generator made, as the file would write it, and every suffix stroke the
 /// Reference's suffix page lists.
 #[test]
@@ -591,12 +591,12 @@ fn every_suffix_is_a_join_key_stroke_defined_as_a_pure_attach_and_every_listed_o
         if !entry.outline.iter().all(|s| s.0 & crate::stroke::Stroke::JOIN != 0) {
             problems.push(format!("{outline:?} has a stroke without the join key"));
         }
+        // `{^}text`, never `{^text}`: the engine's spelling rules must not reshape the word before
         let pure = definition
-            .strip_prefix("{^")
-            .and_then(|d| d.strip_suffix('}'))
+            .strip_prefix("{^}")
             .is_some_and(|text| !text.is_empty() && !text.starts_with(' ') && !text.contains(['{', '}', '^']));
         if !pure {
-            problems.push(format!("{outline:?} is defined as {definition:?}, not a pure {{^text}} attach"));
+            problems.push(format!("{outline:?} is defined as {definition:?}, not an exact {{^}}text attach"));
         }
         made.insert(outline);
     }
