@@ -497,7 +497,8 @@ pub struct Reading {
     pub rarity: u32,
     /// A known outline followed by nothing but suffix chords: the word you know, with endings
     pub composed: bool,
-    /// One known outline that is the whole run: the word it is, struck as taught
+    /// One known outline that is the whole run (the word it is, struck as taught), or one followed
+    /// only by suffix chords of which one is hard (that word, the endings glued on)
     pub exact: bool,
     /// How many word pieces after the first were joined on, each at [`PIECE`]
     pub joins: u32,
@@ -1452,7 +1453,9 @@ impl Model {
         let mut roots = std::mem::take(&mut sc.roots);
         let mut frontier = std::mem::take(&mut sc.frontier);
         let mut next = std::mem::take(&mut sc.next);
-        roots.sort_unstable_by_key(|r| r.cost);
+        // Stable: equal-cost roots stay in the order they were found, a fixed order, never the
+        // sort's own
+        roots.sort_by_key(|r| r.cost);
         roots.truncate(KEEP_ENDS);
         let limit = best + self.rel;
         if skips {
@@ -1702,7 +1705,7 @@ impl Model {
             // but only when nothing that is a word reads as well
             // Pieces that do add up to a word are that word, and as rare as it is: `part` + `s` is
             // *parts*, no commoner than the word *parts* itself
-            if reading.pieces.len() > 1 {
+            if reading.pieces.len() > 1 && !reading.exact {
                 match self.known(&reading.text.to_lowercase()) {
                     Some(word) => reading.cost = reading.cost.saturating_sub(reading.rarity) + self.word_cost[word as usize].max(reading.rarity),
                     // Words joined that spell a real word the lexicon lacks: that word, its joins
@@ -1740,6 +1743,7 @@ impl Model {
         for r in &mut out {
             r.context = self.context_points(prev, &r.text);
         }
+        // Stable: readings equal in all of that stay in the order they were found, a fixed order
         out.sort_by_key(|r| {
             let id = self.known(&r.text.to_lowercase());
             (!r.exact, !(r.composed && id.is_some()), 10 * i64::from(r.cost) - i64::from(r.context), id.unwrap_or(u32::MAX))
@@ -1802,10 +1806,12 @@ impl Model {
         // A hard suffix chord is only ever its suffix: the strokes it covers are not read as sounds
         let mut hard_until = p.hard_until_at[i];
         if i > 0 && run[i] & JOIN != 0 && i >= hard_until {
-            if self.suffixes.iter().any(|&(s, _, hard)| hard && s == run[i]) {
-                hard_until = i + 1;
-            } else if run.get(i + 1).is_some_and(|&next| self.two_suffixes.iter().any(|&(a, b, _, hard)| hard && a == run[i] && b == next)) {
+            // The longest chord, as keymux's dictionary match: `+*R/+AOE` (*ary*) is one chord, not
+            // `+*R` (*er*) and a stroke after it
+            if self.hard_pair_at(run, i) {
                 hard_until = i + 2;
+            } else if self.suffixes.iter().any(|&(s, _, hard)| hard && s == run[i]) {
+                hard_until = i + 1;
             }
         }
         let hard = i < hard_until;
@@ -1918,6 +1924,11 @@ impl Model {
         i > 0 && run[i] & !JOIN == STAR
     }
 
+    /// Whether strokes `i` and `i + 1` of `run` are a hard two-stroke suffix chord (`+*R/+AOE`).
+    fn hard_pair_at(&self, run: &[u32], i: usize) -> bool {
+        run.get(i + 1).is_some_and(|&next| self.two_suffixes.iter().any(|&(a, b, _, hard)| hard && a == run[i] && b == next))
+    }
+
     /// The exact pieces that end with stroke `j`: a suffix chord, a two-stroke suffix, a known
     /// outline of one stroke or several joined, a misstroke of a one-stroke one. Each starts where
     /// a piece had just finished, never on a marker, and a known outline never on a hard suffix's
@@ -1942,7 +1953,11 @@ impl Model {
                         .position(|(a, b, _, _)| *a == run[start] && *b == run[j])
                         .map(|at| (Piece::TwoSuffix(at as u32), self.two_suffixes[at].3))
                 } else {
-                    self.suffixes.iter().position(|(s, _, _)| *s == run[start]).map(|at| (Piece::Suffix(at as u32), self.suffixes[at].2))
+                    // Not the first stroke of a hard two-stroke chord that the run goes on to strike
+                    self.suffixes
+                        .iter()
+                        .position(|(s, _, hard)| *s == run[start] && !(*hard && self.hard_pair_at(run, start)))
+                        .map(|at| (Piece::Suffix(at as u32), self.suffixes[at].2))
                 };
                 if let Some((piece, hard)) = found {
                     p.arena.push((root.back, piece));
@@ -2006,7 +2021,7 @@ impl Model {
             .map(|&s| {
                 Self::chain(arena, s.back, &mut pieces);
                 let morphemic = pieces.iter().any(|p| matches!(p, Piece::Morpheme(_)));
-                if pieces.len() < 2 && !morphemic {
+                if (pieces.len() < 2 && !morphemic) || self.fixed(&pieces) {
                     return (s.cost, s);
                 }
                 self.write_text(&pieces, locked, &mut text);
@@ -2026,7 +2041,7 @@ impl Model {
         if ends.len() <= KEEP_ENDS {
             return;
         }
-        ends.sort_unstable_by_key(|e| e.0);
+        ends.sort_by_key(|e| e.0);
         ends.truncate(KEEP_ENDS);
         states.retain(|s| s.node != 0 || s.back == NO_BACK);
         states.extend(ends.into_iter().map(|e| e.1));
@@ -2122,6 +2137,26 @@ impl Model {
         self.known(&core.to_lowercase()).is_some()
     }
 
+    /// Whether `pieces` are fixed text all through: one known outline, or the text a lock kept, with
+    /// nothing after it but suffix chords, one of them at least a hard (starred) one, an entry of its
+    /// own that glues on exactly and is never read as sounds. Nothing about such a reading is a
+    /// guess, so nothing prices it as one: a plain chord after a hard one is spelled at its seam,
+    /// as always.
+    fn fixed(&self, pieces: &[Piece]) -> bool {
+        let hard = |p: &Piece| match *p {
+            Piece::Suffix(s) => self.suffixes[s as usize].2,
+            Piece::TwoSuffix(s) => self.two_suffixes[s as usize].3,
+            _ => false,
+        };
+        match pieces {
+            [Piece::Stem(_)] => true,
+            [Piece::Stem(_) | Piece::Locked, rest @ ..] => {
+                rest.iter().all(|p| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_))) && rest.iter().any(hard)
+            }
+            _ => false,
+        }
+    }
+
     fn reading(&self, arena: &[(u32, Piece)], end: St, locked: Option<&str>) -> Reading {
         let mut pieces = Vec::new();
         Self::chain(arena, end.back, &mut pieces);
@@ -2138,7 +2173,7 @@ impl Model {
         let composed = pieces.len() > 1
             && matches!(pieces[0], Piece::Stem(_) | Piece::Locked)
             && pieces[1..].iter().all(|p| matches!(p, Piece::Suffix(_) | Piece::TwoSuffix(_)));
-        let exact = pieces.len() == 1 && matches!(pieces[0], Piece::Stem(_));
+        let exact = self.fixed(&pieces);
         let joins = self.joins(&pieces);
         let morphemic = pieces.iter().any(|p| matches!(p, Piece::Morpheme(_)));
         let built = self.built(&pieces, locked, &mut String::new());

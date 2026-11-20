@@ -18,6 +18,9 @@
 pub mod core;
 pub mod plugin;
 
+#[cfg(test)]
+mod contract_tests;
+
 pub use self::core::{Model, Reading};
 
 use super::orthography::{self, Phone};

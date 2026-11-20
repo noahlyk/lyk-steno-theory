@@ -1,0 +1,242 @@
+{
+ "id": "solver-contract",
+ "title": "The solver contract",
+ "goal": "Six guarantees that hold however the solver reads a miss: a defined entry wins, the solver only fills misses, exact means exact, same strokes same text, a visible mark, one undo; and what is not guaranteed.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "The six guarantees"
+  },
+  {
+   "t": "p",
+   "x": "[The solver](#/ref/fallback) reads a stroke or `+` run the dictionary lacks. Its reading of a miss is best-effort and changes as it is tuned; these six guarantees do not. Each is a test that builds the whole dictionary as `build` does, packs the solver, and runs real strokes through both in keymux's lookup order (`src/rules/solve/contract_tests.rs`). A broken guarantee fails the build and names itself."
+  },
+  {
+   "t": "table",
+   "head": [
+    "#",
+    "Guarantee",
+    "In one line"
+   ],
+   "rows": [
+    [
+     "1",
+     "A defined entry always wins",
+     "A stroke or run with a dictionary entry types that entry's text. The solver is never asked."
+    ],
+    [
+     "2",
+     "The solver reads only what has no entry",
+     "It is a fallback for one-word misses: a single stroke, or a `+` run that is no entry, including a run that is partly entries."
+    ],
+    [
+     "3",
+     "Exact means exact",
+     "Starred suffix chords, fingerspelled letters, literals, controls and punctuation are fixed points. A longer run is solved around them, never through them."
+    ],
+    [
+     "4",
+     "Deterministic",
+     "The same strokes, after the same text, always type the same text."
+    ],
+    [
+     "5",
+     "Visible",
+     "What the solver read is marked on keymux's tape."
+    ],
+    [
+     "6",
+     "One undo",
+     "A solver reading is taken back by undo, as any word is."
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "1. A defined entry always wins"
+  },
+  {
+   "t": "list",
+   "items": [
+    "keymux asks each file in its priority order: `01-lyk-commands`, the `02-lyk-` files (alternates, extras, phrases, short, suffixes, words), `03-` names and punctuation, `04-` modifiers. The first file that holds the outline answers; the solver (`05-lyk-solver`) is last.",
+    "One outline has one definition: no outline is defined with two different texts across the deployed files.",
+    "The backups (`out/lyk/02-lyk-backups.json`) are not deployed, so they are not entries: the solver reads them (guarantee 2).",
+    "An entry wins even where its outline reads as a known outline plus a starred chord: [[ais|AEU/+*Z]] types *ais*, not *day* + *s*.",
+    "Were the solver asked about a word entry's own outline, it would type that word (entries with a lone `+*` or a starred suffix chord in them excepted: there the solver reads that stroke as the late star or the ending)."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "2. The solver reads only what has no entry"
+  },
+  {
+   "t": "list",
+   "items": [
+    "keymux asks a plugin only about one word: a single stroke, or a run whose every stroke after the first carries the join key `+`. Strokes with no `+` between them are separate words and are never one question: `KAT TKOG` is two entries.",
+    "A run that is no entry is the solver's, whole, even where its first strokes are entries: it reads known outlines as pieces and the rest by sounds ([how it reads a run](#/ref/fallback/how-it-reads-a-run)).",
+    "A run that is an entry stays that entry however it was reached: the strokes before it asked the solver, the last stroke finds the entry."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "3. Exact means exact"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Fixed point",
+    "What it is",
+    "In a stream or run"
+   ],
+   "rows": [
+    [
+     "A starred suffix chord (`+*G`, `+*D`, `+*EUZ/+-PL`)",
+     "An entry defined as an exact attach: `{^}ing`. Its text is glued on as written, with no spelling at the seam.",
+     "Inside a run it is never read as sounds, merged or dropped: `TAOEUP/+*G` is *typeing*; `TEF/+*D/+-L` keeps *ed* literal."
+    ],
+    [
+     "A known outline then starred chords",
+     "The outline's entry text, then the endings.",
+     "`A*R/+*LT` is *arr* + *let*, never *are* + *let*. A plain chord after a starred one is spelled at its seam."
+    ],
+    [
+     "A glued fingerspelled letter",
+     "A letter chord with `*` (`A*`, `PW*P`): its own stroke, no `+`.",
+     "It ends the run before it and starts nothing: `KAT/+*G A*` is *cating*, then *a*."
+    ],
+    [
+     "Literals, controls, punctuation, modifier chords",
+     "Entries of `01-`, `03-` and `04-`.",
+     "The same: each is its own window, typed as its entry."
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Verified readings of the solver, each a run with no entry:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Strokes",
+    "Types",
+    "Why"
+   ],
+   "rows": [
+    [
+     "`TAOEUP/+*G`",
+     "typeing",
+     "*type* + exact *ing*"
+    ],
+    [
+     "`TAOEUP/+-G`",
+     "typing",
+     "the plain chord is spelled"
+    ],
+    [
+     "`AEUBG/+*G`",
+     "makeing",
+     "no dropped *e*"
+    ],
+    [
+     "`RUPB/+*G`",
+     "runing",
+     "no doubled *n*, and not the near-sounding *raining*"
+    ],
+    [
+     "`WAUBG/+*D`",
+     "walked",
+     "nothing to change"
+    ],
+    [
+     "`TAOEUP/+*G/+*S`",
+     "typeings",
+     "two starred chords in a row"
+    ],
+    [
+     "`TEF/+*D/+-L`",
+     "testedly",
+     "a starred chord, then a plain one"
+    ],
+    [
+     "`KAT/+/+*G`",
+     "cating",
+     "the lock keeps *cat*; the chord adds *ing*"
+    ],
+    [
+     "`A*R/+*LT`",
+     "arrlet",
+     "*arr* is the entry, not the commoner *are*"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "4. Deterministic"
+  },
+  {
+   "t": "list",
+   "items": [
+    "The same strokes after the same text type the same text. Nothing else enters: no clock, no earlier strokes beyond the run, no thread, no hash order. Reading a run after any of its prefixes, in any order, on any thread, from fresh or used working memory gives one answer.",
+    "**The one dependence on earlier text** is [the word before the run](#/ref/fallback/the-word-before-the-run): it breaks a tie between readings of one kind (homophones). It never moves an entry, a whole known outline, a known outline with starred chords or the text a lock kept. With no text before the run there is no dependence.",
+    "**Ties have one order.** Readings rank: a whole known outline (or one with starred chords); a known word plus endings that spell a real word; lowest cost (the word before adjusts it); the commoner word; then the order the reading was found in, which is a fixed search order. Equal-cost candidates of a beam keep that order (a stable sort).",
+    "The solver's reading code holds no hash map. The packed blob is built the same, byte for byte, whatever order its stems come in."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "5. Visible"
+  },
+  {
+   "t": "list",
+   "items": [
+    "A stroke whose text the solver read is marked in keymux's tape file: the line ends `plugin:05-lyk-solver \"reading\"`, after the description. Every stroke of a run carries it, each reading replacing the last. A stroke typed from an entry has no mark.",
+    "A reading that comes after keymux's plugin deadline (`plugin_deadline_ms`) types the stroke plain, then arrives as a `late` line with the same mark.",
+    "The tape file is the only place: the overlay shows no mark for a solver reading (it shows only the late replacement line). Count the solver's words with `grep -c 'plugin:05-lyk-solver'` on the tape; `lyk mistakes` strips the mark when it reads it."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "6. One undo"
+  },
+  {
+   "t": "list",
+   "items": [
+    "`*` takes back the last stroke ([punctuation and commands](#/ref/punctuation)). A solver reading of a single stroke is gone after one `*`.",
+    "A run of N strokes is read again after each stroke, and each reading replaces the one before. `*` takes back the last stroke and puts back the reading of the first N-1: it takes N `*` to clear a run.",
+    "[[TK*UP]] (`{:undo_word}`) takes back the whole word in one stroke, a solver-read run or an entry alike; [[R*EUD]] puts it back whole."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Not guaranteed"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Which word a miss reads as.** It is the cheapest reading by sounds, rarity and, for a tie, the word before. Rare words, near sounds and homophones can read as another word, and a reading can change when the lexicon or the costs are retuned. `lyk solve --eval 250` measures how often a backup reads as its own word.",
+    "**A backup reads as its own word.** Backups are not entries; the solver reads them like any miss.",
+    "**A run reads the same midway as at its end.** Each stroke asks again: `KOPL/+PU` reads *champa* and `KOPL/+PU/+TER` reads *computer*.",
+    "**The same strokes after different text.** Only a tie between homophones may differ (guarantee 4)."
+   ],
+   "ordered": false
+  },
+  {
+   "t": "h",
+   "x": "Run the checks"
+  },
+  {
+   "t": "pre",
+   "x": "cargo test --release contract_                    # the six guarantees on samples (about 80 s with the build)\ncargo test --release contract_full -- --ignored   # every entry, 3,000 stems against every starred chord, 6,000 runs repeated"
+  },
+  {
+   "t": "p",
+   "x": "Sample sizes are constants at the top of `src/rules/solve/contract_tests.rs`: every 25th deployed entry, every 400th backup, 300 stems with 4 starred chords each, 600 runs read 10 times."
+  }
+ ]
+}
