@@ -317,7 +317,8 @@
     "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,665 strokes; it keeps ordinary outlines from colliding with modifier chords.",
     "At least one modifier key must be held; a bare letter or symbol is not this dictionary's job.",
     "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space.",
-    "**First-up.** Every entry starts with `{:firstup}`: the chord is sent when its **first** key comes up and the keys still down wait for the next stroke. Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]). Releasing the held keys alone sends nothing. See [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up); plain Plover errors on the marker."
+    "**First-up.** Every entry starts with `{:firstup:except=-FRPBLGTS}`: the chord is sent when its **first non-exempt** key comes up and the keys still down wait for the next stroke. Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]). Releasing the held keys alone sends nothing.",
+    "**Exempt keys.** The exception `-FRPBLGTS` lists every right-hand key of the held base (the modifiers `F` `R` `P` `B` and the ender `L` `G` `T` `S`; `D` and `Z` are never in a chord here). Lifting one of those first sends nothing and the chord stays open, so letting go of the base early cannot send the shortcut while left-hand characters are still down; the exempt keys are still part of the stroke that goes. The left-hand and vowel keys are not exempt: the first of them to come up sends the stroke. A chord with no left-hand key (`-FLGTS`, only exempt keys) goes on its last key up. Needs a keymux build that reads `{:firstup:except=KEYS}`; see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up). Plain Plover errors on the marker."
    ],
    "ordered": false
   },
@@ -367,91 +368,91 @@
      "Ctrl",
      "`F`",
      "[[S-FLGTS]]",
-     "`{:firstup}{^}{#control(s)}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(s)}{^}`"
     ],
     [
      "Shift",
      "`R`",
      "[[S-RLGTS]]",
-     "`{:firstup}{^}{#shift(s)}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#shift(s)}{^}`"
     ],
     [
      "Super",
      "`P`",
      "[[S-PLGTS]]",
-     "`{:firstup}{^}{#super(s)}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#super(s)}{^}`"
     ],
     [
      "Alt",
      "`B`",
      "[[S-BLGTS]]",
-     "`{:firstup}{^}{#alt(s)}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#alt(s)}{^}`"
     ],
     [
      "Ctrl+Shift",
      "`FR`",
      "[[S-FRLGTS]]",
-     "`{:firstup}{^}{#control(shift(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(shift(s))}{^}`"
     ],
     [
      "Ctrl+Super",
      "`FP`",
      "[[S-FPLGTS]]",
-     "`{:firstup}{^}{#control(super(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(super(s))}{^}`"
     ],
     [
      "Ctrl+Alt",
      "`FB`",
      "[[S-FBLGTS]]",
-     "`{:firstup}{^}{#control(alt(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(alt(s))}{^}`"
     ],
     [
      "Shift+Super",
      "`RP`",
      "[[S-RPLGTS]]",
-     "`{:firstup}{^}{#super(shift(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#super(shift(s))}{^}`"
     ],
     [
      "Shift+Alt",
      "`RB`",
      "[[S-RBLGTS]]",
-     "`{:firstup}{^}{#alt(shift(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#alt(shift(s))}{^}`"
     ],
     [
      "Super+Alt",
      "`PB`",
      "[[S-PBLGTS]]",
-     "`{:firstup}{^}{#super(alt(s))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#super(alt(s))}{^}`"
     ],
     [
      "Ctrl+Shift+Super",
      "`FRP`",
      "[[S-FRPLGTS]]",
-     "`{:firstup}{^}{#control(super(shift(s)))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(super(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Shift+Alt",
      "`FRB`",
      "[[S-FRBLGTS]]",
-     "`{:firstup}{^}{#control(alt(shift(s)))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(alt(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Super+Alt",
      "`FPB`",
      "[[S-FPBLGTS]]",
-     "`{:firstup}{^}{#control(super(alt(s)))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(super(alt(s)))}{^}`"
     ],
     [
      "Shift+Super+Alt",
      "`RPB`",
      "[[S-RPBLGTS]]",
-     "`{:firstup}{^}{#super(alt(shift(s)))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#super(alt(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Shift+Super+Alt",
      "`FRPB`",
      "[[S-FRPBLGTS]]",
-     "`{:firstup}{^}{#control(super(alt(shift(s))))}{^}`"
+     "`{:firstup:except=-FRPBLGTS}{^}{#control(super(alt(shift(s))))}{^}`"
     ]
    ]
   },
@@ -890,7 +891,7 @@
   },
   {
    "t": "p",
-   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*FPBLGTS]] is Ctrl+Super+Alt+Up (`{:firstup}{^}{#control(super(alt(up)))}{^}`)."
+   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*FPBLGTS]] is Ctrl+Super+Alt+Up (`{:firstup:except=-FRPBLGTS}{^}{#control(super(alt(up)))}{^}`)."
   }
  ]
 }

@@ -215,10 +215,24 @@ fn no_generated_outline_collides_with_a_reserved_stroke() {
     assert!(collisions.is_empty(), "words colliding with a reserved stroke: {collisions:#?}");
 }
 
+/// The first-up marker at the start of `value` (`{:firstup}` or `{:firstup:except=KEYS}`) and the
+/// rest of the entry after it.
+// The markers are dictionary metas, not format strings.
+#[allow(clippy::literal_string_with_formatting_args)]
+fn split_firstup(value: &str) -> Option<(&str, &str)> {
+    if let Some(rest) = value.strip_prefix("{:firstup}") {
+        return Some(("{:firstup}", rest));
+    }
+    let prefix = "{:firstup:except=";
+    let end = value.strip_prefix(prefix)?.find('}')? + prefix.len() + 1;
+    Some(value.split_at(end))
+}
+
 /// Keymux's `{:firstup}` marker (send on the first key up, see the Reference page on
 /// punctuation and commands) belongs only on a one-stroke key command, and goes first so
-/// Plover reads the rest of the entry the same way: `{:firstup}{#Left}{^}`, never after `{^}`.
-/// It must never sit on anything that types text or changes spacing or case.
+/// Plover reads the rest of the entry the same way: `{:firstup:except=STPH*}{#Left}{^}`, never
+/// after `{^}`. The cursor family exempts its held base `STPH*`; every other first-up entry is
+/// plain `{:firstup}`. It must never sit on anything that types text or changes spacing or case.
 // `{:firstup}` is a dictionary meta, not a format string.
 #[allow(clippy::literal_string_with_formatting_args)]
 #[test]
@@ -228,16 +242,24 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     let mut bad = Vec::new();
     let mut count = 0;
     for (outline, value) in &commands {
-        if !value.contains("{:firstup}") {
+        if value.contains("{:firstup") && split_firstup(value).is_none() {
+            bad.push(format!("{outline:?}: {value:?}"));
             continue;
         }
+        let Some((marker, rest)) = split_firstup(value) else {
+            continue;
+        };
         count += 1;
-        let rest = value.strip_prefix("{:firstup}").unwrap_or("");
+        let cursor = outline.starts_with("STPH");
+        if marker != if cursor { "{:firstup:except=STPH*}" } else { "{:firstup}" } {
+            bad.push(format!("{outline:?}: {value:?}"));
+            continue;
+        }
         let braces = rest.matches('{').count();
         // a key command (`{:firstup}{#Left}{^}`) or a Keymux control (`{:firstup}{:transparent}{:overlay:toggle}`)
         let key_command = rest.starts_with("{#") && (braces == 1 || (braces == 2 && rest.ends_with("{^}")));
         let control = rest.starts_with("{:transparent}{:") && braces == 2;
-        let ok = !outline.contains('/') && !rest.contains("{:firstup}") && (key_command || control);
+        let ok = !outline.contains('/') && !rest.contains("{:firstup") && (key_command || control);
         if !ok {
             bad.push(format!("{outline:?}: {value:?}"));
         }
@@ -248,7 +270,7 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     // must not. Every marked one is `{:firstup}{:transparent}{control}`, marker first.
     let marked_controls: std::collections::BTreeSet<&str> = commands
         .iter()
-        .filter(|(_, v)| v.starts_with("{:firstup}{:transparent}"))
+        .filter(|(_, v)| split_firstup(v).is_some_and(|(_, rest)| rest.starts_with("{:transparent}")))
         .map(|(o, _)| o.as_str())
         .collect();
     let want: std::collections::BTreeSet<&str> =
@@ -257,14 +279,15 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
             .collect();
     assert_eq!(marked_controls, want, "first-up controls changed: update the Reference too");
     for outline in ["PHRO*TZ", "PHRUP", "PHRO*PLZ"] {
-        assert!(!commands[outline].contains("{:firstup}"), "{outline} must stay on the last key up");
+        assert!(!commands[outline].contains("{:firstup"), "{outline} must stay on the last key up");
     }
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
-/// Every modifier chord is first-up, marker first: `{:firstup}{^}{#super(1)}{^}`. Holding the
-/// right-hand modifiers and tapping left-hand characters then repeats the shortcut. `lookup`
-/// shows the entry without the marker.
+/// Every modifier chord is first-up, marker first: `{:firstup:except=-FRPBLGTS}{^}{#super(1)}{^}`.
+/// Holding the right-hand modifiers and ender (exempt, so lifting them first sends nothing) and
+/// tapping left-hand characters then repeats the shortcut. `lookup` shows the entry without the
+/// marker.
 // `{:firstup}` is a dictionary meta, not a format string.
 #[allow(clippy::literal_string_with_formatting_args)]
 #[test]
@@ -275,13 +298,13 @@ fn every_modifier_chord_is_first_up_with_the_marker_first() {
     let bad: Vec<String> = modifiers
         .iter()
         .filter(|(outline, value)| {
-            let rest = value.strip_prefix("{:firstup}{^}{#").and_then(|r| r.strip_suffix(")}{^}"));
+            let rest = value.strip_prefix("{:firstup:except=-FRPBLGTS}{^}{#").and_then(|r| r.strip_suffix(")}{^}"));
             outline.contains('/') || !outline.ends_with("LGTS") || rest.is_none_or(|r| r.contains("{:"))
         })
         .map(|(outline, value)| format!("{outline:?}: {value:?}"))
         .collect();
     assert!(bad.is_empty(), "modifier chords without the first-up shape: {bad:#?}");
-    assert_eq!(modifiers.get("RAOPLGTS").map(String::as_str), Some("{:firstup}{^}{#super(1)}{^}"));
+    assert_eq!(modifiers.get("RAOPLGTS").map(String::as_str), Some("{:firstup:except=-FRPBLGTS}{^}{#super(1)}{^}"));
     let entries = generate::reserved_entries().expect("reserved entries parse");
     let super_one = entries.iter().find(|r| r.text.contains("{#super(1)}")).expect("super(1) is an entry");
     assert_eq!(super_one.shown, "{^}{#super(1)}{^}", "lookup must show the clean text");
@@ -322,7 +345,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     }
     let mut seen = std::collections::HashSet::new();
     for (outline, value) in &commands {
-        let value = value.strip_prefix("{:firstup}").unwrap_or(value);
+        let value = split_firstup(value).map_or(value.as_str(), |(_, rest)| rest);
         let Some(rest) = value.strip_prefix("{:transparent}") else { continue };
         assert!(seen.insert(outline.clone()), "duplicate {outline}");
         assert!(!rest.contains("{:transparent}"), "{outline}: marker twice");

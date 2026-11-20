@@ -54,10 +54,10 @@
       { "p": "Delete", "o": ["TK*EL"], "w": "{#Delete}" },
       { "p": "Tab", "o": ["TA*B"], "w": "{#Tab}{^}" },
       { "p": "Escape", "o": ["EFBG"], "w": "{#Escape}" },
-      { "p": "cursor left", "o": ["STPH-R"], "w": "{:firstup}{#Left}{^}" },
-      { "p": "cursor right", "o": ["STPH-G"], "w": "{:firstup}{#Right}{^}" },
-      { "p": "cursor up", "o": ["STPH-P"], "w": "{:firstup}{#Up}{^}" },
-      { "p": "cursor down", "o": ["STPH-B"], "w": "{:firstup}{#Down}{^}" }
+      { "p": "cursor left", "o": ["STPH-R"], "w": "{:firstup:except=STPH*}{#Left}{^}" },
+      { "p": "cursor right", "o": ["STPH-G"], "w": "{:firstup:except=STPH*}{#Right}{^}" },
+      { "p": "cursor up", "o": ["STPH-P"], "w": "{:firstup:except=STPH*}{#Up}{^}" },
+      { "p": "cursor down", "o": ["STPH-B"], "w": "{:firstup:except=STPH*}{#Down}{^}" }
     ]
   }
 }

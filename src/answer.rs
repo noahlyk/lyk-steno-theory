@@ -130,7 +130,8 @@ pub struct Ask {
 
 /// An entry that is not a word: a command, suffix, prefix, punctuation mark, fingerspelled letter.
 struct Special {
-    /// As shown: the dictionary's text without the `{:firstup}` and `{:transparent}` markers
+    /// As shown: the dictionary's text without the first-up (`{:firstup}`, `{:firstup:except=KEYS}`)
+    /// and `{:transparent}` markers
     text: String,
     /// As the dictionary has it
     raw: String,

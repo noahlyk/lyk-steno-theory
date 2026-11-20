@@ -35,7 +35,7 @@
     [
      "`emilys-modifiers.json` (generated from `emilys-modifiers.py` by `regenerate.py`)",
      "`04-lyk-emilys-modifiers.json`",
-     "1,665 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key, all first-up (`{:firstup}`)",
+     "1,665 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key, all first-up with the right-hand base exempt (`{:firstup:except=-FRPBLGTS}`)",
      "[Fingerspelling](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary)"
     ]
    ]

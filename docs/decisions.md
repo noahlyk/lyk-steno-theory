@@ -3163,3 +3163,20 @@ which the generator does not build yet; it is the next highest-value build.
 **What regresses if undone.** Delete `Gold::phrases` use in `enumerate_phrase_candidates`: the commonest
 pairs that cannot merge (*to the*, *on the*) lose their one-stroke phrase.
 
+
+## First-up exceptions: exempt the held base (2026-11-20)
+
+keymux now reads `{:firstup:except=KEYS}`: lifting an exempt key first sends nothing, so a held base
+lifted early cannot send the stroke with the tapped keys still down. Audit of every first-up group:
+
+- **Modifier chords (1,665):** `{:firstup:except=-FRPBLGTS}`. The right hand (`F` `R` `P` `B`
+  modifiers, `L` `G` `T` `S` ender) is held; left keys and vowels are tapped. `D` and `Z` are never
+  in these chords, and no left-hand key is exempt.
+- **Cursor, select, word, Home/End/Page chords (20, `STPH-` and `STPH*`):**
+  `{:firstup:except=STPH*}`. Held left-hand base, tapped right-hand direction.
+- **Backspace `PW-FP` (1):** plain. Both halves are about equal fingers, no fixed base.
+- **Overlay, tape, keyboard, lookup, outline controls (9):** plain. They are a family whose held
+  keys change from stroke to stroke (`PHRO*L` to `PHRO*LS`), so no base is clearly separable.
+- **`sticky-plus.rs`:** untouched; it uses the plugin `send_early`, not the marker.
+
+Needs the keymux build with `{:firstup:except=...}` installed before `lyk deploy`.

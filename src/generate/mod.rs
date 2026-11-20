@@ -178,12 +178,26 @@ pub const FAMILY_DISCOUNT: u32 = 2_000;
 /// One reserved entry (a command, punctuation mark, fingerspelled letter or OS shortcut), as
 /// `lookup` searches it.
 pub struct Reserved {
-    /// The text as the dictionary has it: `{:firstup}{#Left}{^}`
+    /// The text as the dictionary has it: `{:firstup:except=STPH*}{#Left}{^}`
     pub text: String,
-    /// What `lookup` shows: the text without the `{:firstup}` and `{:transparent}` markers, which
-    /// say how an entry repeats or joins, not what it does
+    /// What `lookup` shows: the text without the `{:firstup}` (or `{:firstup:except=KEYS}`) and
+    /// `{:transparent}` markers, which say how an entry repeats or joins, not what it does
     pub shown: String,
     pub outline: Vec<Stroke>,
+}
+
+/// An entry's text without keymux's `{:firstup}`, `{:firstup:except=KEYS}` and `{:transparent}`
+/// markers.
+// The markers are dictionary metas, not format strings.
+#[allow(clippy::literal_string_with_formatting_args)]
+fn strip_markers(text: &str) -> String {
+    const EXCEPT: &str = "{:firstup:except=";
+    let mut text = text.to_owned();
+    while let Some(start) = text.find(EXCEPT) {
+        let Some(len) = text[start..].find('}') else { break };
+        text.replace_range(start..=start + len, "");
+    }
+    text.replace("{:firstup}", "").replace("{:transparent}", "")
 }
 
 /// Every entry a real keymux config gives a stroke to - commands (`{:tape:toggle}`,
@@ -200,7 +214,7 @@ pub fn reserved_entries() -> Result<Vec<Reserved>> {
             let Some(outline) = parse_outline(&outline_text) else {
                 continue;
             };
-            let shown = text.replace("{:firstup}", "").replace("{:transparent}", "");
+            let shown = strip_markers(&text);
             let shown = if shown.is_empty() { text.clone() } else { shown };
             found.push(Reserved { text, shown, outline });
         }
