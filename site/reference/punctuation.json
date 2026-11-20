@@ -492,7 +492,7 @@
   },
   {
    "t": "p",
-   "x": "The other 52 strokes in `punctuation.json` are the glued letters `A*` a, `A*P` A, and so on for the alphabet. Full list and rule: [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)."
+   "x": "The other 52 strokes in `punctuation.json` are the glued letters `A*` a, `A*P` A, and so on for the alphabet. Full list and rule: [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text). All 52 are first-up with `*` exempt (`{:firstup:except=*}{>}{&a}`): hold `*` and tap letter chords, one letter per tap."
   },
   {
    "t": "h",
@@ -615,7 +615,7 @@
   },
   {
    "t": "p",
-   "x": "**Exceptions: `{:firstup:except=KEYS}`.** `KEYS` is one stroke in steno notation (hyphen where an outline needs it). The listed keys are exempt: the stroke goes when the first key **not** in the list comes up. Lifting an exempt key first sends nothing and the chord stays open; the exempt key is still part of the stroke that goes. A chord whose keys are all exempt goes on its last key up. A list that is empty or does not parse as one stroke counts as plain `{:firstup}`. Use it where a base is held and other keys are tapped, so lifting the base early cannot send the stroke with the tapped keys still down: the cursor family exempts `STPH*` (`{:firstup:except=STPH*}{#Left}{^}`), the modifier chords the right-hand base `-FRPBLGTS`. Plain `{:firstup}` stays where no held base is fixed: Backspace [[PW-FP]] and the overlay, tape, keyboard, lookup and outline controls (their held keys change from one stroke of a family to the next). The spelling is exact, lowercase, no spaces; the marker sits in front of the `{^}` and the command."
+   "x": "**Exceptions: `{:firstup:except=KEYS}`.** `KEYS` is one stroke in steno notation (hyphen where an outline needs it). The listed keys are exempt: the stroke goes when the first key **not** in the list comes up. Lifting an exempt key first sends nothing and the chord stays open; the exempt key is still part of the stroke that goes. A chord whose keys are all exempt goes on its last key up. A list that is empty or does not parse as one stroke counts as plain `{:firstup}`. Use it where a base is held and other keys are tapped, so lifting the base early cannot send the stroke with the tapped keys still down: the cursor family exempts `STPH*` (`{:firstup:except=STPH*}{#Left}{^}`), the modifier chords the right-hand base `-FRPBLGTS`, the glued letters the star `*`. Plain `{:firstup}` stays where no held base is fixed: Backspace [[PW-FP]] and the overlay, tape, keyboard, lookup and outline controls (their held keys change from one stroke of a family to the next). The spelling is exact, lowercase, no spaces; the marker sits in front of the `{^}` and the command."
   },
   {
    "t": "p",
@@ -749,11 +749,11 @@
   },
   {
    "t": "p",
-   "x": "Keymux implements first-key-up sending: its translator flags entries carrying `{:firstup}` or `{:firstup:except=KEYS}`, and its engine sends the stroke when the first key (not in KEYS) comes up. The exception needs a keymux build that has it; an older build does not read it, so install that build before `lyk deploy`. `disable_first_up: true` in Keymux's config ignores the marker everywhere; every stroke then goes on the last key up. Dictionaries without the marker (e.g. plain Lapwing) are unaffected. Besides the command strokes, every modifier chord (`LGTS` ender) is first-up: hold the right-hand modifier keys and tap characters on the left, with the right-hand base exempt."
+   "x": "Keymux implements first-key-up sending: its translator flags entries carrying `{:firstup}` or `{:firstup:except=KEYS}`, and its engine sends the stroke when the first key (not in KEYS) comes up. The exception needs a keymux build that has it; an older build does not read it, so install that build before `lyk deploy`. `disable_first_up: true` in Keymux's config ignores the marker everywhere; every stroke then goes on the last key up. Dictionaries without the marker (e.g. plain Lapwing) are unaffected. Besides the command strokes, every modifier chord (`LGTS` ender) is first-up: hold the right-hand modifier keys and tap characters on the left, with the right-hand base exempt. So is every glued fingerspelling letter: hold `*` and tap letter chords, with `*` exempt."
   },
   {
    "t": "p",
-   "x": "**Plover does not know `{:firstup}` or `{:firstup:except=KEYS}`.** Plover reads `{:name}` as a call to a registered meta plugin; none is called `firstup`, and Plover 5.4.2 raises `KeyError: 'firstup'`. In plain Plover the 30 strokes above error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk deploys to Keymux, so the 30 strokes carry it; a Plover user can register a one-line no-op meta plugin named `firstup`, or use a copy of `commands.json` with the marker removed. The strokes do not change either way. The 1,665 [modifier chords](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary) carry the marker too (`{:firstup:except=-FRPBLGTS}{^}{#super(1)}{^}`), and the same holds for them."
+   "x": "**Plover does not know `{:firstup}` or `{:firstup:except=KEYS}`.** Plover reads `{:name}` as a call to a registered meta plugin; none is called `firstup`, and Plover 5.4.2 raises `KeyError: 'firstup'`. In plain Plover the 30 strokes above error instead of acting, as do the glued letters and modifier chords below; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk deploys to Keymux, so the 30 strokes carry it; a Plover user can register a one-line no-op meta plugin named `firstup`, or use copies of `commands.json`, `punctuation.json` and the modifier dictionary with the marker removed. The strokes do not change either way. The 1,665 [modifier chords](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary) carry the marker too (`{:firstup:except=-FRPBLGTS}{^}{#super(1)}{^}`), and the same holds for them; so do the 52 [glued letters](#/ref/fingerspelling/fingerspelling-in-running-text) (`{:firstup:except=*}{>}{&a}`)."
   },
   {
    "t": "h3",

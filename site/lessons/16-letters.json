@@ -4,7 +4,7 @@
   "goal": "Spell a name or acronym letter by letter; chord Ctrl, Alt and other modifiers for shortcuts.",
   "blocks": [
     { "t": "h", "x": "Fingerspelling in running text" },
-    { "t": "p", "x": "Each letter is a chord plus the star, which glues it to adjacent letters. Add `-P` for a capital." },
+    { "t": "p", "x": "Each letter is a chord plus the star, which glues it to adjacent letters. Add `-P` for a capital. Hold `*` and tap letter chords: each tap is one letter, and lifting `*` first sends nothing." },
     { "t": "table", "head": ["Letter", "Stroke", "Letter", "Stroke", "Letter", "Stroke"], "rows": [
       ["a", "[[A*]]", "j", "[[SKWR*]]", "s", "[[S*]]"],
       ["b", "[[PW*]]", "k", "[[K*]]", "t", "[[T*]]"],
@@ -39,18 +39,18 @@
     "pass": 90,
     "repeat": 2,
     "items": [
-      { "p": "a", "o": ["A*"], "w": "{>}{&a}" }, { "p": "b", "o": ["PW*"], "w": "{>}{&b}" }, { "p": "c", "o": ["KR*"], "w": "{>}{&c}" },
-      { "p": "d", "o": ["TK*"], "w": "{>}{&d}" }, { "p": "e", "o": ["*E"], "w": "{>}{&e}" }, { "p": "f", "o": ["TP*"], "w": "{>}{&f}" },
-      { "p": "g", "o": ["TKPW*"], "w": "{>}{&g}" }, { "p": "h", "o": ["H*"], "w": "{>}{&h}" }, { "p": "i", "o": ["*EU"], "w": "{>}{&i}" },
-      { "p": "j", "o": ["SKWR*"], "w": "{>}{&j}" }, { "p": "k", "o": ["K*"], "w": "{>}{&k}" }, { "p": "l", "o": ["HR*"], "w": "{>}{&l}" },
-      { "p": "m", "o": ["PH*"], "w": "{>}{&m}" }, { "p": "n", "o": ["TPH*"], "w": "{>}{&n}" }, { "p": "o", "o": ["O*"], "w": "{>}{&o}" },
-      { "p": "p", "o": ["P*"], "w": "{>}{&p}" }, { "p": "q", "o": ["KW*"], "w": "{>}{&q}" }, { "p": "r", "o": ["R*"], "w": "{>}{&r}" },
-      { "p": "s", "o": ["S*"], "w": "{>}{&s}" }, { "p": "t", "o": ["T*"], "w": "{>}{&t}" }, { "p": "u", "o": ["*U"], "w": "{>}{&u}" },
-      { "p": "v", "o": ["SR*"], "w": "{>}{&v}" }, { "p": "w", "o": ["W*"], "w": "{>}{&w}" }, { "p": "x", "o": ["KP*"], "w": "{>}{&x}" },
-      { "p": "y", "o": ["KWR*"], "w": "{>}{&y}" }, { "p": "z", "o": ["STKPW*"], "w": "{>}{&z}" },
-      { "p": "capital A", "o": ["A*P"], "w": "{&A}" }, { "p": "capital B", "o": ["PW*P"], "w": "{&B}" }, { "p": "capital C", "o": ["KR*P"], "w": "{&C}" },
-      { "p": "Ctrl+S", "o": ["S-FLGTS"], "w": "{^}{#control(s)}{^}" }, { "p": "Ctrl+C", "o": ["KR-FLGTS"], "w": "{^}{#control(c)}{^}" },
-      { "p": "Alt+D", "o": ["TK-BLGTS"], "w": "{^}{#alt(d)}{^}" }
+      { "p": "a", "o": ["A*"], "w": "{:firstup:except=*}{>}{&a}" }, { "p": "b", "o": ["PW*"], "w": "{:firstup:except=*}{>}{&b}" }, { "p": "c", "o": ["KR*"], "w": "{:firstup:except=*}{>}{&c}" },
+      { "p": "d", "o": ["TK*"], "w": "{:firstup:except=*}{>}{&d}" }, { "p": "e", "o": ["*E"], "w": "{:firstup:except=*}{>}{&e}" }, { "p": "f", "o": ["TP*"], "w": "{:firstup:except=*}{>}{&f}" },
+      { "p": "g", "o": ["TKPW*"], "w": "{:firstup:except=*}{>}{&g}" }, { "p": "h", "o": ["H*"], "w": "{:firstup:except=*}{>}{&h}" }, { "p": "i", "o": ["*EU"], "w": "{:firstup:except=*}{>}{&i}" },
+      { "p": "j", "o": ["SKWR*"], "w": "{:firstup:except=*}{>}{&j}" }, { "p": "k", "o": ["K*"], "w": "{:firstup:except=*}{>}{&k}" }, { "p": "l", "o": ["HR*"], "w": "{:firstup:except=*}{>}{&l}" },
+      { "p": "m", "o": ["PH*"], "w": "{:firstup:except=*}{>}{&m}" }, { "p": "n", "o": ["TPH*"], "w": "{:firstup:except=*}{>}{&n}" }, { "p": "o", "o": ["O*"], "w": "{:firstup:except=*}{>}{&o}" },
+      { "p": "p", "o": ["P*"], "w": "{:firstup:except=*}{>}{&p}" }, { "p": "q", "o": ["KW*"], "w": "{:firstup:except=*}{>}{&q}" }, { "p": "r", "o": ["R*"], "w": "{:firstup:except=*}{>}{&r}" },
+      { "p": "s", "o": ["S*"], "w": "{:firstup:except=*}{>}{&s}" }, { "p": "t", "o": ["T*"], "w": "{:firstup:except=*}{>}{&t}" }, { "p": "u", "o": ["*U"], "w": "{:firstup:except=*}{>}{&u}" },
+      { "p": "v", "o": ["SR*"], "w": "{:firstup:except=*}{>}{&v}" }, { "p": "w", "o": ["W*"], "w": "{:firstup:except=*}{>}{&w}" }, { "p": "x", "o": ["KP*"], "w": "{:firstup:except=*}{>}{&x}" },
+      { "p": "y", "o": ["KWR*"], "w": "{:firstup:except=*}{>}{&y}" }, { "p": "z", "o": ["STKPW*"], "w": "{:firstup:except=*}{>}{&z}" },
+      { "p": "capital A", "o": ["A*P"], "w": "{:firstup:except=*}{&A}" }, { "p": "capital B", "o": ["PW*P"], "w": "{:firstup:except=*}{&B}" }, { "p": "capital C", "o": ["KR*P"], "w": "{:firstup:except=*}{&C}" },
+      { "p": "Ctrl+S", "o": ["S-FLGTS"], "w": "{:firstup:except=-FRPBLGTS}{^}{#control(s)}{^}" }, { "p": "Ctrl+C", "o": ["KR-FLGTS"], "w": "{:firstup:except=-FRPBLGTS}{^}{#control(c)}{^}" },
+      { "p": "Alt+D", "o": ["TK-BLGTS"], "w": "{:firstup:except=-FRPBLGTS}{^}{#alt(d)}{^}" }
     ]
   }
 }

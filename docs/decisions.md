@@ -3180,3 +3180,13 @@ lifted early cannot send the stroke with the tapped keys still down. Audit of ev
 - **`sticky-plus.rs`:** untouched; it uses the plugin `send_early`, not the marker.
 
 Needs the keymux build with `{:firstup:except=...}` installed before `lyk deploy`.
+
+## Glued letters are first-up, `*` exempt (2026-11-20)
+
+The 52 glued fingerspelling letters (`A*` a, `A*P` A, ...) carry `{:firstup:except=*}`: hold `*`,
+tap letter chords, one letter per tap; lifting `*` first sends nothing. Written by hand in
+`rules/reserved/punctuation.json` (no generator). Nothing else in that file is first-up; no letter
+stroke is also a command or modifier stroke, and every letter has a key besides `*`. The site
+engine (`site/js/engine.js`) ignores the marker when reading an entry. Cost: a multi-key letter
+chord (`TK`, `KW`) now goes on its first key up, so lifting one key early leaves the other for the
+next stroke. Needs the keymux build with `{:firstup:except=...}` installed before `lyk deploy`.

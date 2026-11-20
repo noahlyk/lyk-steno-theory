@@ -256,7 +256,7 @@
   },
   {
    "t": "p",
-   "x": "Letter chord plus `*` glues the letter to adjacent letters only. Add `-P` for a capital."
+   "x": "Letter chord plus `*` glues the letter to adjacent letters only. Add `-P` for a capital. Both are first-up with `*` exempt (below)."
   },
   {
    "t": "table",
@@ -281,6 +281,25 @@
   {
    "t": "p",
    "x": "Letters glue to each other: [[KR*P]] [[A*]] [[T*]] writes ` Cat` as one word (the first letter starts a new word, so the space precedes it)."
+  },
+  {
+   "t": "h3",
+   "x": "Hold the star, tap letters"
+  },
+  {
+   "t": "p",
+   "x": "Every glued letter entry starts with `{:firstup:except=*}`: `A*` is `{:firstup:except=*}{>}{&a}`, `A*P` is `{:firstup:except=*}{&A}`. The stroke is sent when its first non-`*` key comes up and the keys still down wait for the next stroke. Hold `*` and tap letter chords: each tap is one letter ([[T*]] [[A*]] [[KR*]] write t, a, c with `*` held throughout). Lifting `*` first sends nothing; the `*` is still part of the stroke that goes."
+  },
+  {
+   "t": "list",
+   "items": [
+    "All 52 strokes carry the marker, lowercase and capital. No other entry in `punctuation.json` does, and none of the 52 is a modifier chord or command stroke, so a held `*` never turns into another family: modifier chords need `LGTS` and exempt `-FRPBLGTS`, the cursor family needs `STPH`.",
+    "A letter stroke always has a letter key besides `*`; `*` alone stays [undo](#/ref/punctuation), on its last key up, and no stroke of only exempt keys carries the marker.",
+    "Only these entries are first-up. A dictionary word that shares a chord with a letter (the bare chord, no `*`) is unaffected.",
+    "**Downside.** A letter chord of several keys (`TK` d, `KW` q, `PH` m) now goes when the first of its keys comes up. Lifting one key of the chord early sends a smaller stroke, and the key still down joins the next stroke. Land the keys of a chord together.",
+    "Needs a keymux build that reads `{:firstup:except=KEYS}`; see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up). Plain Plover errors on the marker."
+   ],
+   "ordered": false
   },
   {
    "t": "note",

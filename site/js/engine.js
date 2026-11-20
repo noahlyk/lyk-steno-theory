@@ -146,7 +146,8 @@ function dropSilentE(stem, nextStartsWithVowel) {
 
 /** What a reserved entry such as `{.}` or `{^ing^}` does to the text around it. */
 function reserved(value) {
-  const tokens = [...value.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]);
+  // the first-up marker (`{:firstup}`, `{:firstup:except=*}`) says when a stroke goes, not what it types
+  const tokens = [...value.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]).filter((t) => !/^:firstup\b/.test(t));
   // `*` itself: undo (Keymux `{:undo_or:...}`, or plain `=undo`); it types nothing here
   if (value === '=undo' || tokens.some((t) => /^:undo_or\b/.test(t))) return { kind: 'command', text: '⟨undo⟩' };
   if (!tokens.length) return { kind: 'word', text: value };

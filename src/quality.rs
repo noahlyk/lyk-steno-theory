@@ -617,6 +617,56 @@ fn every_suffix_is_a_join_key_stroke_defined_as_a_pure_attach_and_every_listed_o
     assert!(problems.is_empty(), "suffix entries that would not attach: {problems:#?}");
 }
 
+/// Every glued fingerspelling letter (`A*` `{:firstup:except=*}{>}{&a}`, `A*P`
+/// `{:firstup:except=*}{&A}`) is first-up with the held `*` exempt, marker first; nothing else in
+/// the punctuation table is, and no letter stroke is also another reserved stroke. Hold `*`, tap
+/// letters; lifting `*` first sends nothing.
+// The markers are dictionary metas, not format strings.
+#[allow(clippy::literal_string_with_formatting_args)]
+#[test]
+fn glued_letters_are_first_up_with_the_star_exempt() {
+    const MARKER: &str = "{:firstup:except=*}";
+    let punctuation: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/punctuation.json")).expect("punctuation parse");
+    let is_letter = |rest: &str| {
+        let letter = rest.strip_prefix("{>}").unwrap_or(rest);
+        let mut chars = letter.strip_prefix("{&").and_then(|r| r.strip_suffix('}')).unwrap_or("").chars();
+        matches!((chars.next(), chars.next()), (Some(c), None) if c.is_ascii_alphabetic())
+    };
+    let mut letters = Vec::new();
+    let mut bad = Vec::new();
+    for (outline, value) in &punctuation {
+        let marked = value.contains("{:firstup");
+        match value.strip_prefix(MARKER) {
+            Some(rest) if is_letter(rest) && outline.contains('*') && !outline.contains('/') => {
+                letters.push(outline.as_str());
+            }
+            _ if marked => bad.push(format!("{outline:?}: {value:?}")),
+            _ if is_letter(value) => bad.push(format!("letter without the marker {outline:?}: {value:?}")),
+            _ => {}
+        }
+    }
+    assert!(bad.is_empty(), "malformed first-up letters: {bad:#?}");
+    assert_eq!(letters.len(), 52, "26 lowercase and 26 capital letters: {letters:?}");
+    for outline in &letters {
+        let keys: String = outline.chars().filter(|&c| c != '*').collect();
+        assert!(!keys.is_empty(), "{outline}: a letter stroke of only the exempt star");
+    }
+    for (name, json) in [
+        ("commands", include_str!("../rules/reserved/commands.json")),
+        ("modifiers", include_str!("../rules/reserved/emilys-modifiers.json")),
+    ] {
+        let table: std::collections::BTreeMap<String, String> = serde_json::from_str(json).expect("table parses");
+        let shared: Vec<&&str> = letters.iter().filter(|o| table.contains_key(**o)).collect();
+        assert!(shared.is_empty(), "letter strokes also in {name}: {shared:?}");
+    }
+    assert_eq!(punctuation.get("A*").map(String::as_str), Some("{:firstup:except=*}{>}{&a}"));
+    assert_eq!(punctuation.get("A*P").map(String::as_str), Some("{:firstup:except=*}{&A}"));
+    let entries = generate::reserved_entries().expect("reserved entries parse");
+    let a = entries.iter().find(|r| r.text == "{:firstup:except=*}{>}{&a}").expect("the letter a is an entry");
+    assert_eq!(a.shown, "{>}{&a}", "lookup must show the clean text");
+}
+
 /// One way to type each mark or command: no two outlines in the reserved dictionaries (commands,
 /// punctuation, fingerspelled modifiers) type the same thing. The Reference's tables list one
 /// stroke per mark, so a second one creeping back in would make them wrong.
