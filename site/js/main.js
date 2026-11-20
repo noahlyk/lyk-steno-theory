@@ -2,6 +2,7 @@
 
 import { chart, dictionary, index, lesson } from './data.js';
 import { createDrill, stopAllDrills } from './drill.js';
+import { clearDrills, fetchLocal, loadSaved, normalise, saveDrills } from './mydrills.js';
 import { keysChapter } from './chapter0.js';
 import { doneControl } from './done.js';
 import { keysStatus, markKeysSkipped } from './keys.js';
@@ -177,7 +178,46 @@ async function practicePage() {
     el('div', { class: 'row', style: 'margin-top:.8rem' }, upTo, count,
       el('button', { class: 'btn btn--primary', type: 'button', onclick: startMixed }, 'Start mixed'),
       el('button', { class: 'btn', type: 'button', onclick: startMissed }, `Drill my misses (${missedKeys.length})`)),
-    box);
+    box, await myDrillsPanel(start));
+}
+
+// Personal drills from `lyk mistakes --drill`: picked as a file or found at local/my-drills.json;
+// kept in this browser only
+async function myDrillsPanel(start) {
+  const host = el('div', { class: 'hit', style: 'margin-top:1.4rem' });
+  const paint = (d) => {
+    host.replaceChildren(el('div', { class: 'hit__word' }, 'My drills'));
+    if (!d) {
+      host.append(el('p', {}, 'Words you misstroke, from your own steno tape. Make the file with ', el('code', {}, 'lyk mistakes --drill'),
+        ' and pick it here; it stays in this browser and is never published.'));
+    } else {
+      host.append(el('div', { class: 'row' },
+        d.items.length ? el('button', { class: 'btn btn--primary', type: 'button', onclick: () => start(shuffle(d.items), d.title) }, `Drill my mistakes (${d.items.length})`) : null,
+        d.pairs.length ? el('button', { class: 'btn', type: 'button', onclick: () => start(shuffle(d.pairs.flatMap((p) => p.items)), 'Confusable pairs') }, `All pairs (${d.pairs.length})`) : null,
+        el('button', { class: 'btn', type: 'button', onclick: () => { clearDrills(); paint(null); } }, 'Forget them')));
+      if (d.pairs.length) {
+        host.append(el('div', { class: 'row', style: 'margin-top:.5rem' },
+          d.pairs.slice(0, 8).map((p) => el('button', { class: 'btn', type: 'button', onclick: () => start(shuffle([...p.items, ...p.items, ...p.items]), p.title) }, p.title))));
+      }
+    }
+    const pick = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'my drills file' });
+    pick.addEventListener('change', async () => {
+      try {
+        const raw = JSON.parse(await pick.files[0].text());
+        const next = normalise(raw);
+        if (!next) throw new Error('not a drills file');
+        saveDrills(raw);
+        paint(next);
+      } catch {
+        host.append(el('p', { class: 'answer is-bad' }, 'That is not a lyk drills file.'));
+      }
+    });
+    host.append(el('div', { class: 'row', style: 'margin-top:.6rem' }, pick));
+  };
+  const raw = await fetchLocal();
+  if (normalise(raw)) saveDrills(raw);
+  paint(normalise(raw) ?? loadSaved());
+  return host;
 }
 
 async function lookupPage() {

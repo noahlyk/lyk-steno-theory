@@ -36,6 +36,7 @@ One-time setup on GitHub: Settings > Pages > Build and deployment > Source: **Gi
 | `js/trainer.js` | The "Learn the keys" engine (pure, tested by `check.mjs`): key unlock order, per-chord accuracy, weakness-weighted word picking, the speed/accuracy unlock trade, the fading guide. |
 | `js/chapter0.js` | Chapter 0: the intro text, then the key stream as its drill. |
 | `js/keys.js`, `css/keys.css` | The `#/keys` page: the word stream, guide, key chips; `js/confetti.js` for the finish. Progress in its own `localStorage` key. |
+| `js/mydrills.js` | **My drills** on the Practice page: the personal drill file `lyk mistakes --drill` writes (items `{p, o, w, n}`, `n` the watch-out note a drill shows above the prompt, and confusable pairs). Picked as a file or fetched from `local/my-drills.json` (gitignored; a harmless 404 on the public site) and kept in `localStorage` only. Nothing personal ships with the site. |
 | `js/lesson.js` | Renders a lesson's blocks; every `[[word|OUTLINE]]` becomes a hover-board chip. |
 | `js/main.js`, `js/data.js`, `js/store.js` | The router and pages (lessons, practice, lookup, key chart, progress); data loading; progress in `localStorage`. |
 

@@ -16,6 +16,7 @@ mod fetch;
 mod frequency;
 mod generate;
 mod interactive;
+mod mistakes;
 mod lookup_cache;
 mod names;
 mod num;
@@ -337,6 +338,43 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
+    /// Misstrokes on the steno tape: undone near-misses, key-level errors, trend; `--drill` makes a
+    /// personal drill set. Runs once, reads the tape read-only, writes only to out/mistakes/
+    Mistakes {
+        /// The steno tape
+        #[arg(long, default_value = "~/.local/state/keymux/steno-tape.txt")]
+        tape: PathBuf,
+        /// The built dictionary
+        #[arg(long, default_value = "out/lyk")]
+        dict: PathBuf,
+        /// Only the last N days of typing on the tape
+        #[arg(long)]
+        last: Option<usize>,
+        /// Only days from this date on (YYYY-MM-DD; the tape has no dates, so approximate: prefer --last)
+        #[arg(long)]
+        since: Option<String>,
+        /// Fewest mistakes for a row to be listed
+        #[arg(long, default_value_t = 3)]
+        min_errors: usize,
+        /// Fewest attempts for a row ranked by error rate
+        #[arg(long, default_value_t = 20)]
+        min_attempts: usize,
+        /// Rows per table
+        #[arg(long, default_value_t = 15)]
+        top: usize,
+        /// Print the report as JSON
+        #[arg(long)]
+        json: bool,
+        /// Write the drills (site Practice page) and monkeytype-drill.txt instead of a report
+        #[arg(long)]
+        drill: bool,
+        /// Where `--drill` writes the drill JSON (default out/mistakes/drills.json; site/local/my-drills.json loads itself)
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Words in the Monkeytype export
+        #[arg(long, default_value_t = 150)]
+        words: usize,
+    },
     /// Build the dictionary, then copy it straight into the live keymux config along with the
     /// reserved stroke tables: the one command for everything `build` otherwise leaves as a manual copy/paste
     Deploy {
@@ -352,6 +390,14 @@ enum Command {
     },
 }
 
+fn expand_home(path: &Path) -> PathBuf {
+    match (path.strip_prefix("~"), std::env::var_os("HOME")) {
+        (Ok(rest), Some(home)) => PathBuf::from(home).join(rest),
+        _ => path.to_path_buf(),
+    }
+}
+
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
     version::silence_stale_note(cli.no_stale_check || std::env::var_os("LYK_NO_STALE_NOTE").is_some_and(|v| !v.is_empty() && v != "0"));
@@ -443,6 +489,22 @@ fn main() -> Result<()> {
         }
         Command::Ergonomics { query, common, briefs, rebuild } => {
             commands::run_ergonomics(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild)
+        }
+        Command::Mistakes { tape, dict, last, since, min_errors, min_attempts, top, json, drill, out, words } => {
+            let tape = expand_home(tape);
+            mistakes::run(&mistakes::Options {
+                tape: &tape,
+                dict,
+                last: *last,
+                since: since.as_deref(),
+                min_errors: *min_errors,
+                min_attempts: *min_attempts,
+                top: *top,
+                json: *json,
+                drill: *drill,
+                out: out.as_deref(),
+                words: *words,
+            })
         }
         Command::Deploy { to, common, briefs } => {
             let setup = setup(Some(*common))?;

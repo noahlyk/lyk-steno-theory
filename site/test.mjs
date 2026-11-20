@@ -7,6 +7,7 @@ import { createEngine } from './js/engine.js';
 import { parseOutline } from './js/steno.js';
 import { classify, classifyList } from './js/hovermatch.js';
 import { store } from './js/store.js';
+import { normalise } from './js/mydrills.js';
 import { mergeTests } from './merge.test.mjs';
 import { keymapTests } from './keymap.test.mjs';
 
@@ -126,6 +127,11 @@ store.recordRun('t-peek', { accuracy: 80, wpm: 30, pass: 90 });
 const peeked = store.recordRun('t-peek', { accuracy: 100, wpm: 60, pass: 90, assisted: true });
 expect('assisted run: best untouched', JSON.stringify([peeked.best, peeked.wpm, peeked.runs]), "[80,30,2]");
 expect('assisted run: still passes', store.recordRun('t-peek', { accuracy: 95, wpm: 20, pass: 90, assisted: true }).passed, true);
+
+// the personal drill file (js/mydrills.js): a bad outline is dropped, a note kept, a wrong version refused
+const mine = normalise({ v: 1, items: [{ p: 'late', o: ['HRAET'], w: 'late', n: 'you often add -T' }, { p: 'x', o: ['nope'], w: 'x' }], pairs: [] });
+expect('my drills: kept items', JSON.stringify(mine?.items), JSON.stringify([{ p: 'late', o: ['HRAET'], w: 'late', n: 'you often add -T' }]));
+expect('my drills: wrong version', normalise({ v: 2, items: [] }), null);
 
 // merged keys on the board (js/merge.js, its tests in merge.test.mjs)
 errors.push(...mergeTests());

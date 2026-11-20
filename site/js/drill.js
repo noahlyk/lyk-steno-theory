@@ -17,8 +17,9 @@ const RESTART_GUARD_MS = 700; // strokes this soon after the results appear are 
 export function createDrill(host, rawItems, opts = {}) {
   // an item is [prompt, outline, ...alternatives] or {p: prompt, o: [outlines], w: the word it must be};
   // `.word` is what the strokes must type
+  // `n` is an optional "watch out" note shown with the prompt (the personal drills use it)
   const items = rawItems.map((it) => (Array.isArray(it) ? Object.assign([...it], { word: it[0] })
-    : Object.assign([it.p, ...it.o], { word: it.w ?? it.p })));
+    : Object.assign([it.p, ...it.o], { word: it.w ?? it.p, watch: it.n ?? '' })));
   // notation: the prompt is a stroke drawn as written (`PHAP`) and the word it makes is revealed on a hit
   const { id = null, pass = 90, repeat = 1, limit = 0, onDone = () => {}, title = '', notation = false } = opts;
   const wordOf = new Map(rawItems.filter((it) => !Array.isArray(it) && it.w).map((it) => [it.p, it.w]));
@@ -43,6 +44,7 @@ export function createDrill(host, rawItems, opts = {}) {
   const label = el('span', { class: 'boardlabel boardbox__label' });
   const hint = el('span', { class: 'boardbox__hint' });
   const prompt = el('div', { class: 'prompt', 'aria-live': 'polite' });
+  const watch = el('div', { class: 'boardbox__hint watch', style: 'text-align:center' });
   const answer = el('div', { class: 'answer' });
   const bar = el('span');
   const stats = el('div', { class: 'stats' });
@@ -66,7 +68,7 @@ export function createDrill(host, rawItems, opts = {}) {
     el('div', { class: 'boardbox__head' }, label, hint),
     el('div', { class: 'boardbox__scroll' }, board),
     boardLegend(),
-    prompt, answer,
+    prompt, watch, answer,
     el('div', { class: 'progressbar' }, bar),
     stats,
     el('div', { class: 'row row--center', style: 'margin-top:.6rem' },
@@ -117,6 +119,7 @@ export function createDrill(host, rawItems, opts = {}) {
     typed = [];
     itemMissed = false;
     prompt.replaceChildren(notation ? outlineEl(queue[at][0]) : queue[at][0]);
+    watch.textContent = queue[at].watch ? `watch out: ${queue[at].watch}` : '';
     answer.textContent = note;
     answer.className = note ? 'answer is-good' : 'answer';
     note = '';
