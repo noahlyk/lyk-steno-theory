@@ -244,7 +244,7 @@ pub fn run(setup: &Setup, entries: &[Entry], max_words: usize) -> Result<()> {
     let (quote, author) = fetch(max_words, 5)?;
     println!("\"{quote}\"\n  — {author}\n");
 
-    let lyk = generate::cheapest(entries);
+    let lyk = generate::cheapest_deployed(entries);
     let rows = rows_for(setup, &lyk, &quote);
     if rows.is_empty() {
         bail!("the quote had no plain words to stroke");

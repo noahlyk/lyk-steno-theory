@@ -697,7 +697,58 @@
   },
   {
    "t": "p",
-   "x": "`deploy` ships **no backups**. The solver reads any outline that sounds like a word, so keymux holds no list of the dozens of ways into each word: a word keeps its primary outline and its other entries (short forms, alternates, extras); every other outline types what the solver reads it as. `build` still writes the generated backups to `out/lyk/02-lyk-backups.json`, never deployed: they are the solver's test set (`solve --eval` reads every Nth one and checks it types its word, 85% do) and the catalogue `lookup` and this site list ways into a word from. An outline whose backup word differs from the solver's reading types the solver's word."
+   "x": "`deploy` ships **no backups**. The solver reads any outline that sounds like a word, so keymux holds no list of the dozens of ways into each word: a word keeps its primary outline and its other entries (short forms, alternates, extras); every other outline types what the solver reads it as. `build` still writes the generated backups to `out/lyk/02-lyk-backups.json`, never deployed: they are the solver's test set (`solve --eval N` reads every Nth one and checks it types its word: about 73% do, 92% weighted by how common the word is, 95% for the 2,000 commonest words) and the catalogue `lookup` draws its ways into a word from. A backup whose word differs from the solver's reading types the solver's word, so `lookup` lists a backup only when the solver reads it as the word (next)."
+  },
+  {
+   "t": "h",
+   "x": "What lookup guarantees"
+  },
+  {
+   "t": "p",
+   "x": "Every outline in `lookup`'s lyk column types, in keymux, exactly the word (or phrase) it is listed for. An outline is listed for one of two reasons only, and the lookup checks which when it lists it:"
+  },
+  {
+   "t": "list",
+   "ordered": false,
+   "items": [
+    "**It is an entry of the deployed dictionary**: any entry `deploy` ships (the generated files but the backups, the name lane's files, the reserved tables). keymux asks the dictionary first, so it types the entry's text.",
+    "**The solver reads it as exactly that word.** Not an entry, so keymux hands the run to the solver; the lookup runs the same solver on it (the blob `build` wrote beside the dictionary, no word before the run, not the name lane) and lists it only when the answer is the word. These are shown **dim** with a note under the table, after every entry (fewest strokes first within each), except that a word with no entry of its own leads with its cheapest such outline."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Nothing else is listed:"
+  },
+  {
+   "t": "list",
+   "ordered": false,
+   "items": [
+    "**A backup the solver reads as another word is left out** (`WE/+-L/+*` for *well* types *wely*; about one backup in seven, most often read as a commoner neighbour). So is a backup whose outline is another word's entry.",
+    "**A word's outline is never a backup that beats its entry.** The cheapest outline `lookup` and `quote` show is the cheapest entry; a backup stands for a word only when the word has no entry (a one-stroke backup with fewer keys than the entry, `TPW` for *bit*, once led and typed *to*).",
+    "**A word with no entry and no backup the solver reads right** shows the first of these the solver reads as the word: composed from entries (`EFB/+-PBTS`), the rules' own reading (in quotes), then its letters spelled one a stroke (`~` run, always typed exactly). One the solver reads wrong is dropped. A word with no pronunciation is spelled; of the words that have one, fewer than 1 in 400 ends up spelled, all rare names or misspellings.",
+    "**Completions** (the longer words a word starts) follow the same rule, entry or verified backup.",
+    "With no solver built (`lookup --rebuild` before the first `build`) only entries are listed."
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The check is made on every lookup: each backup listed costs one reading of the solver (a millisecond or two, on every core at once). A reading after the word before it can differ from the reading with none (the context rule, above) only between readings that cost nearly the same; the lookup judges the run alone."
+  },
+  {
+   "t": "h3",
+   "x": "Checking it"
+  },
+  {
+   "t": "p",
+   "x": "`verify-lookup` simulates keymux on every outline `lookup` lists in lyk's column: the deployed files first (out/lyk less the backups, the name lane's files and the reserved tables included), then the solver. It counts by how the outline was listed (best or other, entry or solver-read, composed, reading, spelled, completion) and by outcome (types the word, types another entry's text, types another word, reads nothing), names the cause of each wrong reading (homophone, an inflection neighbour, a commoner word, a non-word) with samples, and fails on any outline that does not type its word. The default sample is the 400 commonest words, 300 random others, 60 phrases and 60 names (under a minute); `--full` is every word, phrase and name of the dictionary (a long run: one solver reading per backup in the catalogue). `cargo test` runs a smaller sample of the same check on the full fixture dictionary."
+  },
+  {
+   "t": "pre",
+   "x": "cargo run --release -- verify-lookup                    # the sample; fails on any mismatch\ncargo run --release -- verify-lookup --full             # every word, phrase and name\ncargo run --release -- verify-lookup --common-words 2000 --random 2000 --seed 7"
+  },
+  {
+   "t": "p",
+   "x": "keymux's own live lookup lists dictionary entries only, so it cannot offer an outline the dictionary lacks. A word it composes from entries with the join key (`everybody's`) is shown as composed but not proven by typing, since only the plugin can read a join back; lyk's `lookup` proves it with the solver, and drops it when the solver reads another word."
   },
   {
    "t": "h",
@@ -705,7 +756,7 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --after \"I don't\" -- \"-PB/+OE/+*\"   # the readings after a text, each with what the word before moved\ncargo run --release -- solve --names 10              # the name lane: every 10th name struck by its sounds and by its spelling\ncargo run --release -- solve --context 1            # running text: every word with backups, alone and after the text before it\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries"
+   "x": "cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first\ncargo run --release -- solve -- \"-L/+AOF\"           # a run that starts with a right-hand stroke\ncargo run --release -- solve --after \"I don't\" -- \"-PB/+OE/+*\"   # the readings after a text, each with what the word before moved\ncargo run --release -- solve --names 10              # the name lane: every 10th name struck by its sounds and by its spelling\ncargo run --release -- solve --context 1            # running text: every word with backups, alone and after the text before it\ncargo run --release -- solve --eval 250              # read every 250th backup: how often is it its word?\ncargo run --release -- solve --giant english_450k.txt   # giant words that split as prefixes + a word + suffixes, struck piece by piece\ncargo run --release -- solve --tape ~/.local/state/keymux/steno-tape.txt   # the tape's misses against what was struck next\ncargo run --release -- resolve TOLT                  # what a miss types, beside its nearest entries\ncargo run --release -- lookup computer                 # every outline of a word that types it (dim: read by the solver)"
   },
   {
    "t": "p",

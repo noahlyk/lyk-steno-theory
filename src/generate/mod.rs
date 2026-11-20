@@ -471,6 +471,18 @@ pub fn cheapest(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
         .collect()
 }
 
+/// [`cheapest`] as keymux types it: a backup is only a word's outline when the word has no other
+/// entry. Backups are never deployed (keymux reads such an outline with the solver), so a
+/// one-stroke backup with fewer keys than a word's own entry must not stand for the word (`bit`
+/// `TPW` types "to"). What the lookup and `quote` show; the generator's own `cheapest` is as it was.
+pub fn cheapest_deployed(entries: &[Entry]) -> HashMap<&str, &[Stroke]> {
+    let mut best = best_entry_per_word(entries.iter().filter(|e| !matches!(e.origin, Origin::Suffix | Origin::Backup)));
+    for (word, entry) in best_entry_per_word(entries.iter().filter(|e| e.origin == Origin::Backup)) {
+        best.entry(word).or_insert(entry);
+    }
+    best.into_iter().map(|(word, entry)| (word, entry.outline.as_slice())).collect()
+}
+
 /// Every outline in a generated dictionary, by its rendered text, to the word it writes.
 pub fn index(generated: &Generated) -> HashMap<String, &str> {
     index_of(&generated.entries)

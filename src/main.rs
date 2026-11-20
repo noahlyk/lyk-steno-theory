@@ -37,6 +37,7 @@ mod reverse;
 mod rules;
 mod solve;
 mod stroke;
+mod verify_lookup;
 mod version;
 mod view;
 
@@ -279,8 +280,34 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
+    /// Check that every outline `lookup` lists types its word in keymux: an entry of the deployed
+    /// dictionary (everything `deploy` ships; the backups are not shipped), else the solver plugin
+    /// reading it. A sample by default (the commonest words, a random pick of the rest, phrases,
+    /// names); `--full` is every word. Prints the mismatches by how the outline was listed and
+    /// why, and fails if there is one.
+    VerifyLookup {
+        /// Every word, phrase and name of the dictionary (long: about as many solver readings as
+        /// the dictionary has backups)
+        #[arg(long)]
+        full: bool,
+        /// How many of the commonest words to check, all of their outlines
+        #[arg(long, default_value_t = 400)]
+        common_words: usize,
+        /// How many random words beyond them
+        #[arg(long, default_value_t = 300)]
+        random: usize,
+        /// Seed of the random pick
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// The built dictionary to read
+        #[arg(long, default_value = "out/lyk")]
+        dir: PathBuf,
+        /// Words in the dictionary, most common first (`build`'s own default)
+        #[arg(long, default_value_t = 100_000)]
+        common: usize,
+    },
     /// Every way a word can be written as joined strokes (the lattice over its sounds, cheapest
-    /// first), and what became of each: in the dictionary, taken by another word, or rejected.
+    /// first), and what became of each: kept as a backup, taken by another word, or rejected.
     /// With no word, opens the interactive lookup; Enter shows the paths of the line.
     Paths {
         word: Option<String>,
@@ -491,6 +518,14 @@ fn main() -> Result<()> {
             let query = (!query.is_empty()).then(|| query.join(" "));
             let options = commands::LookupOptions { show_keys: *show_keys, fast: *fast, stroke_mode: false };
             commands::run_lookup(&setup, (&cli.data, cli.rules.as_deref()), query.as_deref(), options, *common, briefs.as_deref(), *rebuild)
+        }
+        Command::VerifyLookup { full, common_words, random, seed, dir, common } => {
+            let sampling = if *full {
+                verify_lookup::Sampling { seed: *seed, ..verify_lookup::Sampling::FULL }
+            } else {
+                verify_lookup::Sampling { common: *common_words, rest: *random, seed: *seed, ..verify_lookup::Sampling::FAST }
+            };
+            verify_lookup::run(&setup(Some(*common))?, (&cli.data, cli.rules.as_deref()), dir, *common, sampling)
         }
         Command::Paths { word, limit, common, briefs, rebuild } => {
             commands::run_paths(&setup, word.as_deref(), *limit, *common, briefs.as_deref(), *rebuild)

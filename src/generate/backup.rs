@@ -549,8 +549,9 @@ fn spelled_stem<'s>(word: &str, stems: &[&'s str], boundary: fn(&str, &str) -> b
 }
 
 /// Prints every lattice path of `word` with its cost and what became of it in the finished
-/// dictionary: in it, taken by another word, past its quota, or rejected before it could compete;
-/// then everything the dictionary holds for the word.
+/// dictionary: kept as one of the word's backups (a way into the word the solver reads; backups are
+/// not deployed), taken by another word, past its quota, or rejected before it could compete; then
+/// everything the dictionary holds for the word.
 pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limit: usize) {
     let Some(prons) = setup.pron.get(word) else {
         println!("{word}: no pronunciation on record");
@@ -582,7 +583,7 @@ pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limi
                 match held.get(&text) {
                     Some(&owner) if owner == word => {
                         kept += 1;
-                        "in the dictionary".to_owned()
+                        "kept as a backup".to_owned()
                     }
                     Some(owner) => {
                         taken += 1;
@@ -596,7 +597,7 @@ pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limi
             };
             println!("  {cost:>3}  {text:<40} {fate}");
         }
-        println!("  {kept} in the dictionary, {taken} taken by another word, {rejected} rejected, {beyond} past the quota");
+        println!("  {kept} kept as backups, {taken} taken by another word, {rejected} rejected, {beyond} past the quota");
     }
     let mut all: Vec<(&Entry, String)> =
         generated.entries.iter().filter(|e| e.word == word).map(|e| (e, render_outline(&e.outline))).collect();

@@ -33,6 +33,9 @@ pub enum How {
     Reading,
     /// lyk only: a word with no pronunciation, spelled one letter a stroke (spelling mode)
     Spelled,
+    /// Not an entry of the deployed dictionary: keymux hands the strokes to the solver, and the
+    /// lookup has run it and it reads exactly this word
+    Solver,
 }
 
 /// One theory's outline in a row.
@@ -146,11 +149,17 @@ pub struct Lookup<'a> {
     setup: &'a Setup,
     entries: &'a [Entry],
     dictionary: HashMap<&'a str, &'a [Stroke]>,
+    /// What each outline of the *deployed* dictionary types: every entry but the backups, which
+    /// `deploy` does not ship (keymux hands such an outline to the solver)
     by_outline: HashMap<&'a [Stroke], &'a str>,
     stems: HashMap<Stroke, String>,
-    /// Every outline that types each word properly (suffix entries, which glue to the word
-    /// before them, left out)
+    /// Every deployed entry that types each word properly (suffix entries, which glue to the
+    /// word before them, and backups left out)
     outlines: HashMap<&'a str, Vec<&'a [Stroke]>>,
+    /// The backups `built::load` kept as entries, by word (the rest are in `backups`)
+    backup_entries: HashMap<&'a str, Vec<&'a [Stroke]>>,
+    /// Every outline of the reserved tables (commands, punctuation, fingerspelling, shortcuts)
+    reserved: std::collections::HashSet<Vec<Stroke>>,
     /// Every word with an outline
     words: Vec<&'a str>,
     /// Every entry that is not a word, reserved first, fewest strokes first
@@ -178,19 +187,28 @@ impl<'a> Lookup<'a> {
         cheapest: Option<&[u32]>,
     ) -> Self {
         // Four indexes of the same entries, a few tens of milliseconds each: side by side
-        let (dictionary, words, by_outline, stems, outlines) = std::thread::scope(|scope| {
-            // `generate::index_of`, keyed by the strokes rather than their notation
-            let by_outline = scope.spawn(|| entries.iter().map(|e| (e.outline.as_slice(), e.word.as_str())).collect::<HashMap<_, _>>());
+        let (dictionary, words, by_outline, stems, (outlines, backup_entries)) = std::thread::scope(|scope| {
+            // `generate::index_of`, keyed by the strokes rather than their notation; the backups are
+            // not in the dictionary keymux loads
+            let by_outline = scope.spawn(|| {
+                entries
+                    .iter()
+                    .filter(|e| e.origin != Origin::Backup)
+                    .map(|e| (e.outline.as_slice(), e.word.as_str()))
+                    .collect::<HashMap<_, _>>()
+            });
             let stems = scope.spawn(|| generate::single_stroke_stems_of(entries));
             let outlines = scope.spawn(|| {
                 let mut outlines: HashMap<&str, Vec<&[Stroke]>> = HashMap::new();
+                let mut backups: HashMap<&str, Vec<&[Stroke]>> = HashMap::new();
                 for entry in entries.iter().filter(|e| e.origin != Origin::Suffix) {
-                    outlines.entry(entry.word.as_str()).or_default().push(&entry.outline);
+                    let into = if entry.origin == Origin::Backup { &mut backups } else { &mut outlines };
+                    into.entry(entry.word.as_str()).or_default().push(&entry.outline);
                 }
-                outlines
+                (outlines, backups)
             });
             let dictionary: HashMap<&str, &[Stroke]> = cheapest.map_or_else(
-                || generate::cheapest(entries),
+                || generate::cheapest_deployed(entries),
                 |cheapest| {
                     let entry = |at: u32| &entries[at as usize];
                     cheapest.iter().map(|&at| (entry(at).word.as_str(), entry(at).outline.as_slice())).collect()
@@ -213,6 +231,8 @@ impl<'a> Lookup<'a> {
             by_outline,
             stems,
             outlines,
+            backup_entries,
+            reserved: generate::reserved_entries().unwrap_or_default().into_iter().map(|r| r.outline).collect(),
             words,
             specials: Self::specials(entries),
             backups,
@@ -226,6 +246,13 @@ impl<'a> Lookup<'a> {
     #[must_use]
     pub fn with_solver(mut self, load: fn() -> Option<crate::rules::solve::Model>) -> Self {
         self.load_solver = Some(load);
+        self
+    }
+
+    /// The same lookup, reading a miss with this solver model.
+    #[must_use]
+    pub fn with_model(self, model: crate::rules::solve::Model) -> Self {
+        let _ = self.solver.set(Some(model));
         self
     }
 
@@ -312,47 +339,159 @@ impl<'a> Lookup<'a> {
         Some(Cell { strokes: stroke::parse_outline(text?)?, how })
     }
 
-    /// The three cells of a word's best outlines.
-    fn best_cells(found: &WordLookup) -> [Option<Cell>; 3] {
-        let ours = if found.lyk_deployed {
-            How::Entry
-        } else if let Some(pieces) = &found.composed_of {
-            How::Composed(pieces.clone())
-        } else if found.lyk.as_deref().is_some_and(|o| o.starts_with('~')) {
-            How::Spelled
-        } else {
-            How::Reading
-        };
+    /// Plover's and Lapwing's cells of a word's best outlines.
+    fn gold_cells(found: &WordLookup) -> [Option<Cell>; 2] {
         let gold = |pieces: &Option<Vec<String>>| pieces.clone().map_or(How::Entry, How::Composed);
         [
-            Self::cell(found.lyk.as_deref(), ours),
             Self::cell(found.plover.as_deref(), gold(&found.plover_composed_of)),
             Self::cell(found.lapwing.as_deref(), gold(&found.lapwing_composed_of)),
         ]
     }
 
-    /// Every other outline that types `word` properly, per theory, fewest strokes first.
-    fn others(&self, word: &str, best: &[Option<Cell>; 3]) -> [Vec<Vec<Stroke>>; 3] {
-        let skip = |cell: &Option<Cell>| cell.as_ref().filter(|c| c.how == How::Entry).map(|c| c.strokes.clone());
-        let mut lyk: Vec<Vec<Stroke>> = if skip(&best[0]).is_some() {
-            let mut all: Vec<Vec<Stroke>> =
-                self.outlines.get(word).into_iter().flatten().map(|o| o.to_vec()).collect();
-            all.extend(self.backups.map_or_default(|b| b.outlines(word)));
-            all
-        } else {
-            Vec::new()
+    /// Whether `strokes` is an entry of the deployed dictionary (or a reserved stroke): keymux
+    /// types it without asking the solver.
+    fn is_entry(&self, strokes: &[Stroke]) -> bool {
+        self.by_outline.contains_key(strokes) || self.reserved.contains(strokes)
+    }
+
+    /// Of `outlines`, the ones the solver reads as exactly `word` (lowercase), in their order;
+    /// `None` when there is no solver to ask. Several at once are read on every core.
+    fn read_as(&self, word: &str, outlines: Vec<Vec<Stroke>>) -> Option<Vec<Vec<Stroke>>> {
+        let model = self.solver()?;
+        let reads = |sc: &mut crate::rules::solve::core::Scratch, o: &[Stroke]| {
+            model.answer_with(sc, &render_outline(o)).is_some_and(|text| text.to_lowercase() == word)
         };
-        lyk.sort_by_cached_key(|o| (o.len(), generate::keys(o), o.clone()));
-        lyk.dedup();
+        let threads = std::thread::available_parallelism().map_or(1, std::num::NonZero::get).min(outlines.len() / 8 + 1);
+        if threads <= 1 {
+            let mut sc = model.scratch();
+            return Some(outlines.into_iter().filter(|o| reads(&mut sc, o)).collect());
+        }
+        let chunk = outlines.len().div_ceil(threads);
+        Some(std::thread::scope(|scope| {
+            #[allow(clippy::needless_collect)]
+            let handles: Vec<_> = outlines
+                .chunks(chunk)
+                .map(|part| {
+                    scope.spawn(move || {
+                        let mut sc = model.scratch();
+                        part.iter().filter(|o| reads(&mut sc, o)).cloned().collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            handles.into_iter().flat_map(|h| h.join().expect("a solver thread panicked")).collect()
+        }))
+    }
+
+    /// Every outline lyk lists for `word` (lowercase) that keymux types as it, best first.
+    ///
+    /// An outline is listed only when typing it gives the word: a deployed entry, or a backup
+    /// (a way into the word the generator wrote, never shipped) that the solver reads as the word,
+    /// which is run here exactly as the plugin runs it. Entries come before solver-read outlines.
+    /// With no solver to ask, only entries are listed. `fast` stops at the best outline.
+    fn lyk_listing(&self, found: &WordLookup, fast: bool) -> Vec<Cell> {
+        let word = found.word.to_lowercase();
+        let by_cost = |o: &Vec<Stroke>| (o.len(), generate::keys(o), o.clone());
+        let mut entries: Vec<Vec<Stroke>> = self.outlines.get(word.as_str()).into_iter().flatten().map(|o| o.to_vec()).collect();
+        entries.sort_by_cached_key(by_cost);
+        entries.dedup();
+        let best = found.lyk.as_deref().and_then(stroke::parse_outline);
+        let cell = |strokes: Vec<Stroke>, how: How| Cell { strokes, how };
+        // The settled outline is an entry: it leads, the other entries follow, then the backups
+        if let Some(best) = best.as_ref().filter(|b| found.lyk_deployed && self.is_entry(b)) {
+            let mut list = vec![cell(best.clone(), How::Entry)];
+            list.extend(entries.into_iter().filter(|o| o != best).map(|o| cell(o, How::Entry)));
+            if !fast {
+                list.extend(self.solver_read(&word, best).into_iter().map(|o| cell(o, How::Solver)));
+            }
+            return list;
+        }
+        // The cheapest outline is a backup (or none is an entry): the cheapest of the entries and
+        // of the backups the solver reads right leads
+        let mut backups = self.backup_outlines(&word);
+        let read = if fast {
+            // only the first that reads right is wanted
+            self.first_read(&word, std::mem::take(&mut backups)).into_iter().collect()
+        } else {
+            self.read_as(&word, backups).unwrap_or_default()
+        };
+        let lead_is_backup = match (entries.first(), read.first()) {
+            (Some(e), Some(r)) => by_cost(r) < by_cost(e),
+            (None, Some(_)) => true,
+            _ => false,
+        };
+        if lead_is_backup || !entries.is_empty() {
+            let mut list: Vec<Cell> = Vec::new();
+            if lead_is_backup {
+                list.push(cell(read[0].clone(), How::Solver));
+            }
+            list.extend(entries.into_iter().map(|o| cell(o, How::Entry)));
+            list.extend(read.into_iter().skip(usize::from(lead_is_backup)).map(|o| cell(o, How::Solver)));
+            return list;
+        }
+        // No entry, no backup that reads right: composed from entries, the rules' own reading, or
+        // spelled letter by letter, whichever the solver reads as the word (all that can be
+        // offered with no solver to ask)
+        let how = if found.composed_of.is_some() {
+            found.composed_of.clone().map(How::Composed)
+        } else if found.lyk.as_deref().is_some_and(|o| o.starts_with('~')) {
+            Some(How::Spelled)
+        } else if found.lyk.is_some() && !found.lyk_deployed {
+            Some(How::Reading)
+        } else {
+            None
+        };
+        let spelled = || self.setup.rules.spell_word(&word).map(|o| cell(o, How::Spelled));
+        let own = best.zip(how).map(|(strokes, how)| cell(strokes, how));
+        let ok = |c: &Cell| self.read_as(&word, vec![c.strokes.clone()]).is_none_or(|read| !read.is_empty());
+        own.filter(ok).into_iter().chain(spelled().filter(ok)).take(1).collect()
+    }
+
+    /// The first of `outlines` the solver reads as `word` (lowercase), one at a time.
+    fn first_read(&self, word: &str, outlines: Vec<Vec<Stroke>>) -> Option<Vec<Stroke>> {
+        outlines.into_iter().find(|o| self.read_as(word, vec![o.clone()]).is_some_and(|ok| !ok.is_empty()))
+    }
+
+    /// The cell a completion shows for `word` (lowercase): its settled outline when that is an
+    /// entry, else its cheapest backup the solver reads right; `None` when there is neither.
+    fn completion_cell(&self, word: &str) -> Option<Cell> {
+        let best = self.dictionary.get(word)?;
+        if self.is_entry(best) {
+            return Some(Cell { strokes: best.to_vec(), how: How::Entry });
+        }
+        let strokes = self.first_read(word, self.backup_outlines(word))?;
+        Some(Cell { strokes, how: How::Solver })
+    }
+
+    /// The backups of `word` (lowercase): the ones kept as entries and the catalogue's, fewest
+    /// strokes first, leaving out any outline an entry of the deployed dictionary holds.
+    fn backup_outlines(&self, word: &str) -> Vec<Vec<Stroke>> {
+        let mut all: Vec<Vec<Stroke>> = self.backup_entries.get(word).into_iter().flatten().map(|o| o.to_vec()).collect();
+        all.extend(self.backups.map_or_default(|b| b.outlines(word)));
+        all.retain(|o| !self.is_entry(o));
+        all.sort_by_cached_key(|o| (o.len(), generate::keys(o), o.clone()));
+        all.dedup();
+        all
+    }
+
+    /// Every backup of `word` that the solver reads as the word, except `best`.
+    fn solver_read(&self, word: &str, best: &[Stroke]) -> Vec<Vec<Stroke>> {
+        let backups = self.backup_outlines(word).into_iter().filter(|o| o != best).collect();
+        self.read_as(word, backups).unwrap_or_default()
+    }
+
+    /// Plover's and Lapwing's other outlines that type `word`, fewest strokes first.
+    fn gold_others(&self, word: &str, best: &[Option<Cell>; 2]) -> [Vec<Vec<Stroke>>; 2] {
         let gold = |all: &HashMap<String, Vec<String>>| -> Vec<Vec<Stroke>> {
             all.get(word).into_iter().flatten().filter_map(|o| stroke::parse_outline(o)).collect()
         };
-        let mut lists = [lyk, gold(&self.setup.gold.plover), gold(&self.setup.gold.lapwing)];
+        let mut lists = [gold(&self.setup.gold.plover), gold(&self.setup.gold.lapwing)];
         for (list, cell) in lists.iter_mut().zip(best) {
-            match skip(cell) {
+            match cell.as_ref().filter(|c| c.how == How::Entry).map(|c| c.strokes.clone()) {
                 Some(first) => list.retain(|o| *o != first),
                 None => list.clear(),
             }
+            list.sort_by_cached_key(|o| (o.len(), generate::keys(o), o.clone()));
+            list.dedup();
         }
         lists
     }
@@ -435,16 +574,23 @@ impl<'a> Lookup<'a> {
         }
         for found in reverse::reverse_phrase(self.setup, &self.dictionary, text) {
             let word = found.word.as_str();
-            let cells = Self::best_cells(&found);
+            let listing = self.lyk_listing(&found, ask.fast);
+            let [plover, lapwing] = Self::gold_cells(&found);
+            let cells = [listing.first().cloned(), plover, lapwing];
             if cells.iter().all(Option::is_none) {
                 rows.push(Row { word: word.to_owned(), cells, mark: Mark::Missing });
                 continue;
             }
-            let others = if ask.fast { Default::default() } else { self.others(&word.to_lowercase(), &cells) };
+            let gold = if ask.fast {
+                Default::default()
+            } else {
+                self.gold_others(&word.to_lowercase(), &[cells[1].clone(), cells[2].clone()])
+            };
             rows.push(Row { word: word.to_owned(), cells, mark: Mark::Entry });
-            for n in 0..others.iter().map(Vec::len).max().unwrap_or(0) {
-                let cell = |t: usize| others[t].get(n).map(|o| Cell { strokes: o.clone(), how: How::Entry });
-                rows.push(Row { word: String::new(), cells: [cell(0), cell(1), cell(2)], mark: Mark::Entry });
+            let ours = if ask.fast { &[][..] } else { listing.get(1..).unwrap_or_default() };
+            for n in 0..ours.len().max(gold[0].len()).max(gold[1].len()) {
+                let theirs = |t: usize| gold[t].get(n).map(|o| Cell { strokes: o.clone(), how: How::Entry });
+                rows.push(Row { word: String::new(), cells: [ours.get(n).cloned(), theirs(0), theirs(1)], mark: Mark::Entry });
             }
         }
         if let [word] = words.as_slice()
@@ -463,21 +609,18 @@ impl<'a> Lookup<'a> {
             let at = rows.len().min(1);
             rows.splice(at..at, commands);
             let plain = |w: &str| w.chars().all(|c| c.is_alphanumeric() || c == '\'' || c == '-');
-            for completion in self
+            for (completion, cell) in self
                 .words
                 .iter()
                 .filter(|w| w.len() > lower.len() && w.starts_with(lower.as_str()) && plain(w))
+                .filter_map(|w| Some((w, self.completion_cell(w)?)))
                 .take(ask.extra)
             {
                 let (plover, lapwing) = self.setup.gold.shortest(completion);
                 let gold = |o: Option<&str>| Self::cell(o, How::Entry);
                 rows.push(Row {
                     word: (*completion).to_owned(),
-                    cells: [
-                        Some(Cell { strokes: self.dictionary[completion].to_vec(), how: How::Entry }),
-                        gold(plover),
-                        gold(lapwing),
-                    ],
+                    cells: [Some(cell), gold(plover), gold(lapwing)],
                     mark: Mark::Completion,
                 });
             }

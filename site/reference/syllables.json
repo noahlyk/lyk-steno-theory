@@ -216,7 +216,7 @@
     ] },
     { "t": "p", "x": "*complete* ends up with 56 lattice joins, 11 of two strokes and 3 of six." },
     { "t": "pre", "x": "lyk paths WORD" },
-    { "t": "p", "x": "`lyk paths WORD` lists a word's lattice paths with their cost and outcome (in the dictionary, taken by another word, rejected, or past the cap), then everything the dictionary holds for the word." },
+    { "t": "p", "x": "`lyk paths WORD` lists a word's lattice paths with their cost and outcome (kept as a backup, taken by another word, rejected, or past the cap), then everything the dictionary holds for the word. A backup is not deployed: keymux reads it with the solver, and `lookup` lists it only when the solver reads it as the word ([the solver](#/ref/fallback/what-lookup-guarantees))." },
     { "t": "h", "x": "What a stem joins through" },
     { "t": "p", "x": "Every direction above builds on a placed word's outline. Each stem offers two:" },
     { "t": "list", "items": [

@@ -10,7 +10,8 @@
       "They are placed before the bonus short forms.",
       "A phrase never takes a backup of more than one stroke.",
       "No backup can change a primary.",
-      "A word may have several. When two words compose the same text in one round, the more frequent word wins."
+      "A word may have several. When two words compose the same text in one round, the more frequent word wins.",
+      "Backups are not deployed: keymux reads such an outline with the solver, and `lookup` lists a backup only when the solver reads it as the word ([what lookup guarantees](#/ref/fallback/what-lookup-guarantees))."
     ] },
     { "t": "h3", "x": "Common to all directions" },
     { "t": "list", "items": [

@@ -70,7 +70,7 @@ pub struct Loaded {
     /// The dictionary `build` wrote, read back
     pub entries: Vec<Entry>,
     pub backups: Option<Backups>,
-    /// Each word's cheapest entry (`generate::cheapest`), by its place in `entries`, when the
+    /// Each word's cheapest entry (`generate::cheapest_deployed`), by its place in `entries`, when the
     /// cache had it
     pub cheapest: Option<Vec<u32>>,
 }
@@ -102,10 +102,10 @@ struct Cached {
     backups: Backups,
 }
 
-/// [`generate::cheapest`] as places in `entries`.
+/// [`generate::cheapest_deployed`] as places in `entries`.
 fn cheapest_at(entries: &[Entry]) -> Vec<u32> {
     let at: HashMap<*const Stroke, u32> = entries.iter().zip(0..).map(|(e, n)| (e.outline.as_ptr(), n)).collect();
-    let mut cheapest: Vec<u32> = generate::cheapest(entries).values().map(|o| at[&o.as_ptr()]).collect();
+    let mut cheapest: Vec<u32> = generate::cheapest_deployed(entries).values().map(|o| at[&o.as_ptr()]).collect();
     cheapest.sort_unstable();
     cheapest
 }
@@ -562,7 +562,7 @@ mod tests {
         let entry = |at: u32| &cached.entries[at as usize];
         let mut cheapest: Vec<(&str, &[Stroke])> =
             cached.cheapest.iter().map(|&at| (entry(at).word.as_str(), entry(at).outline.as_slice())).collect();
-        let mut want: Vec<(&str, &[Stroke])> = generate::cheapest(&entries).into_iter().collect();
+        let mut want: Vec<(&str, &[Stroke])> = generate::cheapest_deployed(&entries).into_iter().collect();
         cheapest.sort_unstable();
         want.sort_unstable();
         assert_eq!(cheapest, want, "each word's cheapest entry is kept");

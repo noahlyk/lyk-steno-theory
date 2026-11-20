@@ -267,6 +267,13 @@ impl View {
         }
 
         lines.extend(answer.rows.iter().filter_map(Self::note));
+        if answer.rows.iter().any(|r| r.cells[0].as_ref().is_some_and(|c| c.how == How::Solver)) {
+            lines.push(paint(
+                "  dim outlines are not entries: keymux reads them with the solver, and the lookup checked it reads this word",
+                "2",
+                self.color,
+            ));
+        }
         let totals = answer.totals();
         if totals.strokes > 0 {
             lines.push(String::new());
@@ -346,11 +353,15 @@ impl View {
         match &row.cells[t] {
             None if row.mark == Mark::Missing && t == 0 => missing("no stroke", "31;2"),
             None => missing("-", "2"),
-            Some(Cell { strokes, .. }) => {
+            Some(Cell { strokes, how }) => {
                 let plain = render_outline(strokes);
                 let width = plain.chars().count();
                 if !self.color {
                     return (plain, width);
+                }
+                // Not an entry: keymux reads it with the solver, shown dim
+                if *how == How::Solver {
+                    return (paint(&plain, "2", true), width);
                 }
                 let slash = paint("/", "2", true);
                 (strokes.iter().map(|&s| stroke_text(s)).collect::<Vec<_>>().join(&slash), width)
@@ -496,6 +507,24 @@ mod tests {
             "{lines:?}"
         );
         assert!(lines[1].contains("EFB/+-PBTS") && lines[1].contains(" - "), "{lines:?}");
+    }
+
+    #[test]
+    fn a_solver_read_outline_is_dim_and_noted() {
+        let cell = |outline: &str, how| Some(Cell { strokes: crate::stroke::parse_outline(outline).unwrap(), how });
+        let rows = vec![
+            Row { word: "well".into(), cells: [cell("WEL", How::Entry), None, None], mark: Mark::Entry },
+            Row { word: String::new(), cells: [cell("WE/+-L", How::Solver), None, None], mark: Mark::Entry },
+        ];
+        let answer = Answer { rows, problem: None };
+        let coloured = View { show_keys: false, color: true }.lines(&answer);
+        assert!(coloured[2].contains("\x1b[2mWE/+-L"), "{:?}", coloured[2]);
+        assert!(!coloured[1].contains("\x1b[2mWEL"), "{:?}", coloured[1]);
+        let plain = View { show_keys: false, color: false }.lines(&answer);
+        assert!(plain.iter().any(|l| l.contains("dim outlines are not entries")), "{plain:?}");
+        // no solver-read outline, no note
+        let entries = Answer { rows: vec![answer.rows[0].clone()], problem: None };
+        assert!(View { show_keys: false, color: false }.lines(&entries).iter().all(|l| !l.contains("dim outlines")));
     }
 
     #[test]
