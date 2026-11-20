@@ -67,7 +67,7 @@
     ],
     [
      "`!deploy`",
-     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, and without the backups, which the solver replaces (see [the solver](#/ref/fallback/no-backups-in-keymux)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`."
+     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, and without the backups, which the solver replaces (see [the solver](#/ref/fallback/no-backups-in-keymux)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`. Checked before it is written, and kept for one deploy: see [deploy checks](#/ref/build-and-files/deploy-checks-and-rollback). `--no-validate`, `--strict-validate` and `--rollback` change that."
     ],
     [
      "`explain [WORD]`",
@@ -319,11 +319,26 @@
   },
   {
    "t": "pre",
-   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, copied into ~/.config/keymux/steno/lyk (the solver plugin, no backups)"
+   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, validated, copied into ~/.config/keymux/steno/lyk (the solver plugin, no backups)\ncargo run --release -- deploy --rollback   # put back the files the last deploy replaced"
   },
   {
    "t": "p",
-   "x": "`!deploy` overwrites every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed identically each time, so the same dictionary gives the same bytes."
+   "x": "`!deploy` replaces every generated file, then removes any `02-lyk-*.json` in the destination that this layout no longer writes. Files are sorted by outline and pretty-printed identically each time, so the same dictionary gives the same bytes."
+  },
+  {
+   "t": "h",
+   "x": "Deploy checks and rollback"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Staged first.** Every file is written to `.lyk-staging/` beside the destination folder (a hidden sibling, so keymux does not read it), checked there, and only then moved into the live folder, one atomic rename per file. The live folder is not touched before the check passes.",
+    "**Validated.** The staged `.json` files go through `keymux steno validate --json` (the `keymux` first on `PATH`). Errors stop the deploy and nothing is written. Warnings are printed and the deploy continues; `--strict-validate` stops on them too. `--no-validate` skips the check.",
+    "**Summary.** One line of counts (errors, warnings, notes, files, entries), then the first 10 errors and warnings as severity, file, outline and message. `keymux steno validate` lists the rest.",
+    "**No validator.** With no `keymux` on `PATH`, or a validator that cannot run (its exit code 2) or prints no JSON, one `validate: skipped, ...` line says why and the deploy continues.",
+    "**Previous files.** Before the first rename, every file in the live folder is kept in `.lyk-previous/` beside it (hard links, so no copying; the folder holds one deploy and is replaced by the next). If the swap or the cleanup of old files fails, the live folder is restored from `.lyk-previous/` and the command fails.",
+    "**`deploy --rollback`** restores `.lyk-previous/` into the live folder (the files then there are replaced or removed) and does nothing else: no build, no check. It fails when there is no `.lyk-previous/`."
+   ]
   },
   {
    "t": "h",

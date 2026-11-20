@@ -5,6 +5,7 @@
 use crate::answer::{Ask, Lookup};
 use crate::interactive::{self, Session};
 use crate::view::{View, terminal_colour};
+use crate::deploy::{Item, Source, Validate};
 use crate::{analysis, built, ergonomics, family, generate, output, stroke};
 use anyhow::{Context, Result};
 use std::fmt::Write as _;
@@ -43,61 +44,57 @@ pub fn deploy(
     briefs: &generate::Briefs,
     common: usize,
     to: &Path,
+    validate: Validate,
 ) -> Result<()> {
     let to = expand_home(to)?;
-    std::fs::create_dir_all(&to).with_context(|| to.display().to_string())?;
-
     let words_out = PathBuf::from("out/lyk");
     generate::build(setup, briefs, common, &words_out, None, false)?;
 
-    // Plain overwrite of every generated file; files an earlier layout left behind are removed.
-    // The backups are not shipped: the solver plugin reads any outline that sounds like a word as
-    // that word, so keymux holds no list of them (`out/lyk` keeps them, as the solver's test set
-    // and the lookup commands' catalogue of ways in).
-    let mut copied = Vec::new();
-    for role in output::Role::ALL.into_iter().filter(|r| *r != output::Role::Backups) {
-        copied.push((words_out.join(role.file_name()), to.join(role.file_name())));
-    }
-    let shipped_backups = to.join(output::Role::Backups.file_name());
-    if shipped_backups.exists() {
-        std::fs::remove_file(&shipped_backups).with_context(|| shipped_backups.display().to_string())?;
-    }
+    // Every generated file. The backups are not shipped: the solver plugin reads any outline that
+    // sounds like a word as that word, so keymux holds no list of them (`out/lyk` keeps them, as
+    // the solver's test set and the lookup commands' catalogue of ways in).
+    let mut names: Vec<String> = output::Role::ALL
+        .into_iter()
+        .filter(|r| *r != output::Role::Backups)
+        .map(|role| role.file_name().to_owned())
+        .collect();
     // The solver plugin: keymux compiles the source, which reads the blob beside it
-    for name in [crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE] {
-        copied.push((words_out.join(name), to.join(name)));
-    }
+    names.extend([crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE].map(str::to_owned));
     // The name lane: `#/` then a name's outline, lyk's own and the few borrowed from Lapwing
-    for name in [crate::names::FILE, crate::names::BORROWED_FILE] {
-        copied.push((words_out.join(name), to.join(name)));
-    }
-    for (from, dest) in &copied {
-        std::fs::copy(from, dest).with_context(|| dest.display().to_string())?;
-    }
-    output::remove_stale(&to)?;
-    output::remove_dropped_plugin(&to);
+    names.extend([crate::names::FILE, crate::names::BORROWED_FILE].map(str::to_owned));
+    let generated = names.len();
+    let mut items: Vec<Item> =
+        names.into_iter().map(|name| Item { source: Source::File(words_out.join(&name)), name }).collect();
+    items.extend(STATIC_FILES.iter().map(|(name, content)| Item { name: (*name).to_owned(), source: Source::Text(content) }));
 
-    for (name, content) in STATIC_FILES {
-        let dest = to.join(name);
-        std::fs::write(&dest, content).with_context(|| dest.display().to_string())?;
-    }
-
-    // An earlier `deploy` shipped these two here by mistake (see `STATIC_FILES`'s own comment on
-    // why they never belonged in a live config); remove them if a past run already left them
-    // behind, rather than leaving dead files for `deploy` to never again mention or explain.
-    for stale in ["04-lyk-emilys-modifiers.py", "regenerate.py"] {
-        let path = to.join(stale);
-        if path.exists() {
-            std::fs::remove_file(&path).with_context(|| path.display().to_string())?;
+    // After the swap: remove what an earlier layout left behind. The shipped backups, any other
+    // generated file no role writes now, and the two files an earlier `deploy` shipped by mistake
+    // (see `STATIC_FILES`'s own comment on why they never belonged in a live config).
+    let cleanup = |dir: &Path| -> Result<()> {
+        let shipped_backups = dir.join(output::Role::Backups.file_name());
+        if shipped_backups.exists() {
+            std::fs::remove_file(&shipped_backups).with_context(|| shipped_backups.display().to_string())?;
         }
-    }
+        output::remove_stale(dir)?;
+        output::remove_dropped_plugin(dir);
+        for stale in ["04-lyk-emilys-modifiers.py", "regenerate.py"] {
+            let path = dir.join(stale);
+            if path.exists() {
+                std::fs::remove_file(&path).with_context(|| path.display().to_string())?;
+            }
+        }
+        Ok(())
+    };
+    let path_var = std::env::var_os("PATH").unwrap_or_default();
+    crate::deploy::install(&items, &to, validate, &path_var, &cleanup)?;
 
-    println!(
-        "deployed to {} ({} generated, {} static)",
-        to.display(),
-        copied.len(),
-        STATIC_FILES.len()
-    );
+    println!("deployed to {} ({generated} generated, {} static)", to.display(), STATIC_FILES.len());
     Ok(())
+}
+
+/// `deploy --rollback`: put back the files the last deploy replaced.
+pub fn deploy_rollback(to: &Path) -> Result<()> {
+    crate::deploy::rollback(&expand_home(to)?)
 }
 
 /// A leading `~/` or bare `~`, expanded against `$HOME`; any other path is returned as-is.

@@ -10,6 +10,7 @@ mod commands;
 #[cfg(test)]
 mod corpus_extract;
 mod data;
+mod deploy;
 #[cfg(test)]
 mod dictionary_fixture;
 mod fetch;
@@ -387,6 +388,16 @@ enum Command {
         /// Briefs to use instead of the built-in ones
         #[arg(long)]
         briefs: Option<PathBuf>,
+        /// Deploy without running `keymux steno validate` on the files first
+        #[arg(long, conflicts_with_all = ["strict_validate", "rollback"])]
+        no_validate: bool,
+        /// Stop on validator warnings too (default: only errors stop the deploy)
+        #[arg(long, conflicts_with = "rollback")]
+        strict_validate: bool,
+        /// Restore the files the last deploy replaced (kept in `.lyk-previous` beside the folder)
+        /// and do nothing else
+        #[arg(long, conflicts_with = "briefs")]
+        rollback: bool,
     },
 }
 
@@ -506,10 +517,18 @@ fn main() -> Result<()> {
                 words: *words,
             })
         }
-        Command::Deploy { to, common, briefs } => {
+        Command::Deploy { to, rollback: true, .. } => commands::deploy_rollback(to),
+        Command::Deploy { to, common, briefs, no_validate, strict_validate, rollback: false } => {
+            let validate = if *no_validate {
+                deploy::Validate::Skip
+            } else if *strict_validate {
+                deploy::Validate::Strict
+            } else {
+                deploy::Validate::Errors
+            };
             let setup = setup(Some(*common))?;
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            commands::deploy(&setup, &briefs, *common, to)
+            commands::deploy(&setup, &briefs, *common, to, validate)
         }
     }
 }
