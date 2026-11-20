@@ -122,9 +122,9 @@ join key and the `KWR` or star they put on a continuation stroke, which the join
 | Syllables | Same as Plover or Lapwing | Plover | Lapwing | Keys/Stroke (Lyk) | Keys/Stroke (Plover) | Keys/Stroke (Lapwing) |
 |---|---|---|---|---|---|---|
 | 1 | 89% | 77% | 82% | 5.57 | 5.65 | 5.84 |
-| 2 | 59% | 44% | 51% | 6.06 | 4.90 | 5.25 |
+| 2 | 59% | 44% | 51% | 6.07 | 4.90 | 5.25 |
 | 3 | 37% | 25% | 31% | 5.99 | 4.78 | 5.14 |
-| 4+ | 23% | 17% | 18% | 6.21 | 4.94 | 5.18 |
+| 4+ | 23% | 17% | 18% | 6.22 | 4.94 | 5.18 |
 <!-- lyk:score-table:end -->
 
 "Keys/Stroke" above counts each distinct word once. The same figure with each word counted as many

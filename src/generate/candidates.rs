@@ -63,10 +63,18 @@ fn gold_candidates(
     outlines: Option<&Vec<String>>,
     word: &str,
     sounds: &[String],
+    prons: &[Vec<String>],
 ) -> Vec<Vec<Stroke>> {
     let mut found = Vec::new();
     for text in outlines.into_iter().flatten() {
-        let Some(raw) = parse_outline(text) else { continue };
+        let Some(mut raw) = parse_outline(text) else { continue };
+        // A bare `W` standing for `V` is not offered as it is: it is written `SR`.
+        if prons.iter().all(|p| crate::rules::Rules::w_stands_in_for_v(&raw, p)) {
+            match rules.w_as_v(&raw) {
+                Some(phonetic) => raw = phonetic,
+                None => continue,
+            }
+        }
         if let Some(repaired) = rules.drop_fragments(&raw, word, sounds) {
             found.push(repaired);
         }
@@ -110,6 +118,7 @@ pub(super) fn theory_spares(setup: &Setup, word: &str) -> Vec<Vec<Stroke>> {
         .flatten()
         .filter_map(|text| parse_outline(text))
         .filter(|outline| outline.len() == 1 && typable(outline))
+        .filter(|outline| !prons.iter().all(|sounds| crate::rules::Rules::w_stands_in_for_v(outline, sounds)))
         .filter(|outline| {
             setup.rules.faithful_any(outline, word, prons)
                 && prons.iter().any(|sounds| setup.rules.matches_real_consonants(outline, word, sounds))
@@ -294,7 +303,7 @@ impl Pool<'_> {
 
     /// A gold dictionary's outlines for the word, each raw and with its fragments dropped.
     fn briefs(&mut self, outlines: Option<&Vec<String>>) {
-        for outline in gold_candidates(&self.setup.rules, outlines, self.word, self.sounds) {
+        for outline in gold_candidates(&self.setup.rules, outlines, self.word, self.sounds, self.prons) {
             if self.exempt || self.setup.rules.faithful_any(&outline, self.word, self.prons) {
                 self.push(outline, Origin::Brief);
             } else {
@@ -308,7 +317,7 @@ impl Pool<'_> {
     /// what fits in one stroke without displacing a phonetic reading that already does, so a
     /// dozen theories cannot hand `liquid` a `KHREUD` for the sake of a key.
     fn briefs_extra(&mut self, outlines: Option<&Vec<String>>) {
-        self.held.extend(gold_candidates(&self.setup.rules, outlines, self.word, self.sounds));
+        self.held.extend(gold_candidates(&self.setup.rules, outlines, self.word, self.sounds, self.prons));
     }
 
     /// A literal `[word]` outline: the user's own choice, so never filtered here (it is checked,

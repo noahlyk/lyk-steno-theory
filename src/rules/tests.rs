@@ -715,3 +715,15 @@ fn the_rest_of_a_word_after_a_stem_is_spelled_from_one_stroke_up() {
     assert!(texts("ment").contains(&"PHEPBT".to_owned()), "{:?}", texts("ment"));
     assert!(texts("icular").contains(&"EUBG/UL/AR".to_owned()), "{:?}", texts("icular"));
 }
+
+#[test]
+fn a_w_standing_for_v_is_written_sr() {
+    let rules = Rules::built_in().unwrap();
+    let divide = sounds("D IH0 V AY1 D");
+    let brief = parse_outline("TKWAOEUD").unwrap();
+    assert!(Rules::w_stands_in_for_v(&brief, &divide));
+    assert_eq!(render_outline(&rules.w_as_v(&brief).unwrap()), "STKRAOEUD");
+    // A real w sound, or a W key inside the `B`, `G` or `Y` chords, is not a stand-in.
+    assert!(!Rules::w_stands_in_for_v(&parse_outline("WAOEUF").unwrap(), &sounds("W IY1 V")));
+    assert!(!Rules::w_stands_in_for_v(&parse_outline("TKPWOEUF").unwrap(), &sounds("G OW1 V")));
+}

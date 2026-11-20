@@ -236,4 +236,22 @@ impl Rules {
         out[last_index] = Stroke(out[last_index].0 & !coda_fragment);
         (out[0].0 != 0 && out[last_index].0 != 0).then_some(out)
     }
+
+    /// The left-hand `W` key of `outline` is not any sound of the word's: the word has a `V` and no
+    /// sound written with a `W` key (`W`, `B` `PW`, `G` `TKPW`, `Y` `KWR`, `Z`, `ZH`/`JH`), so
+    /// the `W` is Plover's stand-in for `V` (`divide` `TKWAOEUD`), which lyk writes `SR`.
+    pub fn w_stands_in_for_v(outline: &[Stroke], sounds: &[String]) -> bool {
+        let Some(w) = Stroke::parse("W").map(|w| w.0) else { return false };
+        let base = |s: &String| s.trim_end_matches(|c: char| c.is_ascii_digit()).split('.').next().unwrap_or("").to_owned();
+        let bases: Vec<String> = sounds.iter().map(base).collect();
+        let writes_w = |b: &String| matches!(b.as_str(), "W" | "B" | "G" | "Z" | "ZH" | "JH" | "Y");
+        bases.iter().any(|b| b == "V") && !bases.iter().any(writes_w) && outline.iter().any(|s| s.0 & Stroke::LEFT & w != 0)
+    }
+
+    /// `outline` with every left-hand `W` that stands in for `V` written `SR`, as lyk writes it.
+    pub fn w_as_v(&self, outline: &[Stroke]) -> Option<Vec<Stroke>> {
+        let w = Stroke::parse("W")?.0;
+        let sr = *self.onset.get("V")?;
+        Some(outline.iter().map(|s| if s.0 & Stroke::LEFT & w != 0 { Stroke((s.0 & !w) | sr.0) } else { *s }).collect())
+    }
 }

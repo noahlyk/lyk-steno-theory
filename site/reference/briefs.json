@@ -434,6 +434,18 @@
   {
    "t": "p",
    "x": "A literal override is exempt from this check (a human chose it) and from the faithful check above, so a literal override should not be a half-held chord. Six old overrides (*on*, *from*, *no*, *then*, *day*, *which*) exploited an older, narrower check and were removed; each word takes its own full phonetic reading. (*which* was later pinned to [[KH]] for another reason, listed above.)"
+  },
+  {
+   "t": "h",
+   "x": "`W` is never a stand-in for `V`"
+  },
+  {
+   "t": "p",
+   "x": "Plover and the other theories write some `v` with the left-hand `W` key (`TKWAOEUD` for *divide*, `KWERT` for *convert*). lyk's `V` is `SR`, and `W` is only the `w` sound or a key inside another chord (`PW` b, `TKPW` g, `KWR` y). A gold brief whose left-hand `W` is none of those (the word has a `V`, and no `W`, `B`, `G`, `Z`, `ZH`, `JH` or `Y` sound) is not offered as listed: its `W` is rewritten to `SR` and the result competes like any other brief, so it is never an outline you could not derive from the sounds."
+  },
+  {
+   "t": "p",
+   "x": "*divide* is [[divide|STKRAOEUD]] (`TK` d plus `SR` v), *divine* [[divine|STKRAOEU]], *convert* [[convert|SKRERT]]. The rewritten stroke is settled like any other outline: where it lands on a stroke another word already holds, that word keeps it and the other falls to its next outline."
   }
  ]
 }
