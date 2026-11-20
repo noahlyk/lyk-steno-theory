@@ -262,6 +262,31 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
+/// Every modifier chord is first-up, marker first: `{:firstup}{^}{#super(1)}{^}`. Holding the
+/// right-hand modifiers and tapping left-hand characters then repeats the shortcut. `lookup`
+/// shows the entry without the marker.
+// `{:firstup}` is a dictionary meta, not a format string.
+#[allow(clippy::literal_string_with_formatting_args)]
+#[test]
+fn every_modifier_chord_is_first_up_with_the_marker_first() {
+    let modifiers: std::collections::BTreeMap<String, String> =
+        serde_json::from_str(include_str!("../rules/reserved/emilys-modifiers.json")).expect("modifiers parse");
+    assert!(modifiers.len() > 1_000, "the modifier dictionary shrank to {}", modifiers.len());
+    let bad: Vec<String> = modifiers
+        .iter()
+        .filter(|(outline, value)| {
+            let rest = value.strip_prefix("{:firstup}{^}{#").and_then(|r| r.strip_suffix(")}{^}"));
+            outline.contains('/') || !outline.ends_with("LGTS") || rest.is_none_or(|r| r.contains("{:"))
+        })
+        .map(|(outline, value)| format!("{outline:?}: {value:?}"))
+        .collect();
+    assert!(bad.is_empty(), "modifier chords without the first-up shape: {bad:#?}");
+    assert_eq!(modifiers.get("RAOPLGTS").map(String::as_str), Some("{:firstup}{^}{#super(1)}{^}"));
+    let entries = generate::reserved_entries().expect("reserved entries parse");
+    let super_one = entries.iter().find(|r| r.text.contains("{#super(1)}")).expect("super(1) is an entry");
+    assert_eq!(super_one.shown, "{^}{#super(1)}{^}", "lookup must show the clean text");
+}
+
 /// Keymux's runtime overlay/tape/keyboard/lookup/outline controls (`{:overlay:hide}` and friends) and the engine unload
 /// (`{:engine:unload}`) act on the running program (`{:outline:last}` types the last outline as text, nothing else), so each one must carry `{:transparent}` first (a control
 /// struck in the middle of a join must not break it), name only a part/verb Keymux parses, and

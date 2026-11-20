@@ -316,7 +316,8 @@
    "items": [
     "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,665 strokes; it keeps ordinary outlines from colliding with modifier chords.",
     "At least one modifier key must be held; a bare letter or symbol is not this dictionary's job.",
-    "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space."
+    "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space.",
+    "**First-up.** Every entry starts with `{:firstup}`: the chord is sent when its **first** key comes up and the keys still down wait for the next stroke. Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]). Releasing the held keys alone sends nothing. See [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up); plain Plover errors on the marker."
    ],
    "ordered": false
   },
@@ -366,91 +367,91 @@
      "Ctrl",
      "`F`",
      "[[S-FLGTS]]",
-     "`{^}{#control(s)}{^}`"
+     "`{:firstup}{^}{#control(s)}{^}`"
     ],
     [
      "Shift",
      "`R`",
      "[[S-RLGTS]]",
-     "`{^}{#shift(s)}{^}`"
+     "`{:firstup}{^}{#shift(s)}{^}`"
     ],
     [
      "Super",
      "`P`",
      "[[S-PLGTS]]",
-     "`{^}{#super(s)}{^}`"
+     "`{:firstup}{^}{#super(s)}{^}`"
     ],
     [
      "Alt",
      "`B`",
      "[[S-BLGTS]]",
-     "`{^}{#alt(s)}{^}`"
+     "`{:firstup}{^}{#alt(s)}{^}`"
     ],
     [
      "Ctrl+Shift",
      "`FR`",
      "[[S-FRLGTS]]",
-     "`{^}{#control(shift(s))}{^}`"
+     "`{:firstup}{^}{#control(shift(s))}{^}`"
     ],
     [
      "Ctrl+Super",
      "`FP`",
      "[[S-FPLGTS]]",
-     "`{^}{#control(super(s))}{^}`"
+     "`{:firstup}{^}{#control(super(s))}{^}`"
     ],
     [
      "Ctrl+Alt",
      "`FB`",
      "[[S-FBLGTS]]",
-     "`{^}{#control(alt(s))}{^}`"
+     "`{:firstup}{^}{#control(alt(s))}{^}`"
     ],
     [
      "Shift+Super",
      "`RP`",
      "[[S-RPLGTS]]",
-     "`{^}{#super(shift(s))}{^}`"
+     "`{:firstup}{^}{#super(shift(s))}{^}`"
     ],
     [
      "Shift+Alt",
      "`RB`",
      "[[S-RBLGTS]]",
-     "`{^}{#alt(shift(s))}{^}`"
+     "`{:firstup}{^}{#alt(shift(s))}{^}`"
     ],
     [
      "Super+Alt",
      "`PB`",
      "[[S-PBLGTS]]",
-     "`{^}{#super(alt(s))}{^}`"
+     "`{:firstup}{^}{#super(alt(s))}{^}`"
     ],
     [
      "Ctrl+Shift+Super",
      "`FRP`",
      "[[S-FRPLGTS]]",
-     "`{^}{#control(super(shift(s)))}{^}`"
+     "`{:firstup}{^}{#control(super(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Shift+Alt",
      "`FRB`",
      "[[S-FRBLGTS]]",
-     "`{^}{#control(alt(shift(s)))}{^}`"
+     "`{:firstup}{^}{#control(alt(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Super+Alt",
      "`FPB`",
      "[[S-FPBLGTS]]",
-     "`{^}{#control(super(alt(s)))}{^}`"
+     "`{:firstup}{^}{#control(super(alt(s)))}{^}`"
     ],
     [
      "Shift+Super+Alt",
      "`RPB`",
      "[[S-RPBLGTS]]",
-     "`{^}{#super(alt(shift(s)))}{^}`"
+     "`{:firstup}{^}{#super(alt(shift(s)))}{^}`"
     ],
     [
      "Ctrl+Shift+Super+Alt",
      "`FRPB`",
      "[[S-FRPBLGTS]]",
-     "`{^}{#control(super(alt(shift(s))))}{^}`"
+     "`{:firstup}{^}{#control(super(alt(shift(s))))}{^}`"
     ]
    ]
   },
@@ -889,7 +890,7 @@
   },
   {
    "t": "p",
-   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*FPBLGTS]] is Ctrl+Super+Alt+Up (`{^}{#control(super(alt(up)))}{^}`)."
+   "x": "Examples: [[K*FLGTS]] is Ctrl+`.`; [[TPW*FLGTS]] is Ctrl+`?`; [[KPWR*FPBLGTS]] is Ctrl+Super+Alt+Up (`{:firstup}{^}{#control(super(alt(up)))}{^}`)."
   }
  ]
 }

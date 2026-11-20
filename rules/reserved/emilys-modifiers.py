@@ -219,8 +219,10 @@ def lookup(chord):
     for mod in mods:
         combo = mod + "(" + combo + ")"
 
-    # package it up with the syntax
-    ret = "{^}{#" + combo + "}{^}"
+    # package it up with the syntax. {:firstup} (keymux) goes first: the chord is sent when its
+    # first key comes up and the keys still down wait, so holding the right-hand modifiers and
+    # tapping left-hand characters repeats the shortcut. Plain Plover errors on it.
+    ret = "{:firstup}{^}{#" + combo + "}{^}"
 
     # all done! :D
     return ret

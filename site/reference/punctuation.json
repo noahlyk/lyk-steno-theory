@@ -745,11 +745,11 @@
   },
   {
    "t": "p",
-   "x": "Keymux implements first-key-up sending: its translator flags entries carrying `{:firstup}`, and its engine sends the stroke when the first key comes up. `disable_first_up: true` in Keymux's config ignores the marker everywhere; every stroke then goes on the last key up. Dictionaries without the marker (e.g. plain Lapwing) are unaffected."
+   "x": "Keymux implements first-key-up sending: its translator flags entries carrying `{:firstup}`, and its engine sends the stroke when the first key comes up. `disable_first_up: true` in Keymux's config ignores the marker everywhere; every stroke then goes on the last key up. Dictionaries without the marker (e.g. plain Lapwing) are unaffected. Besides the command strokes, every modifier chord (`LGTS` ender) is first-up: hold the right-hand modifier keys and tap characters on the left."
   },
   {
    "t": "p",
-   "x": "**Plover does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin; none is called `firstup`, and Plover 5.4.2 raises `KeyError: 'firstup'`. In plain Plover the 28 strokes above error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk deploys to Keymux, so the 28 strokes carry it; a Plover user can register a one-line no-op meta plugin named `firstup`, or use a copy of `commands.json` with the marker removed. The strokes do not change either way."
+   "x": "**Plover does not know `{:firstup}`.** Plover reads `{:name}` as a call to a registered meta plugin; none is called `firstup`, and Plover 5.4.2 raises `KeyError: 'firstup'`. In plain Plover the 28 strokes above error instead of acting; every other stroke is unaffected. The marker is harmless only in an engine that knows it. lyk deploys to Keymux, so the 28 strokes carry it; a Plover user can register a one-line no-op meta plugin named `firstup`, or use a copy of `commands.json` with the marker removed. The strokes do not change either way. The 1,665 [modifier chords](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary) carry the marker too (`{:firstup}{^}{#super(1)}{^}`), and the same holds for them."
   },
   {
    "t": "h3",
