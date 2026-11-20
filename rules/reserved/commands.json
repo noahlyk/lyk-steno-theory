@@ -72,6 +72,8 @@
 "PHRO*T": "{:firstup}{:transparent}{:tape:toggle}",
 "PHRO*TZ": "{:transparent}{:tape:clear}",
 "PHRO*B": "{:firstup}{:transparent}{:keyboard:toggle}",
+"PHRO*RPB": "{:firstup}{:transparent}{:outline:last}",
+"PHRO*PBT": "{:firstup}{:transparent}{:outline:next}",
 "R*EUD": "{:redo}",
 "*": "{:undo_or:Control_L(BackSpace)}",
 "TK*UPS": "=undo",

@@ -666,6 +666,11 @@
      "hold `PHRO*`, tap `-L` to flip the overlay, `-T` the tape, `-B` the keyboard diagram. Hold `PHRO*L`, tap `S` to show, `D` to hide: the held keys wait, so show and hide can alternate without lifting the hand"
     ],
     [
+     "Outline notation",
+     "[[PHRO*RPB]] [[PHRO*PBT]]",
+     "hold `PHRO*`, tap `-RPB` to type the last outline, `-PBT` to make the next stroke type its own notation"
+    ],
+    [
      "Lookup",
      "[[PHR*UP]] [[PHRUPD]]",
      "hold `PHR` and `UP`, tap `*` to flip the lookup, or `D` to close it"
@@ -929,7 +934,7 @@
   },
   {
    "t": "p",
-   "x": "Strokes that show, hide and flip Keymux's overlay (keyboard diagram and tape) and live lookup. Each types nothing, keeps surrounding spacing and capitals, runs once and stays off the tape. **They act only on an already-running overlay, and only for the session:** nothing is written to the config, and they never start the overlay or change how it starts; a restart follows the config. With no overlay running (or `enabled: false`) they do nothing, with no error."
+   "x": "Strokes that show, hide and flip Keymux's overlay (keyboard diagram and tape) and live lookup; the two outline strokes are in [Outline notation](#/ref/punctuation/outline-notation-keymux). Each of these types nothing, keeps surrounding spacing and capitals, runs once and stays off the tape. **They act only on an already-running overlay, and only for the session:** nothing is written to the config, and they never start the overlay or change how it starts; a restart follows the config. With no overlay running (or `enabled: false`) they do nothing, with no error."
   },
   {
    "t": "table",
@@ -998,7 +1003,7 @@
   },
   {
    "t": "p",
-   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
+   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
   },
   {
    "t": "h3",
@@ -1024,6 +1029,37 @@
   {
    "t": "p",
    "x": "The lyk dictionaries take about 700 MB while loaded; this stroke frees them. **No reload stroke:** the next stroke of any kind reloads the engine first, then performs; that one stroke is slower (the load time), nothing is lost. Types nothing, keeps surrounding spacing and capitals, stays off the tape, like the controls above. Runtime-only: nothing is written to the config; a restart loads the dictionaries as usual. Needs a Keymux that knows `{:engine:unload}`. Outline: the `PHRO*` control base with `-PL` (memory, the M of *memory*) and `Z` (zap, as in `PHRO*TZ`); bare `PHRO*PL` is unused because it begins a multi-stroke word and a standalone stroke would hold it up."
+  },
+  {
+   "t": "h3",
+   "x": "Outline notation (Keymux)"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Stroke",
+    "Definition",
+    "Effect",
+    "First-up"
+   ],
+   "rows": [
+    [
+     "[[PHRO*RPB]]",
+     "`{:firstup}{:transparent}{:outline:last}`",
+     "Type, as text, the outline of the most recent translation or stroke (`TKOG`, `TKOG/+-Z`)",
+     "yes"
+    ],
+    [
+     "[[PHRO*PBT]]",
+     "`{:firstup}{:transparent}{:outline:next}`",
+     "The next stroke types its own notation instead of acting; the stroke after it acts as usual",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Use them to read off the outline of what you just wrote, or of a stroke before you commit to it. **Key layout.** Both keep the `PHRO*` control base and share `-PB` (N, notation); `-R` adds *recent* (what was just struck), `-T` adds *then* (the stroke that follows). They are not nested in each other, so no hold-and-tap from one lands on the other. Both are free of every word outline, backup and phrase, and of every start of a multi-stroke entry. Each carries `{:firstup}{:transparent}` like the toggles above; `{:transparent}` keeps surrounding spacing and capitals and keeps the stroke off the translation history. Needs a Keymux that knows `{:outline:last}` and `{:outline:next}`."
   },
   {
    "t": "h3",
@@ -1118,7 +1154,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `engine`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 16 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError` in plain Plover, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 15 entries removed (for [[PHRUP]] use `{PLOVER:LOOKUP}`, Plover's own lookup); or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged for Plover; Keymux is the target engine."
+   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `outline`, `engine`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 18 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError` in plain Plover, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 17 entries removed (for [[PHRUP]] use `{PLOVER:LOOKUP}`, Plover's own lookup); or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged for Plover; Keymux is the target engine."
   }
  ]
 }

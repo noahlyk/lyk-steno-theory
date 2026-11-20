@@ -252,7 +252,9 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
         .map(|(o, _)| o.as_str())
         .collect();
     let want: std::collections::BTreeSet<&str> =
-        ["PHRO*L", "PHRO*LS", "PHRO*LD", "PHRO*T", "PHRO*B", "PHR*UP", "PHRUPD"].into_iter().collect();
+        ["PHRO*L", "PHRO*LS", "PHRO*LD", "PHRO*T", "PHRO*B", "PHRO*RPB", "PHRO*PBT", "PHR*UP", "PHRUPD"]
+            .into_iter()
+            .collect();
     assert_eq!(marked_controls, want, "first-up controls changed: update the Reference too");
     for outline in ["PHRO*TZ", "PHRUP", "PHRO*PLZ"] {
         assert!(!commands[outline].contains("{:firstup}"), "{outline} must stay on the last key up");
@@ -260,8 +262,8 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
 }
 
-/// Keymux's runtime overlay/tape/keyboard/lookup controls (`{:overlay:hide}` and friends) and the engine unload
-/// (`{:engine:unload}`) act on the running program and type nothing, so each one must carry `{:transparent}` first (a control
+/// Keymux's runtime overlay/tape/keyboard/lookup/outline controls (`{:overlay:hide}` and friends) and the engine unload
+/// (`{:engine:unload}`) act on the running program (`{:outline:last}` types the last outline as text, nothing else), so each one must carry `{:transparent}` first (a control
 /// struck in the middle of a join must not break it), name only a part/verb Keymux parses, and
 /// sit on a stroke no other entry shares and no word outline took (the collision test above
 /// covers the words; this one covers the table itself).
@@ -284,6 +286,8 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         ("PHRO*T", "{:firstup}{:transparent}{:tape:toggle}"),
         ("PHRO*TZ", "{:transparent}{:tape:clear}"),
         ("PHRO*B", "{:firstup}{:transparent}{:keyboard:toggle}"),
+        ("PHRO*RPB", "{:firstup}{:transparent}{:outline:last}"),
+        ("PHRO*PBT", "{:firstup}{:transparent}{:outline:next}"),
         ("PHRO*PLZ", "{:transparent}{:engine:unload}"),
     ];
     for (outline, value) in expected {
@@ -304,11 +308,12 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
                 | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
                 | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
                 | "lookup:open" | "lookup:close" | "lookup:toggle"
+                | "outline:last" | "outline:next"
                 | "engine:unload"
         );
         assert!(valid && rest.matches('{').count() == 1, "{outline}: {value:?} is not a Keymux control");
     }
-    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented ten");
+    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented twelve");
     for (outline, value) in [
         ("R*EUD", "{:redo}"),
         ("TK*UP", "{:undo_word}"),
