@@ -615,3 +615,31 @@ fn a_word_that_sounds_like_a_commoner_one_is_reached_by_that_ones_paths_and_the_
     assert!(has("ar", "AR") || has("for a", "AR"), "ar keeps its stroke, or the phrase pass took it for a phrase");
     assert!(generated.entries.iter().any(|e| e.word == "ar"), "ar has an outline");
 }
+
+fn uses(outline: &str) -> bool {
+    uses_suffix_chord(&parse_outline(outline).unwrap())
+}
+
+#[test]
+fn a_starred_suffix_chord_after_the_first_stroke_is_refused() {
+    for outline in ["AEU/+*Z", "TKOG/+*G", "TEFT/+*D/+-L", "KOPL/+*EUZ/+-PL", "A/+PRAFPBLGT/+*L", "AFRP/+A*EUGS"] {
+        assert!(uses(outline), "{outline} uses a starred suffix chord");
+    }
+}
+
+#[test]
+fn plain_chords_lone_stars_and_the_chords_own_entries_are_not_refused() {
+    for outline in ["TKOG/+-G", "TKOG/+*", "TKOG/+*/+*", "TKOG", "+*G", "+*EUZ/+-PL", "TKOG/+*EUZ"] {
+        assert!(!uses(outline), "{outline} is no stem plus a starred suffix chord");
+    }
+}
+
+#[test]
+fn no_candidate_continues_with_a_starred_suffix_chord() {
+    let briefs = Briefs::default();
+    for word in ["ais", "abandon", "anker", "arranging", "oasis", "bawled", "excelled"] {
+        for c in candidates_for(word, &briefs) {
+            assert!(!uses_suffix_chord(&c.outline), "{word}: {}", render_outline(&c.outline));
+        }
+    }
+}

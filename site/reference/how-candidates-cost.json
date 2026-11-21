@@ -36,6 +36,7 @@
       ["Family shape", "`Origin::Family`", "Added from the second settling pass: a family member's root outline written by the family rules, counted two keys cheaper than it is ([the two-key preference](#/ref/syllables/the-two-key-family-preference)). See [How the solver works](#/ref/how-solver)."],
       ["S-for-Z coda", "`Origin::Voicing`", "Any candidate ending in a voiced `-Z`, offered again with `-S` when the word is spelled with a final s: girls."]
     ] },
+    { "t": "p", "x": "**No candidate continues with a starred suffix chord** (`+*G`, `+*S`, `+*EUZ/+-PL`, the whole [suffix sheet](#/ref/suffixes)): any candidate, family shape, backup, extra or name outline with one after its first stroke is dropped, and the word settles on its next candidate (or has none). A starred chord always attaches its ending literally, so such an outline would not type the word." },
     { "t": "h3", "x": "A short form never takes a stroke the plain rules already give" },
     { "t": "list", "ordered": false, "items": [
       "A brevity step (and its first two star rungs) is dropped if some word's plain rules already give that text: every outline derivable by the rules stays that word's.",

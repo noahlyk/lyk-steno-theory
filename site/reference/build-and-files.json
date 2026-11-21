@@ -227,7 +227,7 @@
     [
      "`02-lyk-backups.json`",
      "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join)); not deployed: the solver reads them, and they are its test set",
-     "5,034,749 in `out/lyk`"
+     "5,033,547 in `out/lyk`"
     ],
     [
      "`02-lyk-extras.json`",
@@ -425,7 +425,7 @@
     ],
     [
      "`site_data.py [--check]`",
-     "Writes the data the lessons site runs on, and checks every outline the lessons and reference pages teach against the built dictionary. Exits non-zero on any wrong one."
+     "Writes the data the lessons site runs on, and checks every outline the lessons and reference pages teach against the built dictionary. Exits non-zero on any wrong one, and stops with \"out/lyk is older than the rules: run `lyk build`\" when `out/lyk/.built` is not this checkout's source hash (`--allow-stale` skips). Its output is byte-identical between runs on one `out/lyk`."
     ],
     [
      "`phrase_sim.py [protect_rank] [show]`",

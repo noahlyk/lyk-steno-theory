@@ -250,6 +250,31 @@ pub fn reserved_outlines() -> Result<HashMap<String, String>> {
 }
 
 
+/// The starred suffix chords: each suffix of `rules/suffixes.toml` with the star on its first
+/// stroke (`+*G`, `+*EUZ/+-PL`, [`crate::output::hard_suffix`]), one or two continuation strokes
+/// that attach their ending exactly as written. A suffix whose plain chord already has a star is
+/// not one.
+fn suffix_chords() -> &'static [Vec<Stroke>] {
+    static CHORDS: std::sync::OnceLock<Vec<Vec<Stroke>>> = std::sync::OnceLock::new();
+    CHORDS.get_or_init(|| {
+        let suffixes: BTreeMap<String, String> = toml::from_str(BUILT_IN_SUFFIXES).expect("rules/suffixes.toml parses");
+        suffixes
+            .keys()
+            .filter_map(|text| crate::output::hard_suffix(&parse_outline(text).unwrap_or_else(|| panic!("{text:?} in rules/suffixes.toml is an outline"))))
+            .collect()
+    })
+}
+
+/// Whether `outline` uses a starred suffix chord as continuation strokes (anywhere after its first
+/// stroke). No entry, backup or brief may: a starred chord is always a literal attach (solver
+/// contract, guarantee 3), so an outline that is a stem plus one would type the stem and the
+/// ending, whatever the entry says. The chords' own entries start at their first stroke and are
+/// not asked.
+#[must_use]
+pub fn uses_suffix_chord(outline: &[Stroke]) -> bool {
+    suffix_chords().iter().any(|chord| outline.get(1..).is_some_and(|rest| rest.windows(chord.len()).any(|w| w == chord.as_slice())))
+}
+
 /// The dictionary as it is built: every entry so far, which word holds each outline's text, and
 /// the words nothing could be found for.
 pub struct Book {
@@ -266,10 +291,11 @@ pub struct Mark {
 }
 
 impl Book {
-    /// Adds `outline` for `word` if its text is free; whether it was.
+    /// Adds `outline` for `word` if its text is free and it uses no starred suffix chord; whether it
+    /// was.
     pub fn claim(&mut self, word: &str, outline: Vec<Stroke>, origin: Origin) -> bool {
         let text = render_outline(&outline);
-        if self.taken.contains_key(&text) {
+        if self.taken.contains_key(&text) || uses_suffix_chord(&outline) {
             return false;
         }
         self.place(word, outline, origin, text);

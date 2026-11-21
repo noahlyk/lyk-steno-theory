@@ -169,6 +169,7 @@ pub fn generate(setup: &Setup, entries: &[Entry], names: &[Name]) -> Result<Lane
         if typable(&outline) { Some(outline) } else { split_untypable(&outline) }
     };
     let mut claim = |lane: &mut Lane, at: usize, source: Source, outline: Vec<Stroke>| {
+        if crate::generate::uses_suffix_chord(&outline) { return } // a literal attach, never a name's stroke
         let key = lane_outline(&outline);
         if held.contains_key(&key) || reserved.contains_key(&key) {
             lane.skipped += 1;
@@ -234,7 +235,7 @@ pub fn generate(setup: &Setup, entries: &[Entry], names: &[Name]) -> Result<Lane
         // Only now Lapwing's, for a name the rules could not strike, and only an outline nobody holds
         let mut any = false;
         for outline in &name.lapwing {
-            let Some(strokes) = parse_outline(outline) else { continue };
+            let Some(strokes) = parse_outline(outline).filter(|s| !crate::generate::uses_suffix_chord(s)) else { continue };
             let key = lane_outline(&strokes);
             if held.contains_key(&key) || reserved.contains_key(&key) {
                 lane.skipped += 1;

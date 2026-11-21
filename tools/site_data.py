@@ -5,6 +5,11 @@
     python3 tools/site_data.py            # writes site/data/words.json, chart.json, engine.json, joins.json
     python3 tools/site_data.py --check    # only checks the lessons; non-zero exit on any wrong outline
 
+It stops with "out/lyk is older than the rules: run `lyk build`" when `out/lyk/.built` (the source
+hash `build` stamps, the check `lyk lookup` makes) is not this checkout's, or when a file or entry it
+needs is missing; `--allow-stale` skips the hash check. `LYK_OUT` picks another out folder. The files it
+writes are byte-identical between runs on one `out/lyk`.
+
 `engine.json` and `joins.json` are what `site/js/engine.js` translates strokes with (the whole
 dictionary less the join-built backups, then the 12 cheapest backups of each common word, both
 word -> outlines, plus the reserved strokes and `rules/suffixes.toml`). `words.json` has the commonest words with their fastest outline and a few more ways in (for the
@@ -16,7 +21,7 @@ import glob, json, os, re, sys, tomllib
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lyk_out import path, role_files, ranks  # noqa: E402
+from lyk_out import STALE, path, require_fresh, role_files, ranks  # noqa: E402
 
 SITE = path('site')
 LESSONS = sorted(glob.glob(os.path.join(SITE, 'lessons', '[0-9]*.json')))
@@ -159,7 +164,7 @@ def write_engine(files, pick, rank):
         if word in pick and typable(outline) and outline not in seen:
             joins.setdefault(word, []).append(outline)
     joins = {w: sorted(o, key=cost)[:JOINS_PER_WORD]
-             for w, o in sorted(joins.items(), key=lambda kv: rank.get(kv[0], 10**9))}
+             for w, o in sorted(joins.items(), key=lambda kv: (rank.get(kv[0], 10**9), kv[0]))}
     out = os.path.join(SITE, 'data')
     for name, data in (('engine.json', {'d': core, 'p': reserved, 's': suffixes}), ('joins.json', joins)):
         with open(os.path.join(out, name), 'w') as f:
@@ -169,7 +174,11 @@ def write_engine(files, pick, rank):
 
 def main():
     check_only = '--check' in sys.argv
+    require_fresh()
     files = role_files()
+    for role in ('words', 'short', 'suffixes', 'phrases', 'phrasing', 'extras', 'alternates', 'backups'):
+        if not files.get(role):
+            sys.exit(f'{STALE}\n  (02-lyk-{role}.json is missing or empty)')
     by_word = defaultdict(lambda: defaultdict(set))  # word -> outline -> roles
     for role, d in files.items():
         for outline, word in d.items():
@@ -196,7 +205,7 @@ def main():
 
     # words.json
     rank = ranks()
-    top = sorted((w for w in by_word if w in rank and w.isalpha()), key=lambda w: rank[w])[:TOP]
+    top = sorted((w for w in by_word if w in rank and w.isalpha()), key=lambda w: (rank[w], w))[:TOP]
     shown = set().union(*(shown_words(l) for l in lessons)) if lessons else set()
     pick = set(top) | {w for w in wanted | shown if w in by_word}
     words = {}
@@ -214,7 +223,7 @@ def main():
             words[w] = row
     os.makedirs(os.path.join(SITE, 'data'), exist_ok=True)
     with open(os.path.join(SITE, 'data', 'words.json'), 'w') as f:
-        json.dump({'words': dict(sorted(words.items(), key=lambda kv: rank.get(kv[0], 10**9)))}, f, separators=(',', ':'))
+        json.dump({'words': dict(sorted(words.items(), key=lambda kv: (rank.get(kv[0], 10**9), kv[0])))}, f, separators=(',', ':'))
     print(f'words.json: {len(words)} words')
     write_engine(files, pick, rank)
 
@@ -239,7 +248,10 @@ def write_grammar(grammar):
     first_word, first_chord, first_person = starters[0]
 
     def code(text):
-        stroke = grammar[f'{first_word} {text}']
+        phrase = f'{first_word} {text}'
+        if phrase not in grammar:
+            sys.exit(f'{STALE}\n  (the phrasing file has no {phrase!r}, {len(grammar)} strokes)')
+        stroke = grammar[phrase]
         assert stroke.startswith(first_chord + '-'), (text, stroke)
         return stroke[len(first_chord):]
 

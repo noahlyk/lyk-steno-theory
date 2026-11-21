@@ -18,7 +18,7 @@
 
 use super::candidates::{Candidate, candidate_cost};
 use super::solver::{no_match_cost, solve_contested};
-use super::{Book, Entry, FAMILY_DISCOUNT, Origin, typable};
+use super::{Book, Entry, FAMILY_DISCOUNT, Origin, typable, uses_suffix_chord};
 use crate::analysis::Setup;
 use crate::family::{Link, PrefixLink};
 use crate::rules::Step;
@@ -189,14 +189,14 @@ fn family_offers(families: &Families, entries: &[Entry]) -> HashMap<String, Vec<
         let Some((root, keys)) = crate::family::chain(families.links, word) else { continue };
         let Some(root_outline) = primary.get(root) else { continue };
         let mut shapes = crate::family::shapes(root_outline, keys);
-        shapes.retain(|shape| typable(shape));
+        shapes.retain(|shape| typable(shape) && !uses_suffix_chord(shape));
         if !shapes.is_empty() {
             out.insert(word.clone(), shapes);
         }
     }
     for (word, link) in families.prefixes {
         let Some(stem) = primary.get(link.stem.as_str()) else { continue };
-        if let Some(outline) = crate::family::prefixed(link, stem, &primary).filter(|o| typable(o)) {
+        if let Some(outline) = crate::family::prefixed(link, stem, &primary).filter(|o| typable(o) && !uses_suffix_chord(o)) {
             out.entry(word.clone()).or_default().push(outline);
         }
     }

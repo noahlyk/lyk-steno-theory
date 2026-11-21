@@ -61,8 +61,8 @@
     "keymux asks each file in its priority order: `01-lyk-commands`, the `02-lyk-` files (alternates, extras, phrases, short, suffixes, words), `03-` names and punctuation, `04-` modifiers. The first file that holds the outline answers; the solver (`05-lyk-solver`) is last.",
     "One outline has one definition: no outline is defined with two different texts across the deployed files.",
     "The backups (`out/lyk/02-lyk-backups.json`) are not deployed, so they are not entries: the solver reads them (guarantee 2).",
-    "An entry wins even where its outline reads as a known outline plus a starred chord: [[ais|AEU/+*Z]] types *ais*, not *day* + *s*.",
-    "Were the solver asked about a word entry's own outline, it would type that word (entries with a lone `+*` or a starred suffix chord in them excepted: there the solver reads that stroke as the late star or the ending)."
+    "No entry continues with a starred suffix chord: no deployed outline has one of the 41 starred chords (`+*G`, `+*Z`, `+*EUZ/+-PL`, ...) after its first stroke, except a chord's own entry. The generator gives a word that would use one its next outline, or none (a test builds the dictionary and checks every deployed outline). So a starred chord after a known outline always types that outline's text and the ending, never another word's.",
+    "Were the solver asked about a word entry's own outline, it would type that word (entries with a lone `+*` in them excepted: there the solver reads that stroke as the late star)."
    ],
    "ordered": false
   },

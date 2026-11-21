@@ -4,7 +4,7 @@
 
 use super::candidates::{Candidate, candidate_cost};
 use super::settle::Pools;
-use super::{Book, KEY_WEIGHT, Origin, cheapest, keys, typable};
+use super::{Book, KEY_WEIGHT, Origin, cheapest, keys, typable, uses_suffix_chord};
 use crate::analysis::Setup;
 use crate::stroke::{Stroke, render_outline};
 use std::collections::{HashMap, HashSet};
@@ -144,7 +144,7 @@ pub fn extras(
 }
 
 /// Words whose plain rules outline would cost less than what they settled for while its text sits
-/// unclaimed. A regression guard over the finished dictionary, expected to stay empty. A word on
+/// unclaimed (and that is no stem plus a starred suffix chord, which no outline may be). A regression guard over the finished dictionary, expected to stay empty. A word on
 /// its family's shape chose it over a cheaper reading on purpose, and a word with no prose use, or
 /// one that gave its stroke up to a commoner word's extras, left it on purpose: never stranded.
 pub fn stranded(setup: &Setup, book: &Book, released: &HashSet<String>, no_prose: &HashSet<&str>) -> Vec<String> {
@@ -161,6 +161,7 @@ pub fn stranded(setup: &Setup, book: &Book, released: &HashSet<String>, no_prose
                 && (plain.len(), keys(&plain)) < (outline.len(), keys(outline))
                 && !book.taken.contains_key(&render_outline(&plain))
                 && !released.contains(&render_outline(&plain))
+                && !uses_suffix_chord(&plain)
         })
         .map(|(word, _)| word.to_owned())
         .collect();

@@ -165,6 +165,12 @@ node site/check.mjs
 node site/test.mjs                        # the engine reads the regenerated data back
 ```
 
+`tools/site_data.py` stops first, with "out/lyk is older than the rules: run `lyk build`", when
+`out/lyk/.built` (the source hash `build` stamps, the check `lyk lookup` makes) is not this
+checkout's or a file or phrase it needs is missing (`--allow-stale` skips the hash; `LYK_OUT` picks
+another out folder). Its files are byte-identical between runs on one `out/lyk` (ties in word rank
+are broken by word).
+
 `tools/site_data.py --check` only checks. It exits non-zero and names each lesson, word and outline
 that no longer matches, so a rule change cannot silently leave a lesson teaching the old stroke.
 CI cannot build the dictionary (the corpus is not in the repository), so CI runs only the offline

@@ -6,7 +6,7 @@
     { "t": "h", "x": "Backup composition: every + way into a word" },
     { "t": "p", "x": "After every primary is locked, a fixed-point pass builds `+`-joined entries for every word it can, from a placed stem, an ending, a prefix, or the word's own syllables. A rare word can keep a terse one-stroke primary ([[machete|PHEFPT]]) and still be typed from its sound ([[PHU/+SHE/+TAOE]])." },
     { "t": "list", "items": [
-      "The current build has 5,034,749 backup entries (`02-lyk-backups.json`), a median of 55 per word.",
+      "The current build has 5,033,547 backup entries (`02-lyk-backups.json`), a median of 55 per word.",
       "They are placed before the bonus short forms.",
       "A phrase never takes a backup of more than one stroke.",
       "No backup can change a primary.",
@@ -17,6 +17,7 @@
     { "t": "list", "items": [
       "A placed word's **fastest outline**, plus its own plain reading when that is a longer form.",
       "A `+*` ladder marker on the stem is dropped: no join has a mid-join star.",
+      "A join with a starred suffix chord (`+*G`, `+*S`, ...) after its first stroke is dropped: a starred chord is a literal attach, never part of a word's outline.",
       "A join of three or more strokes whose last stroke fits on the one before (right-hand keys, all later in steno order) is also offered folded.",
       "A word's \"best\" outline, used as a stem in later rounds, is picked by strokes, then keys, then ergonomics, then outline text; never by entry order.",
       "Joins through an ending build on the stem's plain reading, never its brief. Stem: three letters or more; the join must pass the fragment check; a word in `-ly` never joins through `-y`.",

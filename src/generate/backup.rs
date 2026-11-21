@@ -28,7 +28,7 @@
 
 use crate::analysis::Setup;
 use crate::family::{Link, PrefixLink, PrefixStroke};
-use super::{Book, Entry, Origin, priority, typable};
+use super::{Book, Entry, Origin, priority, typable, uses_suffix_chord};
 use crate::stroke::{Stroke, render_outline};
 use std::collections::{HashMap, HashSet};
 
@@ -304,7 +304,7 @@ impl<'a> Stems<'a> {
     /// `sounds` where the pieces are not whole outlines) and adds it, and its folded form, to `out`.
     fn push_join(&self, word: &str, mut outline: Vec<Stroke>, sounds: Option<&[String]>, out: &mut Vec<Join>) {
         self.setup.rules.joined(&mut outline);
-        if !typable(&outline) || sounds.is_some_and(|s| !self.setup.rules.matches_real_consonants(&outline, word, s)) {
+        if !typable(&outline) || uses_suffix_chord(&outline) || sounds.is_some_and(|s| !self.setup.rules.matches_real_consonants(&outline, word, s)) {
             return;
         }
         let folded = folded(&outline).filter(|o| typable(o));

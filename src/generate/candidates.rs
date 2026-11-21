@@ -3,7 +3,7 @@
 //! a spelling variant, brevity steps, the star ladder), each with the one cost every choice in
 //! this theory is made on: strokes, then keys, then comfort. See `site/reference/collisions.json`.
 
-use super::{Briefs, CONTRACTION_TAILS, KEY_WEIGHT, Origin, keys, split_untypable, typable};
+use super::{Briefs, CONTRACTION_TAILS, KEY_WEIGHT, Origin, keys, split_untypable, typable, uses_suffix_chord};
 use crate::analysis::Setup;
 use crate::ergonomics;
 use crate::stroke::{Stroke, parse_outline, render_outline};
@@ -259,6 +259,9 @@ pub fn enumerate_candidates(
     for outline in voicing_alternates(word, &pool.out) {
         pool.push(outline, Origin::Voicing);
     }
+    // A starred suffix chord is always a literal attach, so no candidate may continue with one: the
+    // word settles on its next candidate.
+    pool.out.retain(|c| !uses_suffix_chord(&c.outline));
     pool.out
 }
 

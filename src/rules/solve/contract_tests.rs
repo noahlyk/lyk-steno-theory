@@ -237,10 +237,39 @@ fn one_definition_per_outline() {
     );
 }
 
+/// A starred suffix chord is a literal attach, so an entry that is a known outline plus one as
+/// continuation strokes would type something other than what a learner builds from the pieces.
+/// The generator never writes one: no deployed outline has a starred chord after its first stroke
+/// unless the outline is that chord's own entry.
+fn no_entry_continues_with_a_starred_chord() {
+    let fx = &*FIXTURE;
+    let chords: Vec<Vec<String>> =
+        hard_suffixes(fx).into_iter().map(|(chord, _)| chord.split('/').map(str::to_owned).collect()).collect();
+    assert!(chords.len() > 20, "guarantee 1: {} starred suffix chords is too few", chords.len());
+    let mut bad = Vec::new();
+    for (outline, file, text) in fx.entries_sorted() {
+        if file.contains("suffixes") {
+            continue;
+        }
+        let strokes: Vec<&str> = outline.split('/').collect();
+        let rest = strokes.get(1..).unwrap_or_default();
+        if chords.iter().any(|chord| rest.windows(chord.len()).any(|w| w.iter().zip(chord).all(|(a, b)| a == b))) {
+            bad.push(format!("{outline} ({file}): {text:?}"));
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "guarantee 1 (a defined entry always wins): {} entries use a starred suffix chord as continuation strokes, e.g.\n{}",
+        bad.len(),
+        bad.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+    );
+}
+
 #[test]
 fn contract_1_a_defined_entry_always_wins() {
     entries_win(ENTRY_EVERY);
     one_definition_per_outline();
+    no_entry_continues_with_a_starred_chord();
 }
 
 #[test]
@@ -412,12 +441,7 @@ fn exact_starred_chords(stem_count: usize, suffixes_each: usize, stem_misses_all
                 (format!("{stem_outline}/{chord}/+-L"), format!("{stem}{ending}"), String::new()),
             ];
             for (outline, expected, literal) in cases {
-                // The run, or a start of it that ends on the starred chord, is an entry of its own (`TKEBGT/+*R`
-                // is *director*): the entry wins, guarantee 1's
-                let strokes: Vec<&str> = outline.split('/').collect();
-                if (2..=strokes.len()).any(|n| fx.files.in_order.iter().any(|(_, m)| m.contains_key(&strokes[..n].join("/")))) {
-                    continue;
-                }
+                // No entry is a known outline plus a starred chord (guarantee 1), so none of these runs is one
                 checked += 1;
                 let typed = fx.layer(&outline, &mut sc).expect("a one-word run gets a reading");
                 // The starred chords' own text is always literal, last in the run (a plain chord after

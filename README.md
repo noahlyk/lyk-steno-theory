@@ -205,7 +205,7 @@ counted only when Lapwing has it too (Plover's `main.json` has misstrokes such a
 `SP` for *and* that would make it look a third of a key cheaper). Some words take a star form because
 another, more valuable word won the plain outline (`site` and `sight`, `don` and `done`); `build
 --report` lists the commonest. 371 of the 100,000 words cannot be written by these rules yet, nearly
-all names and interjections (`hm`, `schmidt`, `vlad`). `build` also writes 5,034,749 `+`-joined backup
+all names and interjections (`hm`, `schmidt`, `vlad`). `build` also writes 5,033,547 `+`-joined backup
 entries (`build` + `+-G` is `building`, `UPB/+KHRAOER` is `unclear`, `TAEU/+-BL` is `table`; a median of
 55 per word), a test set that `deploy` does not ship ([ways to
 join](https://noahlyk.github.io/lyk-steno-theory/#/ref/ways-to-join),

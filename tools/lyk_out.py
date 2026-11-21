@@ -11,9 +11,68 @@ def path(*parts):
     return os.path.join(ROOT, *parts)
 
 
+def default_out_dir():
+    """The built dictionary folder: `$LYK_OUT/lyk` if set, else `out/lyk` in the checkout."""
+    env = os.environ.get('LYK_OUT')
+    return os.path.join(env, 'lyk') if env else path('out', 'lyk')
+
+
+def source_hash(root=ROOT):
+    """The hash `build` stamps into `out/lyk/.built`: the same FNV-1a over `src/**/*.rs`, `rules/**`,
+    `Cargo.toml` and `Cargo.lock` (relative names and contents, in path order) as `build.rs`."""
+    files = []
+    for top, only_rs in (('src', True), ('rules', False)):
+        for dirpath, _, names in os.walk(os.path.join(root, top)):
+            files += [os.path.join(dirpath, n) for n in names if not only_rs or n.endswith('.rs')]
+    files += [p for p in (os.path.join(root, 'Cargo.toml'), os.path.join(root, 'Cargo.lock')) if os.path.isfile(p)]
+    if not files:
+        return 'none'
+    h = 0xcbf29ce484222325
+    for p in sorted(files, key=lambda p: os.path.relpath(p, root).split(os.sep)):
+        name = os.path.relpath(p, root).replace(os.sep, '/').encode()
+        with open(p, 'rb') as f:
+            data = f.read()
+        for chunk in (name, data):
+            for b in chunk:
+                h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return f'{h:016x}'
+
+
+STALE = 'out/lyk is older than the rules: run `lyk build` (cargo run --release -- build), then run this again'
+
+
+def stale_reason(out_dir=None):
+    """Why the built dictionary in `out_dir` is not from the rules and generator in this checkout
+    (the `lookup` stale note's check: `.built` against the source hash), else None."""
+    out_dir = out_dir or default_out_dir()
+    if not os.path.isdir(out_dir):
+        return f'{out_dir} does not exist'
+    try:
+        stamp = open(os.path.join(out_dir, '.built')).read()
+    except OSError:
+        return 'it has no .built stamp (built before builds recorded their source)'
+    built = next((line[len('source='):] for line in stamp.splitlines() if line.startswith('source=')), None)
+    now = source_hash()
+    if built is None:
+        return 'its .built stamp names no source'
+    if built != now and built != 'none' and now != 'none':
+        return 'the rules or the generator changed after it was built'
+    return None
+
+
+def require_fresh(out_dir=None):
+    """Exit with a clear message when `out_dir` is stale (`--allow-stale` on the command line skips)."""
+    import sys
+    if '--allow-stale' in sys.argv:
+        return
+    why = stale_reason(out_dir)
+    if why:
+        sys.exit(f'{STALE}\n  ({why})')
+
+
 def role_files(out_dir=None):
     """{role: {outline: word}} for every `02-lyk-<role>.json` in `out_dir` (default out/lyk)."""
-    out_dir = out_dir or path('out', 'lyk')
+    out_dir = out_dir or default_out_dir()
     files = {}
     for f in sorted(glob.glob(os.path.join(out_dir, '02-lyk-*.json'))):
         files[os.path.basename(f)[len('02-lyk-'):-len('.json')]] = json.load(open(f))
