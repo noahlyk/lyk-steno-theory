@@ -81,7 +81,7 @@ lyk solve KOPL/+PU/+TER            # every reading of a run, cheapest first
 lyk explain moon                   # which rules wrote a word
 lyk mistakes --drill               # misstrokes on the steno tape, and a personal drill set for the site
 lyk quote                          # a random quote stroked in all three theories
-lyk practice                       # a typing drill: 50 common words, no outlines or hints (see Practice)
+lyk practice                       # a typing drill: 25 common words, no outlines or hints (see Practice)
 ```
 
 With no word, `lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` open an interactive
@@ -91,12 +91,12 @@ has scripts for measuring what a change did to the built dictionary.
 ## Practice
 
 `lyk practice` is a monkeytype-style word feed in the terminal: a few lines of upcoming words, the
-current one highlighted, what you typed green or red against it, a quiet speed and accuracy line
-(`--quiet` hides it) and nothing else, no outlines, keyboard or hints. Your steno machine types the
+current one highlighted, what you typed green or red against it, a live speed, accuracy and time line
+above the feed and a one-line key hint below it (`--quiet` hides both); no outlines or keyboard. Your steno machine types the
 words through keymux as ordinary characters, so it only reads plain key presses.
 
 ```
-lyk practice                                  # 50 words from the 1,000 commonest
+lyk practice                                  # 25 words from the 1,000 commonest
 lyk practice --time 60 --rank 1-200           # one minute from the 200 commonest
 lyk practice --source mistakes --outlines     # your drill words; the results show their outlines
 lyk practice --source phrases --count 100     # the phrasing grammar's phrases, typed as text
@@ -105,11 +105,18 @@ lyk practice --history                        # recent runs and the trend
 
 Space or Enter commits a word; a wrong word is an error and the feed moves on
 (`--stop-on-error` requires it right). Backspace or `*` deletes, Ctrl-Backspace or Ctrl-W deletes a
-word, Esc or Ctrl-C ends the run with the results so far. Sources: `common` (`--rank`, `--bands`,
+word. Esc or Ctrl-C quit at once at any time (the words typed so far are printed and saved as an
+incomplete run); `q` is a plain letter in a test. Tab
+restarts at any time, in a test or on the results screen (Enter too there): a fresh feed with the same
+options and a new random seed (with `--seed N`, N+1, N+2, ... so each differs and the session repeats);
+an abandoned test is not saved. The clock starts at the first character after a start or restart, and
+the live line (`wpm 84   acc 97%   12/25   0:09`) keeps updating about four times a second. On the results
+screen Tab or Enter starts again and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C work at once, while the
+first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `common` (`--rank`, `--bands`,
 `--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
 `--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
 shape the feed. The results show speed, raw speed, accuracy, errors, time, consistency, the ten
-slowest words and the missed ones; each run is added to `practice.jsonl` in the state folder (`out/`
+slowest words and the missed ones; each finished test is added to `practice.jsonl` in the state folder (`out/`
 in a checkout). All flags: the Reference, Build and files.
 
 ## Full benchmarks

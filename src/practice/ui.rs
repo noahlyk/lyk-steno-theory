@@ -12,6 +12,8 @@ use std::collections::HashMap;
 const MAX_WIDTH: u16 = 80;
 const LINES: usize = 3;
 const DIM: Color = Color::DarkGray;
+/// The live line: dim next to the words, but easy to read.
+const LIVE: Color = Color::Gray;
 
 /// What the feed screen needs besides the session.
 pub struct View<'a> {
@@ -73,18 +75,24 @@ fn word_spans(target: &str, typed: Option<&str>, current: bool) -> Vec<Span<'sta
     spans
 }
 
-/// The live line: `47 wpm  98%  0:12 / 1:00`, or the words done out of the count.
+/// The live line above the feed: `wpm 84   acc 97%   12/25   0:09` (words done out of the count
+/// and the time so far), or in a timed run the words done and the time left. The clock starts at
+/// the first key, so until then it is `wpm 0` and the full time.
 #[must_use]
 pub fn stats_line(session: &Session, now: f64, limit: Option<f64>) -> String {
     let r = session.results(now);
-    let elapsed = r.secs;
     let clock = |s: f64| format!("{}:{:02}", (s / 60.0) as u64, (s % 60.0) as u64);
     let progress = limit.map_or_else(
-        || format!("{}/{}", session.current(), session.words.len()),
-        |l| format!("{} / {}", clock(elapsed), clock(l)),
+        || format!("{}/{}   {}", session.current(), session.words.len(), clock(r.secs)),
+        |l| format!("{} words   {}", session.current(), clock((l - r.secs).max(0.0).ceil())),
     );
-    format!("{:.0} wpm  {:.0}%  {progress}", r.wpm, r.accuracy)
+    format!("wpm {:.0}   acc {:.0}%   {progress}", r.wpm, r.accuracy)
 }
+
+/// The key hint under the feed.
+pub const HINT: &str = "tab restart  esc quit";
+/// The key hint at the foot of the results screen.
+pub const RESULTS_HINT: &str = "tab/enter again  q/esc quit";
 
 pub fn draw(frame: &mut Frame, view: &View) {
     let area = frame.area();
@@ -108,13 +116,15 @@ pub fn draw(frame: &mut Frame, view: &View) {
             Line::from(spans)
         })
         .collect();
-    let height = LINES as u16 + if view.quiet { 0 } else { 2 };
+    let height = LINES as u16 + if view.quiet { 0 } else { 4 };
     let top = area.y + area.height.saturating_sub(height) / 2;
     let x = area.x + area.width.saturating_sub(width) / 2;
     let block = Rect { x, y: top, width: width.min(area.width), height: height.min(area.height) };
-    let parts = Layout::vertical([Constraint::Length(if view.quiet { 0 } else { 2 }), Constraint::Min(1)]).split(block);
+    let extra = if view.quiet { 0 } else { 2 };
+    let parts = Layout::vertical([Constraint::Length(extra), Constraint::Length(LINES as u16), Constraint::Length(extra)]).split(block);
     if !view.quiet {
-        frame.render_widget(Paragraph::new(stats_line(s, view.now, view.limit)).style(Style::default().fg(DIM)).alignment(Alignment::Left), parts[0]);
+        frame.render_widget(Paragraph::new(stats_line(s, view.now, view.limit)).style(Style::default().fg(LIVE)).alignment(Alignment::Left), parts[0]);
+        frame.render_widget(Paragraph::new(format!("\n{HINT}")).style(Style::default().fg(DIM)), parts[2]);
     }
     frame.render_widget(Paragraph::new(rows), parts[1]);
 }
@@ -165,8 +175,12 @@ pub fn draw_results(frame: &mut Frame, lines: &[String]) {
     let x = area.x + area.width.saturating_sub(width) / 2;
     frame.render_widget(
         Paragraph::new(rows),
-        Rect { x, y: area.y + 1, width: width.min(area.width), height: area.height.saturating_sub(2) },
+        Rect { x, y: area.y + 1, width: width.min(area.width), height: area.height.saturating_sub(3) },
     );
+    if area.height >= 3 {
+        let foot = Rect { x, y: area.y + area.height - 1, width: width.min(area.width), height: 1 };
+        frame.render_widget(Paragraph::new(RESULTS_HINT).style(Style::default().fg(DIM)), foot);
+    }
 }
 
 #[cfg(test)]
@@ -210,7 +224,7 @@ mod tests {
                 .unwrap()
         };
         assert_eq!(find("t", 0), Color::Green);
-        assert_eq!(find("a", 0), Color::Red);
+        assert_eq!(find("a", 1), Color::Red, "the first a is in the live line");
         assert_eq!(find("s", 0), DIM);
         // nothing else on screen: no outline, no key diagram
         assert!(!text.contains("KAT") && !text.contains("hint"), "{text}");
@@ -246,10 +260,59 @@ mod tests {
     }
 
     #[test]
-    fn timed_runs_show_a_clock() {
+    fn timed_runs_show_the_time_left() {
         let mut s = session(&["a", "b"]);
-        s.apply(Input::Char('a'), 0.0);
-        assert!(stats_line(&s, 12.0, Some(60.0)).ends_with("0:12 / 1:00"), "{}", stats_line(&s, 12.0, Some(60.0)));
+        assert_eq!(stats_line(&s, 5.0, Some(60.0)), "wpm 0   acc 100%   0 words   1:00");
+        s.apply(Input::Char('a'), 10.0);
+        let line = stats_line(&s, 22.0, Some(60.0));
+        assert!(line.ends_with("0 words   0:48"), "{line}");
+    }
+
+    #[test]
+    fn the_clock_starts_at_the_first_key_and_the_live_line_decays() {
+        let mut s = session(&["hello", "world", "again", "words", "more"]);
+        // 7 s pass with no key: the clock has not started
+        assert_eq!(stats_line(&s, 7.0, None), "wpm 0   acc 100%   0/5   0:00");
+        assert!(s.started.is_none());
+        // the first key at t=13 starts the clock
+        for c in "hello ".chars() {
+            s.apply(Input::Char(c), 13.0);
+        }
+        assert_eq!(s.started, Some(13.0));
+        // 5 correct characters over 6 s: 5 / 5 / (6 / 60) = 10 wpm
+        assert_eq!(stats_line(&s, 19.0, None), "wpm 10   acc 100%   1/5   0:06");
+        // no key for 6 more seconds: the clock runs on and the speed falls
+        assert_eq!(stats_line(&s, 25.0, None), "wpm 5   acc 100%   1/5   0:12");
+    }
+
+    #[test]
+    fn the_hint_and_the_live_line_show_and_quiet_hides_both() {
+        let s = session(&["the", "cat"]);
+        let mut term = Terminal::new(TestBackend::new(60, 12)).unwrap();
+        term.draw(|f| draw(f, &View { session: &s, now: 0.0, quiet: false, limit: None })).unwrap();
+        let rows = screen(&term);
+        let live = rows.iter().position(|r| r.contains("wpm 0   acc 100%   0/2   0:00")).expect("live line");
+        let feed = rows.iter().position(|r| r.contains("the cat")).expect("feed");
+        let hint = rows.iter().position(|r| r.contains(HINT)).expect("hint");
+        assert!(live < feed && feed < hint, "{rows:?}");
+        assert_eq!(HINT, "tab restart  esc quit");
+        let buf = term.backend().buffer();
+        let fg_at = |row: usize| (0..buf.area.width).map(|x| &buf[(x, row as u16)]).find(|c| c.symbol() != " ").map(|c| c.fg).unwrap();
+        assert_eq!(fg_at(hint), DIM);
+        assert_eq!(fg_at(live), LIVE);
+        term.draw(|f| draw(f, &View { session: &s, now: 0.0, quiet: true, limit: None })).unwrap();
+        let text = screen(&term).join("\n");
+        assert!(!text.contains("wpm") && !text.contains("restart"), "{text}");
+        assert!(text.contains("the cat"), "{text}");
+    }
+
+    #[test]
+    fn the_results_screen_has_its_footer() {
+        let r = session(&["a"]).results(1.0);
+        let mut term = Terminal::new(TestBackend::new(60, 12)).unwrap();
+        term.draw(|f| draw_results(f, &result_lines(&r, "common", &HashMap::new()))).unwrap();
+        let rows = screen(&term);
+        assert_eq!(rows.last().map(|r| r.trim()), Some(RESULTS_HINT), "{rows:?}");
     }
 
     #[test]

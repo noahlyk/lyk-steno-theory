@@ -67,7 +67,7 @@ pub struct Args {
     #[arg(long, value_name = "MIN-MAX")]
     rank: Option<String>,
     /// Words in the run
-    #[arg(long, default_value_t = 50, conflicts_with = "time")]
+    #[arg(long, default_value_t = 25, conflicts_with = "time")]
     count: usize,
     /// Run for this many seconds instead of a word count
     #[arg(long, value_name = "SECS")]
@@ -96,7 +96,7 @@ pub struct Args {
     /// A wrong word is not accepted until it is right
     #[arg(long)]
     stop_on_error: bool,
-    /// No live speed and accuracy line
+    /// No live speed and accuracy line and no key hint
     #[arg(long)]
     quiet: bool,
     /// Show the lyk outline of each missed or slow word on the results (needs `lyk build`)
@@ -126,41 +126,97 @@ pub fn run(args: &Args) -> Result<()> {
         bail!("lyk practice needs a terminal: stdin and stdout must both be a TTY (run it in a terminal, not through a pipe or redirect); `lyk practice --history` works anywhere");
     }
     let source = args.source.unwrap_or_else(|| if args.file.is_some() { Source::File } else { Source::Common });
-    let words = make_feed(args, source)?;
-    if words.is_empty() {
+    let pool = make_pool(args, source)?;
+    if feed::build(pool.clone(), &feed_opts(args, next_seed(args.seed, 0, random_seed()))).is_empty() {
         bail!("the filters leave no words to practise: loosen --min-len, --max-len, --lowercase-only or --rank");
     }
     let limit = args.time.map(|t| t as f64);
-    let mut session = Session::new(words, args.stop_on_error);
-    let (results, lines, aborted) = {
+    let mut last: Option<Vec<String>> = None;
+    let mut save_error: Option<String> = None;
+    {
         let mut terminal = ratatui::try_init().context("cannot start the terminal screen")?;
         let _restore = Restore;
-        let clock = Instant::now();
-        let aborted = type_loop(&mut terminal, &mut session, &clock, args.quiet, limit)?;
-        let results = session.results(session.finished_at.unwrap_or(0.0));
-        let outlines = if args.outlines && results.words > 0 { outlines_for(&results, &args.dict) } else { HashMap::new() };
-        let lines = ui::result_lines(&results, source.name(), &outlines);
-        if results.words > 0 {
-            show_results(&mut terminal, &lines)?;
+        let mut round = 0;
+        loop {
+            let words = feed::build(pool.clone(), &feed_opts(args, next_seed(args.seed, round, random_seed())));
+            let mut session = Session::new(words, args.stop_on_error);
+            let clock = Instant::now();
+            let outcome = type_loop(&mut terminal, &mut session, &clock, args.quiet, limit)?;
+            let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
+            let Some(record) = conclude(&session, outcome, source.name(), now) else {
+                if outcome == Outcome::Restart {
+                    round += 1;
+                    continue;
+                }
+                break;
+            };
+            if !args.no_save
+                && let Err(e) = history::append(&paths::practice_history(), &record)
+            {
+                save_error = Some(format!("could not save the run to {}: {e:#}", paths::practice_history().display()));
+            }
+            let results = session.results(session.finished_at.unwrap_or(0.0));
+            let outlines = if args.outlines { outlines_for(&results, &args.dict) } else { HashMap::new() };
+            let lines = ui::result_lines(&results, source.name(), &outlines);
+            if outcome == Outcome::Quit {
+                // Esc or Ctrl-C quit at once, with no results screen
+                last = Some(lines);
+                break;
+            }
+            let after = show_results(&mut terminal, &lines)?;
+            last = Some(lines);
+            if after == After::Quit {
+                break;
+            }
+            round += 1;
         }
-        (results, lines, aborted)
-    };
-    if results.words == 0 {
-        println!("no words typed");
-        return Ok(());
     }
-    for line in &lines {
-        println!("{line}");
-    }
-    if !args.no_save {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
-        let record = history::Record::from_results(&results, source.name(), now, !aborted);
-        let path = paths::practice_history();
-        if let Err(e) = history::append(&path, &record) {
-            eprintln!("could not save the run to {}: {e:#}", path.display());
+    match last {
+        Some(lines) => {
+            for line in &lines {
+                println!("{line}");
+            }
         }
+        None => println!("no words typed"),
+    }
+    if let Some(e) = save_error {
+        eprintln!("{e}");
     }
     Ok(())
+}
+
+/// How a test ended.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Outcome {
+    /// The feed or the clock ran out
+    Finished,
+    /// Esc or Ctrl-C: the results so far
+    Quit,
+    /// Tab: abandoned for a fresh feed
+    Restart,
+}
+
+/// The history record of a test, if it leaves one: an abandoned (restarted) test, or one with no
+/// words typed, does not.
+fn conclude(session: &Session, outcome: Outcome, source: &str, timestamp: u64) -> Option<history::Record> {
+    if outcome == Outcome::Restart {
+        return None;
+    }
+    let results = session.results(session.finished_at.unwrap_or(0.0));
+    (results.words > 0).then(|| history::Record::from_results(&results, source, timestamp, outcome == Outcome::Finished))
+}
+
+/// The seed of test number `round` (0 is the first): `--seed` plus the round, so a seeded session
+/// repeats exactly; without `--seed`, `random`.
+const fn next_seed(seed: Option<u64>, round: u64, random: u64) -> u64 {
+    match seed {
+        Some(s) => s.wrapping_add(round),
+        None => random,
+    }
+}
+
+fn random_seed() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64)
 }
 
 /// Restores the terminal when dropped, however the run ends. (`ratatui::try_init` also installs a
@@ -173,17 +229,21 @@ impl Drop for Restore {
     }
 }
 
-fn make_feed(args: &Args, source: Source) -> Result<Vec<String>> {
+fn feed_opts(args: &Args, seed: u64) -> feed::Opts {
     let size = args.time.map_or(args.count, |t| usize::try_from(t * TIMED_WORDS_PER_SECOND).unwrap_or(usize::MAX).max(200));
-    let opts = feed::Opts {
+    feed::Opts {
         count: size,
-        seed: args.seed.unwrap_or_else(|| SystemTime::now().duration_since(UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64)),
+        seed,
         no_repeat: args.no_repeat,
         lowercase_only: args.lowercase_only,
         min_len: args.min_len,
         max_len: args.max_len,
         weighted: args.weighted,
-    };
+    }
+}
+
+/// The source's words, read once: the bands each test's feed is drawn from.
+fn make_pool(args: &Args, source: Source) -> Result<Vec<Vec<String>>> {
     let bands = match source {
         Source::Common => {
             let spec = args.bands.as_deref().or(args.rank.as_deref()).unwrap_or("1-1000");
@@ -201,12 +261,14 @@ fn make_feed(args: &Args, source: Source) -> Result<Vec<String>> {
         Source::Phrases => vec![sources::phrases(&args.dict)?],
         Source::Quotes => vec![sources::quotes(&paths::data_dir().join("corpus"))?],
     };
-    // A feed that runs short (--no-repeat on a small pool) is as long as it can be.
-    Ok(feed::build(bands, &opts))
+    Ok(bands)
 }
 
-/// Runs the screen until the feed or the clock ends or the typist quits. True if they quit.
-fn type_loop(terminal: &mut DefaultTerminal, session: &mut Session, clock: &Instant, quiet: bool, limit: Option<f64>) -> Result<bool> {
+/// How often the screen is redrawn with no key pressed, so the clock and speed keep moving.
+const REDRAW: Duration = Duration::from_millis(250);
+
+/// Runs the screen until the feed or the clock ends, the typist quits or restarts.
+fn type_loop(terminal: &mut DefaultTerminal, session: &mut Session, clock: &Instant, quiet: bool, limit: Option<f64>) -> Result<Outcome> {
     loop {
         let now = clock.elapsed().as_secs_f64();
         if let (Some(limit), Some(start)) = (limit, session.started)
@@ -216,17 +278,18 @@ fn type_loop(terminal: &mut DefaultTerminal, session: &mut Session, clock: &Inst
         }
         terminal.draw(|f| ui::draw(f, &ui::View { session, now, quiet, limit }))?;
         if session.finished() {
-            return Ok(false);
+            return Ok(Outcome::Finished);
         }
-        if !event::poll(Duration::from_millis(100))? {
+        if !event::poll(REDRAW)? {
             continue;
         }
         match event::read()? {
             Event::Key(key) if key.kind != KeyEventKind::Release => match translate(key) {
                 Key::Quit => {
                     session.finish(clock.elapsed().as_secs_f64());
-                    return Ok(true);
+                    return Ok(Outcome::Quit);
                 }
+                Key::Restart => return Ok(Outcome::Restart),
                 Key::Input(input) => session.apply(input, clock.elapsed().as_secs_f64()),
                 Key::Ignore => {}
             },
@@ -237,17 +300,20 @@ fn type_loop(terminal: &mut DefaultTerminal, session: &mut Session, clock: &Inst
 
 enum Key {
     Quit,
+    Restart,
     Input(Input),
     Ignore,
 }
 
-/// A key press as the engine sees it. Ctrl-Backspace arrives as Ctrl-H (or Backspace with a
-/// modifier) and Ctrl-W deletes a word; Ctrl-C and Esc quit.
+/// A key press during a test as the engine sees it. Ctrl-Backspace arrives as Ctrl-H (or
+/// Backspace with a modifier) and Ctrl-W deletes a word; Ctrl-C and Esc quit, Tab restarts, and
+/// `q` is an ordinary letter.
 fn translate(key: KeyEvent) -> Key {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let word = key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
     match key.code {
         KeyCode::Esc => Key::Quit,
+        KeyCode::Tab => Key::Restart,
         KeyCode::Char('c') if ctrl => Key::Quit,
         KeyCode::Char('w' | 'h') if ctrl => Key::Input(Input::DeleteWord),
         KeyCode::Backspace if word => Key::Input(Input::DeleteWord),
@@ -258,16 +324,63 @@ fn translate(key: KeyEvent) -> Key {
     }
 }
 
-/// Shows the results until a key. Keys still arriving from the run (strokes already on their
-/// way) are let go first, so the screen is not dismissed by them.
-fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<()> {
-    terminal.draw(|f| ui::draw_results(f, lines))?;
-    while event::poll(Duration::from_millis(700))? {
-        event::read()?;
+/// What a key on the results screen asks for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum After {
+    Quit,
+    Restart,
+}
+
+/// Seconds after the results appear (and after each key swallowed) in which keys still arriving
+/// from the run cannot dismiss the screen.
+const RESULTS_QUIET: f64 = 0.7;
+
+/// The results screen's key handling, with the time passed in. Ctrl-C and Esc quit at once (a
+/// steno burst never sends them); inside the quiet window every other key is swallowed (and
+/// extends it); after it, `q` quits and Tab and Enter restart.
+struct Gate {
+    quiet_until: f64,
+}
+
+impl Gate {
+    const fn new(now: f64) -> Self {
+        Self { quiet_until: now + RESULTS_QUIET }
     }
+
+    fn key(&mut self, key: KeyEvent, now: f64) -> Option<After> {
+        if key.code == KeyCode::Esc || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL)) {
+            return Some(After::Quit);
+        }
+        if now < self.quiet_until {
+            self.quiet_until = now + RESULTS_QUIET;
+            return None;
+        }
+        if key.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
+            return None;
+        }
+        match key.code {
+            KeyCode::Char('q') => Some(After::Quit),
+            KeyCode::Tab | KeyCode::Enter => Some(After::Restart),
+            _ => None,
+        }
+    }
+}
+
+/// Shows the results until the typist quits or asks for another test.
+fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<After> {
+    terminal.draw(|f| ui::draw_results(f, lines))?;
+    let clock = Instant::now();
+    let mut gate = Gate::new(0.0);
     loop {
+        if !event::poll(REDRAW)? {
+            continue;
+        }
         match event::read()? {
-            Event::Key(k) if k.kind != KeyEventKind::Release => return Ok(()),
+            Event::Key(k) if k.kind != KeyEventKind::Release => {
+                if let Some(after) = gate.key(k, clock.elapsed().as_secs_f64()) {
+                    return Ok(after);
+                }
+            }
             Event::Resize(..) => {
                 terminal.draw(|f| ui::draw_results(f, lines))?;
             }
@@ -319,8 +432,86 @@ mod tests {
         assert!(matches!(translate(key(KeyCode::Char('h'), KeyModifiers::CONTROL)), Key::Input(Input::DeleteWord)));
         assert!(matches!(translate(key(KeyCode::Char('c'), KeyModifiers::CONTROL)), Key::Quit));
         assert!(matches!(translate(key(KeyCode::Esc, none)), Key::Quit));
-        assert!(matches!(translate(key(KeyCode::Tab, none)), Key::Ignore));
+        assert!(matches!(translate(key(KeyCode::Tab, none)), Key::Restart));
+        // `q` is an ordinary letter during a test
+        assert!(matches!(translate(key(KeyCode::Char('q'), none)), Key::Input(Input::Char('q'))));
         assert!(matches!(translate(key(KeyCode::Char('x'), KeyModifiers::CONTROL)), Key::Ignore));
+    }
+
+    #[test]
+    fn the_results_screen_keys() {
+        let none = KeyModifiers::NONE;
+        let ctrl = KeyModifiers::CONTROL;
+        let after = |gate: &mut Gate, code, mods, now| gate.key(key(code, mods), now);
+        let mut g = Gate::new(10.0);
+        // inside the 0.7 s window: stray keys do nothing, and extend it
+        assert_eq!(after(&mut g, KeyCode::Char('q'), none, 10.3), None);
+        assert_eq!(after(&mut g, KeyCode::Tab, none, 10.8), None, "the window was extended by the key at 10.3 and 10.8");
+        assert_eq!(after(&mut g, KeyCode::Enter, none, 10.9), None);
+        // Esc and Ctrl-C work inside the window
+        assert_eq!(after(&mut g, KeyCode::Esc, none, 10.95), Some(After::Quit));
+        assert_eq!(after(&mut g, KeyCode::Char('c'), ctrl, 10.95), Some(After::Quit));
+        // just after it, everything works at once
+        assert_eq!(after(&mut g, KeyCode::Char('q'), none, 11.7), Some(After::Quit));
+        let mut g = Gate::new(0.0);
+        assert_eq!(after(&mut g, KeyCode::Esc, none, 0.1), Some(After::Quit));
+        assert_eq!(after(&mut g, KeyCode::Tab, none, 0.7), Some(After::Restart));
+        assert_eq!(after(&mut g, KeyCode::Enter, none, 5.0), Some(After::Restart));
+        assert_eq!(after(&mut g, KeyCode::Char('c'), ctrl, 5.0), Some(After::Quit));
+        assert_eq!(after(&mut g, KeyCode::Char('x'), none, 5.0), None);
+        assert_eq!(after(&mut g, KeyCode::Char(' '), none, 5.0), None);
+        assert_eq!(after(&mut g, KeyCode::Char('q'), ctrl, 5.0), None);
+    }
+
+    #[test]
+    fn restart_advances_a_given_seed_and_randomises_otherwise() {
+        assert_eq!(next_seed(Some(7), 0, 999), 7);
+        assert_eq!(next_seed(Some(7), 1, 999), 8);
+        assert_eq!(next_seed(Some(7), 2, 999), 9);
+        assert_eq!(next_seed(Some(u64::MAX), 1, 999), 0, "wraps");
+        assert_eq!(next_seed(None, 3, 999), 999);
+        // different seeds give different feeds, the same seed the same feed
+        let pool = vec![(0..500).map(|i| format!("w{i}")).collect::<Vec<_>>()];
+        let opts = |seed| feed::Opts { count: 25, seed, no_repeat: false, lowercase_only: false, min_len: 1, max_len: 30, weighted: false };
+        let a = feed::build(pool.clone(), &opts(7));
+        assert_eq!(a, feed::build(pool.clone(), &opts(7)));
+        assert_ne!(a, feed::build(pool, &opts(8)));
+        assert_eq!(a.len(), 25);
+    }
+
+    #[test]
+    fn a_restart_resets_the_session_and_leaves_no_history() {
+        let words: Vec<String> = ["the", "cat", "sat"].map(String::from).to_vec();
+        let mut s = Session::new(words.clone(), false);
+        for c in "the ca".chars() {
+            s.apply(Input::Char(c), 2.0);
+        }
+        assert!(s.started.is_some() && s.current() == 1 && !s.typed.is_empty());
+        // abandoned by Tab: no record
+        assert!(conclude(&s, Outcome::Restart, "common", 1).is_none(), "an abandoned test is not saved");
+        // the next test is a fresh session: nothing carried over, the clock not started
+        let fresh = Session::new(words, false);
+        assert!(fresh.started.is_none() && fresh.current() == 0 && fresh.typed.is_empty() && !fresh.finished());
+        assert_eq!(fresh.results(5.0).words, 0);
+        // Esc with words typed does leave a record, marked incomplete; with none it does not
+        s.finish(4.0);
+        let rec = conclude(&s, Outcome::Quit, "common", 1).expect("words typed");
+        assert!(!rec.complete && rec.count == 1);
+        assert!(conclude(&fresh, Outcome::Quit, "common", 1).is_none(), "no words typed, no record");
+        let mut done = Session::new(vec!["a".into()], false);
+        done.apply(Input::Char('a'), 1.0);
+        assert!(conclude(&done, Outcome::Finished, "common", 1).expect("finished").complete);
+    }
+
+    #[test]
+    fn count_defaults_to_25() {
+        use clap::Parser;
+        #[derive(Parser)]
+        struct Cli {
+            #[command(flatten)]
+            args: Args,
+        }
+        assert_eq!(Cli::parse_from(["x"]).args.count, 25);
     }
 
     #[test]
