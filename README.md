@@ -104,7 +104,9 @@ lyk practice --source phrases --count 100     # the phrasing grammar's phrases, 
 lyk practice --history                        # recent runs and the trend
 lyk vocab                                     # the vocabulary: size, frontier, learning, due, lapses
 lyk vocab know the and                        # retire words you know: never shown again
-lyk vocab gate 70                             # lower the clean-accuracy gate for new words (default 75)
+lyk vocab gate 60                             # lower the gate for new words (default 70)
+lyk vocab stuck                               # words that stay unclean: out of the learning cap, with their outline
+lyk vocab spread                              # spread a wall of reviews that are all due on one day
 ```
 
 Space or Enter commits a word; a wrong word is an error and the feed moves on
@@ -124,20 +126,27 @@ slowest words, the missed ones and the stumbled ones (a word you corrected befor
 finished test is added to `practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
 words next to the missed ones, and `--history` shows a stumbled-count column. All flags: the Reference, Build and files.
 
-The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. Each test
-holds the words you are learning, reviews that are due, and up to 2 new words, which are earned (a free
-slot among 10 learning words, 75% clean over your last 50 attempts) and come in frequency order from
+The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. A test has
+exactly `--count` words (25): at most 40% words you are learning (once each, a second copy for the worst
+few), at most 30% reviews that are due, up to 2 new words (twice each), and the rest an easy base of
+review words you type cleanly. New words are earned: a free slot among 10 learning words (stuck ones do
+not count) and the easy base 70% clean (the first attempts of review words, last 50), so drilling hard
+words does not close the gate. They come in frequency order from
 lyk's list merged with Monkeytype's English lists (`lyk fetch` downloads them; words in Monkeytype's
 common lists are met a little earlier, `--monkeytype-weight`), all the way down the long tail. An attempt
 counts as clean only when the word was right and needed no correction on the way (a `*` or backspace
 before the space is a stumble, even if the word then commits right); a stumbled or wrong word comes
-back 3 words later in the same test (up to 3 times) and is drilled first in the next. A word 9 of
+back 3 words later in the same test in place of a base word (so the test keeps its length; at most 2
+copies of a word, 3 after two unclean ones) and is drilled in the next. A word 9 of
 whose last 10 attempts are clean, over 3 days, becomes a review and returns after 1, 3, 7, 21, 60 and
-180 days; a miss or stumble steps it back, two in a row send it back to learning. The state is `vocab.json` beside
+180 days; a miss or stumble steps it back, two in a row send it back to learning. A learning word with 30
+or more practice attempts, under 30% of them clean, over 7 days, is stuck: it leaves the cap, is drilled
+lightly and is listed by `lyk vocab stuck` (a hint that its outline does not suit your hands). The state is `vocab.json` beside
 `practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
-already type well are not new. `lyk vocab` shows it (with the stumble rate, the words stumbled most this
-week, and why no new word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`
-edit it; `--no-adapt` plays a feed without changing it. The rules are in the Reference, Build and files.
+already type well are not new (their first reviews are spread over 1 to 30 days). `lyk vocab` shows it
+(filler and learning clean rates, the stumble rate, the words stumbled most this week, and why no new
+word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`, `spread`
+edit it; `--no-adapt` plays a feed without changing it. `--history` ends with the stuck count. The rules are in the Reference, Build and files.
 
 ## Full benchmarks
 

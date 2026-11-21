@@ -11,6 +11,8 @@
 //! stumble is not clean: the typist's corrections come before the commit, so the committed word
 //! alone hides them.
 
+use std::collections::HashSet;
+
 /// One thing the typist did.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Input {
@@ -29,8 +31,8 @@ pub struct Done {
     pub secs: f64,
     /// Corrections made while the word was open (runs of backspaces or word deletes)
     pub stumbles: u32,
-    /// Where the copy put back after this word sits in `words`, while it is still ahead
-    queued: Option<usize>,
+    /// Where the copy put back after this word sits in `words`, and the filler word it replaced
+    queued: Option<(usize, String)>,
 }
 
 impl Done {
@@ -52,6 +54,11 @@ pub struct Miss {
     pub word: String,
     pub typed: String,
 }
+
+/// Most times one word is in a test, a re-queued copy included.
+pub const MAX_COPIES: usize = 2;
+/// Most times it is in a test once it has been unclean twice.
+pub const MAX_COPIES_TWICE_UNCLEAN: usize = 3;
 
 /// Extra characters allowed past the end of a word.
 const OVERFLOW: usize = 8;
@@ -76,10 +83,8 @@ pub struct Session {
     removing: bool,
     /// The open word was refused (`stop_on_error`): that is already a miss, its deletes do not count
     refused_open: bool,
-    /// A missed word comes back this many words later, at most this many times: `(gap, times)`
-    respace: Option<(usize, u32)>,
-    /// How many times each missed word has been put back
-    put_back: Vec<(String, u32)>,
+    /// A missed word comes back this many words later in place of a filler word: `(gap, fillers)`
+    requeue: Option<(usize, HashSet<String>)>,
 }
 
 impl Session {
@@ -100,8 +105,7 @@ impl Session {
             ahead: Vec::new(),
             removing: false,
             refused_open: false,
-            respace: None,
-            put_back: Vec::new(),
+            requeue: None,
         }
     }
 
@@ -111,40 +115,38 @@ impl Session {
         &self.refused
     }
 
-    /// A missed word re-enters the feed `gap` words later, at most `times` times in all.
+    /// A missed or stumbled word comes back `gap` words later *in place of* a later filler word
+    /// (one of `fillers`), so the test keeps its length. A word is in the test at most twice
+    /// (`MAX_COPIES`), three times once it has been unclean twice; with no filler word ahead
+    /// nothing comes back.
     #[must_use]
-    pub const fn with_respacing(mut self, gap: usize, times: u32) -> Self {
-        self.respace = Some((gap, times));
+    pub fn with_requeue(mut self, gap: usize, fillers: HashSet<String>) -> Self {
+        self.requeue = Some((gap, fillers));
         self
     }
 
-    /// Puts a missed word back `gap` words ahead (not next to itself), if it has been put back
-    /// fewer than `times` times.
-    fn put_back_missed(&mut self, target: &str) -> Option<usize> {
-        let (gap, times) = self.respace?;
-        let used = self.put_back.iter().position(|(w, _)| w == target);
-        if used.is_some_and(|i| self.put_back[i].1 >= times) {
+    /// Puts an unclean word back `gap` words ahead (not next to itself) over a filler word, when it
+    /// is under its copy limit and a filler word is ahead. Returns where, and what it replaced.
+    fn put_back_missed(&mut self, target: &str) -> Option<(usize, String)> {
+        let (gap, fillers) = self.requeue.as_ref()?;
+        let copies = self.words.iter().filter(|w| *w == target).count();
+        // this attempt is not in `done` yet
+        let unclean = self.done.iter().filter(|d| d.target == target && !d.clean()).count() + 1;
+        if copies >= if unclean >= 2 { MAX_COPIES_TWICE_UNCLEAN } else { MAX_COPIES } {
             return None;
         }
-        match used {
-            Some(i) => self.put_back[i].1 += 1,
-            None => self.put_back.push((target.to_owned(), 1)),
-        }
-        let mut at = (self.done.len() + gap.max(1)).min(self.words.len());
-        while at < self.words.len() && (self.words[at] == target || at > 0 && self.words[at - 1] == target) {
-            at += 1;
-        }
-        self.words.insert(at, target.to_owned());
-        Some(at)
+        let from = self.done.len() + (*gap).max(1);
+        let len = self.words.len();
+        let at = (from..len).find(|&at| fillers.contains(&self.words[at]) && !(at > 0 && self.words[at - 1] == target) && !(at + 1 < len && self.words[at + 1] == target))?;
+        let old = std::mem::replace(&mut self.words[at], target.to_owned());
+        Some((at, old))
     }
 
-    /// Takes back the copy put back after a word that is being reopened.
-    fn take_back(&mut self, target: &str, at: usize) {
+    /// Takes back the copy put back after a word that is being reopened: the filler word it
+    /// replaced returns.
+    fn take_back(&mut self, target: &str, at: usize, old: String) {
         if self.words.get(at).is_some_and(|w| w == target) && at > self.done.len() {
-            self.words.remove(at);
-            if let Some(i) = self.put_back.iter().position(|(w, _)| w == target) {
-                self.put_back[i].1 = self.put_back[i].1.saturating_sub(1);
-            }
+            self.words[at] = old;
         }
     }
 
@@ -268,8 +270,8 @@ impl Session {
     /// is a correction of it. The copy put back after it is taken back.
     fn reopen(&mut self) {
         if let Some(prev) = self.done.pop() {
-            if let Some(at) = prev.queued {
-                self.take_back(&prev.target, at);
+            if let Some((at, old)) = prev.queued {
+                self.take_back(&prev.target, at, old);
             }
             self.typed = prev.typed;
             self.ahead.push(self.stumbles);
@@ -377,30 +379,58 @@ mod tests {
         }
     }
 
+    fn fillers(words: &[&str]) -> HashSet<String> {
+        words.iter().map(|w| (*w).to_owned()).collect()
+    }
+
     #[test]
-    fn a_missed_word_comes_back_three_words_later_at_most_three_times() {
-        let mut s = session(&["aa", "bb", "cc", "dd", "ee", "ff", "gg"], false).with_respacing(3, 3);
-        type_str(&mut s, "xx ", 1.0); // aa missed: back two words after the next one
-        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "dd", "ee", "ff", "gg"].map(String::from), "{:?}", s.words);
+    fn a_missed_word_replaces_a_filler_three_words_later_and_the_test_keeps_its_length() {
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee", "ff", "gg"], false).with_requeue(3, fillers(&["dd", "ee", "ff", "gg"]));
+        type_str(&mut s, "xx ", 1.0); // aa missed: back at the third word on, over a filler
+        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "ee", "ff", "gg"].map(String::from), "dd was the filler replaced: {:?}", s.words);
         type_str(&mut s, "bb cc ", 2.0);
-        type_str(&mut s, "xx ", 3.0); // aa missed again
+        // the copy is typed wrong again: it was unclean twice, so a third copy may come back
+        type_str(&mut s, "xx ", 3.0);
         assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 3, "{:?}", s.words);
+        assert_eq!(s.words.len(), 7, "never longer");
         assert!(s.words.iter().rposition(|w| w == "aa").unwrap() > s.current(), "ahead of the typist");
+        // a fourth is not put back
         run_to(&mut s, "aa", 4.0);
-        type_str(&mut s, "xx ", 4.0); // the third miss is put back too
-        assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 4, "{:?}", s.words);
-        // the fourth miss is not put back
-        let before = s.words.len();
-        run_to(&mut s, "aa", 5.0);
-        type_str(&mut s, "xx ", 5.0);
-        assert_eq!(s.words.len(), before, "put back three times already");
-        // the feed runs on to the end and the session finishes only then
+        let before = s.words.clone();
+        type_str(&mut s, "xx ", 4.0);
+        assert_eq!(s.words, before, "three copies is the most");
         while !s.finished() {
             let t = s.target().unwrap().to_owned();
             type_str(&mut s, &format!("{t} "), 6.0);
         }
-        assert_eq!(s.done.len(), s.words.len());
-        assert_eq!(s.done.iter().filter(|d| !d.correct()).count(), 4);
+        assert_eq!(s.done.len(), 7, "exactly the planned count");
+    }
+
+    #[test]
+    fn a_word_is_at_most_twice_in_a_test_unless_it_was_unclean_twice() {
+        // planned twice already: no copy for the first miss
+        let mut s = session(&["aa", "bb", "aa", "cc", "dd", "ee"], false).with_requeue(3, fillers(&["cc", "dd", "ee"]));
+        type_str(&mut s, "xx ", 1.0);
+        assert_eq!(s.words, ["aa", "bb", "aa", "cc", "dd", "ee"].map(String::from), "{:?}", s.words);
+        // the second miss makes it three
+        type_str(&mut s, "bb xx ", 2.0);
+        assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 3, "{:?}", s.words);
+        assert_eq!(s.words.len(), 6);
+    }
+
+    #[test]
+    fn nothing_comes_back_when_no_filler_is_ahead_or_when_the_word_would_touch_itself() {
+        let mut s = session(&["aa", "bb", "cc"], false).with_requeue(3, fillers(&["zz"]));
+        type_str(&mut s, "xx ", 1.0);
+        assert_eq!(s.words, ["aa", "bb", "cc"].map(String::from), "no filler ahead");
+        // the only filler is right after a copy of the word: not next to itself
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee"], false).with_requeue(1, fillers(&["bb", "cc"]));
+        type_str(&mut s, "xx ", 1.0);
+        assert_eq!(s.words, ["aa", "bb", "aa", "dd", "ee"].map(String::from), "bb touches the current aa, so cc is the one replaced: {:?}", s.words);
+        // without requeueing nothing moves
+        let mut plain = session(&["aa", "bb"], false);
+        type_str(&mut plain, "xx ", 1.0);
+        assert_eq!(plain.words, ["aa", "bb"].map(String::from));
     }
 
     // ---- stumbles ----
@@ -482,30 +512,22 @@ mod tests {
     }
 
     #[test]
-    fn a_stumbled_or_wrong_word_is_put_back_and_taking_it_back_removes_the_copy() {
-        let mut s = session(&["aa", "bb", "cc", "dd", "ee"], false).with_respacing(3, 3);
+    fn a_stumbled_or_wrong_word_is_put_back_and_taking_it_back_restores_the_filler() {
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee"], false).with_requeue(3, fillers(&["dd", "ee"]));
         type_str(&mut s, "ax", 1.0);
         s.apply(Input::Backspace, 1.1);
         type_str(&mut s, "a ", 1.2); // right in the end, after a stumble
-        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "dd", "ee"].map(String::from), "{:?}", s.words);
+        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "ee"].map(String::from), "{:?}", s.words);
         assert!(!s.done[0].clean());
-        // reopening it takes the copy back: it is typed again, but the test is as long as before
+        // reopening it gives the filler back: it is typed again, but the test is as long as before
         s.apply(Input::Backspace, 1.3);
         assert_eq!(s.words, ["aa", "bb", "cc", "dd", "ee"].map(String::from), "{:?}", s.words);
         s.apply(Input::Char(' '), 1.4);
         assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 2, "put back again once it is committed unclean: {:?}", s.words);
+        assert_eq!(s.words.len(), 5);
         // a clean word is not put back
         type_str(&mut s, "bb ", 2.0);
         assert_eq!(s.words.iter().filter(|w| *w == "bb").count(), 1);
-        // a word put back three times is not put back a fourth, stumbles included
-        let mut s = session(&["aa", "bb", "cc"], false).with_respacing(3, 3);
-        for round in 0..4 {
-            run_to(&mut s, "aa", 1.0);
-            type_str(&mut s, "x", 1.0);
-            s.apply(Input::Backspace, 1.1);
-            type_str(&mut s, "aa ", 1.2);
-            assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), (round + 2).min(4), "round {round}: {:?}", s.words);
-        }
     }
 
     #[test]
@@ -530,16 +552,11 @@ mod tests {
     }
 
     #[test]
-    fn a_missed_last_word_is_put_back_at_the_end_and_without_respacing_nothing_moves() {
-        let mut s = session(&["aa", "bb"], false).with_respacing(4, 2);
+    fn a_missed_last_word_has_no_filler_after_it_and_so_stays_missed() {
+        let mut s = session(&["aa", "bb"], false).with_requeue(4, fillers(&["bb"]));
         type_str(&mut s, "aa xx ", 1.0);
-        assert!(!s.finished(), "the missed last word is not done yet");
-        assert_eq!(s.words, ["aa", "bb", "bb"].map(String::from));
-        type_str(&mut s, "bb", 2.0);
-        assert!(s.finished());
-        let mut plain = session(&["aa", "bb"], false);
-        type_str(&mut plain, "xx ", 1.0);
-        assert_eq!(plain.words, ["aa", "bb"].map(String::from));
+        assert!(s.finished(), "the test ends at its planned length");
+        assert_eq!(s.words, ["aa", "bb"].map(String::from));
     }
 
     #[test]

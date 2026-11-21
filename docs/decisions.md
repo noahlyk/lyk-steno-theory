@@ -3244,3 +3244,36 @@ words with 20 or more attempts at or below it start in review (level 1, 2 under 
 most typed), the 10 worst above it in learning; before, a 31%-undo tape seeded 3 review words. Simulated
 (90 days, a learner clean 72 to 76% of the time with forgetting, typed through the real session):
 about 0.8 new words a day, 3 to 8 learning at a time, vocabulary 73 words after 90 days.
+
+**Adaptive tests have a fixed length and a composition, the gate reads an easy base, stuck words leave
+the cap, and the first reviews are spread.** Observed on the typist's real state after 11 tests: tests of
+52 to 70 words for a count of 25 (10 learning words placed 2 to 3 times each, every stumble re-queued up to
+3 more times, so the test was nearly all the same 10 words and its speed was not comparable with other
+tests); a gate of 75% clean over the last 50 attempts at 12% because those attempts were the drilled
+words, so no new word could ever be earned; 218 of 303 seeded reviews due on the same day; learning words
+that are very frequent words with 0 to 3 of the last 10 clean after about 300 attempts (an outline that
+does not suit the hands, not a lack of practice). Changes. (1) A test has exactly `--count` words: a
+re-queued word replaces a later easy-base word (never a due review or a learning word) instead of
+lengthening the feed, at most 2 copies of a word, 3 after two unclean ones; with no base word ahead it does
+not return. (2) Composition of 25: learning words (stuck, new and stumbled-lately included) at most 40%
+(10), in priority stuck (2 at most), new (2 words, 2 copies), stumbled in the last 2 tests, others by
+weight, once each, with a second copy for the 3 worst if room; due reviews at most 30% (7), longest overdue
+first; the rest an easy base of review words not yet due, drawn from the cleanest. (3) The gate reads the
+clean share of the first attempts of review words over the last 50 such attempts, or the last 3 tests'
+together, not all attempts; it is 70%, not 75%: the tape's review words are clean 74% at the median (25th
+percentile 68%, 10th 65%, 303 words with 20 or more attempts), so 75% was a coin flip on an ordinary test, and
+the base is chosen cleanest so 70% is reached by a normal day. (4) A learning word with 30 or more practice
+attempts since it entered learning, under 30% clean and 7 or more practised days (for a seeded word the
+tape's days count, since its attempts before practice were already counted as seeded) is stuck: out of the
+cap (a new word can come in), drilled at most twice a test between two of them, unstuck at mastery or 9 of 10 clean with room.
+`lyk vocab stuck` shows its outline, key count, ergonomic cost and the usual wrong word from the tape, for the
+theory-level question of whether the outline suits the hands. (5) Seeded reviews get due days spread by a hash of the
+word over a window by level (1: 1 to 14 days, 2: 3 to 21, 3: 7 to 30, at most 15 a day); an existing
+`vocab.json` is not re-seeded; `vocab spread` re-spreads untouched reviews (backup first, idempotent).
+Simulated (90 days, one 25-word test a day, seeded with 120 reviews at 90% clean and 10 hard learning words at
+about 70%): 130 to 164 words, 33 new words, 10 learning at a time, never more than 7 due reviews in a test.
+That is about 0.4 new words a day, slower than the 0.8 of the earlier entry because one copy a test needs
+about 10 tests to fill a word's window of 10: more tests a day, not longer tests, is the way to go faster.
+A learner clean 5% of the time on every learning word still earned new words (stuck by day 15, 4 or more new
+words in 60 days) where the old gate stayed shut. What regresses if undone: a test grows and
+becomes the same words, or no word can be earned while the learning words are drilled.

@@ -71,7 +71,7 @@ pub struct Args {
     /// Adaptive: most words being learned at once
     #[arg(long, default_value_t = 10)]
     learning_cap: usize,
-    /// Adaptive: clean share (percent) of the last 50 attempts that earns new words [default: 75, or what `lyk vocab gate` set]
+    /// Adaptive: clean share (percent) of the easy base (first attempts of review words, last 50) that earns new words [default: 70, or what `lyk vocab gate` set]
     #[arg(long, value_name = "PERCENT")]
     gate: Option<f64>,
     /// Adaptive: which word lists the new words come from
@@ -149,6 +149,9 @@ const RECENT_RUNS: usize = 15;
 pub fn run(args: &Args) -> Result<()> {
     if args.history {
         print!("{}", history::report(&history::read(&paths::practice_history()), RECENT_RUNS));
+        if let Some(line) = stuck_line(Vocab::load(&vocab::file()).map_or(0, |v| v.stuck_count())) {
+            println!("{line}");
+        }
         return Ok(());
     }
     if !(std::io::stdin().is_terminal() && std::io::stdout().is_terminal()) {
@@ -174,7 +177,7 @@ pub fn run(args: &Args) -> Result<()> {
             let words = feeder.words(args, next_seed(args.seed, round, random_seed()));
             let mut session = Session::new(words, args.stop_on_error);
             if let Feeder::Adaptive(a) = &feeder {
-                session = session.with_respacing(a.cfg.respace_gap, a.cfg.max_respace);
+                session = session.with_requeue(a.cfg.respace_gap, a.fillers.clone());
             }
             let clock = Instant::now();
             let outcome = type_loop(&mut terminal, &mut session, &clock, args.quiet, limit)?;
@@ -291,6 +294,8 @@ struct Adaptive {
     cfg: adaptive::Config,
     /// Whether finished tests are written to vocab.json
     save: bool,
+    /// The easy-base words of the current feed: a missed word may replace one of them
+    fillers: HashSet<String>,
 }
 
 impl Adaptive {
@@ -313,7 +318,7 @@ impl Adaptive {
                 vocab.save(&path)?;
             }
         }
-        Ok(Self { pool, vocab, cfg, save: !args.no_adapt })
+        Ok(Self { pool, vocab, cfg, save: !args.no_adapt, fillers: HashSet::new() })
     }
 
     fn feed(&mut self, args: &Args, seed: u64) -> Vec<String> {
@@ -323,7 +328,9 @@ impl Adaptive {
             n >= min && n <= max && !(lower && w.chars().any(char::is_uppercase))
         };
         let size = feed_opts(args, seed).count;
-        adaptive::plan_feed(&self.vocab, &mut self.pool, &self.cfg, today(), size, seed, &keep).words
+        let plan = adaptive::plan_feed(&self.vocab, &mut self.pool, &self.cfg, today(), size, seed, &keep);
+        self.fillers = plan.fillers.into_iter().collect();
+        plan.words
     }
 
     /// Teaches the vocabulary a finished test and saves it.
@@ -355,6 +362,11 @@ fn expand_home(path: &std::path::Path) -> PathBuf {
         (Ok(rest), Some(home)) => PathBuf::from(home).join(rest),
         _ => path.to_path_buf(),
     }
+}
+
+/// `N stuck words: lyk vocab stuck`, when there are any.
+fn stuck_line(n: usize) -> Option<String> {
+    (n > 0).then(|| format!("{n} stuck word{}: lyk vocab stuck", if n == 1 { "" } else { "s" }))
 }
 
 /// Missed words of the recorded runs, one entry per miss: all `vocab seeding` knows of them.
@@ -538,6 +550,12 @@ fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<Afte
 fn outlines_for(results: &engine::Results, dir: &std::path::Path) -> HashMap<String, String> {
     let wanted: HashSet<&str> =
         results.slow.iter().map(|(w, _)| w.as_str()).chain(results.misses.iter().map(|m| m.word.as_str())).chain(results.stumbled.iter().map(|(w, _)| w.as_str())).collect();
+    best_outlines(&wanted, dir)
+}
+
+/// The lyk outline of each of `wanted`, from the built dictionary in `dir`: its fewest-stroke,
+/// then shortest, entry. Empty when nothing is built.
+pub fn best_outlines(wanted: &HashSet<&str>, dir: &std::path::Path) -> HashMap<String, String> {
     let mut best: HashMap<String, String> = HashMap::new();
     for file in ["02-lyk-words.json", "02-lyk-short.json", "02-lyk-alternates.json", "02-lyk-extras.json"] {
         let Ok(text) = std::fs::read_to_string(dir.join(file)) else { continue };
@@ -687,6 +705,13 @@ mod tests {
             args: Args,
         }
         assert_eq!(Cli::parse_from(["x"]).args.count, 25);
+    }
+
+    #[test]
+    fn the_history_ends_with_the_stuck_word_count() {
+        assert_eq!(stuck_line(0), None);
+        assert_eq!(stuck_line(1).as_deref(), Some("1 stuck word: lyk vocab stuck"));
+        assert_eq!(stuck_line(4).as_deref(), Some("4 stuck words: lyk vocab stuck"));
     }
 
     #[test]

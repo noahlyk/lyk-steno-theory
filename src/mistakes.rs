@@ -1074,9 +1074,48 @@ pub fn word_stats(tape: &Path, dict: &Path) -> Result<Vec<TapeWord>> {
     Ok(word_stats_from(&text, anchor, &ordinary))
 }
 
+/// For each of `wanted`, the ordinary word the tape most often typed when it was the one meant (a
+/// struck stroke that was undone or missed and then retried as that word), with how many times.
+/// Counts only: no tape text.
+fn wrong_from(text: &str, wanted: &std::collections::HashSet<String>, ordinary: &dyn Fn(&str) -> bool) -> HashMap<String, (String, usize)> {
+    let events = parse_tape(text);
+    let mut by: HashMap<&str, HashMap<&str, usize>> = HashMap::new();
+    let r = replay(&events);
+    for f in &r.fixes {
+        let Some(typed) = f.struck_word.as_deref() else { continue };
+        if wanted.contains(&f.word) && typed != f.word && ordinary(typed) {
+            *by.entry(&f.word).or_default().entry(typed).or_default() += 1;
+        }
+    }
+    by.into_iter()
+        .filter_map(|(w, typed)| typed.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(a.0))).map(|(t, n)| (w.to_owned(), (t.to_owned(), n))))
+        .collect()
+}
+
+/// The most common wrong ordinary word the tape typed for each of `wanted` (see `wrong_from`); empty
+/// when the tape cannot be read.
+#[must_use]
+pub fn wrong_words(tape: &Path, dict: &Path, wanted: &std::collections::HashSet<String>) -> HashMap<String, (String, usize)> {
+    let Ok(text) = std::fs::read_to_string(tape) else { return HashMap::new() };
+    let built = Dict::load(dict).ok();
+    let ordinary = |w: &str| built.as_ref().map_or_else(|| w.len() <= 24 && crate::practice::is_plain_word(w, false), |d| d.ordinary(w));
+    wrong_from(&text, wanted, &ordinary)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_wrong_word_for_an_intended_one_is_the_most_common_struck_word() {
+        let tape = "10:00:00  HRAET        \" late\"\n10:00:01  *            -5 \"\"\n10:00:02  HRAED        \" lead\"\n10:00:03  KAT          \" cat\"\n";
+        let want: std::collections::HashSet<String> = ["lead".to_owned(), "cat".to_owned()].into();
+        let got = wrong_from(tape, &want, &|w: &str| dict().ordinary(w));
+        assert_eq!(got.get("lead"), Some(&("late".to_owned(), 1)), "{got:?}");
+        assert!(!got.contains_key("cat"));
+        let none = wrong_from(tape, &std::collections::HashSet::new(), &|_: &str| true);
+        assert!(none.is_empty(), "nothing asked for: {none:?}");
+    }
 
     fn dict() -> Dict {
         let mut d = Dict::default();

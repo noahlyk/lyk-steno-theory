@@ -10,7 +10,7 @@
 
 use crate::mistakes::TapeWord;
 use crate::paths;
-use crate::practice::adaptive::{Config, accuracy_ok, due_reviews, window_accuracy};
+use crate::practice::adaptive::{Config, accuracy_ok, base_accuracy, due_reviews, learning_accuracy, recent_tests_accuracy, window_accuracy};
 use crate::practice::pool::{self, Candidates, Pool};
 use anyhow::{Context, Result, bail};
 use clap::{Args as ClapArgs, Subcommand};
@@ -25,6 +25,8 @@ pub const VERSION: u32 = 1;
 pub const WORD_WINDOW: usize = 10;
 /// How many of the last results over all words are kept.
 pub const GLOBAL_WINDOW: usize = 50;
+/// How many tests' easy-base results are kept for the second gate.
+pub const BASE_TESTS: usize = 3;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -94,6 +96,22 @@ pub struct Word {
     /// Stumbles by day over the last week: `[day, count]`
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stumble_days: Vec<[u32; 2]>,
+    /// Attempts typed in practice since the seeding (every status): 0 for a word never practised
+    #[serde(default)]
+    pub practiced: u32,
+    /// Attempts typed in practice since it last entered learning, and the clean ones
+    #[serde(default)]
+    pub learn_n: u32,
+    #[serde(default)]
+    pub learn_hits: u32,
+    /// A learning word that stays unclean: out of the learning cap, drilled lightly
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub stuck: bool,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+const fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 impl Word {
@@ -129,6 +147,13 @@ pub struct Vocab {
     /// The last results over all words, oldest first
     #[serde(default)]
     pub recent: String,
+    /// The first attempts of review words in tests (the easy base, not the drilled learning
+    /// words), oldest first, the last `GLOBAL_WINDOW`: the signal the gate reads
+    #[serde(default)]
+    pub base_recent: String,
+    /// The easy base of the last `BASE_TESTS` tests: `[clean, attempts]` each
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub base_tests: Vec<[u32; 2]>,
     /// The accuracy gate for new words as a share (0 to 1), when the typist set one
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<f64>,
@@ -140,7 +165,7 @@ pub struct Vocab {
 
 impl Default for Vocab {
     fn default() -> Self {
-        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), gate: None, last_new: 0, words: BTreeMap::new() }
+        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), base_recent: String::new(), base_tests: Vec::new(), gate: None, last_new: 0, words: BTreeMap::new() }
     }
 }
 
@@ -152,9 +177,37 @@ impl Vocab {
         }
     }
 
+    /// Records one first attempt of a review word (the easy base).
+    pub fn push_base(&mut self, ok: bool) {
+        self.base_recent.push(if ok { '1' } else { '0' });
+        if self.base_recent.len() > GLOBAL_WINDOW {
+            self.base_recent.remove(0);
+        }
+    }
+
+    /// Records a test's easy base: `clean` of `n` first attempts.
+    pub fn push_base_test(&mut self, clean: u32, n: u32) {
+        self.base_tests.push([clean, n]);
+        if self.base_tests.len() > BASE_TESTS {
+            self.base_tests.remove(0);
+        }
+    }
+
     #[must_use]
     pub fn count(&self, status: Status) -> usize {
         self.words.values().filter(|w| w.status == status).count()
+    }
+
+    /// Learning words that count against the learning cap: not the stuck ones.
+    #[must_use]
+    pub fn active_learning(&self) -> usize {
+        self.words.values().filter(|w| w.status == Status::Learning && !w.stuck).count()
+    }
+
+    /// Learning words marked stuck.
+    #[must_use]
+    pub fn stuck_count(&self) -> usize {
+        self.words.values().filter(|w| w.status == Status::Learning && w.stuck).count()
     }
 
     /// Words the typist can type: learning, in review or retired (known).
@@ -241,6 +294,69 @@ pub const SEED_LEARNING_ATTEMPTS: usize = 5;
 /// The median error share is capped here, so a very rough tape does not make every word known.
 pub const SEED_MEDIAN_CAP: f64 = 0.5;
 
+/// Most seeded reviews due on one day.
+pub const SEED_MAX_PER_DAY: usize = 15;
+/// Days out a seeded review may first be due, by level 1 to 3: `(first, last)`.
+pub const SEED_WINDOWS: [(u32, u32); 3] = [(1, 14), (3, 21), (7, 30)];
+
+/// FNV-1a: a fixed hash, so a spread repeats exactly.
+fn hash(word: &str) -> u64 {
+    word.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
+}
+
+/// Due days for `words` (word, level), counted from `today`: a day inside the level's window picked
+/// by the word's hash, moved on to the next day with room while `load` (reviews due per day, which
+/// this adds to) holds `SEED_MAX_PER_DAY`. Deterministic.
+pub fn spread_due(words: &[(String, u8)], today: u32, load: &mut BTreeMap<u32, usize>) -> Vec<(String, u32)> {
+    let mut order: Vec<&(String, u8)> = words.iter().collect();
+    order.sort_by(|a, b| hash(&a.0).cmp(&hash(&b.0)).then(a.0.cmp(&b.0)));
+    order
+        .into_iter()
+        .map(|(w, level)| {
+            let (lo, hi) = SEED_WINDOWS[usize::from(*level).clamp(1, SEED_WINDOWS.len()) - 1];
+            let mut day = today + lo + (hash(w) % u64::from(hi - lo + 1)) as u32;
+            while load.get(&day).copied().unwrap_or(0) >= SEED_MAX_PER_DAY {
+                day += 1;
+            }
+            *load.entry(day).or_default() += 1;
+            (w.clone(), day)
+        })
+        .collect()
+}
+
+/// Whether a review word has been left as the seeding made it: never practised, missed, passed or
+/// lapsed (so moving its due day loses nothing).
+fn untouched(w: &Word) -> bool {
+    w.status == Status::Review && w.practiced == 0 && w.stumbles == 0 && w.promotions == 0 && w.lapses == 0
+}
+
+/// Re-spreads the due days of untouched reviews that pile up on one day (more than
+/// `SEED_MAX_PER_DAY` of them): each goes to a day in its level's window from `today`, as seeding
+/// does. Idempotent. Returns how many words moved.
+pub fn spread(vocab: &mut Vocab, today: u32) -> usize {
+    let mut by_day: BTreeMap<u32, Vec<&String>> = BTreeMap::new();
+    for (word, w) in vocab.words.iter().filter(|(_, w)| untouched(w)) {
+        by_day.entry(w.due).or_default().push(word);
+    }
+    let moving: Vec<(String, u8)> = by_day.values().filter(|ws| ws.len() > SEED_MAX_PER_DAY).flatten().map(|w| ((*w).clone(), vocab.words[*w].level)).collect();
+    if moving.is_empty() {
+        return 0;
+    }
+    let names: std::collections::HashSet<&str> = moving.iter().map(|(w, _)| w.as_str()).collect();
+    let mut load: BTreeMap<u32, usize> = BTreeMap::new();
+    for w in vocab.words.iter().filter(|(word, w)| w.status == Status::Review && !names.contains(word.as_str())).map(|(_, w)| w) {
+        *load.entry(w.due).or_default() += 1;
+    }
+    let moved = spread_due(&moving, today, &mut load);
+    let n = moved.len();
+    for (word, due) in moved {
+        if let Some(w) = vocab.words.get_mut(&word) {
+            w.due = due;
+        }
+    }
+    n
+}
+
 fn recent_from(attempts: usize, errors: usize) -> String {
     let n = attempts.min(WORD_WINDOW);
     let bad = ((errors as f64 / attempts.max(1) as f64) * n as f64).round() as usize;
@@ -269,7 +385,9 @@ fn median_error_rate(tape: &[TapeWord]) -> f64 {
 ///
 /// - 20 or more attempts and an error share at or below the typist's median: review, level 1; at
 ///   most 20% wrong: level 2; among the 200 most typed words and at most 20% wrong: level 3.
-///   Due one interval after the last use.
+///   Due dates are spread over a window by level (1: 1 to 14 days out, 2: 3 to 21, 3: 7 to 30,
+///   chosen by a hash of the word) with at most `SEED_MAX_PER_DAY` due on a day, so the first
+///   weeks are not one wall of reviews.
 /// - 5 or more attempts and an error share above the median, and not in review: the
 ///   `cfg.learning_cap` with the most errors start in learning.
 /// - Every other word with a history is kept as new with its counts, so it is introduced in pool
@@ -283,6 +401,7 @@ pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> V
     by_use.sort_by(|a, b| b.attempts.cmp(&a.attempts).then(a.word.cmp(&b.word)));
     let top: std::collections::HashSet<&str> = by_use.iter().take(SEED_TOP_WORDS).map(|t| t.word.as_str()).collect();
     let mut learning: Vec<&TapeWord> = Vec::new();
+    let mut reviews: Vec<(String, u8)> = Vec::new();
     for t in tape.iter().filter(|t| t.attempts > 0) {
         let rate = t.errors as f64 / t.attempts as f64;
         let last = day_of_tape(t);
@@ -291,11 +410,16 @@ pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> V
         if t.attempts >= SEED_REVIEW_ATTEMPTS && rate <= median {
             w.status = Status::Review;
             w.level = if rate <= SEED_CLEAN_ERRORS { if top.contains(t.word.as_str()) { 3 } else { 2 } } else { 1 };
-            w.due = last + cfg.intervals[usize::from(w.level) - 1];
+            reviews.push((t.word.clone(), w.level));
         } else if t.attempts >= SEED_LEARNING_ATTEMPTS && rate > median {
             learning.push(t);
         }
         v.words.insert(t.word.clone(), w);
+    }
+    for (word, due) in spread_due(&reviews, today, &mut BTreeMap::new()) {
+        if let Some(w) = v.words.get_mut(&word) {
+            w.due = due;
+        }
     }
     learning.sort_by(|a, b| b.errors.cmp(&a.errors).then(a.word.cmp(&b.word)));
     for t in learning.into_iter().take(cfg.learning_cap) {
@@ -357,12 +481,25 @@ enum Action {
         #[arg(long)]
         yes: bool,
     },
-    /// Set the accuracy gate for new words: the clean share (percent, 0 to 100) of the last 50
-    /// attempts needed to earn one, or `default`
+    /// Set the gate for new words: the clean share (percent, 0 to 100) of the easy base (the first
+    /// attempts of review words, last 50) needed to earn one, or `default`
     Gate {
         /// A percent such as 70, or `default`
         percent: String,
     },
+    /// Learning words that stay unclean (see `lyk vocab stuck --json`): they leave the learning
+    /// cap and are drilled lightly
+    Stuck {
+        /// The steno tape (for the most common wrong word)
+        #[arg(long, default_value = "~/.local/state/keymux/steno-tape.txt")]
+        tape: PathBuf,
+        /// The built dictionary (for the outline)
+        #[arg(long, default_value = paths::built_dir_text())]
+        dict: PathBuf,
+    },
+    /// Spread the due days of reviews that all fall on one day (never practised since the seeding);
+    /// writes `vocab.json.bak` first
+    Spread,
     /// Read the practice history and the steno tape into the words not in the file yet
     Seed {
         /// The steno tape
@@ -453,8 +590,26 @@ pub fn run(args: &Args) -> Result<()> {
             } else {
                 let p: f64 = percent.trim_end_matches('%').parse().ok().filter(|p| (0.0..=100.0).contains(p)).with_context(|| format!("{percent:?} is not a percent from 0 to 100 (or `default`)"))?;
                 vocab.gate = Some(p / 100.0);
-                println!("gate set to {p:.0}%: new words need that share of clean answers over the last {GLOBAL_WINDOW} attempts");
+                println!("gate set to {p:.0}%: new words need that share of clean first attempts of review words over the last {GLOBAL_WINDOW} (or over the last 3 tests)");
             }
+        }
+        Some(Action::Stuck { tape, dict }) => {
+            let extras = stuck_extras(&vocab, &expand_home(tape), dict);
+            print!("{}", stuck_report(&vocab, &extras, args.json)?);
+            return Ok(());
+        }
+        Some(Action::Spread) => {
+            let mut spread_vocab = vocab.clone();
+            let moved = spread(&mut spread_vocab, today);
+            if moved > 0 {
+                let bak = path.with_extension("json.bak");
+                std::fs::copy(&path, &bak).with_context(|| format!("cannot back up {} to {}", path.display(), bak.display()))?;
+                spread_vocab.save(&path)?;
+                println!("{moved} reviews re-spread over their level's window (at most {SEED_MAX_PER_DAY} due a day); the old file is {}", bak.display());
+            } else {
+                println!("nothing to spread: no day has more than {SEED_MAX_PER_DAY} untouched reviews due");
+            }
+            return Ok(());
         }
         Some(Action::Seed { tape, dict }) => {
             let before = vocab.words.len();
@@ -518,18 +673,109 @@ fn stuck_reason(vocab: &Vocab, cfg: &Config, today: u32) -> Option<String> {
     if vocab.sessions == 0 || vocab.last_new == 0 || today.saturating_sub(vocab.last_new) <= STUCK_DAYS {
         return None;
     }
-    let learning = vocab.count(Status::Learning);
+    let learning = vocab.active_learning();
     if learning >= cfg.learning_cap {
-        return Some(format!("the learning pool is full ({learning} of {}); master them or `lyk vocab know` the ones you do not want", cfg.learning_cap));
+        return Some(format!("the learning pool is full ({learning} of {}); master them, wait for the stuck ones (`lyk vocab stuck`) or `lyk vocab know` the ones you do not want", cfg.learning_cap));
     }
     if !accuracy_ok(vocab, cfg) {
         return Some(format!(
-            "clean accuracy {:.0}% is under the gate, {:.0}%, over the last {GLOBAL_WINDOW}; `lyk vocab gate N` sets a lower one",
-            window_accuracy(vocab).unwrap_or(0.0) * 100.0,
+            "filler clean {:.0}% is under the gate, {:.0}%, over the last {GLOBAL_WINDOW} first attempts of review words; `lyk vocab gate N` sets a lower one",
+            base_accuracy(vocab).unwrap_or(0.0) * 100.0,
             cfg.accuracy_threshold * 100.0
         ));
     }
     Some("the gate is met and the pool has room: run a test (the next new word comes in it)".to_owned())
+}
+
+/// What `lyk vocab stuck` adds to a stuck word from outside the file.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct StuckExtra {
+    /// The best outline in the built dictionary, its strokes, keys and ergonomic cost
+    pub outline: Option<String>,
+    pub strokes: Option<usize>,
+    pub keys: Option<u32>,
+    pub cost: Option<u32>,
+    /// The ordinary word the tape most often typed when this one was meant, and how often
+    pub wrong: Option<String>,
+    pub wrong_times: Option<usize>,
+}
+
+/// The stuck words, worst (fewest clean since entering learning) first.
+#[must_use]
+pub fn stuck_words(vocab: &Vocab) -> Vec<(&String, &Word)> {
+    let rate = |w: &Word| if w.learn_n == 0 { 0.0 } else { f64::from(w.learn_hits) / f64::from(w.learn_n) };
+    let mut v: Vec<(&String, &Word)> = vocab.words.iter().filter(|(_, w)| w.status == Status::Learning && w.stuck).collect();
+    v.sort_by(|a, b| rate(a.1).total_cmp(&rate(b.1)).then(b.1.stumbles.cmp(&a.1.stumbles)).then(a.0.cmp(b.0)));
+    v
+}
+
+/// The outline, its cost and the usual wrong word of each stuck word, from the built dictionary
+/// and the tape (nothing when either is missing).
+fn stuck_extras(vocab: &Vocab, tape: &Path, dict: &Path) -> BTreeMap<String, StuckExtra> {
+    let words: std::collections::HashSet<String> = stuck_words(vocab).iter().map(|(w, _)| (*w).clone()).collect();
+    let wanted: std::collections::HashSet<&str> = words.iter().map(String::as_str).collect();
+    let outlines = crate::practice::best_outlines(&wanted, dict);
+    let wrong = crate::mistakes::wrong_words(tape, dict, &words);
+    words
+        .iter()
+        .map(|w| {
+            let mut e = StuckExtra::default();
+            if let Some(o) = outlines.get(w) {
+                e.outline = Some(o.clone());
+                if let Some(strokes) = crate::stroke::parse_outline(o) {
+                    e.strokes = Some(strokes.len());
+                    e.keys = Some(strokes.iter().map(|s| (s.0 & !(crate::stroke::Stroke::JOIN | crate::stroke::Stroke::SPELL)).count_ones()).sum());
+                    e.cost = Some(crate::ergonomics::weighted_outline(&strokes));
+                }
+            }
+            if let Some((typed, n)) = wrong.get(w) {
+                e.wrong = Some(typed.clone());
+                e.wrong_times = Some(*n);
+            }
+            (w.clone(), e)
+        })
+        .collect()
+}
+
+/// `lyk vocab stuck`: each stuck word with its recent clean rate, stumbles, outline and cost and
+/// the usual wrong word; as text or JSON.
+pub fn stuck_report(vocab: &Vocab, extras: &BTreeMap<String, StuckExtra>, json: bool) -> Result<String> {
+    let words = stuck_words(vocab);
+    let none = StuckExtra::default();
+    if json {
+        let items: Vec<serde_json::Value> = words
+            .iter()
+            .map(|(w, s)| {
+                let (ok, n) = s.window();
+                let e = extras.get(*w).unwrap_or(&none);
+                serde_json::json!({
+                    "word": w, "recent_clean": ok, "recent_attempts": n, "since_attempts": s.learn_n,
+                    "since_clean": if s.learn_n == 0 { 0.0 } else { f64::from(s.learn_hits) / f64::from(s.learn_n) },
+                    "stumbles": s.stumbles, "days": s.days, "outline": e.outline, "strokes": e.strokes, "keys": e.keys, "cost": e.cost,
+                    "wrong": e.wrong, "wrong_times": e.wrong_times,
+                })
+            })
+            .collect();
+        return Ok(serde_json::to_string_pretty(&serde_json::json!({ "stuck": items.len(), "words": items }))? + "\n");
+    }
+    if words.is_empty() {
+        return Ok("no stuck words\n".to_owned());
+    }
+    let mut out = format!("{} stuck words (out of the learning cap, drilled lightly; they leave this list at 9 of 10 clean):\n", words.len());
+    for (w, s) in words {
+        let (ok, n) = s.window();
+        let e = extras.get(w).unwrap_or(&none);
+        let since = if s.learn_n == 0 { 0.0 } else { 100.0 * f64::from(s.learn_hits) / f64::from(s.learn_n) };
+        let _ = write!(out, "  {w:<14} recent {ok}/{n} clean, {since:.0}% of {} since learning, {} stumbles", s.learn_n, s.stumbles);
+        if let (Some(o), Some(k), Some(c)) = (&e.outline, e.keys, e.cost) {
+            let _ = write!(out, ";  {o} ({k} keys, cost {c})");
+        }
+        if let (Some(t), Some(n)) = (&e.wrong, e.wrong_times) {
+            let _ = write!(out, ";  often types {t} ({n}x)");
+        }
+        out.push('\n');
+    }
+    Ok(out)
 }
 
 /// The summary: counts, size, frontier, the learning pool, the next due reviews, the recently
@@ -544,16 +790,19 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
     lapsed.sort_by(|a, b| b.1.lapses.cmp(&a.1.lapses).then(a.0.cmp(b.0)));
     let due = due_reviews(vocab, today).len();
     let accuracy = window_accuracy(vocab);
+    let (filler, learning_clean, last3) = (base_accuracy(vocab), learning_accuracy(vocab), recent_tests_accuracy(vocab));
     let stumble_rate = accuracy.map(|a| 1.0 - a);
     let week = stumbled_this_week(vocab, today);
     let stuck = stuck_reason(vocab, cfg, today);
     if json {
-        let item = |(w, s): &(&String, &Word)| serde_json::json!({"word": w, "level": s.level, "due": (s.status == Status::Review).then(|| date(s.due)), "accuracy": 1.0 - s.error_rate(), "lapses": s.lapses});
+        let item = |(w, s): &(&String, &Word)| serde_json::json!({"word": w, "level": s.level, "due": (s.status == Status::Review).then(|| date(s.due)), "accuracy": 1.0 - s.error_rate(), "lapses": s.lapses, "stuck": s.stuck});
         let value = serde_json::json!({
             "new": vocab.count(Status::New), "learning": vocab.count(Status::Learning), "review": vocab.count(Status::Review),
             "retired": vocab.count(Status::Retired), "vocabulary": vocab.size(), "sessions": vocab.sessions,
             "frontier_rank": frontier.rank, "next_word": frontier.next, "recent_accuracy": accuracy, "due_now": due,
             "learning_cap": cfg.learning_cap, "gate": cfg.accuracy_threshold, "stumble_rate": stumble_rate,
+            "filler_accuracy": filler, "filler_accuracy_last_3_tests": last3, "learning_accuracy": learning_clean,
+            "learning_active": vocab.active_learning(), "stuck": vocab.stuck_count(),
             "stumbled_this_week": week.iter().take(LIST).map(|(w, n)| serde_json::json!({"word": w, "stumbles": n})).collect::<Vec<_>>(),
             "no_new_words": stuck,
             "learning_pool": learning.iter().map(item).collect::<Vec<_>>(),
@@ -578,21 +827,23 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
         Some(w) => writeln!(out, "frontier: rank {} is next ({w}); every word above it is learning, in review, retired or on file", frontier.rank),
         None => writeln!(out, "frontier: no word list loaded or every word introduced"),
     };
+    let pct = |x: Option<f64>| x.map_or_else(|| "none yet".to_owned(), |a| format!("{:.0}%", a * 100.0));
     let _ = writeln!(
         out,
-        "recent clean accuracy {}  (new words need {:.0}% over the last {};  stumble rate {})",
-        accuracy.map_or_else(|| "none yet".to_owned(), |a| format!("{:.0}%", a * 100.0)),
+        "filler clean {} (gate {:.0}%, over the last {GLOBAL_WINDOW} first attempts of review words; last 3 tests {}), learning clean {};  stumble rate over all words {}",
+        pct(filler),
         cfg.accuracy_threshold * 100.0,
-        crate::vocab::GLOBAL_WINDOW,
-        stumble_rate.map_or_else(|| "none yet".to_owned(), |r| format!("{:.0}%", r * 100.0))
+        pct(last3),
+        pct(learning_clean),
+        pct(stumble_rate)
     );
     if let Some(why) = &stuck {
         let _ = writeln!(out, "no new word for {} days: {why}", today.saturating_sub(vocab.last_new));
     }
-    let _ = writeln!(out, "\nlearning ({} of {}):", learning.len(), cfg.learning_cap);
+    let _ = writeln!(out, "\nlearning ({} of {}{}):", vocab.active_learning(), cfg.learning_cap, if vocab.stuck_count() > 0 { format!(", {} stuck: lyk vocab stuck", vocab.stuck_count()) } else { String::new() });
     for (w, s) in &learning {
         let (ok, n) = s.window();
-        let _ = writeln!(out, "  {w:<16} {ok}/{n} recent   {} days   {} attempts", s.days, s.attempts);
+        let _ = writeln!(out, "  {w:<16} {ok}/{n} recent   {} days   {} attempts{}", s.days, s.attempts, if s.stuck { "   stuck" } else { "" });
     }
     let _ = writeln!(out, "\nreview: {due} due now; next due:");
     for (w, s) in reviews.iter().take(LIST) {
@@ -690,7 +941,8 @@ mod tests {
         assert!(v.seeded);
         assert_eq!(v.last_new, 105, "the gate's clock starts at the seeding");
         let the = &v.words["the"];
-        assert_eq!((the.status, the.level, the.due, the.last_seen, the.days), (Status::Review, 3, 107, 100, 30), "level 3 = the 7-day interval after the last use");
+        assert_eq!((the.status, the.level, the.last_seen, the.days), (Status::Review, 3, 100, 30));
+        assert!((112..=135).contains(&the.due), "level 3 is due 7 to 30 days from today (105): {}", the.due);
         assert_eq!((v.words["cat"].status, v.words["cat"].level), (Status::Review, 3), "with under 200 words every clean word is among the most typed");
         assert_eq!(v.words["late"].status, Status::Review);
         assert_eq!(v.words["mid"].status, Status::Learning);
@@ -804,7 +1056,7 @@ mod tests {
     fn the_gate_comes_from_the_flag_then_the_file_then_the_default() {
         let base = Config::default();
         let mut v = Vocab::default();
-        assert!((with_gate(&base, &v, None).accuracy_threshold - 0.75).abs() < 1e-9);
+        assert!((with_gate(&base, &v, None).accuracy_threshold - 0.70).abs() < 1e-9);
         v.gate = Some(0.6);
         assert!((with_gate(&base, &v, None).accuracy_threshold - 0.6).abs() < 1e-9);
         assert!((with_gate(&base, &v, Some(90.0)).accuracy_threshold - 0.9).abs() < 1e-9, "the flag wins");
@@ -818,10 +1070,10 @@ mod tests {
     #[test]
     fn a_long_wait_for_a_new_word_says_why() {
         let cfg = Config::default();
-        let mut v = Vocab { sessions: 12, last_new: 100, recent: "1".repeat(30) + &"0".repeat(20), ..Vocab::default() };
+        let mut v = Vocab { sessions: 12, last_new: 100, base_recent: "1".repeat(30) + &"0".repeat(20), ..Vocab::default() };
         assert!(stuck_reason(&v, &cfg, 110).is_none(), "ten days is not long");
-        let why = stuck_reason(&v, &cfg, 120).expect("20 days with 60% against a 75% gate");
-        assert!(why.contains("60%") && why.contains("75%") && why.contains("lyk vocab gate"), "{why}");
+        let why = stuck_reason(&v, &cfg, 120).expect("20 days with 60% against a 70% gate");
+        assert!(why.contains("filler clean 60%") && why.contains("70%") && why.contains("lyk vocab gate"), "{why}");
         let f = Frontier { rank: 4, next: Some("x".into()) };
         let text = summary(&v, &cfg, 120, &f, false).unwrap();
         assert!(text.contains("no new word for 20 days") && text.contains("lyk vocab gate"), "{text}");
@@ -849,13 +1101,112 @@ mod tests {
         v.words.insert("old".into(), Word { status: Status::Learning, stumbles: 9, stumble_days: vec![[90, 9]], ..Word::default() });
         let f = Frontier::default();
         let text = summary(&v, &cfg, 101, &f, false).unwrap();
-        assert!(text.contains("stumble rate 25%"), "{text}");
+        assert!(text.contains("stumble rate over all words 25%"), "{text}");
         let week = text.split("stumbled most this week").nth(1).expect("the list is there");
         assert!(week.find("cat").unwrap() < week.find("dog").unwrap() && !week.contains("old"), "{text}");
         let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 101, &f, true).unwrap()).unwrap();
         assert_eq!(json["stumbled_this_week"][0]["word"], "cat");
         assert_eq!(json["stumbled_this_week"][0]["stumbles"], 4);
         assert!((json["stumble_rate"].as_f64().unwrap() - 0.25).abs() < 1e-9);
+    }
+
+    #[test]
+    fn seeded_due_dates_are_spread_over_each_levels_window_and_never_a_wall() {
+        let cfg = Config::default();
+        // 300 words typed cleanly, two thirds of them at 10% wrong: levels 2 and 3, the rest level 1
+        let tape: Vec<TapeWord> = (0..300).map(|i| tw(&format!("w{i:03}"), 400 - i, if i % 3 == 0 { 120 } else { 40 }, 9, 100)).collect();
+        let v = seed(&tape, &[], &cfg, 200);
+        let mut per_day: BTreeMap<u32, usize> = BTreeMap::new();
+        for w in v.words.values().filter(|w| w.status == Status::Review) {
+            let (lo, hi) = SEED_WINDOWS[usize::from(w.level).clamp(1, 3) - 1];
+            *per_day.entry(w.due).or_default() += 1;
+            assert!(w.due >= 200 + lo, "level {} due {}", w.level, w.due);
+            let _ = hi;
+        }
+        assert!(per_day.values().all(|n| *n <= SEED_MAX_PER_DAY), "{per_day:?}");
+        assert!(per_day.len() >= 20, "spread over {} days", per_day.len());
+        assert_eq!(per_day.values().sum::<usize>(), v.count(Status::Review));
+        // reproducible
+        assert_eq!(seed(&tape, &[], &cfg, 200), v);
+        // a level inside its window when there is room: a few words only
+        let few = seed(&[tw("cat", 30, 1, 5, 100), tw("dog", 30, 1, 5, 100)], &[], &cfg, 200);
+        for w in few.words.values() {
+            let (lo, hi) = SEED_WINDOWS[usize::from(w.level).clamp(1, 3) - 1];
+            assert!((200 + lo..=200 + hi).contains(&w.due), "level {} due {}", w.level, w.due);
+        }
+    }
+
+    #[test]
+    fn spread_moves_only_a_wall_of_untouched_reviews_and_is_idempotent() {
+        let mut v = Vocab::default();
+        for i in 0..60 {
+            v.words.insert(format!("a{i:02}"), Word { status: Status::Review, level: 1, due: 101, ..Word::default() });
+        }
+        for i in 0..5 {
+            v.words.insert(format!("b{i}"), Word { status: Status::Review, level: 1, due: 101, practiced: 3, ..Word::default() });
+        }
+        v.words.insert("c".into(), Word { status: Status::Review, level: 2, due: 140, ..Word::default() });
+        v.words.insert("d".into(), Word { status: Status::Learning, due: 101, ..Word::default() });
+        let before = v.clone();
+        let moved = spread(&mut v, 100);
+        assert_eq!(moved, 60, "the untouched words of the day with more than {SEED_MAX_PER_DAY}");
+        let mut per_day: BTreeMap<u32, usize> = BTreeMap::new();
+        for w in v.words.values().filter(|w| w.status == Status::Review) {
+            *per_day.entry(w.due).or_default() += 1;
+        }
+        assert!(per_day.values().all(|n| *n <= SEED_MAX_PER_DAY), "{per_day:?}");
+        assert!(v.words.keys().filter(|k| k.starts_with('a')).all(|k| (101..=114 + 4).contains(&v.words[k].due)), "level 1 spreads over 1 to 14 days out (a little past it when full)");
+        for k in ["b0", "b4", "c", "d"] {
+            assert_eq!(v.words[k], before.words[k], "{k} is left as it was");
+        }
+        let again = v.clone();
+        assert_eq!(spread(&mut v, 100), 0, "a second time changes nothing");
+        assert_eq!(v, again);
+        // a small pile is not a wall
+        let mut small = Vocab::default();
+        for i in 0..SEED_MAX_PER_DAY {
+            small.words.insert(format!("a{i:02}"), Word { status: Status::Review, level: 1, due: 101, ..Word::default() });
+        }
+        assert_eq!(spread(&mut small, 100), 0);
+    }
+
+    #[test]
+    fn stuck_words_are_listed_worst_first_with_their_outline_and_the_usual_wrong_word() {
+        let mut v = Vocab::default();
+        v.words.insert("to".into(), Word { status: Status::Learning, stuck: true, learn_n: 800, learn_hits: 160, stumbles: 69, days: 33, recent: "0000000110".into(), ..Word::default() });
+        v.words.insert("of".into(), Word { status: Status::Learning, stuck: true, learn_n: 40, learn_hits: 4, stumbles: 20, days: 12, recent: "0000000000".into(), ..Word::default() });
+        v.words.insert("the".into(), Word { status: Status::Learning, learn_n: 40, ..Word::default() });
+        assert_eq!(stuck_words(&v).iter().map(|(w, _)| w.as_str()).collect::<Vec<_>>(), ["of", "to"], "worst first, not-stuck words left out");
+        let mut extras = BTreeMap::new();
+        extras.insert("to".to_owned(), StuckExtra { outline: Some("TO".into()), strokes: Some(1), keys: Some(2), cost: Some(7), wrong: Some("too".into()), wrong_times: Some(5) });
+        let text = stuck_report(&v, &extras, false).unwrap();
+        assert!(text.starts_with("2 stuck words"), "{text}");
+        assert!(text.contains("recent 2/10 clean, 20% of 800 since learning, 69 stumbles") && text.contains("TO (2 keys, cost 7)") && text.contains("often types too (5x)"), "{text}");
+        assert!(text.find("of ").unwrap() < text.find("to ").unwrap(), "{text}");
+        let json: serde_json::Value = serde_json::from_str(&stuck_report(&v, &extras, true).unwrap()).unwrap();
+        assert_eq!(json["stuck"], 2);
+        assert_eq!(json["words"][1]["word"], "to");
+        assert_eq!(json["words"][1]["outline"], "TO");
+        assert_eq!(json["words"][1]["recent_clean"], 2);
+        assert_eq!(json["words"][1]["stumbles"], 69);
+        assert!(json["words"][0]["outline"].is_null());
+        assert_eq!(stuck_report(&Vocab::default(), &BTreeMap::new(), false).unwrap(), "no stuck words\n");
+    }
+
+    #[test]
+    fn the_summary_shows_the_filler_and_learning_clean_numbers_and_the_stuck_count() {
+        let cfg = Config::default();
+        let mut v = Vocab { sessions: 4, recent: "0".repeat(44) + "111111", base_recent: "1".repeat(17) + "000", ..Vocab::default() };
+        v.words.insert("cat".into(), Word { status: Status::Learning, recent: "0000000001".into(), ..Word::default() });
+        v.words.insert("dog".into(), Word { status: Status::Learning, stuck: true, recent: "0000000000".into(), ..Word::default() });
+        let f = Frontier::default();
+        let text = summary(&v, &cfg, 120, &f, false).unwrap();
+        assert!(text.contains("filler clean 85% (gate 70%") && text.contains("learning clean 5%") && text.contains("stumble rate over all words 88%"), "{text}");
+        assert!(text.contains("learning (1 of 10, 1 stuck: lyk vocab stuck)") && text.contains("stuck"), "{text}");
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 120, &f, true).unwrap()).unwrap();
+        assert!((json["filler_accuracy"].as_f64().unwrap() - 0.85).abs() < 1e-9);
+        assert!((json["learning_accuracy"].as_f64().unwrap() - 0.05).abs() < 1e-9);
+        assert_eq!((json["stuck"].as_u64(), json["learning_active"].as_u64()), (Some(1), Some(1)));
     }
 
     #[test]
