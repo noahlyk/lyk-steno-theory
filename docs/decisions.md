@@ -3222,4 +3222,25 @@ Lookup (`lyk lookup`, the interactive lookup, the site) lists a phrase's grammar
 the part each key group says, and explains a grammar stroke part by part. keymux's own lookup is
 unchanged: it answers a phrase word by word and does not match a phrase entry by its text.
 
-**`lyk practice` is adaptive by default (vocab.json).** A uniform draw from a frequency band does not know the typist, and growing a vocabulary 500 words at a time is how words get half-learned. So new words are earned (a free learning slot, recent accuracy, at most 3 a test) and come in pool order down the whole long tail; mastered words leave learning and return on a 1/3/7/21/60/180-day schedule so they are not forgotten. The pool merges lyk's frequency list with Monkeytype's English lists, with a rank bonus (0.7x) for words in its four ordered lists, because those are the words a typist meets in the wild; its 25k and 450k lists are unordered (the files say so), so they are tiers after the head in a scrambled order, never ranked by their file order. The learning cap is hard: a lapse with a full pool stays a level-1 review instead of exceeding it. Mastery needs 10 right over 3 days, so the vocabulary grows at most about 1.5 to 2 words a day at one 25-word test a day (simulated: ~150 words in 90 days); raise `--learning-cap`, `--count` or the number of tests a day to go faster. Undoing the earned-word gate or the cap brings back the half-learned words this was made to stop.
+**`lyk practice` is adaptive by default (vocab.json).** A uniform draw from a frequency band does not know the typist, and growing a vocabulary 500 words at a time is how words get half-learned. So new words are earned (a free learning slot, recent clean accuracy, at most 2 a test) and come in pool order down the whole long tail; mastered words leave learning and return on a 1/3/7/21/60/180-day schedule so they are not forgotten. The pool merges lyk's frequency list with Monkeytype's English lists, with a rank bonus (0.7x) for words in its four ordered lists, because those are the words a typist meets in the wild; its 25k and 450k lists are unordered (the files say so), so they are tiers after the head in a scrambled order, never ranked by their file order. The learning cap is hard (10): a lapse with a full pool stays a level-1 review, and the words entering in a test hold their places before any lapse takes one. Mastery needs 9 of the last 10 clean over 3 days; raise `--learning-cap`, `--count` or the number of tests a day to go faster. Retuned for a typist whose corrections precede the commit: see the next entry. Undoing the earned-word gate or the cap brings back the half-learned words this was made to stop.
+
+**Adaptive scoring counts stumbles, and is tuned to the typist's own baseline.** A steno `*` arrives
+as backspaces before the space, so a word the typist stumbled on still commits right and scored a clean
+hit: words looked mastered, new words came too fast and the hard ones were not drilled. An attempt is now
+clean only if the word committed right with no correction while it was open (a run of backspaces is one
+stumble; backspacing over the space reopens, and counts against, the previous word); a stumbled word is a
+miss in the vocabulary, a stumbled or wrong word comes back 3 words later in the same test (3 times at
+most), and the learning words that stumbled in the last 2 tests are drilled first in the next (twice
+each, 3 times after two or more stumbles, ahead of the rest by weight). Baseline (aggregates of one
+typist's tape, 39 days): about 31% of word attempts are undone, a typical word with 20 or more attempts is
+undone 36% of the time (quartiles 25% and 50%), and the key-press accuracy of 15 practice runs was 66 to
+88% with about no committed errors. So a 92% gate and 10 clean in a row were unreachable. Constants: learning
+cap 15 to 10, new words per test 3 to 2, the gate 92% to 75% clean over the last 50 (a little above the
+typist's average and reachable on a good streak: in the simulated learner at 70 to 75% clean, 80% stalled
+new words for days, 70% kept the pool full), mastery 9 of 10 clean, still over 3 days and within 1.5 times
+the median speed. `lyk vocab gate N` lowers the gate (kept in `vocab.json`) and `lyk vocab` says why when
+no new word has come in for 14 days. Seeding uses the typist's own median error share (not a fixed 5%):
+words with 20 or more attempts at or below it start in review (level 1, 2 under 20% wrong, 3 among the 200
+most typed), the 10 worst above it in learning; before, a 31%-undo tape seeded 3 review words. Simulated
+(90 days, a learner clean 72 to 76% of the time with forgetting, typed through the real session):
+about 0.8 new words a day, 3 to 8 learning at a time, vocabulary 73 words after 90 days.

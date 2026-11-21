@@ -66,11 +66,14 @@ pub struct Args {
     #[arg(long, value_enum)]
     source: Option<Source>,
     /// Adaptive: new words entering in one test
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = 2)]
     new_per_session: usize,
     /// Adaptive: most words being learned at once
-    #[arg(long, default_value_t = 15)]
+    #[arg(long, default_value_t = 10)]
     learning_cap: usize,
+    /// Adaptive: clean share (percent) of the last 50 attempts that earns new words [default: 75, or what `lyk vocab gate` set]
+    #[arg(long, value_name = "PERCENT")]
+    gate: Option<f64>,
     /// Adaptive: which word lists the new words come from
     #[arg(long, value_enum, default_value = "both")]
     wordlist: pool::Wordlist,
@@ -297,9 +300,10 @@ impl Adaptive {
         for name in &pool.missing {
             eprintln!("note: Monkeytype list {name} is not downloaded (run `lyk fetch`); the pool is without it");
         }
-        let cfg = adaptive::Config { new_per_session: args.new_per_session, learning_cap: args.learning_cap, ..adaptive::Config::default() };
         let path = vocab::file();
         let mut vocab = Vocab::load(&path)?;
+        let base = adaptive::Config { new_per_session: args.new_per_session, learning_cap: args.learning_cap, ..adaptive::Config::default() };
+        let cfg = vocab::with_gate(&base, &vocab, args.gate);
         if !vocab.seeded {
             eprintln!("first run: reading your practice history and the steno tape into {} (once)", path.display());
             let tape = expand_home(&args.tape);
@@ -334,11 +338,11 @@ impl Adaptive {
 
 /// The attempts of a test, in order: the words `--stop-on-error` refused (misses), then each
 /// committed word with the time since the one before it (none for the first, which carries no
-/// recall time).
+/// recall time). An attempt is a hit only when the word was right and needed no correction.
 fn attempts_of(session: &Session) -> Vec<adaptive::Attempt> {
     let mut out: Vec<adaptive::Attempt> =
-        session.refusals().iter().map(|m| adaptive::Attempt { word: m.word.clone(), hit: false, secs: None }).collect();
-    out.extend(session.done.iter().enumerate().map(|(i, d)| adaptive::Attempt { word: d.target.clone(), hit: d.correct(), secs: (i > 0).then_some(d.secs) }));
+        session.refusals().iter().map(|m| adaptive::Attempt { word: m.word.clone(), hit: false, stumbles: 0, secs: None }).collect();
+    out.extend(session.done.iter().enumerate().map(|(i, d)| adaptive::Attempt { word: d.target.clone(), hit: d.clean(), stumbles: d.stumbles, secs: (i > 0).then_some(d.secs) }));
     out
 }
 
@@ -533,7 +537,7 @@ fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<Afte
 /// then shortest, entry. Empty when nothing is built.
 fn outlines_for(results: &engine::Results, dir: &std::path::Path) -> HashMap<String, String> {
     let wanted: HashSet<&str> =
-        results.slow.iter().map(|(w, _)| w.as_str()).chain(results.misses.iter().map(|m| m.word.as_str())).collect();
+        results.slow.iter().map(|(w, _)| w.as_str()).chain(results.misses.iter().map(|m| m.word.as_str())).chain(results.stumbled.iter().map(|(w, _)| w.as_str())).collect();
     let mut best: HashMap<String, String> = HashMap::new();
     for file in ["02-lyk-words.json", "02-lyk-short.json", "02-lyk-alternates.json", "02-lyk-extras.json"] {
         let Ok(text) = std::fs::read_to_string(dir.join(file)) else { continue };
@@ -654,9 +658,9 @@ mod tests {
         assert_eq!(
             got,
             vec![
-                adaptive::Attempt { word: "the".into(), hit: true, secs: None },
-                adaptive::Attempt { word: "cat".into(), hit: false, secs: Some(1.5) },
-                adaptive::Attempt { word: "sat".into(), hit: true, secs: Some(0.5) },
+                adaptive::Attempt { word: "the".into(), hit: true, stumbles: 0, secs: None },
+                adaptive::Attempt { word: "cat".into(), hit: false, stumbles: 0, secs: Some(1.5) },
+                adaptive::Attempt { word: "sat".into(), hit: true, stumbles: 0, secs: Some(0.5) },
             ]
         );
         // stop on error: the refused commit is a miss, then the right word is a hit
@@ -671,7 +675,7 @@ mod tests {
             s.apply(Input::Char(c), 2.0);
         }
         let got = attempts_of(&s);
-        assert_eq!((got[0].hit, got[1].hit, got.len()), (false, true, 2), "{got:?}");
+        assert_eq!((got[0].hit, got[1].hit, got.len()), (false, true, 2), "the refusal is the miss; deleting the refused word is not a second one: {got:?}");
     }
 
     #[test]
@@ -691,7 +695,8 @@ mod tests {
         let args = Args {
             source: None,
             new_per_session: 3,
-            learning_cap: 15,
+            learning_cap: 10,
+            gate: None,
             wordlist: pool::Wordlist::Both,
             monkeytype_weight: 0.7,
             no_adapt: true,
@@ -738,6 +743,7 @@ mod tests {
             consistency: None,
             slow: vec![("dog".into(), 1.0)],
             misses: vec![],
+            stumbled: vec![],
         };
         let got = outlines_for(&r, &dir);
         assert_eq!(got.get("dog").map(String::as_str), Some("TKOG"));

@@ -8,24 +8,31 @@
 //! A word is `new` (on file with past counts only, or not on file), `learning`, `review` or
 //! `retired`.
 //!
-//! - **Earning a new word.** A new word enters when (a) fewer than `learning_cap` words are
-//!   learning, (b) the accuracy over the last `GLOBAL_WINDOW` (50) attempts is at least
-//!   `accuracy_threshold` (92%; with fewer than `accuracy_min_attempts` (20) attempts on record it
-//!   is not held against the typist), and (c) fewer than `new_per_session` (3) new words have
-//!   entered this test. The word is the next one in pool order that is not already learning, in
-//!   review or retired.
-//! - **Mastery.** A learning word becomes review (level 1) when its last 10 attempts are at least
-//!   95% right (all 10, in practice), it has been practised on at least `mastery_days` (3)
-//!   different days, and its speed is within `speed_factor` (1.5x) of the median speed of the
-//!   words with a measured speed (the check is skipped while fewer than 10 words have one).
+//! - **Clean attempts.** An attempt is a `hit` only when the word committed right *and* had no
+//!   correction while it was typed (a stumble: a backspace run or word delete). A typist whose
+//!   corrections precede the commit would otherwise score every word clean.
+//! - **Earning a new word.** A new word enters when (a) fewer than `learning_cap` (10) words are
+//!   learning, (b) the clean share of the last `GLOBAL_WINDOW` (50) attempts is at least
+//!   `accuracy_threshold` (75%, or the gate `lyk vocab gate` set; with fewer than
+//!   `accuracy_min_attempts` (20) attempts on record it is not held against the typist), and
+//!   (c) fewer than `new_per_session` (2) new words have entered this test. The word is the next
+//!   one in pool order that is not already learning, in review or retired.
+//! - **Mastery.** A learning word becomes review (level 1) when at least `mastery_accuracy` (90%:
+//!   9 of 10) of its last 10 attempts are clean, it has been practised on at least
+//!   `mastery_days` (3) different days, and its speed is within `speed_factor` (1.5x) of the
+//!   median speed of the words with a measured speed (the check is skipped while fewer than 10
+//!   words have one).
 //! - **Review.** Intervals by level: 1, 3, 7, 21, 60, 180 days. A due review word is in the next
 //!   test; passed (every attempt right) it moves up a level and is due one interval later; a miss
 //!   moves it down one level (never below 1) and makes it due tomorrow; two misses in a row
-//!   send it back to learning.
+//!   send it back to learning. A stumble is a miss.
 //! - **A test.** For `count` words: due reviews first (at most 30% of the test), then the new
-//!   words (each twice), then learning words (each once before any twice, up to 3 times, chosen
-//!   by recent error rate), then not-yet-due review words, soonest due first. Shuffled with the
-//!   seed, with no word twice in a row.
+//!   words (each twice), then the learning words that stumbled or missed in the last
+//!   `stumble_sessions` (2) tests (twice, three times after two or more stumbles), then the other
+//!   learning words (each once before any twice, up to 3 times, chosen by recent error rate and
+//!   recent stumbles), then not-yet-due review words, soonest due first. Shuffled with the seed,
+//!   with no word twice in a row. In the typing session a word that stumbled or was committed
+//!   wrong comes back `respace_gap` (3) words later, at most `max_respace` (3) times.
 
 use super::feed::Rng;
 use super::pool::Candidates;
@@ -39,11 +46,11 @@ pub struct Config {
     pub new_per_session: usize,
     /// Most words learning at once
     pub learning_cap: usize,
-    /// Share of right answers over the last `GLOBAL_WINDOW` attempts that earns new words
+    /// Share of clean answers over the last `GLOBAL_WINDOW` attempts that earns new words
     pub accuracy_threshold: f64,
     /// Fewest attempts on record before the accuracy gate applies
     pub accuracy_min_attempts: usize,
-    /// Share of the last `WORD_WINDOW` attempts that must be right for mastery
+    /// Share of the last `WORD_WINDOW` attempts that must be clean for mastery
     pub mastery_accuracy: f64,
     /// Distinct days a word must be practised for mastery
     pub mastery_days: u32,
@@ -61,20 +68,22 @@ pub struct Config {
     pub new_reps: usize,
     /// Most times a learning word is in one test
     pub max_reps: usize,
-    /// A missed word comes back this many words later in the same test
+    /// A missed or stumbled word comes back this many words later in the same test
     pub respace_gap: usize,
-    /// Most times a missed word comes back in one test
+    /// Most times a missed or stumbled word comes back in one test
     pub max_respace: u32,
+    /// A learning word that stumbled or missed within this many tests is drilled first
+    pub stumble_sessions: u32,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            new_per_session: 3,
-            learning_cap: 15,
-            accuracy_threshold: 0.92,
+            new_per_session: 2,
+            learning_cap: 10,
+            accuracy_threshold: 0.75,
             accuracy_min_attempts: 20,
-            mastery_accuracy: 0.95,
+            mastery_accuracy: 0.90,
             mastery_days: 3,
             speed_factor: 1.5,
             speed_min_words: 10,
@@ -83,8 +92,9 @@ impl Default for Config {
             review_share: 0.30,
             new_reps: 2,
             max_reps: 3,
-            respace_gap: 4,
-            max_respace: 2,
+            respace_gap: 3,
+            max_respace: 3,
+            stumble_sessions: 2,
         }
     }
 }
@@ -149,10 +159,16 @@ fn draw(items: &mut [(&str, f64, usize)], n: usize, cap: usize, unused_first: bo
     }
 }
 
-/// A learning word's weight: more for a word with recent errors, and a little more for one with
-/// few attempts on record.
-fn weight(w: &Word) -> f64 {
-    4.0_f64.mul_add(w.error_rate(), 1.0) + if w.recent.len() < WORD_WINDOW { 1.0 } else { 0.0 }
+/// Whether a word stumbled or missed in one of the last `cfg.stumble_sessions` tests.
+const fn recently_stumbled(w: &Word, sessions: u32, cfg: &Config) -> bool {
+    w.stumbled_in > 0 && w.stumbled_in + cfg.stumble_sessions > sessions
+}
+
+/// A learning word's weight: more for a word with recent errors, a little more for one with few
+/// attempts on record, and more again for one that stumbled lately (the more, the more it did).
+fn weight(w: &Word, recent: bool) -> f64 {
+    let stumble = if recent { 2.0 + f64::from(w.stumbled_n.saturating_sub(1).min(3)) } else { 0.0 };
+    4.0_f64.mul_add(w.error_rate(), 1.0) + if w.recent.len() < WORD_WINDOW { 1.0 } else { 0.0 } + stumble
 }
 
 /// Makes no word follow itself where the words allow it.
@@ -211,7 +227,20 @@ pub fn plan(vocab: &Vocab, cands: &mut dyn Candidates, cfg: &Config, day: u32, c
     }
     // 3. learning words (and the new ones, as extra repetitions at the end), by error rate
     let learning: Vec<(&String, &Word)> = vocab.words.iter().filter(|(w, s)| s.status == Status::Learning && keep(w)).collect();
-    let mut items: Vec<(&str, f64, usize)> = learning.iter().map(|(w, s)| (w.as_str(), weight(s), 0)).collect();
+    let recent = |s: &Word| recently_stumbled(s, vocab.sessions, cfg);
+    let mut items: Vec<(&str, f64, usize)> = learning.iter().map(|(w, s)| (w.as_str(), weight(s, recent(s)), 0)).collect();
+    // the words that stumbled lately come first: twice each, three times after two or more stumbles
+    let mut first: Vec<usize> = (0..learning.len()).filter(|i| recent(learning[*i].1)).collect();
+    first.sort_by(|a, b| learning[*b].1.stumbled_n.cmp(&learning[*a].1.stumbled_n).then(learning[*a].0.cmp(learning[*b].0)));
+    for i in first {
+        let reps = if learning[i].1.stumbled_n >= 2 { 3 } else { 2 };
+        for _ in 0..reps.min(cfg.max_reps) {
+            if words.len() < count {
+                words.push(items[i].0.to_owned());
+                items[i].2 += 1;
+            }
+        }
+    }
     let room = count.saturating_sub(words.len());
     draw(&mut items, room, cfg.max_reps, true, &mut rng, &mut words);
     // 4. fill with review words not yet due, soonest first
@@ -222,7 +251,7 @@ pub fn plan(vocab: &Vocab, cands: &mut dyn Candidates, cfg: &Config, day: u32, c
     }
     // 5. still short: more repetitions of the words being learned, then of the new ones
     if words.len() < count {
-        let mut extra: Vec<(&str, f64, usize)> = learning.iter().map(|(w, s)| (w.as_str(), weight(s), cfg.max_reps)).collect();
+        let mut extra: Vec<(&str, f64, usize)> = learning.iter().map(|(w, s)| (w.as_str(), weight(s, recent(s)), cfg.max_reps)).collect();
         extra.extend(new_words.iter().map(|w| (w.as_str(), 1.0, cfg.new_reps)));
         let room = count - words.len();
         draw(&mut extra, room, cfg.max_reps + 2, false, &mut rng, &mut words);
@@ -262,7 +291,10 @@ pub fn plan_feed(vocab: &Vocab, cands: &mut dyn Candidates, cfg: &Config, day: u
 #[derive(Clone, Debug, PartialEq)]
 pub struct Attempt {
     pub word: String,
+    /// Clean: committed right with no correction on the way
     pub hit: bool,
+    /// Corrections made while typing it
+    pub stumbles: u32,
     /// Seconds since the word before, when that carries a recall time (not the first word)
     pub secs: Option<f64>,
 }
@@ -323,6 +355,25 @@ fn mastered(w: &Word, median: Option<f64>, cfg: &Config) -> bool {
         }
 }
 
+/// Notes an unclean attempt on a word: `stumbles` corrections (a wrong commit counts as one) in
+/// test number `id` on `day`.
+fn record_stumble(w: &mut Word, stumbles: u32, id: u32, day: u32) {
+    let n = stumbles.max(1);
+    w.stumbles += n;
+    if w.stumbled_in != id {
+        w.stumbled_n = 0;
+    }
+    w.stumbled_in = id;
+    w.stumbled_n += n;
+    if stumbles > 0 {
+        w.stumble_days.retain(|d| d[0] + 7 > day);
+        match w.stumble_days.iter_mut().find(|d| d[0] == day) {
+            Some(d) => d[1] += stumbles,
+            None => w.stumble_days.push([day, stumbles]),
+        }
+    }
+}
+
 #[derive(Default)]
 struct Touch {
     missed: bool,
@@ -334,10 +385,13 @@ struct Touch {
 /// that are now mastered or passed. Retired words are left alone.
 pub fn apply(vocab: &mut Vocab, attempts: &[Attempt], cfg: &Config, day: u32) -> Summary {
     let median = median_speed(vocab, cfg);
+    let id = vocab.sessions + 1;
     let mut summary = Summary::default();
     let mut touched: BTreeMap<String, Touch> = BTreeMap::new();
     let mut seen_new: HashSet<String> = HashSet::new();
-    let mut learning = vocab.count(Status::Learning);
+    // the words entering learning in this test hold their places before any lapse takes one
+    let entering: HashSet<&str> = attempts.iter().filter(|a| vocab.words.get(&a.word).is_none_or(|w| w.status == Status::New)).map(|a| a.word.as_str()).collect();
+    let mut learning = vocab.count(Status::Learning) + entering.len();
     let mut globals: Vec<bool> = Vec::new();
     for a in attempts {
         let w = vocab.words.entry(a.word.clone()).or_default();
@@ -345,7 +399,6 @@ pub fn apply(vocab: &mut Vocab, attempts: &[Attempt], cfg: &Config, day: u32) ->
             continue;
         }
         if w.status == Status::New {
-            learning += 1;
             w.status = Status::Learning;
             w.days = 0;
             w.level = 0;
@@ -356,6 +409,9 @@ pub fn apply(vocab: &mut Vocab, attempts: &[Attempt], cfg: &Config, day: u32) ->
         w.attempts += 1;
         w.hits += u32::from(a.hit);
         w.push_result(a.hit);
+        if !a.hit {
+            record_stumble(w, a.stumbles, id, day);
+        }
         globals.push(a.hit);
         if a.hit {
             w.streak = 0;
@@ -422,12 +478,17 @@ pub fn apply(vocab: &mut Vocab, attempts: &[Attempt], cfg: &Config, day: u32) ->
         }
     }
     vocab.sessions += 1;
+    if vocab.last_new == 0 || !summary.new.is_empty() {
+        vocab.last_new = day;
+    }
     summary.due = due_reviews(vocab, day).len();
     summary
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::attempts_of;
+    use super::super::engine::{Input, Session};
     use super::*;
     use std::collections::HashMap;
 
@@ -456,11 +517,16 @@ mod tests {
     }
 
     fn hit(w: &str) -> Attempt {
-        Attempt { word: w.into(), hit: true, secs: Some(1.0) }
+        Attempt { word: w.into(), hit: true, stumbles: 0, secs: Some(1.0) }
+    }
+
+    /// Right in the end, after `n` corrections: not clean.
+    fn stumble(w: &str, n: u32) -> Attempt {
+        Attempt { word: w.into(), hit: false, stumbles: n, secs: Some(2.0) }
     }
 
     fn miss(w: &str) -> Attempt {
-        Attempt { word: w.into(), hit: false, secs: None }
+        Attempt { word: w.into(), hit: false, stumbles: 0, secs: None }
     }
 
     fn p(v: &Vocab, pool: &mut Vec<String>, count: usize, seed: u64, day: u32) -> Plan {
@@ -473,9 +539,9 @@ mod tests {
     fn an_empty_vocabulary_gets_the_first_words_in_pool_order() {
         let mut pool = names(50);
         let plan = p(&Vocab::default(), &mut pool, 25, 1, 100);
-        assert_eq!(plan.new_words, ["w0001", "w0002", "w0003"]);
+        assert_eq!(plan.new_words, ["w0001", "w0002"], "two new words a test");
         // nothing else to show: each new word twice, then topped up to five times
-        assert_eq!(plan.words.len(), 15, "{:?}", plan.words);
+        assert_eq!(plan.words.len(), 10, "{:?}", plan.words);
         assert!(plan.new_words.iter().all(|n| plan.words.iter().filter(|w| *w == n).count() == 5), "{:?}", plan.words);
     }
 
@@ -486,12 +552,12 @@ mod tests {
         v.words.insert("w0002".into(), word(Status::Review));
         v.words.insert("w0003".into(), word(Status::New));
         let mut pool = names(50);
-        assert_eq!(p(&v, &mut pool, 25, 1, 100).new_words, ["w0003", "w0004", "w0005"], "a word on file as new is still new");
+        assert_eq!(p(&v, &mut pool, 25, 1, 100).new_words, ["w0003", "w0004"], "a word on file as new is still new");
         // a full learning pool lets nothing in
-        for i in 10..25 {
+        for i in 10..20 {
             v.words.insert(format!("w{i:04}"), learning("1", 1));
         }
-        assert_eq!(v.count(Status::Learning), 15);
+        assert_eq!(v.count(Status::Learning), 10);
         none(&p(&v, &mut pool, 25, 1, 100).new_words);
         // one free slot: one word
         v.words.insert("w0010".into(), word(Status::Review));
@@ -501,8 +567,8 @@ mod tests {
     #[test]
     fn at_most_k_new_words_a_test() {
         let mut pool = names(50);
-        let c = Config { new_per_session: 2, ..cfg() };
-        assert_eq!(plan(&Vocab::default(), &mut pool, &c, 1, 25, 1, &all, true).new_words.len(), 2);
+        let c = Config { new_per_session: 1, ..cfg() };
+        assert_eq!(plan(&Vocab::default(), &mut pool, &c, 1, 25, 1, &all, true).new_words.len(), 1);
         assert!(plan(&Vocab::default(), &mut pool, &c, 1, 25, 1, &all, false).new_words.is_empty(), "allow_new false");
     }
 
@@ -510,12 +576,12 @@ mod tests {
     fn low_recent_accuracy_earns_no_new_words() {
         let mut v = Vocab::default();
         let mut pool = names(50);
-        v.recent = "1".repeat(45) + "00000"; // 90%
+        v.recent = "1".repeat(14) + "000000"; // 70%
         none(&p(&v, &mut pool, 25, 1, 5).new_words);
-        v.recent = "1".repeat(46) + "0000"; // 92%: enough
-        assert_eq!(p(&v, &mut pool, 25, 1, 5).new_words.len(), 3);
+        v.recent = "1".repeat(15) + "00000"; // 75%: enough
+        assert_eq!(p(&v, &mut pool, 25, 1, 5).new_words.len(), 2);
         v.recent = "0".repeat(19); // fewer than 20 attempts: not held against the typist
-        assert_eq!(p(&v, &mut pool, 25, 1, 5).new_words.len(), 3);
+        assert_eq!(p(&v, &mut pool, 25, 1, 5).new_words.len(), 2);
         v.recent = "0".repeat(20);
         none(&p(&v, &mut pool, 25, 1, 5).new_words);
     }
@@ -528,7 +594,7 @@ mod tests {
         v.words.insert("yyyyyy".into(), learning("1", 1));
         let plan = plan(&v, &mut pool, &cfg(), 1, 10, 1, &|w: &str| w.len() >= 2 && w.len() <= 4, true);
         assert!(plan.words.iter().all(|w| (2..=4).contains(&w.len()) && w != "yyyyyy"), "{:?}", plan.words);
-        assert_eq!(plan.new_words, ["bb", "ccc", "dddd"]);
+        assert_eq!(plan.new_words, ["bb", "ccc"]);
     }
 
     // ---- composition ----
@@ -620,7 +686,7 @@ mod tests {
         let mut pool = names(40);
         let feed = plan_feed(&v, &mut pool, &cfg(), 1, 200, 5, &all);
         assert_eq!(feed.words.len(), 200);
-        assert_eq!(feed.new_words.len(), 3, "only the first round brings new words");
+        assert_eq!(feed.new_words.len(), 2, "only the first round brings new words");
         assert!(feed.words.windows(2).all(|w| w[0] != w[1]));
         let (e, e2) = (Vocab::default(), Vocab::default());
         let mut empty: Vec<String> = Vec::new();
@@ -641,7 +707,7 @@ mod tests {
         assert_eq!(v.sessions, 1);
         let dog = &v.words["dog"];
         assert_eq!(dog.speed_ms, Some(1000.0));
-        let again = apply(&mut v, &[Attempt { word: "dog".into(), hit: true, secs: Some(2.0) }], &cfg(), 50);
+        let again = apply(&mut v, &[Attempt { word: "dog".into(), hit: true, stumbles: 0, secs: Some(2.0) }], &cfg(), 50);
         none(&again.new);
         assert!((v.words["dog"].speed_ms.unwrap() - 1300.0).abs() < 1e-9, "0.3 of the way to the new time");
         assert_eq!(v.words["dog"].days, 1, "the same day is one day");
@@ -661,7 +727,7 @@ mod tests {
     }
 
     #[test]
-    fn mastery_needs_ten_right_three_days_and_a_speed_near_the_median() {
+    fn mastery_needs_nine_of_ten_clean_three_days_and_a_speed_near_the_median() {
         let mut v = Vocab::default();
         v.words.insert("cat".into(), learning("111111111", 3));
         // ten right, three days: mastered, review level 1, due tomorrow
@@ -669,10 +735,17 @@ mod tests {
         assert_eq!(s.mastered, ["cat"]);
         let cat = &v.words["cat"];
         assert_eq!((cat.status, cat.level, cat.due, cat.mastered, cat.promotions), (Status::Review, 1, 61, Some(60), 1));
-        // 9 of 10 is 90%: not enough
+        // 9 of 10 clean is enough; 8 of 10 is not
         let mut v = Vocab::default();
         v.words.insert("cat".into(), learning("111101111", 3));
+        assert_eq!(apply(&mut v, &[hit("cat")], &cfg(), 60).mastered, ["cat"]);
+        let mut v = Vocab::default();
+        v.words.insert("cat".into(), learning("110101111", 3));
         none(&apply(&mut v, &[hit("cat")], &cfg(), 60).mastered);
+        // a stumble is not clean: the tenth attempt right but corrected leaves 8 of 10
+        let mut v = Vocab::default();
+        v.words.insert("cat".into(), learning("111101111", 3));
+        none(&apply(&mut v, &[stumble("cat", 1)], &cfg(), 60).mastered);
         // only two days (the third is today)... the word's days counter already counts today when it is the first attempt of the day
         let mut v = Vocab::default();
         v.words.insert("cat".into(), Word { last_seen: 60, ..learning("111111111", 2) });
@@ -694,7 +767,7 @@ mod tests {
         }
         v.words.insert("slow".into(), Word { speed_ms: Some(2400.0), attempts: 9, last_seen: 1, ..learning("111111111", 4) });
         v.words.insert("ok".into(), Word { speed_ms: Some(1400.0), attempts: 9, last_seen: 1, ..learning("111111111", 4) });
-        let s = apply(&mut v, &[Attempt { word: "slow".into(), hit: true, secs: Some(2.4) }, Attempt { word: "ok".into(), hit: true, secs: Some(1.4) }], &cfg(), 5);
+        let s = apply(&mut v, &[Attempt { word: "slow".into(), hit: true, stumbles: 0, secs: Some(2.4) }, Attempt { word: "ok".into(), hit: true, stumbles: 0, secs: Some(1.4) }], &cfg(), 5);
         assert_eq!(s.mastered, ["ok"], "1.4x the median passes, 2.4x does not");
     }
 
@@ -765,7 +838,7 @@ mod tests {
     #[test]
     fn a_lapse_with_the_learning_pool_full_stays_a_level_one_review() {
         let mut v = Vocab::default();
-        for i in 0..15 {
+        for i in 0..10 {
             v.words.insert(format!("l{i:02}"), learning("1", 1));
         }
         v.words.insert("cat".into(), Word { status: Status::Review, level: 3, due: 60, ..Word::default() });
@@ -773,7 +846,7 @@ mod tests {
         none(&s.relearn);
         let cat = &v.words["cat"];
         assert_eq!((cat.status, cat.level, cat.due, cat.lapses), (Status::Review, 2, 61, 1), "one level down, due tomorrow, the lapse counted");
-        assert_eq!(v.count(Status::Learning), 15, "the cap holds");
+        assert_eq!(v.count(Status::Learning), 10, "the cap holds");
     }
 
     #[test]
@@ -794,43 +867,172 @@ mod tests {
         assert_eq!(due, ["b1", "a1"]);
     }
 
+    // ---- stumbles ----
+
+    #[test]
+    fn a_stumbled_attempt_is_a_miss_that_keeps_its_count() {
+        let mut v = Vocab::default();
+        v.words.insert("cat".into(), learning("1111", 2));
+        let s = apply(&mut v, &[hit("cat"), stumble("cat", 2), hit("dog")], &cfg(), 50);
+        let cat = &v.words["cat"];
+        assert_eq!((cat.attempts, cat.hits, cat.recent.as_str()), (6, 5, "111110"), "{cat:?}");
+        assert_eq!((cat.stumbles, cat.stumbled_in, cat.stumbled_n, cat.stumble_days.clone()), (2, 1, 2, vec![[50, 2]]));
+        assert_eq!(v.recent, "101");
+        none(&s.mastered);
+        // a second test: the in-test count starts over, the days add up, old days drop out
+        apply(&mut v, &[stumble("cat", 1)], &cfg(), 52);
+        apply(&mut v, &[stumble("cat", 1)], &cfg(), 60);
+        let cat = &v.words["cat"];
+        assert_eq!((cat.stumbles, cat.stumbled_in, cat.stumbled_n), (4, 3, 1));
+        assert_eq!(cat.stumble_days, vec![[60, 1]], "a week of days is kept");
+        // a word committed wrong counts as a stumble of one but not as a correction day
+        apply(&mut v, &[miss("cat")], &cfg(), 61);
+        let cat = &v.words["cat"];
+        assert_eq!((cat.stumbles, cat.stumbled_n, cat.stumble_days.clone()), (5, 1, vec![[60, 1]]));
+    }
+
+    #[test]
+    fn a_due_review_that_stumbles_is_a_miss() {
+        let mut v = Vocab::default();
+        v.words.insert("cat".into(), Word { status: Status::Review, level: 3, due: 60, ..Word::default() });
+        let s = apply(&mut v, &[stumble("cat", 1), hit("cat")], &cfg(), 60);
+        assert_eq!(s.demoted, ["cat"]);
+        none(&s.promoted);
+        assert_eq!((v.words["cat"].level, v.words["cat"].due), (2, 61));
+    }
+
+    #[test]
+    fn words_that_stumbled_lately_are_drilled_first_and_the_old_ones_are_not() {
+        let mut v = Vocab { sessions: 10, ..Vocab::default() };
+        let stumbled = |in_test, n| Word { stumbled_in: in_test, stumbled_n: n, stumbles: n, ..learning("1111111111", 3) };
+        v.words.insert("fresh".into(), stumbled(10, 1)); // the last test
+        v.words.insert("bad".into(), stumbled(9, 3)); // the one before, three times
+        v.words.insert("old".into(), stumbled(8, 3)); // three tests ago: not recent
+        for i in 0..5 {
+            v.words.insert(format!("l{i}"), learning("1111111111", 3));
+        }
+        let c = Config { new_per_session: 0, ..cfg() };
+        let mut pool = names(5);
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for seed in 0..100 {
+            let plan = plan(&v, &mut pool, &c, 1, 10, seed, &all, true);
+            let n = |w: &str| plan.words.iter().filter(|x| *x == w).count();
+            assert_eq!(n("fresh"), 2, "seed {seed}: {:?}", plan.words);
+            assert_eq!(n("bad"), 3, "seed {seed}: {:?}", plan.words);
+            for w in &plan.words {
+                *counts.entry(w.clone()).or_default() += 1;
+            }
+        }
+        assert!(counts["old"] < counts["fresh"] && counts["l0"] < counts["fresh"], "{counts:?}");
+        // with no room the worst comes first
+        let plan = plan(&v, &mut pool, &c, 1, 4, 3, &all, true);
+        assert_eq!(plan.words.iter().filter(|w| *w == "bad").count(), 3, "{:?}", plan.words);
+        assert_eq!(plan.words.iter().filter(|w| *w == "fresh").count(), 1, "{:?}", plan.words);
+    }
+
+    #[test]
+    fn a_stumble_weighs_more_the_more_there_were() {
+        let base = learning("1111111111", 3);
+        let one = Word { stumbled_n: 1, ..base.clone() };
+        let four = Word { stumbled_n: 4, ..base.clone() };
+        assert!(weight(&base, false) < weight(&one, true) && weight(&one, true) < weight(&four, true));
+        assert!((weight(&four, false) - weight(&base, false)).abs() < 1e-9, "an old stumble weighs nothing");
+        assert!(recently_stumbled(&Word { stumbled_in: 9, ..base.clone() }, 10, &cfg()));
+        assert!(!recently_stumbled(&Word { stumbled_in: 8, ..base.clone() }, 10, &cfg()));
+        assert!(!recently_stumbled(&base, 1, &cfg()), "never stumbled");
+    }
+
+    #[test]
+    fn the_retuned_constants() {
+        let c = cfg();
+        assert_eq!((c.new_per_session, c.learning_cap, c.respace_gap, c.max_respace), (2, 10, 3, 3));
+        assert!((c.accuracy_threshold - 0.75).abs() < 1e-9 && (c.mastery_accuracy - 0.90).abs() < 1e-9);
+        assert_eq!((c.mastery_days, c.stumble_sessions), (3, 2));
+        assert!((c.speed_factor - 1.5).abs() < 1e-9);
+    }
+
     // ---- a simulated learner ----
 
-    /// A learner that forgets: a word's recall decays with the days since it was last typed right,
-    /// slower the more often it has been.
+    /// A learner that forgets, like the typist whose clean rate on a typical word is about 70%: a
+    /// word is right the first time with `first`, and later with `ceil` decayed by the days since
+    /// it was last typed clean, slower the more often it has been.
     struct Learner {
         rng: Rng,
         stability: HashMap<String, f64>,
         last: HashMap<String, f64>,
+        first: f64,
+        ceil: f64,
+        clean: usize,
+        attempts: usize,
     }
 
     impl Learner {
         fn new(seed: u64) -> Self {
-            Self { rng: Rng::new(seed), stability: HashMap::new(), last: HashMap::new() }
+            Self { rng: Rng::new(seed), stability: HashMap::new(), last: HashMap::new(), first: 0.40, ceil: 0.76, clean: 0, attempts: 0 }
+        }
+
+        fn unit(&mut self) -> f64 {
+            (self.rng.next_u64() >> 11) as f64 / (1_u64 << 53) as f64
         }
 
         fn recall(&self, w: &str, at: f64, mood: f64) -> f64 {
-            let p = self.last.get(w).map_or(0.85, |l| (-(at - l) / self.stability.get(w).copied().unwrap_or(5.0)).exp().min(0.99));
+            let p = self.last.get(w).map_or(self.first, |l| self.ceil * (-(at - l) / self.stability.get(w).copied().unwrap_or(3.0)).exp());
             (p * mood).clamp(0.02, 0.99)
         }
 
+        /// Whether the word is typed clean at time `at` (days).
         fn attempt(&mut self, w: &str, at: f64, mood: f64) -> bool {
             let p = self.recall(w, at, mood);
-            let ok = (self.rng.next_u64() >> 11) as f64 / (1_u64 << 53) as f64 <= p;
-            let s = self.stability.entry(w.to_owned()).or_insert(5.0);
+            let ok = self.unit() <= p;
+            let s = self.stability.entry(w.to_owned()).or_insert(3.0);
             let same_day = self.last.get(w).is_some_and(|l| at - l < 1.0);
-            *s = if ok { (*s * if same_day { 1.4 } else { 2.5 }).min(500.0) } else { (*s * 0.6).max(2.0) };
+            *s = if ok { (*s * if same_day { 1.25 } else { 2.0 }).min(400.0) } else { (*s * 0.75).max(1.5) };
             self.last.insert(w.to_owned(), at);
+            self.attempts += 1;
+            self.clean += usize::from(ok);
             ok
         }
     }
 
+    /// Types a test through the real typing session: a clean word is typed and committed; an
+    /// unclean one is mostly typed wrong, corrected and typed right (a stumble), sometimes
+    /// committed wrong. Returns the session.
+    fn play(words: Vec<String>, learner: &mut Learner, c: &Config, day: u32, mood: f64) -> Session {
+        let mut s = Session::new(words, false).with_respacing(c.respace_gap, c.max_respace);
+        let mut t = 0.0;
+        let mut n: f64 = 0.0;
+        while let Some(target) = s.target().map(str::to_owned) {
+            t += learner.unit().mul_add(0.5, 1.0);
+            let clean = learner.attempt(&target, n.mul_add(0.01, f64::from(day)), mood);
+            n += 1.0;
+            if clean {
+                for ch in target.chars().chain(std::iter::once(' ')) {
+                    s.apply(Input::Char(ch), t);
+                }
+            } else if learner.unit() < 0.75 {
+                s.apply(Input::Char('#'), t);
+                s.apply(Input::Char('#'), t);
+                s.apply(Input::Backspace, t);
+                s.apply(Input::Backspace, t);
+                for ch in target.chars().chain(std::iter::once(' ')) {
+                    s.apply(Input::Char(ch), t + 0.4);
+                }
+            } else {
+                s.apply(Input::Char('#'), t);
+                s.apply(Input::Commit, t);
+            }
+        }
+        s
+    }
+
     struct Run {
         vocab: Vocab,
-        /// (day, vocabulary size, frontier rank) at each day's end
-        curve: Vec<(u32, usize, usize)>,
+        /// (day, vocabulary size, frontier rank, words learning) at each day's end
+        curve: Vec<(u32, usize, usize, usize)>,
         plans: Vec<(u32, Plan)>,
         summaries: Vec<Summary>,
+        /// Words typed, and how many of those attempts were clean
+        typed: (usize, usize),
     }
 
     fn simulate(days: u32, seed: u64, bad_day: Option<u32>, retire: Option<(u32, &str)>) -> Run {
@@ -838,7 +1040,7 @@ mod tests {
         let mut pool = names(5000);
         let mut learner = Learner::new(seed);
         let mut vocab = Vocab::default();
-        let mut run = Run { vocab: Vocab::default(), curve: Vec::new(), plans: Vec::new(), summaries: Vec::new() };
+        let mut run = Run { vocab: Vocab::default(), curve: Vec::new(), plans: Vec::new(), summaries: Vec::new(), typed: (0, 0) };
         for d in 0..days {
             let day = 1000 + d;
             if let Some((on, w)) = retire
@@ -851,17 +1053,27 @@ mod tests {
             if !plan.new_words.is_empty() {
                 assert!(accuracy_ok(&vocab, &c), "day {d}: new words came with accuracy {:?} over {} attempts", window_accuracy(&vocab), vocab.recent.len());
             }
-            let attempts: Vec<Attempt> = plan
-                .words
-                .iter()
-                .enumerate()
-                .map(|(i, w)| Attempt { word: w.clone(), hit: learner.attempt(w, (i as f64).mul_add(0.01, f64::from(day)), mood), secs: (i > 0).then(|| 1.0 + (learner.rng.below(40) as f64) / 100.0) })
-                .collect();
+            // the learning words that stumbled in the last two tests are drilled first: twice each
+            // (or, with more of them than room, nothing else is in the test but them)
+            let recent: HashSet<&str> = vocab.words.iter().filter(|(_, x)| x.status == Status::Learning && recently_stumbled(x, vocab.sessions, &c)).map(|(w, _)| w.as_str()).collect();
+            let in_recent = plan.words.iter().filter(|w| recent.contains(w.as_str())).count();
+            let slots = 25usize.saturating_sub(plan.due + 2 * plan.new_words.len());
+            assert!(in_recent >= (2 * recent.len()).min(slots), "day {d}: {in_recent} drill words of {} recently stumbled, {slots} slots: {:?}", recent.len(), plan.words);
+            let session = play(plan.words.clone(), &mut learner, &c, day, mood);
+            // a word that stumbled or was missed comes back in the same test
+            for (i, x) in session.done.iter().enumerate().filter(|(_, x)| !x.clean()) {
+                if !session.done[..i].iter().any(|y| y.target == x.target && !y.clean()) {
+                    assert!(session.done[i + 1..].iter().any(|y| y.target == x.target), "day {d}: {} was not put back", x.target);
+                }
+            }
+            let attempts = attempts_of(&session);
+            run.typed.0 += attempts.len();
+            run.typed.1 += attempts.iter().filter(|a| a.hit).count();
             let summary = apply(&mut vocab, &attempts, &c, day);
             assert!(vocab.count(Status::Learning) <= c.learning_cap, "day {d}: {} learning", vocab.count(Status::Learning));
             assert!(summary.new.len() <= c.new_per_session, "day {d}: {} new", summary.new.len());
             let frontier = crate::vocab::find_frontier(&vocab, &mut pool).rank;
-            run.curve.push((d + 1, vocab.size(), frontier));
+            run.curve.push((d + 1, vocab.size(), frontier, vocab.count(Status::Learning)));
             run.plans.push((day, plan));
             run.summaries.push(summary);
         }
@@ -873,30 +1085,33 @@ mod tests {
     fn ninety_simulated_days_obey_every_rule() {
         let run = simulate(90, 42, Some(40), Some((10, "w0003")));
         // the vocabulary grows steadily and never faster than K a day
-        for &(d, size, _) in &run.curve {
-            assert!(size <= 3 * d as usize, "day {d}: vocabulary {size}");
+        for &(d, size, _, _) in &run.curve {
+            assert!(size <= 2 * d as usize + 1, "day {d}: vocabulary {size}");
         }
         let size = |d: u32| run.curve[d as usize - 1].1;
-        assert!(size(90) >= 60, "growth is real: {} words after 90 days", size(90));
+        assert!(size(90) >= 30, "growth is real: {} words after 90 days", size(90));
         assert!(size(30) < size(60) && size(60) < size(90), "keeps growing: {} {} {}", size(30), size(60), size(90));
         // a bad day: the day after it introduces nothing
         let (_, after_bad) = &run.plans[41];
         assert!(after_bad.new_words.is_empty(), "no new words after a bad day: {:?}", after_bad.new_words);
-        // and the bad day did not break the pool cap
         // retired words never appear after they are retired
         assert!(run.plans.iter().skip(10).all(|(_, p)| !p.words.contains(&"w0003".to_owned())), "w0003 is retired from day 10");
         assert_eq!(run.vocab.words["w0003"].status, Status::Retired);
-        // mastered words come back after their cooldown: some word has gone up several levels,
-        // and no review word is shown more than a day before it is due unless the test had room
+        // mastered words come back after their cooldown and climb the levels
         let top = run.vocab.words.values().map(|w| w.level).max().unwrap_or(0);
         assert!(top >= 3, "a word reached level {top}");
-        eprintln!("growth curve (day, vocabulary, frontier rank): {:?}", run.curve.iter().filter(|c| c.0 % 10 == 0 || c.0 == 1).collect::<Vec<_>>());
+        let clean = run.typed.1 as f64 / run.typed.0 as f64;
+        assert!((0.62..=0.78).contains(&clean), "the simulated typist is clean {clean:.2} of the time, like the real one (about 0.7)");
+        eprintln!("growth curve (day, vocabulary, frontier rank, learning): {:?}", run.curve.iter().filter(|c| c.0 % 10 == 0 || c.0 == 1).collect::<Vec<_>>());
         eprintln!(
-            "after 90 days: {} learning, {} review, levels {:?}, {} lapses",
+            "after 90 days: {} learning, {} review, levels {:?}, {} lapses, {} attempts {:.0}% clean, {} new words in total",
             run.vocab.count(Status::Learning),
             run.vocab.count(Status::Review),
             (1..=6u8).map(|l| run.vocab.words.values().filter(|w| w.level == l && w.status == Status::Review).count()).collect::<Vec<_>>(),
-            run.vocab.words.values().map(|w| w.lapses).sum::<u32>()
+            run.vocab.words.values().map(|w| w.lapses).sum::<u32>(),
+            run.typed.0,
+            clean * 100.0,
+            run.summaries.iter().map(|s| s.new.len()).sum::<usize>()
         );
     }
 
@@ -912,11 +1127,10 @@ mod tests {
                 seen.entry(w.clone()).or_default().push(*day);
             }
         }
-        // find a mastered word with at least 3 appearances after mastery and check the gaps grow
-        let mut checked = 0;
+        let (mut checked, mut grew) = (0, 0);
         for (w, st) in &run.vocab.words {
             let Some(m) = st.mastered else { continue };
-            if st.status != Status::Review || st.promotions < 4 {
+            if st.status != Status::Review || st.promotions < 3 {
                 continue;
             }
             let days: Vec<u32> = seen[w].iter().copied().filter(|d| *d > m).collect();
@@ -925,10 +1139,12 @@ mod tests {
             let gaps: Vec<u32> = distinct.windows(2).map(|x| x[1] - x[0]).collect();
             assert!(gaps.iter().all(|g| *g >= 1), "{w}: {gaps:?}");
             assert!(distinct.first().is_none_or(|d| *d > m), "{w} came back the day it was mastered");
-            assert!(gaps.iter().any(|g| *g >= 3), "{w} returns on a growing schedule: {gaps:?}");
+            // (a word that slipped comes back tomorrow, so only some words show the long gaps)
+            grew += usize::from(gaps.iter().any(|g| *g >= 3));
             checked += 1;
         }
         assert!(checked > 0, "some word went through several reviews in 90 days");
+        assert!(grew > 0, "some word returns on a growing schedule ({checked} checked)");
     }
 
     #[test]
@@ -950,7 +1166,7 @@ mod tests {
         let mut learner = Learner::new(1);
         for d in 0..20u32 {
             let plan = plan(&vocab, &mut pool, &c, 1000 + d, 25, u64::from(d), &all, true);
-            let attempts: Vec<Attempt> = plan.words.iter().map(|w| Attempt { word: w.clone(), hit: learner.rng.below(2) == 0, secs: Some(1.0) }).collect();
+            let attempts: Vec<Attempt> = plan.words.iter().map(|w| Attempt { word: w.clone(), hit: learner.rng.below(2) == 0, stumbles: 1, secs: Some(1.0) }).collect();
             apply(&mut vocab, &attempts, &c, 1000 + d);
         }
         assert!(vocab.size() <= 6, "vocabulary {} for a learner at 50%", vocab.size());

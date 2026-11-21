@@ -10,7 +10,7 @@
 
 use crate::mistakes::TapeWord;
 use crate::paths;
-use crate::practice::adaptive::{Config, due_reviews, window_accuracy};
+use crate::practice::adaptive::{Config, accuracy_ok, due_reviews, window_accuracy};
 use crate::practice::pool::{self, Candidates, Pool};
 use anyhow::{Context, Result, bail};
 use clap::{Args as ClapArgs, Subcommand};
@@ -82,6 +82,18 @@ pub struct Word {
     /// The day it was last mastered (entered review), when it has been
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mastered: Option<u32>,
+    /// Corrections made while typing it, and attempts committed wrong, in all
+    #[serde(default)]
+    pub stumbles: u32,
+    /// The test (its number in `sessions`) that last had it stumble or miss; 0 never
+    #[serde(default)]
+    pub stumbled_in: u32,
+    /// Stumbles in that test
+    #[serde(default)]
+    pub stumbled_n: u32,
+    /// Stumbles by day over the last week: `[day, count]`
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stumble_days: Vec<[u32; 2]>,
 }
 
 impl Word {
@@ -117,12 +129,18 @@ pub struct Vocab {
     /// The last results over all words, oldest first
     #[serde(default)]
     pub recent: String,
+    /// The accuracy gate for new words as a share (0 to 1), when the typist set one
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<f64>,
+    /// The day a new word last entered (0: not known yet)
+    #[serde(default)]
+    pub last_new: u32,
     pub words: BTreeMap<String, Word>,
 }
 
 impl Default for Vocab {
     fn default() -> Self {
-        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), words: BTreeMap::new() }
+        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), gate: None, last_new: 0, words: BTreeMap::new() }
     }
 }
 
@@ -212,15 +230,16 @@ pub fn date(day: u32) -> String {
 // ---------------------------------------------------------------------------------------------
 // Seeding
 
-/// Words typed at least this often on the tape, with at most `SEED_REVIEW_ERRORS` wrong, start in review.
+/// Fewest tape attempts for a word to start in review or to count towards the median error rate.
 pub const SEED_REVIEW_ATTEMPTS: usize = 20;
-/// Highest error share of a tape word that starts in review level 2.
-pub const SEED_REVIEW_ERRORS: f64 = 0.05;
-/// Fewest tape attempts and lowest error share for a word to start in learning.
+/// A word typed this cleanly (error share at most this) starts at review level 2.
+pub const SEED_CLEAN_ERRORS: f64 = 0.20;
+/// The words typed most on the tape (this many) that are also clean start at review level 3.
+pub const SEED_TOP_WORDS: usize = 200;
+/// Fewest tape attempts for a word to start in learning.
 pub const SEED_LEARNING_ATTEMPTS: usize = 5;
-pub const SEED_LEARNING_ERRORS: f64 = 0.10;
-/// The level seeded review words start at.
-pub const SEED_LEVEL: u8 = 2;
+/// The median error share is capped here, so a very rough tape does not make every word known.
+pub const SEED_MEDIAN_CAP: f64 = 0.5;
 
 fn recent_from(attempts: usize, errors: usize) -> String {
     let n = attempts.min(WORD_WINDOW);
@@ -230,26 +249,50 @@ fn recent_from(attempts: usize, errors: usize) -> String {
     s
 }
 
+/// The typist's median error share over the tape words with 20 or more attempts (their overall
+/// share when there are none), capped at `SEED_MEDIAN_CAP`.
+fn median_error_rate(tape: &[TapeWord]) -> f64 {
+    let mut rates: Vec<f64> = tape.iter().filter(|t| t.attempts >= SEED_REVIEW_ATTEMPTS).map(|t| t.errors as f64 / t.attempts as f64).collect();
+    rates.sort_by(f64::total_cmp);
+    let median = if rates.is_empty() {
+        let (a, e) = tape.iter().fold((0, 0), |(a, e), t| (a + t.attempts, e + t.errors));
+        if a == 0 { 0.0 } else { e as f64 / a as f64 }
+    } else {
+        rates[(rates.len() - 1) / 2]
+    };
+    median.min(SEED_MEDIAN_CAP)
+}
+
 /// A vocabulary seeded from what the typist has done: the tape's per-word counts (`tape`) and the
-/// words missed in past practice runs (`missed`, one entry per miss). Words typed 20 or more times
-/// at 95% or better start in review at level 2, due one interval after their last use; words with
-/// 5 or more attempts and 10% or more wrong start in learning (the `cfg.learning_cap` worst);
-/// every other word with a history is kept as new with its counts, so it is introduced in pool order.
+/// words missed in past practice runs (`missed`, one entry per miss). The tape's error share is
+/// the typist's own baseline (corrections show as undos), so the thresholds are relative to it:
+///
+/// - 20 or more attempts and an error share at or below the typist's median: review, level 1; at
+///   most 20% wrong: level 2; among the 200 most typed words and at most 20% wrong: level 3.
+///   Due one interval after the last use.
+/// - 5 or more attempts and an error share above the median, and not in review: the
+///   `cfg.learning_cap` with the most errors start in learning.
+/// - Every other word with a history is kept as new with its counts, so it is introduced in pool
+///   order.
 #[must_use]
 pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> Vocab {
     let mut v = Vocab { seeded: true, ..Vocab::default() };
     let day_of_tape = |t: &TapeWord| t.last_day.map_or(today, |d| u32::try_from(d.max(0)).unwrap_or(today).min(today));
+    let median = median_error_rate(tape);
+    let mut by_use: Vec<&TapeWord> = tape.iter().filter(|t| t.attempts > 0).collect();
+    by_use.sort_by(|a, b| b.attempts.cmp(&a.attempts).then(a.word.cmp(&b.word)));
+    let top: std::collections::HashSet<&str> = by_use.iter().take(SEED_TOP_WORDS).map(|t| t.word.as_str()).collect();
     let mut learning: Vec<&TapeWord> = Vec::new();
     for t in tape.iter().filter(|t| t.attempts > 0) {
         let rate = t.errors as f64 / t.attempts as f64;
         let last = day_of_tape(t);
         let hits = (t.attempts - t.errors.min(t.attempts)) as u32;
         let mut w = Word { attempts: t.attempts as u32, hits, last_seen: last, days: t.days as u32, recent: recent_from(t.attempts, t.errors), ..Word::default() };
-        if t.attempts >= SEED_REVIEW_ATTEMPTS && rate <= SEED_REVIEW_ERRORS {
+        if t.attempts >= SEED_REVIEW_ATTEMPTS && rate <= median {
             w.status = Status::Review;
-            w.level = SEED_LEVEL;
-            w.due = last + cfg.intervals[usize::from(SEED_LEVEL) - 1];
-        } else if t.attempts >= SEED_LEARNING_ATTEMPTS && rate >= SEED_LEARNING_ERRORS {
+            w.level = if rate <= SEED_CLEAN_ERRORS { if top.contains(t.word.as_str()) { 3 } else { 2 } } else { 1 };
+            w.due = last + cfg.intervals[usize::from(w.level) - 1];
+        } else if t.attempts >= SEED_LEARNING_ATTEMPTS && rate > median {
             learning.push(t);
         }
         v.words.insert(t.word.clone(), w);
@@ -268,7 +311,15 @@ pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> V
         w.push_result(false);
         w.last_seen = today;
     }
+    v.last_new = today;
     v
+}
+
+/// `base` with the accuracy gate from `flag` (percent) or else the one saved in the vocabulary.
+#[must_use]
+pub fn with_gate(base: &Config, vocab: &Vocab, flag: Option<f64>) -> Config {
+    let gate = flag.map(|p| (p / 100.0).clamp(0.0, 1.0)).or(vocab.gate);
+    Config { accuracy_threshold: gate.unwrap_or(base.accuracy_threshold), ..base.clone() }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -305,6 +356,12 @@ enum Action {
         /// Do it without asking
         #[arg(long)]
         yes: bool,
+    },
+    /// Set the accuracy gate for new words: the clean share (percent, 0 to 100) of the last 50
+    /// attempts needed to earn one, or `default`
+    Gate {
+        /// A percent such as 70, or `default`
+        percent: String,
     },
     /// Read the practice history and the steno tape into the words not in the file yet
     Seed {
@@ -358,9 +415,9 @@ fn expand_home(path: &Path) -> PathBuf {
 
 pub fn run(args: &Args) -> Result<()> {
     let path = file();
-    let cfg = Config::default();
     let today = day_of(now(), local_offset());
     let mut vocab = Vocab::load(&path)?;
+    let cfg = with_gate(&Config::default(), &vocab, None);
     let lower = |words: &[String]| words.iter().map(|w| w.to_lowercase()).collect::<Vec<_>>();
     match &args.action {
         None => {
@@ -388,6 +445,16 @@ pub fn run(args: &Args) -> Result<()> {
             }
             vocab = Vocab { seeded: true, ..Vocab::default() };
             println!("{} emptied", path.display());
+        }
+        Some(Action::Gate { percent }) => {
+            if percent == "default" {
+                vocab.gate = None;
+                println!("gate back to the default, {:.0}%", Config::default().accuracy_threshold * 100.0);
+            } else {
+                let p: f64 = percent.trim_end_matches('%').parse().ok().filter(|p| (0.0..=100.0).contains(p)).with_context(|| format!("{percent:?} is not a percent from 0 to 100 (or `default`)"))?;
+                vocab.gate = Some(p / 100.0);
+                println!("gate set to {p:.0}%: new words need that share of clean answers over the last {GLOBAL_WINDOW} attempts");
+            }
         }
         Some(Action::Seed { tape, dict }) => {
             let before = vocab.words.len();
@@ -431,6 +498,40 @@ fn frontier(args: &Args) -> Result<Frontier> {
 
 const LIST: usize = 15;
 
+/// Days without a new word before `lyk vocab` says why.
+pub const STUCK_DAYS: u32 = 14;
+
+/// The words with stumbles over the last 7 days, most first.
+fn stumbled_this_week(vocab: &Vocab, today: u32) -> Vec<(&String, u32)> {
+    let mut v: Vec<(&String, u32)> = vocab
+        .words
+        .iter()
+        .map(|(w, s)| (w, s.stumble_days.iter().filter(|d| d[0] + 7 > today && d[0] <= today).map(|d| d[1]).sum::<u32>()))
+        .filter(|(_, n)| *n > 0)
+        .collect();
+    v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+    v
+}
+
+/// Why no new word has entered for more than `STUCK_DAYS` days, when that is so.
+fn stuck_reason(vocab: &Vocab, cfg: &Config, today: u32) -> Option<String> {
+    if vocab.sessions == 0 || vocab.last_new == 0 || today.saturating_sub(vocab.last_new) <= STUCK_DAYS {
+        return None;
+    }
+    let learning = vocab.count(Status::Learning);
+    if learning >= cfg.learning_cap {
+        return Some(format!("the learning pool is full ({learning} of {}); master them or `lyk vocab know` the ones you do not want", cfg.learning_cap));
+    }
+    if !accuracy_ok(vocab, cfg) {
+        return Some(format!(
+            "clean accuracy {:.0}% is under the gate, {:.0}%, over the last {GLOBAL_WINDOW}; `lyk vocab gate N` sets a lower one",
+            window_accuracy(vocab).unwrap_or(0.0) * 100.0,
+            cfg.accuracy_threshold * 100.0
+        ));
+    }
+    Some("the gate is met and the pool has room: run a test (the next new word comes in it)".to_owned())
+}
+
 /// The summary: counts, size, frontier, the learning pool, the next due reviews, the recently
 /// mastered words and the lapses, as text or JSON.
 pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, json: bool) -> Result<String> {
@@ -443,13 +544,18 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
     lapsed.sort_by(|a, b| b.1.lapses.cmp(&a.1.lapses).then(a.0.cmp(b.0)));
     let due = due_reviews(vocab, today).len();
     let accuracy = window_accuracy(vocab);
+    let stumble_rate = accuracy.map(|a| 1.0 - a);
+    let week = stumbled_this_week(vocab, today);
+    let stuck = stuck_reason(vocab, cfg, today);
     if json {
         let item = |(w, s): &(&String, &Word)| serde_json::json!({"word": w, "level": s.level, "due": (s.status == Status::Review).then(|| date(s.due)), "accuracy": 1.0 - s.error_rate(), "lapses": s.lapses});
         let value = serde_json::json!({
             "new": vocab.count(Status::New), "learning": vocab.count(Status::Learning), "review": vocab.count(Status::Review),
             "retired": vocab.count(Status::Retired), "vocabulary": vocab.size(), "sessions": vocab.sessions,
             "frontier_rank": frontier.rank, "next_word": frontier.next, "recent_accuracy": accuracy, "due_now": due,
-            "learning_cap": cfg.learning_cap,
+            "learning_cap": cfg.learning_cap, "gate": cfg.accuracy_threshold, "stumble_rate": stumble_rate,
+            "stumbled_this_week": week.iter().take(LIST).map(|(w, n)| serde_json::json!({"word": w, "stumbles": n})).collect::<Vec<_>>(),
+            "no_new_words": stuck,
             "learning_pool": learning.iter().map(item).collect::<Vec<_>>(),
             "next_due": reviews.iter().take(LIST).map(item).collect::<Vec<_>>(),
             "recently_mastered": mastered.iter().take(LIST).map(|(w, s)| serde_json::json!({"word": w, "date": s.mastered.map(date)})).collect::<Vec<_>>(),
@@ -474,11 +580,15 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
     };
     let _ = writeln!(
         out,
-        "recent accuracy {}  (new words need {:.0}% over the last {})",
+        "recent clean accuracy {}  (new words need {:.0}% over the last {};  stumble rate {})",
         accuracy.map_or_else(|| "none yet".to_owned(), |a| format!("{:.0}%", a * 100.0)),
         cfg.accuracy_threshold * 100.0,
-        crate::vocab::GLOBAL_WINDOW
+        crate::vocab::GLOBAL_WINDOW,
+        stumble_rate.map_or_else(|| "none yet".to_owned(), |r| format!("{:.0}%", r * 100.0))
     );
+    if let Some(why) = &stuck {
+        let _ = writeln!(out, "no new word for {} days: {why}", today.saturating_sub(vocab.last_new));
+    }
     let _ = writeln!(out, "\nlearning ({} of {}):", learning.len(), cfg.learning_cap);
     for (w, s) in &learning {
         let (ok, n) = s.window();
@@ -492,6 +602,12 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
         let _ = writeln!(out, "\nrecently mastered:");
         for (w, s) in mastered.iter().take(LIST) {
             let _ = writeln!(out, "  {w:<16} {}", s.mastered.map_or_else(String::new, date));
+        }
+    }
+    if !week.is_empty() {
+        let _ = writeln!(out, "\nstumbled most this week (corrections before the commit):");
+        for (w, n) in week.iter().take(LIST) {
+            let _ = writeln!(out, "  {w:<16} {n}");
         }
     }
     if !lapsed.is_empty() {
@@ -557,31 +673,55 @@ mod tests {
     }
 
     #[test]
-    fn seeding_sorts_tape_words_by_their_numbers() {
+    fn seeding_sorts_tape_words_by_their_numbers_relative_to_the_typists_median() {
         let cfg = Config::default();
         let tape = [
-            tw("the", 400, 4, 30, 100),    // 1%: review level 2
-            tw("cat", 20, 1, 5, 100),      // 5%: review (at the limit)
-            tw("dog", 19, 0, 5, 100),      // too few attempts: new with counts
-            tw("late", 30, 6, 9, 100),     // 20% wrong: learning
-            tw("lead", 8, 1, 3, 100),      // 12.5% wrong, 8 attempts: learning
-            tw("rare", 3, 1, 1, 100),      // few attempts: new
-            tw("zero", 0, 0, 0, 100),      // nothing: not on file
+            tw("the", 400, 4, 30, 100), // 1%: among the most typed and clean: review level 3
+            tw("cat", 20, 1, 5, 100),   // 5%: review
+            tw("late", 30, 6, 9, 100),  // 20%: the median of the five words with 20 attempts: review
+            tw("mid", 40, 12, 9, 100),  // 30%: above the median: learning
+            tw("bad", 25, 15, 9, 100),  // 60%: learning
+            tw("dog", 19, 0, 5, 100),   // too few attempts for review: new with counts
+            tw("lead", 8, 5, 3, 100),   // 62% on 8 attempts: learning
+            tw("rare", 3, 1, 1, 100),   // few attempts: new
+            tw("zero", 0, 0, 0, 100),   // nothing: not on file
         ];
-        let v = seed(&tape, &["late".into(), "lead".into(), "ghost".into(), "ghost".into()], &cfg, 105);
+        let v = seed(&tape, &["bad".into(), "lead".into(), "ghost".into(), "ghost".into()], &cfg, 105);
         assert!(v.seeded);
+        assert_eq!(v.last_new, 105, "the gate's clock starts at the seeding");
         let the = &v.words["the"];
-        assert_eq!((the.status, the.level, the.due, the.last_seen, the.days), (Status::Review, 2, 103, 100, 30), "level 2 = the 3-day interval after the last use");
-        assert_eq!(v.words["cat"].status, Status::Review);
+        assert_eq!((the.status, the.level, the.due, the.last_seen, the.days), (Status::Review, 3, 107, 100, 30), "level 3 = the 7-day interval after the last use");
+        assert_eq!((v.words["cat"].status, v.words["cat"].level), (Status::Review, 3), "with under 200 words every clean word is among the most typed");
+        assert_eq!(v.words["late"].status, Status::Review);
+        assert_eq!(v.words["mid"].status, Status::Learning);
+        assert_eq!(v.words["bad"].status, Status::Learning);
+        assert_eq!(v.words["lead"].status, Status::Learning);
         assert_eq!(v.words["dog"].status, Status::New);
         assert_eq!((v.words["dog"].attempts, v.words["dog"].hits), (19, 19));
-        assert_eq!(v.words["late"].status, Status::Learning);
-        assert_eq!(v.words["lead"].status, Status::Learning);
         assert_eq!(v.words["rare"].status, Status::New);
         assert!(!v.words.contains_key("zero"));
-        assert_eq!(v.words["late"].attempts, 30, "a missed word already on the tape is not counted twice");
+        assert_eq!(v.words["bad"].attempts, 25, "a missed word already on the tape is not counted twice");
         let ghost = &v.words["ghost"];
         assert_eq!((ghost.status, ghost.attempts, ghost.hits, ghost.recent.as_str()), (Status::New, 2, 0, "00"));
+    }
+
+    #[test]
+    fn seeded_review_levels_follow_the_error_share_and_the_typing_frequency() {
+        let cfg = Config::default();
+        // 210 constantly typed words at 30% wrong make the median 30%
+        let mut tape: Vec<TapeWord> = (0..210).map(|i| tw(&format!("f{i:03}"), 500, 150, 20, 100)).collect();
+        tape.push(tw("cat", 20, 1, 5, 100)); // 5%, rarely typed: level 2
+        tape.push(tw("sure", 20, 5, 5, 100)); // 25%, below the median: level 1
+        tape.push(tw("hard", 20, 8, 5, 100)); // 40%, above it: learning
+        tape.push(tw("easy", 900, 90, 20, 100)); // 10% and typed most: level 3
+        let v = seed(&tape, &[], &cfg, 105);
+        let lv = |w: &str| (v.words[w].status, v.words[w].level);
+        assert_eq!(lv("cat"), (Status::Review, 2));
+        assert_eq!(lv("sure"), (Status::Review, 1));
+        assert_eq!(lv("easy"), (Status::Review, 3));
+        assert_eq!(lv("f000"), (Status::Review, 1), "at the median counts as typical");
+        assert_eq!(lv("hard"), (Status::Learning, 0));
+        assert_eq!(v.count(Status::Learning), 1);
     }
 
     #[test]
@@ -592,7 +732,12 @@ mod tests {
         assert_eq!(v.count(Status::Learning), 2);
         assert_eq!(v.words["b1"].status, Status::Learning);
         assert_eq!(v.words["c1"].status, Status::Learning);
-        assert_eq!(v.words["a1"].status, Status::New);
+        assert_eq!(v.words["d1"].status, Status::New);
+        assert_eq!(v.words["a1"].status, Status::New, "at the median (capped at 50%) is not worse than typical");
+        // the default pool is 10
+        let many: Vec<TapeWord> = (0..40).map(|i| tw(&format!("w{i:02}"), 10, 6 + i % 4, 3, 1)).collect();
+        assert_eq!(seed(&many, &[], &Config::default(), 5).count(Status::Learning), 10);
+        assert!(seed(&[], &[], &Config::default(), 5).words.is_empty());
     }
 
     #[test]
@@ -645,7 +790,7 @@ mod tests {
         let text = summary(&v, &cfg, 55, &f, false).unwrap();
         assert!(text.contains("vocabulary 4 words"), "{text}");
         assert!(text.contains("rank 12 is next (horse)"), "{text}");
-        assert!(text.contains("learning (1 of 15)") && text.contains("cat"), "{text}");
+        assert!(text.contains("learning (1 of 10)") && text.contains("cat"), "{text}");
         assert!(text.contains("1 due now"), "{text}");
         assert!(text.contains("lapses:") && text.contains("dog"), "{text}");
         let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 55, &f, true).unwrap()).unwrap();
@@ -653,6 +798,64 @@ mod tests {
         assert_eq!(json["frontier_rank"], 12);
         assert_eq!(json["next_due"][0]["word"], "dog");
         assert_eq!(json["due_now"], 1);
+    }
+
+    #[test]
+    fn the_gate_comes_from_the_flag_then_the_file_then_the_default() {
+        let base = Config::default();
+        let mut v = Vocab::default();
+        assert!((with_gate(&base, &v, None).accuracy_threshold - 0.75).abs() < 1e-9);
+        v.gate = Some(0.6);
+        assert!((with_gate(&base, &v, None).accuracy_threshold - 0.6).abs() < 1e-9);
+        assert!((with_gate(&base, &v, Some(90.0)).accuracy_threshold - 0.9).abs() < 1e-9, "the flag wins");
+        assert!((with_gate(&base, &v, Some(250.0)).accuracy_threshold - 1.0).abs() < 1e-9, "clamped");
+        // and it is kept in the file
+        let text = serde_json::to_string(&v).unwrap();
+        assert_eq!(serde_json::from_str::<Vocab>(&text).unwrap().gate, Some(0.6));
+        assert!(!serde_json::to_string(&Vocab::default()).unwrap().contains("gate"));
+    }
+
+    #[test]
+    fn a_long_wait_for_a_new_word_says_why() {
+        let cfg = Config::default();
+        let mut v = Vocab { sessions: 12, last_new: 100, recent: "1".repeat(30) + &"0".repeat(20), ..Vocab::default() };
+        assert!(stuck_reason(&v, &cfg, 110).is_none(), "ten days is not long");
+        let why = stuck_reason(&v, &cfg, 120).expect("20 days with 60% against a 75% gate");
+        assert!(why.contains("60%") && why.contains("75%") && why.contains("lyk vocab gate"), "{why}");
+        let f = Frontier { rank: 4, next: Some("x".into()) };
+        let text = summary(&v, &cfg, 120, &f, false).unwrap();
+        assert!(text.contains("no new word for 20 days") && text.contains("lyk vocab gate"), "{text}");
+        // a lower gate lets it through
+        v.gate = Some(0.5);
+        let low = with_gate(&cfg, &v, None);
+        assert!(stuck_reason(&v, &low, 120).is_some_and(|w| w.contains("gate is met")));
+        // a full pool is another reason
+        for i in 0..10 {
+            v.words.insert(format!("l{i}"), Word { status: Status::Learning, ..Word::default() });
+        }
+        assert!(stuck_reason(&v, &low, 120).is_some_and(|w| w.contains("pool is full")));
+        // never a test taken, or a new word lately: nothing to say
+        assert!(stuck_reason(&Vocab::default(), &cfg, 500).is_none());
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &low, 120, &f, true).unwrap()).unwrap();
+        assert!(json["no_new_words"].is_string());
+    }
+
+    #[test]
+    fn the_summary_shows_the_stumble_rate_and_the_words_stumbled_most_this_week() {
+        let cfg = Config::default();
+        let mut v = Vocab { sessions: 3, recent: "1110".into(), last_new: 100, ..Vocab::default() };
+        v.words.insert("cat".into(), Word { status: Status::Learning, stumbles: 5, stumble_days: vec![[98, 1], [100, 3]], ..Word::default() });
+        v.words.insert("dog".into(), Word { status: Status::Learning, stumbles: 1, stumble_days: vec![[100, 1]], ..Word::default() });
+        v.words.insert("old".into(), Word { status: Status::Learning, stumbles: 9, stumble_days: vec![[90, 9]], ..Word::default() });
+        let f = Frontier::default();
+        let text = summary(&v, &cfg, 101, &f, false).unwrap();
+        assert!(text.contains("stumble rate 25%"), "{text}");
+        let week = text.split("stumbled most this week").nth(1).expect("the list is there");
+        assert!(week.find("cat").unwrap() < week.find("dog").unwrap() && !week.contains("old"), "{text}");
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 101, &f, true).unwrap()).unwrap();
+        assert_eq!(json["stumbled_this_week"][0]["word"], "cat");
+        assert_eq!(json["stumbled_this_week"][0]["stumbles"], 4);
+        assert!((json["stumble_rate"].as_f64().unwrap() - 0.25).abs() < 1e-9);
     }
 
     #[test]

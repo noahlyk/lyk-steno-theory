@@ -138,7 +138,7 @@ pub fn result_lines(r: &Results, source: &str, outlines: &HashMap<String, String
     let outline = |w: &str| outlines.get(w).map_or_else(String::new, |o| format!("  {o}"));
     let mut out = vec![
         format!("{:.0} wpm   raw {:.0}   accuracy {:.1}%   words {:.1}%", r.wpm, r.raw, r.accuracy, r.word_accuracy),
-        format!("errors {}   time {:.1}s   words {}   source {source}", r.errors, r.secs, r.words),
+        format!("errors {}   stumbled {}   time {:.1}s   words {}   source {source}", r.errors, r.stumbled.len(), r.secs, r.words),
     ];
     out.push(r.consistency.map_or_else(|| "consistency  n/a (under three words)".to_owned(), |c| format!("consistency  {c:.0}%")));
     if !r.slow.is_empty() {
@@ -153,6 +153,13 @@ pub fn result_lines(r: &Results, source: &str, outlines: &HashMap<String, String
         out.push("missed".to_owned());
         for m in &r.misses {
             out.push(format!("  {:<16}typed {}{}", m.word, if m.typed.is_empty() { "(nothing)" } else { &m.typed }, outline(&m.word)));
+        }
+    }
+    if !r.stumbled.is_empty() {
+        out.push(String::new());
+        out.push("stumbled (corrected before the word was committed)".to_owned());
+        for (w, n) in &r.stumbled {
+            out.push(format!("  {w:<16}{n}x{}", outline(w)));
         }
     }
     out

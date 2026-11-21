@@ -4,6 +4,12 @@
 //! on (monkeytype's "normal" behaviour); with `stop_on_error` the word is refused until it is
 //! right. Backspace on an empty word reopens the previous committed word, so a steno `*` (which
 //! arrives as backspaces over the word and its space) undoes whole words.
+//!
+//! A **stumble** is a correction while a word was being typed: any run of backspaces or a word
+//! delete that removed characters of the word, or reopened it after its space. A run of
+//! backspaces (a steno `*` over a whole word) is one stumble. A word that committed right after a
+//! stumble is not clean: the typist's corrections come before the commit, so the committed word
+//! alone hides them.
 
 /// One thing the typist did.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -21,12 +27,22 @@ pub struct Done {
     pub typed: String,
     /// Seconds since the previous commit (since the first key for the first word)
     pub secs: f64,
+    /// Corrections made while the word was open (runs of backspaces or word deletes)
+    pub stumbles: u32,
+    /// Where the copy put back after this word sits in `words`, while it is still ahead
+    queued: Option<usize>,
 }
 
 impl Done {
     #[must_use]
     pub fn correct(&self) -> bool {
         self.target == self.typed
+    }
+
+    /// Committed right with no correction on the way.
+    #[must_use]
+    pub fn clean(&self) -> bool {
+        self.correct() && self.stumbles == 0
     }
 }
 
@@ -52,6 +68,14 @@ pub struct Session {
     key_ok: usize,
     key_bad: usize,
     refused: Vec<Miss>,
+    /// Corrections so far in the open word
+    stumbles: u32,
+    /// The corrections of the words after a reopened one, kept until the typist gets back to them
+    ahead: Vec<u32>,
+    /// The last thing done was a removal (a run of backspaces counts once)
+    removing: bool,
+    /// The open word was refused (`stop_on_error`): that is already a miss, its deletes do not count
+    refused_open: bool,
     /// A missed word comes back this many words later, at most this many times: `(gap, times)`
     respace: Option<(usize, u32)>,
     /// How many times each missed word has been put back
@@ -72,6 +96,10 @@ impl Session {
             key_ok: 0,
             key_bad: 0,
             refused: Vec::new(),
+            stumbles: 0,
+            ahead: Vec::new(),
+            removing: false,
+            refused_open: false,
             respace: None,
             put_back: Vec::new(),
         }
@@ -92,21 +120,32 @@ impl Session {
 
     /// Puts a missed word back `gap` words ahead (not next to itself), if it has been put back
     /// fewer than `times` times.
-    fn put_back_missed(&mut self, target: &str) {
-        let Some((gap, times)) = self.respace else { return };
+    fn put_back_missed(&mut self, target: &str) -> Option<usize> {
+        let (gap, times) = self.respace?;
         let used = self.put_back.iter().position(|(w, _)| w == target);
         if used.is_some_and(|i| self.put_back[i].1 >= times) {
-            return;
+            return None;
         }
         match used {
             Some(i) => self.put_back[i].1 += 1,
             None => self.put_back.push((target.to_owned(), 1)),
         }
-        let mut at = (self.done.len() + gap.max(1) - 1).min(self.words.len());
+        let mut at = (self.done.len() + gap.max(1)).min(self.words.len());
         while at < self.words.len() && (self.words[at] == target || at > 0 && self.words[at - 1] == target) {
             at += 1;
         }
         self.words.insert(at, target.to_owned());
+        Some(at)
+    }
+
+    /// Takes back the copy put back after a word that is being reopened.
+    fn take_back(&mut self, target: &str, at: usize) {
+        if self.words.get(at).is_some_and(|w| w == target) && at > self.done.len() {
+            self.words.remove(at);
+            if let Some(i) = self.put_back.iter().position(|(w, _)| w == target) {
+                self.put_back[i].1 = self.put_back[i].1.saturating_sub(1);
+            }
+        }
     }
 
     /// The index of the word being typed.
@@ -137,20 +176,39 @@ impl Session {
             return;
         }
         match input {
-            Input::Char(' ') | Input::Commit => self.commit(now),
-            Input::Char(c) => self.push(c, now),
+            Input::Char(' ') | Input::Commit => {
+                self.removing = false;
+                self.commit(now);
+            }
+            Input::Char(c) => {
+                self.removing = false;
+                self.push(c, now);
+            }
             Input::Backspace => {
-                if self.typed.pop().is_none() {
+                if self.typed.is_empty() {
                     self.reopen();
+                } else {
+                    self.typed.pop();
+                    self.stumble();
                 }
             }
             Input::DeleteWord => {
                 if self.typed.is_empty() {
                     self.reopen();
+                } else {
+                    self.stumble();
                 }
                 self.typed.clear();
             }
         }
+    }
+
+    /// A removal from the open word: one stumble per run of removals.
+    const fn stumble(&mut self) {
+        if !self.removing && !self.refused_open {
+            self.stumbles += 1;
+        }
+        self.removing = true;
     }
 
     const fn start(&mut self, now: f64) {
@@ -188,23 +246,37 @@ impl Session {
         let right = target == self.typed;
         if !right && self.stop_on_error {
             self.refused.push(Miss { word: target, typed: self.typed.clone() });
+            self.refused_open = true;
             return;
         }
         let secs = (now - self.last_commit).max(0.0);
         self.last_commit = now;
-        self.done.push(Done { target: target.clone(), typed: std::mem::take(&mut self.typed), secs });
-        if !right {
-            self.put_back_missed(&target);
+        let stumbles = std::mem::replace(&mut self.stumbles, self.ahead.pop().unwrap_or(0));
+        self.refused_open = false;
+        let mut done = Done { target: target.clone(), typed: std::mem::take(&mut self.typed), secs, stumbles, queued: None };
+        // a word that was missed or needed a correction comes back
+        if !right || stumbles > 0 {
+            done.queued = self.put_back_missed(&target);
         }
+        self.done.push(done);
         if self.done.len() >= self.words.len() {
             self.finish(now);
         }
     }
 
-    /// Backspace over the space after the previous word: it is open again, as typed.
+    /// Backspace over the space after the previous word: it is open again, as typed, and that
+    /// is a correction of it. The copy put back after it is taken back.
     fn reopen(&mut self) {
         if let Some(prev) = self.done.pop() {
+            if let Some(at) = prev.queued {
+                self.take_back(&prev.target, at);
+            }
             self.typed = prev.typed;
+            self.ahead.push(self.stumbles);
+            self.stumbles = prev.stumbles;
+            self.refused_open = false;
+            self.removing = false;
+            self.stumble();
         }
     }
 
@@ -227,6 +299,7 @@ impl Session {
             .map(|d| Miss { word: d.target.clone(), typed: d.typed.clone() })
             .collect();
         misses.extend(self.refused.iter().cloned());
+        let stumbled: Vec<(String, u32)> = self.done.iter().filter(|d| d.stumbles > 0).map(|d| (d.target.clone(), d.stumbles)).collect();
         let mut slow: Vec<(String, f64)> = self.done.iter().map(|d| (d.target.clone(), d.secs)).collect();
         slow.sort_by(|a, b| b.1.total_cmp(&a.1));
         slow.truncate(10);
@@ -241,6 +314,7 @@ impl Session {
             consistency: consistency(&self.done),
             slow,
             misses,
+            stumbled,
         }
     }
 }
@@ -277,6 +351,8 @@ pub struct Results {
     /// The longest time per word, slowest first, at most ten
     pub slow: Vec<(String, f64)>,
     pub misses: Vec<Miss>,
+    /// The committed words that needed a correction, with how many, in order (right or wrong)
+    pub stumbled: Vec<(String, u32)>,
 }
 
 #[cfg(test)]
@@ -293,31 +369,164 @@ mod tests {
         }
     }
 
+    /// Types every remaining word right until `word` is the target.
+    fn run_to(s: &mut Session, word: &str, t: f64) {
+        while s.target() != Some(word) {
+            let w = s.target().unwrap().to_owned();
+            type_str(s, &format!("{w} "), t);
+        }
+    }
+
     #[test]
-    fn a_missed_word_comes_back_a_few_words_later_at_most_twice() {
-        let mut s = session(&["aa", "bb", "cc", "dd", "ee", "ff", "gg"], false).with_respacing(4, 2);
-        type_str(&mut s, "xx ", 1.0); // aa missed: back three words after the next one
-        assert_eq!(s.words, ["aa", "bb", "cc", "dd", "aa", "ee", "ff", "gg"].map(String::from), "{:?}", s.words);
-        type_str(&mut s, "bb cc dd ", 2.0);
+    fn a_missed_word_comes_back_three_words_later_at_most_three_times() {
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee", "ff", "gg"], false).with_respacing(3, 3);
+        type_str(&mut s, "xx ", 1.0); // aa missed: back two words after the next one
+        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "dd", "ee", "ff", "gg"].map(String::from), "{:?}", s.words);
+        type_str(&mut s, "bb cc ", 2.0);
         type_str(&mut s, "xx ", 3.0); // aa missed again
         assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 3, "{:?}", s.words);
-        let at = s.words.iter().rposition(|w| w == "aa").unwrap();
-        assert!(at > s.current(), "ahead of the typist");
-        // the third miss of aa is not put back
+        assert!(s.words.iter().rposition(|w| w == "aa").unwrap() > s.current(), "ahead of the typist");
+        run_to(&mut s, "aa", 4.0);
+        type_str(&mut s, "xx ", 4.0); // the third miss is put back too
+        assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 4, "{:?}", s.words);
+        // the fourth miss is not put back
         let before = s.words.len();
-        while s.target() != Some("aa") {
-            let t = s.target().unwrap().to_owned();
-            type_str(&mut s, &format!("{t} "), 4.0);
-        }
+        run_to(&mut s, "aa", 5.0);
         type_str(&mut s, "xx ", 5.0);
-        assert_eq!(s.words.len(), before, "put back twice already");
+        assert_eq!(s.words.len(), before, "put back three times already");
         // the feed runs on to the end and the session finishes only then
         while !s.finished() {
             let t = s.target().unwrap().to_owned();
             type_str(&mut s, &format!("{t} "), 6.0);
         }
         assert_eq!(s.done.len(), s.words.len());
-        assert_eq!(s.done.iter().filter(|d| !d.correct()).count(), 3);
+        assert_eq!(s.done.iter().filter(|d| !d.correct()).count(), 4);
+    }
+
+    // ---- stumbles ----
+
+    fn stumbles(s: &Session) -> Vec<u32> {
+        s.done.iter().map(|d| d.stumbles).collect()
+    }
+
+    #[test]
+    fn a_clean_word_has_no_stumbles() {
+        let mut s = session(&["the", "cat"], false);
+        type_str(&mut s, "the cat", 1.0);
+        assert_eq!(stumbles(&s), [0, 0]);
+        assert!(s.done.iter().all(Done::clean));
+        assert!(s.results(2.0).stumbled.is_empty(), "{:?}", s.results(2.0).stumbled);
+    }
+
+    #[test]
+    fn typing_wrong_then_deleting_then_typing_right_is_one_stumble() {
+        let mut s = session(&["the", "cat"], false);
+        type_str(&mut s, "teh", 1.0);
+        for _ in 0..3 {
+            s.apply(Input::Backspace, 1.1); // a steno `*` over the word: one run
+        }
+        type_str(&mut s, "the ", 1.2);
+        assert_eq!(stumbles(&s), [1]);
+        let d = &s.done[0];
+        assert!(d.correct() && !d.clean(), "committed right but not clean");
+        assert_eq!(s.results(2.0).errors, 0, "the committed word is right");
+        assert_eq!(s.results(2.0).stumbled, [("the".to_owned(), 1)]);
+        // two separate corrections count twice, and a lone backspace of a right letter counts too
+        type_str(&mut s, "cx", 2.0);
+        s.apply(Input::Backspace, 2.1);
+        type_str(&mut s, "a", 2.2);
+        s.apply(Input::Backspace, 2.3);
+        type_str(&mut s, "at", 2.4);
+        assert_eq!(stumbles(&s), [1, 2]);
+    }
+
+    #[test]
+    fn a_word_delete_is_one_stumble() {
+        let mut s = session(&["the", "cat"], false);
+        type_str(&mut s, "thx", 1.0);
+        s.apply(Input::DeleteWord, 1.1);
+        s.apply(Input::DeleteWord, 1.2); // nothing to delete and nothing before: not a second one
+        type_str(&mut s, "the ", 1.3);
+        assert_eq!(stumbles(&s), [1]);
+    }
+
+    #[test]
+    fn backspacing_over_the_space_reopens_the_word_and_counts_against_it() {
+        let mut s = session(&["the", "cat"], false);
+        type_str(&mut s, "the ", 1.0);
+        assert_eq!(stumbles(&s), [0]);
+        s.apply(Input::Backspace, 1.1); // over the space: "the" is open again
+        assert_eq!((s.current(), s.typed.as_str()), (0, "the"));
+        s.apply(Input::Char(' '), 1.2); // and committed again, as it was
+        assert_eq!(stumbles(&s), [1], "reopened once");
+        // a steno `*` over "cat " then retyped: the run of backspaces is one stumble of cat
+        type_str(&mut s, "cat", 2.0);
+        assert!(s.finished());
+        let mut s = session(&["the", "cat", "sat"], false);
+        type_str(&mut s, "the cax ", 1.0);
+        for _ in 0..4 {
+            s.apply(Input::Backspace, 1.1); // the space, then x, a, c
+        }
+        assert_eq!((s.current(), s.typed.as_str()), (1, ""), "back to an empty cat");
+        type_str(&mut s, "cat sat", 1.2);
+        assert_eq!(stumbles(&s), [0, 1, 0], "{:?}", s.done);
+        // a delete that goes back over two words counts against both
+        let mut s = session(&["the", "cat", "sat"], false);
+        type_str(&mut s, "the cat ", 1.0);
+        for _ in 0..5 {
+            s.apply(Input::Backspace, 1.1); // the space, cat, the space
+        }
+        assert_eq!((s.current(), s.typed.as_str()), (0, "the"), "{:?}", s.done);
+        type_str(&mut s, " cat sat", 1.2);
+        assert_eq!(stumbles(&s), [1, 1, 0]);
+    }
+
+    #[test]
+    fn a_stumbled_or_wrong_word_is_put_back_and_taking_it_back_removes_the_copy() {
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee"], false).with_respacing(3, 3);
+        type_str(&mut s, "ax", 1.0);
+        s.apply(Input::Backspace, 1.1);
+        type_str(&mut s, "a ", 1.2); // right in the end, after a stumble
+        assert_eq!(s.words, ["aa", "bb", "cc", "aa", "dd", "ee"].map(String::from), "{:?}", s.words);
+        assert!(!s.done[0].clean());
+        // reopening it takes the copy back: it is typed again, but the test is as long as before
+        s.apply(Input::Backspace, 1.3);
+        assert_eq!(s.words, ["aa", "bb", "cc", "dd", "ee"].map(String::from), "{:?}", s.words);
+        s.apply(Input::Char(' '), 1.4);
+        assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 2, "put back again once it is committed unclean: {:?}", s.words);
+        // a clean word is not put back
+        type_str(&mut s, "bb ", 2.0);
+        assert_eq!(s.words.iter().filter(|w| *w == "bb").count(), 1);
+        // a word put back three times is not put back a fourth, stumbles included
+        let mut s = session(&["aa", "bb", "cc"], false).with_respacing(3, 3);
+        for round in 0..4 {
+            run_to(&mut s, "aa", 1.0);
+            type_str(&mut s, "x", 1.0);
+            s.apply(Input::Backspace, 1.1);
+            type_str(&mut s, "aa ", 1.2);
+            assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), (round + 2).min(4), "round {round}: {:?}", s.words);
+        }
+    }
+
+    #[test]
+    fn a_refused_word_does_not_count_its_deletes_as_stumbles() {
+        let mut s = session(&["cat"], true);
+        type_str(&mut s, "cax ", 1.0);
+        for _ in 0..3 {
+            s.apply(Input::Backspace, 1.1);
+        }
+        type_str(&mut s, "cat", 1.2);
+        assert_eq!(stumbles(&s), [0], "the refusal is the miss already");
+        assert_eq!(s.refusals().len(), 1);
+    }
+
+    #[test]
+    fn a_word_typed_wrong_and_committed_wrong_has_stumbles_only_if_it_was_corrected() {
+        let mut s = session(&["aa", "bb"], false);
+        type_str(&mut s, "xx ", 1.0);
+        assert_eq!(stumbles(&s), [0]);
+        assert!(!s.done[0].clean() && !s.done[0].correct());
+        assert!(s.results(2.0).stumbled.is_empty(), "missed words are in `misses`, not `stumbled`");
     }
 
     #[test]

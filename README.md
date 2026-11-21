@@ -104,6 +104,7 @@ lyk practice --source phrases --count 100     # the phrasing grammar's phrases, 
 lyk practice --history                        # recent runs and the trend
 lyk vocab                                     # the vocabulary: size, frontier, learning, due, lapses
 lyk vocab know the and                        # retire words you know: never shown again
+lyk vocab gate 70                             # lower the clean-accuracy gate for new words (default 75)
 ```
 
 Space or Enter commits a word; a wrong word is an error and the feed moves on
@@ -118,20 +119,25 @@ screen Tab or Enter starts again and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C wor
 first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `adaptive` (the default, below), `common` (`--rank`, `--bands`,
 `--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
 `--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
-shape the feed. The results show speed, raw speed, accuracy, errors, time, consistency, the ten
-slowest words and the missed ones; each finished test is added to `practice.jsonl` in the state folder (`out/`
-in a checkout). All flags: the Reference, Build and files.
+shape the feed. The results show speed, raw speed, accuracy, errors, stumbles, time, consistency, the ten
+slowest words, the missed ones and the stumbled ones (a word you corrected before committing it); each
+finished test is added to `practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
+words next to the missed ones, and `--history` shows a stumbled-count column. All flags: the Reference, Build and files.
 
 The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. Each test
-holds the words you are learning, reviews that are due, and up to 3 new words, which are earned (a free
-slot among 15 learning words, 92% right over your last 50 attempts) and come in frequency order from
+holds the words you are learning, reviews that are due, and up to 2 new words, which are earned (a free
+slot among 10 learning words, 75% clean over your last 50 attempts) and come in frequency order from
 lyk's list merged with Monkeytype's English lists (`lyk fetch` downloads them; words in Monkeytype's
-common lists are met a little earlier, `--monkeytype-weight`), all the way down the long tail. A word
-you type right 10 times over 3 days becomes a review and returns after 1, 3, 7, 21, 60 and 180 days; a
-miss steps it back, two in a row send it back to learning. The state is `vocab.json` beside
+common lists are met a little earlier, `--monkeytype-weight`), all the way down the long tail. An attempt
+counts as clean only when the word was right and needed no correction on the way (a `*` or backspace
+before the space is a stumble, even if the word then commits right); a stumbled or wrong word comes
+back 3 words later in the same test (up to 3 times) and is drilled first in the next. A word 9 of
+whose last 10 attempts are clean, over 3 days, becomes a review and returns after 1, 3, 7, 21, 60 and
+180 days; a miss or stumble steps it back, two in a row send it back to learning. The state is `vocab.json` beside
 `practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
-already type well are not new. `lyk vocab` shows it and `know`, `skip`, `forget`, `reset --yes` edit
-it; `--no-adapt` plays a feed without changing it. The rules are in the Reference, Build and files.
+already type well are not new. `lyk vocab` shows it (with the stumble rate, the words stumbled most this
+week, and why no new word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`
+edit it; `--no-adapt` plays a feed without changing it. The rules are in the Reference, Build and files.
 
 ## Full benchmarks
 

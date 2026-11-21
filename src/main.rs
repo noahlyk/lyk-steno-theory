@@ -375,7 +375,7 @@ enum Command {
     /// Typing drill in the terminal: a raw word feed, no outlines or hints; speed, accuracy and the
     /// slow and missed words at the end
     Practice(practice::Args),
-    /// The adaptive practice vocabulary: counts, the words being learned, reviews due; `know`, `skip`, `forget`, `reset`, `seed`
+    /// The adaptive practice vocabulary: counts, the words being learned, reviews due; `know`, `skip`, `forget`, `reset`, `seed`, `gate`
     Vocab(vocab::Args),
     /// Misstrokes on the steno tape: undone near-misses, key-level errors, trend; `--drill` makes a
     /// personal drill set. Runs once, reads the tape read-only, writes only to out/mistakes/

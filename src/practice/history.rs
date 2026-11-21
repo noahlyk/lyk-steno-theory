@@ -24,6 +24,9 @@ pub struct Record {
     pub secs: f64,
     /// The feed words that were missed, ordinary words only
     pub missed: Vec<String>,
+    /// The feed words that needed a correction (a backspace run), ordinary words only
+    #[serde(default)]
+    pub stumbled: Vec<String>,
     /// False when the run was quit early
     pub complete: bool,
 }
@@ -42,6 +45,7 @@ impl Record {
             errors: r.errors,
             secs: round(r.secs),
             missed: r.misses.iter().map(|m| m.word.clone()).filter(|w| super::feed::is_plain_word(w, true)).collect(),
+            stumbled: r.stumbled.iter().map(|(w, _)| w.clone()).filter(|w| super::feed::is_plain_word(w, true)).collect(),
             complete,
         }
     }
@@ -86,11 +90,11 @@ pub fn report(records: &[Record], recent: usize) -> String {
     if records.is_empty() {
         return "no practice runs yet\n".to_owned();
     }
-    let mut text = String::from("date (UTC)        source    words   wpm   raw   acc  err  time\n");
+    let mut text = String::from("date (UTC)        source    words   wpm   raw   acc  err  stb  time\n");
     for r in records.iter().skip(records.len().saturating_sub(recent)) {
         let _ = writeln!(
             text,
-            "{}  {:<8}  {:>5}  {:>4.0}  {:>4.0}  {:>3.0}%  {:>3}  {:>3.0}s{}",
+            "{}  {:<8}  {:>5}  {:>4.0}  {:>4.0}  {:>3.0}%  {:>3}  {:>3}  {:>3.0}s{}",
             stamp(r.timestamp),
             r.source,
             r.count,
@@ -98,6 +102,7 @@ pub fn report(records: &[Record], recent: usize) -> String {
             r.raw,
             r.accuracy,
             r.errors,
+            r.stumbled.len(),
             r.secs,
             if r.complete { "" } else { "  (quit early)" }
         );
@@ -121,7 +126,7 @@ mod tests {
     use super::*;
 
     fn rec(t: u64, wpm: f64) -> Record {
-        Record { timestamp: t, source: "common".into(), count: 50, wpm, raw: wpm + 2.0, accuracy: 97.0, errors: 1, secs: 40.0, missed: vec!["the".into()], complete: true }
+        Record { timestamp: t, source: "common".into(), count: 50, wpm, raw: wpm + 2.0, accuracy: 97.0, errors: 1, secs: 40.0, missed: vec!["the".into()], stumbled: vec!["of".into(), "to".into()], complete: true }
     }
 
     #[test]
@@ -159,9 +164,11 @@ mod tests {
                 super::super::engine::Miss { word: "the".into(), typed: "teh".into() },
                 super::super::engine::Miss { word: "it does, not.".into(), typed: "x".into() },
             ],
+            stumbled: vec![("of".into(), 2), ("a b".into(), 1)],
         };
         let rec = Record::from_results(&r, "phrases", 5, true);
         assert_eq!(rec.missed, ["the"]);
+        assert_eq!(rec.stumbled, ["of"], "only ordinary words, no counts or typed text");
         assert!(!serde_json::to_string(&rec).unwrap().contains("teh"));
     }
 
@@ -172,6 +179,7 @@ mod tests {
         assert_eq!(text.lines().filter(|l| l.starts_with("2023-")).count(), 3, "{text}");
         assert!(text.contains("best 54 wpm"), "{text}");
         assert!(text.contains("+8.0"), "{text}");
+        assert!(text.contains(" stb ") && text.lines().filter(|l| l.starts_with("2023-")).all(|l| l.contains("    2  ")), "the stumbled count column: {text}");
         assert_eq!(report(&[], 5), "no practice runs yet\n");
     }
 }
