@@ -33,7 +33,7 @@
      "[Punctuation and commands](#/ref/punctuation), [Fingerspelling](#/ref/fingerspelling/fingerspelling-in-running-text)"
     ],
     [
-     "`emilys-modifiers.json` (generated from `emilys-modifiers.py` by `regenerate.py`)",
+     "`emilys-modifiers.json` (generated from `modifier-chords.py` by `regenerate.py`)",
      "`04-lyk-emilys-modifiers.json`",
      "1,470 modifier chords: Ctrl/Alt/Super/Shift plus a letter, digit, symbol or key, all first-up with the right-hand base exempt (`{:firstup:except=-FRPBLGTS}`)",
      "[Fingerspelling](#/ref/fingerspelling/modifier-chords-the-lgts-dictionary)"

@@ -17,7 +17,7 @@ import sys
 import warnings
 
 sys.dont_write_bytecode = True
-# Emily's file writes "\{" in a plain string, which Python means literally but now warns about
+# A plain string with a backslash-brace warns on newer Pythons; dictionaries may contain one
 warnings.simplefilter("ignore", SyntaxWarning)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -79,10 +79,11 @@ def one_way(entries, preferred):
 
 
 def convert(source):
-    output = os.path.splitext(source)[0] + ".json"
     spec = importlib.util.spec_from_file_location("programmatic", source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    # the .json is named after the module unless the module says otherwise (OUTPUT_NAME)
+    output = os.path.join(HERE, getattr(module, "OUTPUT_NAME", os.path.splitext(os.path.basename(source))[0]) + ".json")
     longest = getattr(module, "LONGEST_KEY", None)
     if longest != 1:
         print(f"  skipped: outlines of up to {longest} strokes can't be listed one stroke at a time")

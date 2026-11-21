@@ -3,14 +3,14 @@
 # `site/reference/spelling-mode.json`). No ambiguity to resolve here — every letter gets its own chord, read
 # back exactly, never guessed at the way a missed phonetic stroke is.
 #
-# Seeded from `rules/reserved/emilys-modifiers.py`'s own `spelling` dict, which this theory
+# The letter chords are the ones `rules/reserved/modifier-chords.py` uses, which this theory
 # already ships for OS-level fingerspelling (see `site/reference/fingerspelling.json`) — but stripped of that
 # file's `-LGTS` ender requirement, since that requirement exists only so a bare letter chord
 # can't be mistaken for a *word* in Plover's own fingerspelling dictionary. lyk's spelling mode
 # has no such ambiguity: the `~`/`+` marker bits already say unambiguously "this run is spelled,
 # not sounded," so the bare chords below are free to use on their own. Only the primary chord for
-# each letter is kept — `rules/reserved/emilys-modifiers.py`'s "magnum" alternates (`AOEU` beside
-# `EU` for "i", and so on) are a convenience for that file's own OS-shortcut purpose, not needed
+# each letter is kept — alternate chords for a letter (`AOEU` beside
+# `EU` for "i", and so on) are a convenience for OS shortcuts, not needed
 # here, since every letter already has exactly one unambiguous reading.
 "A" = "a"
 "PW" = "b"

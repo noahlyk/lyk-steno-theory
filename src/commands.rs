@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// from the rules, so `deploy` can rebuild the whole folder from nothing rather than silently
 /// dropping anything it doesn't happen to find already there.
 ///
-/// `rules/reserved/emilys-modifiers.py` and its `regenerate.py` tool are deliberately left out of
+/// `rules/reserved/modifier-chords.py` and its `regenerate.py` tool are deliberately left out of
 /// this list: keymux only ever reads the `.json` a `.py` dictionary already has to be converted
 /// to, and never runs the `.py` itself (see keymux's own `setup::LAPWING_FILES` comment — a `.py`
 /// "needs Plover's plugin runtime, so it isn't used here"). They stay in `rules/reserved/` as this

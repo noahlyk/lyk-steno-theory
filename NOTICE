@@ -11,16 +11,12 @@ legal advice and draws no legal conclusion. Where a license could not be confirm
 1. Files in this repository derived from other projects
 ======================================================================================
 
-rules/reserved/emilys-modifiers.py (and rules/reserved/emilys-modifiers.json, generated from it)
-    Derived from "Emily's Modifier Dictionary" (https://github.com/EPLHREU/emily-modifiers, file
-    emily-modifiers.py), by way of the copy shipped in Lapwing's plover-lapwing-aio
-    (https://github.com/aerickt/plover-lapwing-aio, plover_lapwing/dictionaries/emily-modifiers.py),
-    whose ender "LGTS" this file keeps. The file's own header says it was forked from
-    steno/disabled_20-lapwing-extras/ (an older Lapwing path, not checked).
-    License of the upstream: the EPLHREU/emily-modifiers repository has no LICENSE file, its README
-    states no license and GitHub reports none: no license is granted that could be read. The
-    plover-lapwing-aio repository is MIT (copy below), which covers its own authors' work only.
-    The author's rights in Emily's file are unverified; ask the author if in doubt.
+rules/reserved/modifier-chords.py (generates rules/reserved/emilys-modifiers.json)
+    Written independently for lyk, from the behaviour of the strokes, not from another project's
+    file text. Its chord assignments follow the same published scheme as "Emily's Modifier
+    Dictionary" (https://github.com/EPLHREU/emily-modifiers, also shipped in Lapwing's
+    plover-lapwing-aio), including the ender "LGTS", so existing muscle memory carries over.
+    A chord layout is credited here as the community's scheme; no legal conclusion is drawn.
 
 rules/reserved/punctuation.json
     The Reference describes it as forked from Plover's punctuation strokes (Plover is
@@ -38,7 +34,7 @@ rules/plover.toml
     layout are Plover's). It holds no file text from Plover: unverified whether more than that.
 
 Everything else under src/, rules/ (the other files), tools/, site/ and build.rs has no recorded
-upstream. rules/reserved/sticky-plus.rs and rules/reserved/regenerate.py are written for lyk.
+upstream. rules/reserved/sticky-plus.rs, modifier-chords.py and regenerate.py are written for lyk.
 The Cargo dependencies are listed in section 4.
 
 ======================================================================================
@@ -50,8 +46,6 @@ The Cargo dependencies are listed in section 4.
    lyk downloads (section 3) are in that repository.
  - Lapwing (plover-lapwing-aio): MIT, a permissive license, one-way compatible with GPL-3.0.
    Lapwing's book repository (aerickt/lapwing-for-beginners) reports GPL-3.0; lyk uses neither.
- - Emily's Modifier Dictionary: no license found, so compatibility cannot be confirmed:
-   unverified, and this is the one open item.
 
 ======================================================================================
 3. Data `lyk fetch` downloads (src/fetch.rs)
