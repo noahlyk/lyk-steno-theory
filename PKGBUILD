@@ -8,8 +8,7 @@ pkgrel=1
 pkgdesc="lyk steno theory: generates a Plover-format steno dictionary from phonetic rules (the lyk command)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/noahlyk/lyk-steno-theory"
-# The repository has no LICENSE file yet: set this and add one together.
-license=('custom')
+license=('GPL-3.0-or-later')
 depends=('gcc-libs')
 makedepends=('rust' 'cargo')
 optdepends=('keymux: the steno engine `lyk deploy` writes into (and `keymux steno validate` checks the files)'
@@ -57,9 +56,8 @@ package() {
     cd "$startdir"
     install -Dm755 "target/release/lyk" "$pkgdir/usr/bin/lyk"
     install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
-    if [ -f LICENSE ]; then
-        install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    fi
+    install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "NOTICE" "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
     # Nothing else is installed: the rules are compiled into the binary, and the data and output
     # folders are made by `lyk fetch` / `lyk build` (see `lyk where`).
 }

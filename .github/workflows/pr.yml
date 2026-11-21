@@ -28,8 +28,7 @@ jobs:
         run: |
           ARCH=$(uname -m)
           mkdir -p "lyk-linux-${ARCH}"
-          cp target/release/lyk README.md "lyk-linux-${ARCH}/"
-          [ -f LICENSE ] && cp LICENSE "lyk-linux-${ARCH}/"
+          cp target/release/lyk README.md LICENSE NOTICE "lyk-linux-${ARCH}/"
           tar -czf "lyk-linux-${ARCH}.tar.gz" -C "lyk-linux-${ARCH}" .
           sha256sum "lyk-linux-${ARCH}.tar.gz" > "lyk-linux-${ARCH}.sha256"
       - name: Upload artifacts

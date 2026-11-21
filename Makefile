@@ -17,10 +17,13 @@ build:
 
 install: build
 	install -Dm755 $(BIN) $(DESTDIR)$(PREFIX)/bin/lyk
+	install -Dm644 LICENSE $(DESTDIR)$(PREFIX)/share/licenses/lyk-steno-theory/LICENSE
+	install -Dm644 NOTICE $(DESTDIR)$(PREFIX)/share/licenses/lyk-steno-theory/NOTICE
 	@echo "installed lyk $$($(BIN) --version | cut -d' ' -f2) to $(DESTDIR)$(PREFIX)/bin/lyk"
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/lyk
+	rm -rf $(DESTDIR)$(PREFIX)/share/licenses/lyk-steno-theory
 
 version: build
 	@$(BIN) --version

@@ -34,8 +34,7 @@ jobs:
           ARCH=$(uname -m)
           DIR="lyk-${VERSION}-${ARCH}"
           mkdir -p "$DIR"
-          cp target/release/lyk README.md "$DIR/"
-          [ -f LICENSE ] && cp LICENSE "$DIR/"
+          cp target/release/lyk README.md LICENSE NOTICE "$DIR/"
           tar -czf "$DIR.tar.gz" -C "$DIR" .
           sha256sum "$DIR.tar.gz" > "$DIR.sha256"
       - name: Build the Arch package

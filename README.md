@@ -241,3 +241,9 @@ five each, however short their primary is; see
 These numbers move whenever a brief or suffix is added; see [the Reference](https://noahlyk.github.io/lyk-steno-theory/#/ref)
 for the rule, and run `cargo run --release -- score --check-readme` before committing a rules
 change to catch drift here.
+
+## License
+
+[GPL-3.0-or-later](LICENSE): free software; you may use, change and share it, and anything you
+distribute that is derived from it must be released under the same license with its source. Credits
+for derived files and the licenses of the data `lyk fetch` downloads are in [NOTICE](NOTICE).

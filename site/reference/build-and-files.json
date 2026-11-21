@@ -137,7 +137,7 @@
   },
   {
    "t": "p",
-   "x": "The binary is `lyk` (package `lyk-steno-theory`). Install it with `make install` (`PREFIX=/usr/local` by default, `DESTDIR` honoured; `make uninstall` removes it), with `makepkg -si` (the `PKGBUILD` builds the checkout you are in; optional dependencies: `keymux` for `deploy`, `python` for `tools/`, `nodejs` for `site/check.mjs`), or from a release tarball (`lyk-VERSION-ARCH.tar.gz`: the binary, README and LICENSE). The rules are compiled into the binary; nothing but the data below is read at run time. Then `lyk fetch`, `lyk build`, `lyk deploy`."
+   "x": "The binary is `lyk` (package `lyk-steno-theory`). Install it with `make install` (`PREFIX=/usr/local` by default, `DESTDIR` honoured; `make uninstall` removes it), with `makepkg -si` (the `PKGBUILD` builds the checkout you are in; optional dependencies: `keymux` for `deploy`, `python` for `tools/`, `nodejs` for `site/check.mjs`), or from a release tarball (`lyk-VERSION-ARCH.tar.gz`: the binary, README, LICENSE and NOTICE; lyk is GPL-3.0-or-later). The rules are compiled into the binary; nothing but the data below is read at run time. Then `lyk fetch`, `lyk build`, `lyk deploy`."
   },
   {
    "t": "table",
