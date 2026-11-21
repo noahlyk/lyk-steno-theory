@@ -1,5 +1,7 @@
 # 07: next phase (written 2026-11-02, mid-session, so it survives a context compact)
 
+**Status: done** (workstreams 1-7; workstream 5 is plan 08, built 2026-11-20). The sections below are the original brief; their doc paths are Reference pages now.
+
 Self-contained. Read this top to bottom before touching anything. **Working agreement:** noahlyk is
 the *learner*; Claude designs the theory, makes the calls, ships them on a branch, measures, and
 explains. He gives feedback afterwards. He types on his own deployed build constantly. Don't hand him
@@ -84,7 +86,7 @@ does not get "wasted" on a stroke that produced no text.
 
 **STATUS: DONE (2026-11-03), keymux part not installed.** lyk: `src/output.rs` (`Role`,
 `write_dictionary`), seven `02-lyk-*.json` files, `deploy` copies changed files only and removes stale
-ones, `docs/files.md`. keymux branch `steno-per-file-cache` (commits `619a219`, `30e2f56`, on top of
+ones, the Reference page `build-and-files`. keymux branch `steno-per-file-cache` (commits `619a219`, `30e2f56`, on top of
 `steno-command-strokes`): `src/steno/parts.rs` per-file parse + stat shortcut + racy-mtime guard +
 per-file cache under `cache/parts/`, `Dictionary` = layered `Arc<Table>`s, `live.rs` reloads only what
 changed. 467 keymux tests pass. Remaining: nothing, unless he reports a problem. Original notes:
@@ -131,7 +133,7 @@ Subtitle counts distort which word gets a stroke (`doc` > `dock`, `matt` holds `
 
 **Star part done 2026-11-04**: a one-syllable stroke's star goes to its sound-alike before a short
 form (`STAR_SURCHARGE`); the `+*` marker stays as the last resort for ~1,230 words, almost all
-names (`docs/collisions.md`).
+names (Reference `collisions`).
 
 Today `+`-joined entries come from several ad-hoc backup directions plus family offers; lots of
 cases are arbitrary (`X/+*`, `X/+*/+*` ladder markers, compounds that split mid-syllable). Redesign
@@ -146,7 +148,7 @@ around predictability: **a `+` entry should always decompose into pieces a learn
   clear priority, and make `family`/`explain` show the decomposition for any `+` entry.
 - Reduce the star's overloaded meanings (collision marker, family "key already there", spelling
   variant, fingerspelling): pick one meaning per context and document it.
-- Document the result in `docs/join-key.md` and `docs/syllables.md`; keep every backup reachable.
+- Document the result in Reference `join-key` and `syllables`; keep every backup reachable.
 
 ### 5. Phrasing grammar (the real route to Magnum speed)
 
@@ -177,7 +179,7 @@ reviews by typing it*, not a menu.
 **Done 2026-11-04**: hyphen and caps strokes documented, `lost_to` replaced by a computed report,
 analysis scripts in `tools/`.
 
-- Hyphen strokes (`H-PB` etc.) are undocumented in `docs/punctuation.md`; add them.
+- Hyphen strokes (`H-PB` etc.) are undocumented in the Reference page `punctuation`; add them.
 - Lapwing parity: repeated-arrow chords and engine-only commands were skipped; revisit if wanted.
 - He asked which "KWBG" period stroke he meant; `KWBG` does not exist anywhere in the reserved files.
   Re-ask only if it comes up again.

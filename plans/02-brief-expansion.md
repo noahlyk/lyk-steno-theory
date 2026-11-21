@@ -49,7 +49,7 @@ existing gate.
      surfaces this).
    - Reject if the saving is marginal (e.g. one key) on a word rare enough that the saving barely
      moves the frequency-weighted cost — this is exactly the kind of judgment call rule 1 of
-     `docs/theory.md` and this session's brief-correctness work already made for the common tier;
+     the Reference page `briefs` and this session's brief-correctness work already made for the common tier;
      extend the same reasoning down into the rarer tier rather than inventing a new standard.
    - Keep if it's a genuinely large saving (3+ keys) on a word common enough in the 1,500–20,000
      band to matter, and the Plover outline is a *whole* key/cluster (not a fragment — reuse
@@ -81,7 +81,7 @@ words typed).
 ## Docs
 
 If this changes how the brief *window* is described (not just which specific words are briefed),
-update `docs/theory.md` rule 1/2 (whichever rule number briefs ended up at — check the current
+update the Reference page `briefs` rule 1/2 (whichever rule number briefs ended up at — check the current
 numbering, it's been renumbered more than once this session) to describe the keep/reject rule you
 wrote, the same way the fragment-vs-dropped-sound rule got written up there.
 

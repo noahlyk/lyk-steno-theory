@@ -33,7 +33,7 @@
       ["Spelling variant", "`Origin::Spelling`", "For a homophone group (their, there, they're), members needing to be told apart get a spelling-marked variant. See [Spelling](#/ref/spelling)."],
       ["Brevity ladder", "`Origin::Short(_)`", "Shortenings that drop a sound outright, each cheaper than the full reading. The vowel-keeping `!skeleton` (first consonants, stressed vowel, every later consonant) is offered at every rank. `!shell`, `!ends` and the vowel-less forms stop at rank 8,000 (which consonants they drop is not derivable). See [How short](#/ref/brevity)."],
       ["Star ladder", "`Origin::Ladder(n)`", "The same outline with a star on the first stroke (1), the last stroke (2), or one or two extra `+*` strokes (3, 4). See [When two words sound the same](#/ref/collisions)."],
-      ["Family shape", "`Origin::Family`", "Added from the second settling pass: a family member's root outline written by the family rules, counted two keys cheaper than it is (`FAMILY_DISCOUNT` is 2,000). See [How the solver works](#/ref/how-solver)."],
+      ["Family shape", "`Origin::Family`", "Added from the second settling pass: a family member's root outline written by the family rules, counted two keys cheaper than it is ([the two-key preference](#/ref/syllables/the-two-key-family-preference)). See [How the solver works](#/ref/how-solver)."],
       ["S-for-Z coda", "`Origin::Voicing`", "Any candidate ending in a voiced `-Z`, offered again with `-S` when the word is spelled with a final s: girls."]
     ] },
     { "t": "h3", "x": "A short form never takes a stroke the plain rules already give" },

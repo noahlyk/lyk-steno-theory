@@ -14,7 +14,7 @@
     {
       "t": "note",
       "kind": "rule",
-      "x": "**In the dictionary.** All 3,758 phrases are entries of `02-lyk-phrasing.json`, built from `rules/grammar.toml` and deployed with the rest. Lookup finds them: type `I was`, `they wouldn't` or a stroke such as `SWRAB`, and it names the starter, auxiliary, not and verb keys. Full rules: [the phrasing grammar](#/ref/phrases/the-phrasing-grammar)."
+      "x": "**In the dictionary.** All 3,758 phrases are entries of `02-lyk-phrasing.json`, built from `rules/grammar.toml` and deployed with the rest. Lookup finds them by text (`I was`) or stroke (`SWRAB`). Full rules: [the phrasing grammar](#/ref/phrases/the-phrasing-grammar)."
     },
     {
       "t": "grammar"
@@ -63,7 +63,7 @@
     },
     {
       "t": "p",
-      "x": "A starter is a left-bank chord the grammar owns: its phrases are fixed before any word settles, so a phrase never takes a word's stroke (the few words whose own candidates landed on one moved to another outline)."
+      "x": "A starter is a left-bank chord the grammar owns; its phrases are fixed before any word settles ([lesson 20](#/lesson/20-phrasing-strokes))."
     },
     {
       "t": "table",

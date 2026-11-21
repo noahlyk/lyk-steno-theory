@@ -6,7 +6,7 @@
     { "t": "h", "x": "Backup composition: every + way into a word" },
     { "t": "p", "x": "After every primary is locked, a fixed-point pass builds `+`-joined entries for every word it can, from a placed stem, an ending, a prefix, or the word's own syllables. A rare word can keep a terse one-stroke primary ([[machete|PHEFPT]]) and still be typed from its sound ([[PHU/+SHE/+TAOE]])." },
     { "t": "list", "items": [
-      "There are about 205,400 backups in the current build.",
+      "The current build has 5,034,749 backup entries (`02-lyk-backups.json`), a median of 55 per word.",
       "They are placed before the bonus short forms.",
       "A phrase never takes a backup of more than one stroke.",
       "No backup can change a primary.",
@@ -53,21 +53,7 @@
     { "t": "note", "kind": "rule", "x": "Every word of two or more syllables has joined ways in, however terse its primary. See [every way to join a word](#/ref/ways-to-join)." },
 
     { "t": "h", "x": "Phrase-briefing: two words in one stroke" },
-    { "t": "p", "x": "Two words whose primaries share no keys have an unclaimed union stroke. \"of\" is `-F`, \"the\" is `-T`; their OR is [[-FT]], which writes both. \"of the\" is the commonest bigram in the corpus (2,766,332,391 occurrences). This section is the build mechanism; the phrases are on [phrase-briefing](#/ref/phrases)." },
-    { "t": "table", "head": ["Step", "Rule"], "rows": [
-      ["Which pairs", "The 20,000 most frequent bigrams, ranked by raw bigram count (not a collocation score)."],
-      ["Merge", "Disjoint-OR of the two words' primaries."],
-      ["Multi-stroke host", "One side may be a multi-stroke word. The single-stroke side merges into the other's **first** stroke only, by the disjoint-OR rule of direction (b); the rest of the host is carried through untouched: a (`A`) + currency (`KURPB/+SEU`) is `KAURPB/+SEU`."],
-      ["The pronoun I", "A bigram's lowercase \"i\" is looked up as the \"I\" entry on [[EU]] (the pronoun, not the letter). `EU` shares vowel keys with most verbs, so few \"I\" phrases qualify; \"I would\" is [[WOEU]]."]
-    ] },
-    { "t": "h3", "x": "Who gives up a stroke" },
-    { "t": "p", "x": "A pair whose merged stroke a word already holds competes for it on count. Limits:" },
-    { "t": "table", "head": ["Limit", "Value"], "rows": [
-      ["Words that keep their primary", "the 5,000 most frequent (a phrase may still take one of their short forms or alternates)"],
-      ["Pairs allowed to take a held stroke at all", "only the 1,000 most frequent eligible pairs; a rarer pair is committed only into a free stroke"],
-      ["Multi-stroke backups", "never taken"]
-    ] },
-    { "t": "p", "x": "Under these limits 134 words carry a star because a phrase took their stroke, 15 of them in the top 5,000. The build has 5,720 phrase entries." },
+    { "t": "p", "x": "Two words whose primaries share no keys have an unclaimed union stroke (*of the* is [[-FT]]). Pair selection, host and filler, the pronoun *I*, takeover limits and counts: [Phrases](#/ref/phrases). The pass runs after the backups settle ([where it runs](#/ref/phrases/where-it-runs))." },
 
     { "t": "h", "x": "The phrasing grammar" },
     { "t": "p", "x": "The phrasing grammar writes a whole phrase in one stroke by rule: starter (who) on the left bank, auxiliary or tense on the vowels, star for not, verb on the right bank. Lessons: [the lessons](#/lesson/19-phrasing-grammar), [the phrasing strokes lesson](#/lesson/20-phrasing-strokes)." },

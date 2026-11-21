@@ -1,6 +1,6 @@
 # 09 — The solver plugin: read a missed run as the word it meant, without a table of every outline
 
-**Status: built, on the experimental branch `experiment/wasm-fallback-resolver` (not on `main`).**
+**Status: the solver is built and on `main`** (`src/rules/solve/`, deployed as `05-lyk-solver.rs`; `deploy` ships no backups). This text is the earlier revision: the revised plan (§3c spelled strokes, commit `8de0b62`) is only on `origin/experiment/wasm-fallback-resolver`, unmerged.
 Measured (see `docs/decisions.md`, the last entries, for the why of each piece): top-1 88.8%
 on 30,916 backups (92.2% weighted by use, 96.9% top-5, 94.9% for the 2,000 commonest words, 98.6% of the outlines the rules teach the 10,000 commonest; a tie
 goes to the commoner word, which trades rare-word top-1 for common-word accuracy), below

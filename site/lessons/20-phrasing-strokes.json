@@ -129,7 +129,7 @@
     },
     {
       "t": "p",
-      "x": "The lookup puts the grammar's stroke first, marked as a phrase, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word on its own. It ignores case and punctuation and reads *I'm*, *they're* and a spelt-out *not*. Given a stroke it says which phrase it is and what each key group says. The site's Lookup does the same."
+      "x": "The lookup puts the grammar's stroke first, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word on its own. Given a stroke it says which phrase it is. The site's Lookup does the same; details: [looking a phrase up](#/ref/phrases/looking-a-phrase-up)."
     },
     {
       "t": "h",

@@ -24,9 +24,9 @@
       "Always hold the join key on every stroke after the first."
     ] },
     { "t": "h", "x": "Using it for real" },
-    { "t": "p", "x": "These drills read an ordinary keyboard. Once the outlines are learned, move to a steno keyboard or keyboard mapper with the generated dictionary (build: main README) and practise on text you want to write." },
-    { "t": "p", "x": "Real use shows which words need a shorter form. The dictionary is rule-generated, so your most common words can get the cheapest strokes while the rule stays." },
+    { "t": "p", "x": "These drills read an ordinary keyboard. Once the outlines are learned, move to a steno keyboard or keyboard mapper with the generated dictionary (`lyk build`, `lyk deploy`: [Build and files](#/ref/build-and-files)) and practise on text you want to write." },
+    { "t": "p", "x": "`lyk mistakes --drill` turns the misstrokes on your steno tape into a personal drill set for this site (Practice, My drills)." },
     { "t": "h", "x": "Where the rules live" },
-    { "t": "p", "x": "These lessons condense the chapters in the [docs folder](https://github.com/noahlyk/lyk-steno-theory/tree/main/docs). They give the reasoning: why a stroke is what it is, how collisions are settled, what each choice cost." }
+    { "t": "p", "x": "Every rule, table and mechanism these lessons teach is in the [Reference](#/ref), starting at the [cheat sheet](#/ref/cheatsheet). Maintainer logs: `docs/decisions.md` in the repository." }
   ]
 }

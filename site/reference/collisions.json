@@ -17,7 +17,7 @@
  },
  {
   "t": "p",
-  "x": "Briefs, spelling and the star ladder are one pass. Every word's legal candidates go into one shared pool, and a single solve picks the assignment minimizing the whole dictionary's total cost, weighted by word frequency. A word's candidates:"
+  "x": "Briefs, spelling and the star ladder are one pass: every word's legal candidates go into one pool and one solve settles them ([briefs](#/ref/briefs)). A word's candidates:"
  },
  {
   "t": "list",
@@ -156,7 +156,7 @@
  },
  {
   "t": "p",
-  "x": "**What does not save a stroke is used as an alternate.** The extras pass (the last, which only fills strokes nobody holds) also reads the other theories' one-stroke outlines for a word: the first onset must be keyed, no half of a multi-key sound may be in it, and it must be typable on lyk's layout (some theories use chords this layout cannot press). It adds them within three keys of the word's own outline, at most three extras per word with the word's own. They never become a primary, never take a stroke, never change a word's cheapest outline. About 1,000 alternates were added (24,652 to 25,672 extras); the other theories hold about 22,000 more unused one-stroke outlines, almost all for words that already have a one-stroke lyk outline; the filters, the three-extras cap and the key margin leave them out. Their multi-stroke outlines (about 219,000 unused) are not read; they were not sampled for quality."
+  "x": "**What does not save a stroke is used as an alternate.** The extras pass (the last, which only fills strokes nobody holds) also reads the other theories' one-stroke outlines for a word: the first onset must be keyed, no half of a multi-key sound may be in it, and it must be typable on lyk's layout (some theories use chords this layout cannot press). It adds them within three keys of the word's own outline, at most three extras per word with the word's own. They never become a primary, never take a stroke, never change a word's cheapest outline. The other theories hold about 22,000 more unused one-stroke outlines, almost all for words that already have a one-stroke lyk outline; the filters, the three-extras cap and the key margin leave them out. Their multi-stroke outlines (about 219,000 unused) are not read."
  },
  {
   "t": "h",
@@ -187,11 +187,6 @@
  {
   "t": "p",
   "x": "Examples: [[night|TPHAOEUT]] and [[knight|TPHAO*EUT]]; [[flower|TPHROUR]] and [[flour|TPHRO*UR]]; [[pearl|PERL]] and [[peril|P*ERL]]; [[sweet|SWAOET]] and [[sweetie|SWAO*ET]]."
- },
- {
-  "t": "note",
-  "kind": "rule",
-  "x": "A short form never takes an outline that any word's own rules produce; the forms a learner can work out stay theirs."
  },
  {
   "t": "h",

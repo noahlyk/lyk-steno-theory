@@ -1,57 +1,31 @@
 # Handoff plans
 
-Originally five outstanding asks from one session, written up for a fresh agent (or several, run
-in parallel or in sequence) to pick up with no other context. Each file is self-contained — read
-the one you're assigned, not the others, unless a plan explicitly points you at another.
-
-**Status: 01-04 landed and are on `main`. 05 is still a decision for the user, not implemented. 06
-is a new scoping doc, not yet reviewed or built.**
+Self-contained task write-ups for a fresh agent: read the one you are assigned, not the others,
+unless it points you at another. The docs they mention as `docs/*.md` are the Reference pages
+(`site/reference/<id>.json`) now; the map is in [`../docs/README.md`](../docs/README.md).
 
 | Plan | What | Touches | Status |
 |---|---|---|---|
-| [01-suffix-expansion.md](01-suffix-expansion.md) | Grow `rules/suffixes.toml` — the user has asked twice for "WAY more suffixes" | `rules/suffixes.toml`, `rules/plover.toml` (prefixes), `docs/suffixes.md` | done |
-| [02-brief-expansion.md](02-brief-expansion.md) | Find more words outside the auto-brief window worth a deliberate brief, with an explicit keep/reject rule | `rules/briefs.toml`, `docs/theory.md` | done |
-| [03-docs-restructure.md](03-docs-restructure.md) | Reorder `docs/` into a sequential, start-to-finish read — currently a lookup table, not a tutorial | all of `docs/` | done |
-| [04-claude-md-docs-importance.md](04-claude-md-docs-importance.md) | Write `.claude/CLAUDE.md` — a standing reminder that docs outrank code in this repo | new file, `.claude/CLAUDE.md` | done |
-| [05-kpa-family-consistency.md](05-kpa-family-consistency.md) | Decide and (if approved) implement a consistent capitalize/lowercase stroke scheme | `rules/reserved/commands.json`, deployed config | **awaiting a decision** between the three candidate schemes written up for the user |
-| [06-phrase-briefs.md](06-phrase-briefs.md) | Scope (not build) a small, lyk-native phrase-brief system — one stroke for a pronoun+verb fragment | new subsystem, TBD files | **scoping doc only**, awaiting review before any build work |
-| [07-next-phase.md](07-next-phase.md) | The plan after the family/solver work: keymux tape+undo fix, multi-file output and per-file hot reload, frequency, `+` redesign, phrasing, housekeeping | `src/`, `rules/`, `../keymux/` | **in progress**: 1, 2, 3, 4, 5, 6, 7 done (5 is built: see 08) |
-| [08-phrasing-grammar.md](08-phrasing-grammar.md) | Starter + auxiliary + verb in one stroke: the design, measured, with a prototype to type | `rules/grammar.toml`, `src/phrases/grammar.rs`; `tools/phrasing_prototype.py` is the spec it is checked against | **built** (3,758 phrases in `02-lyk-phrasing.json`); open: questions, more starters and verbs |
-| [09-wasm-fallback-resolver.md](09-wasm-fallback-resolver.md) | A keymux WASM plugin that decodes a missed `+`-run into the word it meant (lexicon-tree beam search over the strokes' sounds), so the 3.86M-entry backups file can be thinned | `src/rules/solve/`, `src/solve.rs`, `site/reference/fallback.json` | **built** on branch `experiment/wasm-fallback-resolver` (85% top-1, 2 ms a run in wasm; deploy ships no backups); not on `main` until he has typed on it |
+| [01-suffix-expansion.md](01-suffix-expansion.md) | Grow `rules/suffixes.toml` | `rules/suffixes.toml`, `rules/plover.toml` (prefixes), Reference `suffixes` | done |
+| [02-brief-expansion.md](02-brief-expansion.md) | More words worth a deliberate brief, with a keep/reject rule | `rules/briefs.toml`, Reference `briefs` | done |
+| [03-docs-restructure.md](03-docs-restructure.md) | Reorder the docs into a sequential read | all docs | done: the docs are the site's lessons and Reference |
+| [04-claude-md-docs-importance.md](04-claude-md-docs-importance.md) | `.claude/CLAUDE.md`: docs outrank code | `.claude/CLAUDE.md` | done |
+| [05-kpa-family-consistency.md](05-kpa-family-consistency.md) | A consistent capitalize/lowercase stroke scheme | `rules/reserved/commands.json`, deployed config | **awaiting a decision** among three candidate schemes |
+| [06-phrase-briefs.md](06-phrase-briefs.md) | Scope a lyk-native phrase-brief system | new subsystem | scoping doc; its step 2 is built as plan 08 |
+| [07-next-phase.md](07-next-phase.md) | keymux tape+undo fix, multi-file output and per-file reload, frequency, `+` redesign, phrasing, housekeeping | `src/`, `rules/`, `../keymux/` | done (workstreams 1-7; 5 is plan 08) |
+| [08-phrasing-grammar.md](08-phrasing-grammar.md) | Starter + auxiliary + verb in one stroke | `rules/grammar.toml`, `src/phrases/grammar.rs`; `tools/phrasing_prototype.py` is the spec it is checked against | **built** (3,758 phrases in `02-lyk-phrasing.json`); open: questions, more starters and verbs |
+| [09-wasm-fallback-resolver.md](09-wasm-fallback-resolver.md) | The solver plugin: decode a missed `+`-run into its word, so `deploy` ships no backups | `src/rules/solve/`, `src/solve.rs`, Reference `fallback` | solver **built and on `main`** (deploy ships it, no backups); the revised plan text (spelled-strokes third, commit `8de0b62`) is only on `origin/experiment/wasm-fallback-resolver`, unmerged |
 
-## Order, if running them one at a time
+## Ground rules
 
-**01 and 02 can run in parallel with each other** (different files: `suffixes.toml` vs
-`briefs.toml`), but **both should land before 03** (docs restructuring will want to reflect
-whatever the final suffix/brief content looks like, and touching the same `docs/*.md` files
-concurrently with 01/02's own doc updates risks a collision). **04 is independent and safe to run
-any time**, including first. **05 is independent of all the others** (different file entirely,
-`rules/reserved/commands.json`, not `rules/*.toml`) but needs a decision from the user before
-anything gets written, not just an agent picking for them (see that plan's "What this plan does
-NOT decide for you" section).
-
-## Shared ground rules, all five plans
-
-- Repo: `/home/fib/code/noahlyk/lyk-steno-theory`, branch `main`, plain checkout (not a worktree —
-  no isolation step needed, just don't run two agents on overlapping files at the same time; see
-  the ordering note above).
-- If multiple agents run concurrently: `git status`/`git log --oneline -3` before starting and
-  again immediately before committing, to catch a collision before it happens rather than after.
-  This repo has had real collisions this session from exactly this kind of concurrent work — not
-  hypothetical.
-- Every plan that touches `rules/*.toml` or `src/*.rs` needs, before committing:
-  `cargo build --release && cargo test --release && cargo run --release -- score --check-readme &&
-  cargo clippy --release --all-targets` — and if `--check-readme` flags a stale table, paste the
-  corrected table back into `README.md` rather than ignoring the failure.
-- Report real numbers, not favorable rounding, when a change affects the dictionary's cost
-  (`cargo run --release -- score`) — this repo's commit history is consistently honest about
-  tradeoffs, including when a change makes something worse in exchange for something else; keep
-  that up.
-- Redeploy after any change to the generated dictionary or plugin:
-  ```
-  cargo run --release -- build
-  cargo run --release -- plugin
-  cp out/lyk.json ~/.config/keymux/steno/lyk/02-lyk-words.json
-  cp out/lyk-orthographic-fallback.rs ~/.config/keymux/steno/lyk/05-lyk-orthographic-fallback.rs   # HISTORICAL: the plugin was removed; no such file exists any more
-  ```
-  Diff both copies against `out/` afterward to confirm the deploy actually landed.
+- Repo: `/home/fib/code/noahlyk/lyk-steno-theory`. Land work by fast-forwarding `main`; no PRs. Do not
+  run two agents on overlapping files; check `git status` and `git log --oneline -3` before starting
+  and before committing.
+- A change to `rules/*.toml` or `src/*.rs` needs, before committing: `cargo build --release`,
+  `cargo test --release`, `cargo run --release -- score --check-readme` (paste the corrected table
+  into `README.md` if it flags one), `cargo clippy --release --all-targets`, and the matching
+  Reference page edit in the same commit.
+- Report real numbers, including a change that makes something worse for something else
+  (`cargo run --release -- score`).
+- Redeploy after a change to the generated dictionary or plugin: `lyk deploy` (validates with
+  keymux, keeps the previous files for `lyk deploy --rollback`).

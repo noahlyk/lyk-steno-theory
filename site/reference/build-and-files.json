@@ -18,9 +18,8 @@
   {
    "t": "list",
    "items": [
-    "**Optimized for speed, not guessability.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs least to type. Nothing need be derivable from the word's sound or spelling.",
-    "**One primary outline per word; extras only in free strokes.** A word has exactly one outline the theory teaches and fights for. Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed.",
-    "**An explicit join key.** Continuation strokes are never mistaken for words, so a suffix can be one key.",
+    "**Cost-based outlines.** A word's single-stroke outline comes from whichever source (a known brief, the phonetic rules, a brevity-ladder compression) costs least to type; it need not be derivable from the word's sound or spelling.",
+    "**One primary outline per word.** Its other one-stroke forms (a Plover brief, the phonetic full form) are added last, only in strokes no other word needed.",
     "**Measured.** `!score` and `build --report` print cost and match-rate against Plover and Lapwing on the same words. Benchmark tables are in the repository README, checked by `score --check-readme`.",
     "**A miss types its word.** A stroke or `+` run the dictionary lacks is read by the solver (a keymux plugin lyk ships) as the word its keys sound like; `resolve` and `lookup` print the same answer: see [the solver](#/ref/fallback)."
    ],
@@ -111,7 +110,7 @@
     ],
     [
      "`verify-lookup [--full] [--common-words N] [--random N] [--seed N]`",
-     "Check that every outline `lookup` lists types its word in keymux: a deployed entry (the files `deploy` ships), else the solver reading it. Counts the listed outlines by how they were listed and what they type, with samples of any that do not, and fails on one. The default is a sample (the 400 commonest words, 300 random others, 60 phrases, 60 names); `--full` is every word, phrase and name. `cargo test` runs a smaller sample. See [what lookup guarantees](#/ref/fallback/what-lookup-guarantees)."
+     "Check that every outline `lookup` lists types its word in keymux: a deployed entry (the files `deploy` ships), else the solver reading it. Counts the listed outlines by how they were listed and what they type, with samples of any that do not, and fails on one. The default is a sample; `--full` is every word, phrase and name. `cargo test` runs a smaller sample. See [what lookup guarantees](#/ref/fallback/what-lookup-guarantees)."
     ],
     [
      "`resolve [STROKES] [--rebuild]` (alias `stroke`)",
@@ -218,32 +217,32 @@
     [
      "`02-lyk-words.json`",
      "each word's own outline: gold briefs, the plain rules reading, spelling and voicing variants, ladder-settled clashes, family members' shapes",
-     "about 47,000"
+     "63,760"
     ],
     [
      "`02-lyk-short.json`",
      "long words written shorter by the brevity steps (`lead`, `fold`, `lean`, `ends`, `shell`, `skeleton`; see [how short](#/ref/brevity))",
-     "about 58,000"
+     "56,466"
     ],
     [
      "`02-lyk-backups.json`",
      "the `+`-joined fallbacks, composed from other words' own outlines (see [syllables](#/ref/syllables), [ways to join](#/ref/ways-to-join)); not deployed: the solver reads them, and they are its test set",
-     "about 3.9 million in `out/lyk`"
+     "5,034,749 in `out/lyk`"
     ],
     [
      "`02-lyk-extras.json`",
      "extra one-stroke ways to write a word, filling strokes nothing else needed (see [briefs](#/ref/briefs))",
-     "about 10,000"
+     "33,593"
     ],
     [
      "`02-lyk-alternates.json`",
      "another pronunciation's outline for a word",
-     "about 3,400"
+     "4,476"
     ],
     [
      "`02-lyk-phrases.json`",
      "two common words in one stroke (see [phrases](#/ref/phrases))",
-     "about 7,200"
+     "7,213"
     ],
     [
      "`02-lyk-phrasing.json`",
@@ -308,7 +307,7 @@
     "**The table.** Columns `word`, `lyk`, `plover`, `lapwing` (each outline column at least 12 wide, as in `quote`), and `keys` when shown. A word's first row has its best outline in each theory; each later row (word column blank) is another outline that types it, fewest strokes first, backups included: all of lyk's, Plover's and Lapwing's. `-` is a theory with no outline there. A single word of two letters or more is followed by up to eight longer words starting with it (dimmed; shortest first, then alphabetical), each with its best outline in the three theories.",
     "**A word that is not an entry** is composed from entries when that takes no more strokes than the rules' reading, with a note under the table: `everybody's was not a whole entry - composed (lyk: everybody + 's; plover: everybody + 's; lapwing: everybody + 's)`, naming each theory that composed it. Otherwise lyk shows the rules' phonetic reading, or spelling mode for a word with no pronunciation, in quotes with a note (`has no dictionary entry - shown ...`). A word nothing can write shows `no stroke`. A real entry always wins.",
     "**A stroke** (all capitals, or anything in `resolve`/`stroke`) shows what it types in quotes in the `word` column: the dictionary's word, the rules' reading with a note when it is not an entry, or `(no translation)`. Under it, dimmed, the nearest entries (same stroke count, fewest keys different). A stroke is lyk's alone, so this table has only the `lyk` column. A stroke the phrasing grammar writes (`SWRAB`, *I can be*) also gets the lines described in the next item.",
-    "**A phrase the phrasing grammar writes** (*I was*, *They wouldn't!*, *she has been*, *I do not know*; case, punctuation, a curly apostrophe, *I'm* / *they're* / *I've* / *I'll* and a spelt-out *not* are read as the grammar's text) puts a row for the phrase first, marked as the grammar's, with its one stroke in the `lyk` column, then each word's rows as usual. Under the table two lines name the parts: `I was: one stroke of the phrasing grammar, SWR + E + -B` and `SWR starter (I) + E auxiliary (past) + -B verb (be)`. A query the grammar covers only at its start (*she has been going*) names the covered part (`the grammar covers the first 3 of 4 words (she has been); the rest (going) is per word below`). A dictionary built before the grammar has no such rows. See [the phrasing grammar](#/ref/phrases/the-phrasing-grammar).",
+    "**A phrase the phrasing grammar writes** (*I was*, *they wouldn't*) gets a row first, marked as the grammar's, then each word's rows, and two lines under the table naming its parts (`SWR starter (I) + E auxiliary (past) + -B verb (be)`): see [looking a phrase up](#/ref/phrases/looking-a-phrase-up).",
     "**Totals.** Under the table: `keys (best outline of each word): N in S strokes` for lyk, then `keys (shared vocabulary only, fair comparison): lyk-vs-plover ... lyk-vs-lapwing ...` as `quote` prints it, counting only words both theories write. Completions and nearby entries are not counted.",
     "**Colour, where the terminal has it** (`NO_COLOR` and a pipe turn it off): each key is coloured by keyboard part (green left hand, yellow vowels, red right hand, cyan `*`, `#` and the `+`/`~` marks), the `/` between strokes is dim, and keys one finger plays together (`T K`, `P W`, `H R`, `A O`, `E U`, `F R`, `P B`, `L G`, `T S`, `D Z`) are underlined as one run. Colour never changes the text.",
     "**Keys.** Any character adds to the query (the stroke test is case-sensitive: capitals with no lowercase read as a stroke). Backspace, Ctrl-W, Ctrl-U delete a character, a word, the whole query. Tab shows or hides the `keys` column: the QWERTY keys that press lyk's outline, the join key `+` on `T` (the left index finger's inner column; `G` presses it too), the star on `Y` (the right index; `H` too), `S-` on `A` (`Q` too). Ctrl-F toggles best outline of each word only. Enter leaves and keeps the answer on screen (in `explain`, `ergonomics`, `paths` and `family` it then runs that command's report for the line; `family` and `paths` generate the dictionary the first time). Esc, Ctrl-C, Ctrl-D leave and clear the screen it used.",
@@ -359,8 +358,8 @@
    "rows": [
     ["`no_word_is_stranded_on_a_worse_outline` (`src/generate/report.rs`)", "No word sits on a worse outline than its unclaimed plain reading", "0"],
     ["`no_two_words_share_the_same_deployed_outline` (`src/quality.rs`)", "No collisions among primary outlines", "0"],
-    ["`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`", "Words the rules cannot place", "at most 450 (410 measured)"],
-    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 19,500 (19,101 measured); at most 35% of the dictionary"],
+    ["`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`", "Words the rules cannot place", "at most 450 (371 measured)"],
+    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 19,500 (18,973 measured); at most 35% of the dictionary"],
     ["`phrase_and_extra_passes_each_add_entries`", "Phrase and extra passes add entries", "each above 0"],
     ["`what_a_word_costs_has_not_regressed`", "Weighted keys and strokes per word", "at most 2% over 3.272 keys and 1.009 strokes; below Plover on both"],
     ["`readme_tables_match_score` (ignored; `cargo test --release readme_tables -- --ignored`)", "README tables match `score`", "exact (same as `score --check-readme`)"]
@@ -369,10 +368,6 @@
   {
    "t": "h3",
    "x": "Building and deploying"
-  },
-  {
-   "t": "pre",
-   "x": "cargo run --release -- build     # writes out/lyk/02-lyk-*.json; prints each file and \"(unchanged)\"\ncargo run --release -- build --report   # the same, plus all diagnostics and cost tables\ncargo run --release -- deploy    # build, validated, copied into ~/.config/keymux/steno/lyk (the solver plugin, no backups)\ncargo run --release -- deploy --rollback   # put back the files the last deploy replaced"
   },
   {
    "t": "p",

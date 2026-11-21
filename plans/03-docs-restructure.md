@@ -1,5 +1,7 @@
 # Plan: restructure `docs/` into a sequential, start-to-finish read
 
+**Status: done.** The docs became the site's lessons and Reference; `docs/` keeps `README.md`, `decisions.md` and `roadmap.md`. File names below are the old ones (map in `docs/README.md`); the roadmap's section 4 it cites is gone.
+
 Repo: `/home/fib/code/noahlyk/lyk-steno-theory`, branch `main`. Commit and push directly.
 
 ## Why — read this part first, it's not optional context

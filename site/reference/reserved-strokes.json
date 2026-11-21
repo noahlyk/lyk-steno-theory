@@ -57,7 +57,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "The build refuses to run if a brief named `[word]` in `rules/briefs.toml` has a reserved literal outline. (Before the check, `up` lost `-P` and fell back to the two-key `UP`.)"
+   "x": "The build refuses to run if a brief named `[word]` in `rules/briefs.toml` has a reserved literal outline."
   },
   {
    "t": "p",

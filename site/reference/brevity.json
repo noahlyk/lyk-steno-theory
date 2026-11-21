@@ -100,9 +100,8 @@
   {
    "t": "list",
    "items": [
-    "A short form never takes an outline that some word has by the rules.",
     "When a short form is taken, a star on it is tried first: a star costs a key, a longer form a stroke.",
-    "A one-syllable word's starred stroke is kept for the word that sounds like it. A short form pays half a stroke extra to take one, so it takes one only when its next form is a whole stroke longer and it is said far more often (*attack* keeps [[TA*BG]] over *tack*). See [when two words sound the same](#/ref/collisions)."
+    "A one-syllable word's starred stroke is kept for the word that sounds like it; a short form pays half a stroke to take one (*attack* keeps [[TA*BG]] over *tack*): [when two words sound the same](#/ref/collisions)."
    ],
    "ordered": false
   },
@@ -114,9 +113,7 @@
    "t": "list",
    "items": [
     "Settling runs its family passes with a word past rank 8,000 holding its skeleton back.",
-    "Then the 5,000 commonest words are locked to whatever they settled on, and one last pass runs with every skeleton in.",
-    "A locked word keeps its outline exactly, nobody else may take it, and no locked word may take another's.",
-    "Afterwards, a word on a worse outline than one of its own unheld candidates moves to it, so no word is stranded."
+    "Then the 5,000 commonest words are locked and one last pass runs with every skeleton in ([the final pass](#/ref/how-solver/the-final-pass-lock-the-top-5-000-then-every-skeleton))."
    ],
    "ordered": false
   },

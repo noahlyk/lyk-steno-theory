@@ -12,7 +12,7 @@
     ] },
     { "t": "note", "kind": "rule", "x": "Taking a text nobody else wants never worsens the total, so peeling is exact: no word loses an outline the solver would have given it." },
     { "t": "pre", "x": "pass : { PAS }            -> committed  pass -> PAS\n                           PAS removed from every other list\npast : { PAS, PAFT }  -> { PAFT }  -> committed in round 2  past -> PAFT" },
-    { "t": "p", "x": "Words with no candidate skip peeling and the solver and are reported unplaced. In the current build 19,101 of the 100,000 commonest words are still contested after peeling and go to the solver (gold-only words settled beside them, [see below](#/ref/how-candidates-cost), not counted)." },
+    { "t": "p", "x": "Words with no candidate skip peeling and the solver and are reported unplaced. In the current build 18,973 of the 100,000 commonest words are still contested after peeling and go to the solver (gold-only words settled beside them, [see below](#/ref/how-candidates-cost), not counted)." },
 
     { "t": "h", "x": "The solver: exact min-cost matching" },
     { "t": "p", "x": "The contested remainder is an assignment problem: words on one side, candidate texts on the other, each text usable by at most one word. The solver finds the cheapest assignment **in total**, not word by word. Hand-written (successive shortest augmenting paths), run per connected component of the contested graph, no graph library." },
@@ -33,7 +33,7 @@
     ] },
 
     { "t": "h", "x": "What it costs to leave a word unplaced" },
-    { "t": "p", "x": "A word with no outline is fingerspelled, so the escape edge charges that cost, always at least one stroke worse than the word's own worst candidate. A rare word losing its last slot is weighed against a common word's extra stroke; it is not a near-hard constraint." },
+    { "t": "p", "x": "A word with no outline is fingerspelled, so the escape edge charges that cost, always at least one stroke worse than the word's own worst candidate." },
     { "t": "pre", "x": "no_match_cost(word) = weight * max( letters(word) * STROKE_WEIGHT,\n                                    worst_candidate_cost + STROKE_WEIGHT )\nSTROKE_WEIGHT = 25,000   (one stroke = 25 keys; one key = 1,000)" },
     { "t": "p", "x": "A crowded cluster such as `ERL` (early, errol, earle, earl) has more members than the four-rung star ladder has texts, so someone is left out. Leaving a rare name unplaced costs less than an extra stroke on a common word, so the common word keeps its one stroke. Words that got a one-stroke outline this way:" },
     { "t": "table", "head": ["Word", "Outline"], "rows": [
@@ -42,7 +42,7 @@
       ["[[mayor|PHAEUR]]", "one stroke"],
       ["[[bath|PWA*T]]", "one stroke"]
     ] },
-    { "t": "p", "x": "In the current build 443 words are unplaced, all rarer than rank 20,000, each still reachable by fingerspelling or a backup entry (see [backups](#/ref/how-backups-output))." },
+    { "t": "p", "x": "In the current build 371 words are unplaced, all rarer than rank 20,000, each still reachable by fingerspelling or a backup entry (see [backups](#/ref/how-backups-output))." },
     { "t": "note", "kind": "warn", "x": "A common word's non-phonetic candidate can take a rarer word's only derivable stroke (Plover's misstroke `TARBG` for dark, repaired to `ARBG`, is also the plain reading of arc and ark). No surcharge. The displaced word goes to the star ladder, then its stem-plus-suffix reading, then `/+*`. See [collisions](#/ref/collisions)." },
 
     { "t": "h", "x": "Word families" },
@@ -64,7 +64,7 @@
       ["Irregular past: stem plus `D`", "[[built|PWHR-D]], said `SAEUD`, left `HREFD`, came `KUPLD`"],
       ["Prefix: its stroke, then the stem", "[[rebuild|RE/+PWHR]], [[RE/+PWHR-G]] (rebuilding), remake `RE/+AEUBG`"]
     ] },
-    { "t": "note", "kind": "rule", "x": "An offer counts **two keys cheaper** than it is (`FAMILY_DISCOUNT` = 2,000): a member takes its family's shape unless that costs more than two extra keys. It never buys a stroke (a stroke weighs 25 keys). A one-stroke brief that beats the family shape by more than two keys is kept (guys stays [[guys|AOEUS]])." },
+    { "t": "note", "kind": "rule", "x": "A family offer counts two keys cheaper than it is ([the two-key family preference](#/ref/syllables/the-two-key-family-preference)); it never buys a stroke. A one-stroke brief that beats the family shape by more than two keys is kept (guys stays [[guys|AOEUS]])." },
     { "t": "h3", "x": "The final pass: lock the top 5,000, then every skeleton" },
     { "t": "list", "ordered": true, "items": [
       "A word ranked past 8,000 holds its one-stroke consonant skeleton out of the family passes.",

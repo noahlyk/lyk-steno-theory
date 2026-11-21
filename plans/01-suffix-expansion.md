@@ -15,7 +15,7 @@ outline.
 
 ## The one rule (already established, don't reinvent it)
 
-Read `docs/suffixes.md` in full before starting — it documents the rule this file follows:
+Read the Reference page `suffixes` in full before starting — it documents the rule this file follows:
 
 > A suffix is a syllable like any other, so it's written by running its own sounds through the
 > exact tables `rules/plover.toml` already uses for any syllable (`[onset]`, `[vowel]`, `[coda]`,
@@ -25,12 +25,12 @@ Read `docs/suffixes.md` in full before starting — it documents the rule this f
 > **whenever that still tells the suffix apart from every other suffix stroke already claimed**.
 
 When dropping the vowel would collide with an existing suffix's own stroke, keep the vowel instead
-(see the "kept" rows in `docs/suffixes.md` for examples: `^US` for "-ous", `^EUFT` for "-ist").
+(see the "kept" rows in the Reference page `suffixes` for examples: `^US` for "-ous", `^EUFT` for "-ist").
 Every new entry needs the same kind of one-line justification comment the existing file uses —
 see `rules/suffixes.toml`'s own comments for the style (explain which sound reduces to what bare
 key combo, and why the vowel stays if it does).
 
-## What to add — `docs/suffixes.md`'s own "Not yet covered" list
+## What to add — the Reference page `suffixes`'s own "Not yet covered" list
 
 This is the starting list, already identified and written down by a previous pass, never
 implemented:
@@ -96,7 +96,7 @@ of dropping it, per the rule above.
 
 ## Docs
 
-`docs/suffixes.md` is the readable table over `rules/suffixes.toml` — **update it alongside every
+the Reference page `suffixes` is the readable table over `rules/suffixes.toml` — **update it alongside every
 addition**, matching its existing table structure (bare-consonant suffixes / kept-vowel suffixes /
 real-vowel suffixes / two-syllable suffixes), and shrink or remove the "Not yet covered" section as
 items get checked off. Don't let the prose drift from the TOML — this user has repeatedly said docs
@@ -105,7 +105,7 @@ are the most important thing in this repo, more important than the code itself.
 ## Deliverable
 
 One commit (or a few logically-grouped ones) on `main`, pushed, with `rules/suffixes.toml`,
-`rules/plover.toml` (prefixes), and `docs/suffixes.md` all updated together. Regenerate and
+`rules/plover.toml` (prefixes), and the Reference page `suffixes` all updated together. Regenerate and
 redeploy the dictionary and WASM plugin to the user's live config afterward:
 
 ```

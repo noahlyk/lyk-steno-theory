@@ -434,7 +434,7 @@
   },
   {
    "t": "p",
-   "x": "A literal override is exempt from this check (a human chose it) and from the faithful check above, so a literal override should not be a half-held chord. Six old overrides (*on*, *from*, *no*, *then*, *day*, *which*) exploited an older, narrower check and were removed; each word takes its own full phonetic reading. (*which* was later pinned to [[KH]] for another reason, listed above.)"
+   "x": "A literal override is exempt from this check (a human chose it) and from the faithful check above, so a literal override should not be a half-held chord. *on*, *from*, *no*, *then* and *day* have no override and take their own full phonetic reading; *which* is pinned to [[KH]] (listed above)."
   },
   {
    "t": "h",

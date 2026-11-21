@@ -13,7 +13,7 @@
   },
   {
    "t": "p",
-   "x": "**One stroke per mark and per command.** Each distinct output has one stroke: the one struck most in the typed tape, else the one with the fewest keys. A mark differing in spacing or capital code (`{.}` and `{^.^}`, `{^-^}` and `-`) is a different output with its own stroke. The **Plover code** column is what the stroke sends. `^` next to a mark attaches it."
+   "x": "**One stroke per mark and per command** ([how it is chosen](#/ref/reserved-strokes/what-it-guarantees)). A mark differing in spacing or capital code (`{.}` and `{^.^}`, `{^-^}` and `-`) is a different output with its own stroke. The **Plover code** column is what the stroke sends. `^` next to a mark attaches it."
   },
   {
    "t": "table",
@@ -492,7 +492,7 @@
   },
   {
    "t": "p",
-   "x": "The other 52 strokes in `punctuation.json` are the glued letters `A*` a, `A*P` A, and so on for the alphabet. Full list and rule: [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text). All 52 are first-up with `*` exempt (`{:firstup:except=*}{>}{&a}`): hold `*` and tap letter chords, one letter per tap."
+   "x": "The other 52 strokes in `punctuation.json` are the glued letters `A*` a, `A*P` A, and so on for the alphabet. List and first-up rule: [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)."
   },
   {
    "t": "h",

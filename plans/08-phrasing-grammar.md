@@ -148,7 +148,7 @@ Once the design survives typing:
    the merged-pair pass skips any text the grammar already writes.
 3. Tests: every stroke typable and unique; every displaced word keeps an outline; the quote corpus
    walk counts grammar strokes.
-4. Docs: a `docs/phrasing.md` chapter (this plan's tables, as the rules to learn), the joins sheet
+4. Docs: the Reference page `phrases` (section "The phrasing grammar") (this plan's tables, as the rules to learn), the joins sheet
    linking it, `docs/decisions.md`.
 
 Open for after typing: questions (*do you*, *are you*, *can I*: the starter after the auxiliary);

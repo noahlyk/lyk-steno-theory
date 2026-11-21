@@ -288,7 +288,7 @@
   },
   {
    "t": "p",
-   "x": "Every glued letter entry starts with `{:firstup:except=*}`: `A*` is `{:firstup:except=*}{>}{&a}`, `A*P` is `{:firstup:except=*}{&A}`. The stroke is sent when its first non-`*` key comes up and the keys still down wait for the next stroke. Hold `*` and tap letter chords: each tap is one letter ([[T*]] [[A*]] [[KR*]] write t, a, c with `*` held throughout). Lifting `*` first sends nothing; the `*` is still part of the stroke that goes."
+   "x": "Every glued letter entry starts with `{:firstup:except=*}`: `A*` is `{:firstup:except=*}{>}{&a}`, `A*P` is `{:firstup:except=*}{&A}`. Hold `*` and tap letter chords: each tap is one letter ([[T*]] [[A*]] [[KR*]] write t, a, c with `*` held throughout)."
   },
   {
    "t": "list",
@@ -300,11 +300,6 @@
     "Needs a keymux build that reads `{:firstup:except=KEYS}`; see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up). Plain Plover errors on the marker."
    ],
    "ordered": false
-  },
-  {
-   "t": "note",
-   "kind": "rule",
-   "x": "The 52 strokes (26 lowercase, 26 capital) are reserved ahead of every word; a word that wanted one takes its next-cheapest outline: [[captain|KAPT]] instead of `K*P`, [[eh|A*EU]] instead of `*E`."
   },
   {
    "t": "p",
@@ -336,8 +331,8 @@
     "The ender `LGTS` (right hand's bottom four keys, `-LGTS`) is on all 1,470 strokes; it keeps ordinary outlines from colliding with modifier chords.",
     "At least one modifier key must be held; a bare letter or symbol is not this dictionary's job.",
     "Output is wrapped in `{^}` on both sides: attaches to nothing, adds no space.",
-    "**First-up.** Every entry starts with `{:firstup:except=-FRPBLGTS}`: the chord is sent when its **first non-exempt** key comes up and the keys still down wait for the next stroke. Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]). Releasing the held keys alone sends nothing.",
-    "**Exempt keys.** The exception `-FRPBLGTS` lists every right-hand key of the held base (the modifiers `F` `R` `P` `B` and the ender `L` `G` `T` `S`; `D` and `Z` are never in a chord here). Lifting one of those first sends nothing and the chord stays open, so letting go of the base early cannot send the shortcut while left-hand characters are still down; the exempt keys are still part of the stroke that goes. The left-hand and vowel keys are not exempt: the first of them to come up sends the stroke. A chord with no left-hand key (`-FLGTS`, only exempt keys) goes on its last key up. Needs a keymux build that reads `{:firstup:except=KEYS}`; see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up). Plain Plover errors on the marker."
+    "**First-up.** Every entry starts with `{:firstup:except=-FRPBLGTS}` ([Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)). Hold the modifier keys and `LGTS` on the right hand, tap characters on the left: each tap is one shortcut. Hold Super + `LGTS`, tap `1`, `2`, `3` ([[RAOPLGTS]], [[WAOPLGTS]], [[WRAOPLGTS]]).",
+    "**Exempt keys.** The exception `-FRPBLGTS` lists every right-hand key of the held base (the modifiers `F` `R` `P` `B` and the ender `L` `G` `T` `S`; `D` and `Z` are never in a chord here). The left-hand and vowel keys are not exempt: the first of them to come up sends the stroke. A chord with no left-hand key (`-FLGTS`) goes on its last key up. Needs a keymux build that reads `{:firstup:except=KEYS}`; plain Plover errors on the marker."
    ],
    "ordered": false
   },

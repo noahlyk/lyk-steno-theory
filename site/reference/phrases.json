@@ -163,7 +163,7 @@
    "t": "list",
    "items": [
     "**The 5,000 most frequent words keep their primary** (`PROTECTED_WORDS`). [[on|OB]], [[want|W-T]] and [[after|AF]] stay. A phrase may still take a *short form* or *alternate* from them.",
-    "**Only the 1,000 most frequent eligible pairs may take a held stroke** (`TAKEOVER_TOP_N`). A rarer pair goes only into a free stroke. Without this limit, 373 words ended up with a star because a pair nobody will learn had taken their plain stroke.",
+    "**Only the 1,000 most frequent eligible pairs may take a held stroke** (`TAKEOVER_TOP_N`). A rarer pair goes only into a free stroke.",
     "**A word that loses its only way of being written gets another**: its next-best outline, or its best own candidate of any length that nobody holds. *antonio* moves to `TPHOEPBT`. A pair is skipped if the word would end up with nothing. A word that loses its primary is no longer part of any later phrase.",
     "A word in a committed phrase is not taken from afterwards."
    ]
@@ -216,7 +216,7 @@
   },
   {
    "t": "p",
-   "x": "One stroke writes a **starter** (who), an **auxiliary** (when, which modal, not) and a **verb**, each on its own region of the board, so no combination overlaps another: [[I was|SWREB]], [[they wouldn't|STWHRO*E]], [[she has been|SKWH-FB]]. 8 starters, 5 modals, 3 special verbs and 20 verbs (about 36 parts) give **3,758 phrases**, all written to `02-lyk-phrasing.json` by `src/phrases/grammar.rs` from the tables in `rules/grammar.toml`. Typing it is taught in [lesson 19](#/lesson/19-phrasing-grammar) and [lesson 20](#/lesson/20-phrasing-strokes)."
+   "x": "One stroke writes a **starter** (who), an **auxiliary** (when, which modal, not) and a **verb**, each on its own region of the board, so no combination overlaps another: [[I was|SWREB]], [[they wouldn't|STWHRO*E]], [[she has been|SKWH-FB]]. 8 starters, 5 modals, 3 special verbs and 20 verbs (about 36 parts) give **3,758 phrases**, all written to `02-lyk-phrasing.json` by `src/phrases/grammar.rs` from the tables in `rules/grammar.toml`."
   },
   {
    "t": "h3",
@@ -527,8 +527,8 @@
   {
    "t": "list",
    "items": [
-    "`lyk lookup \"they wouldn't\"` (and the interactive lookup) puts the grammar's stroke first, marked as a phrase, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word as usual. Case, punctuation, a curly apostrophe, *I'm* / *they're* / *I've* / *I'll* and a spelt-out negative (*do not*, *can not*, *cannot*) are read as the grammar's own text.",
-    "A text the grammar covers only at its start (*she has been going*) names the part it covers (*she has been*, 3 of 4 words) and answers the rest word by word.",
+    "`lyk lookup \"they wouldn't\"` (and the interactive lookup) puts the grammar's stroke first, marked as a phrase, with the key group that says each part (`STWHR starter (they) + OE auxiliary (would) + * not`), then each word as usual, and two lines under the table: `I was: one stroke of the phrasing grammar, SWR + E + -B` and the parts. Case, punctuation, a curly apostrophe, *I'm* / *they're* / *I've* / *I'll* and a spelt-out negative (*do not*, *can not*, *cannot*) are read as the grammar's own text.",
+    "A text the grammar covers only at its start (*she has been going*) names the part it covers (`the grammar covers the first 3 of 4 words (she has been); the rest (going) is per word below`) and answers the rest word by word.",
     "`lyk lookup SWRAB` explains a grammar stroke part by part: *I can be*, `SWR` starter, `A` auxiliary, `-B` verb.",
     "The lessons site's Lookup does the same from `data/grammar.json`. The keymux live lookup (`keymux steno lookup`) does not: it answers a phrase word by word and does not match a whole phrase entry by its text, so look the stroke up there (it types the phrase, `SWRAB` is *I can be*)."
    ]
