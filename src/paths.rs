@@ -100,6 +100,16 @@ impl Env {
             .unwrap_or_else(|| (PathBuf::from("data"), Source::Fallback))
     }
 
+    /// Where lyk's own records live: `$XDG_STATE_HOME/lyk` when installed, else the out folder.
+    #[must_use]
+    pub fn state(&self) -> PathBuf {
+        let base = self.xdg_state_home.clone().or_else(|| self.home.as_ref().map(|h| h.join(".local/state")));
+        match base {
+            Some(base) if self.lyk_out.is_none() && !self.checkout => base.join("lyk"),
+            _ => self.out().0,
+        }
+    }
+
     /// The out folder.
     #[must_use]
     pub fn out(&self) -> (PathBuf, Source) {
@@ -138,6 +148,13 @@ pub fn data_dir() -> PathBuf {
 #[must_use]
 pub fn out_dir() -> PathBuf {
     env().out().0
+}
+
+/// The practice history: `lyk/practice.jsonl` under the state home when installed (beside `out`,
+/// not inside the rebuildable output), else inside out.
+#[must_use]
+pub fn practice_history() -> PathBuf {
+    env().state().join("practice.jsonl")
 }
 
 /// The built dictionary, `out/lyk`.
@@ -246,6 +263,14 @@ mod tests {
         assert_eq!(e.data(None), (PathBuf::from("/env/data"), Source::Env));
         assert_eq!(e.data(Some(Path::new("/flag"))), (PathBuf::from("/flag"), Source::Flag));
         assert_eq!(e.out(), (PathBuf::from("/env/out"), Source::Env));
+    }
+
+    #[test]
+    fn records_sit_beside_out_when_installed_and_inside_it_otherwise() {
+        assert_eq!(env(false).state(), PathBuf::from("/home/u/.local/state/lyk"));
+        assert_eq!(env(true).state(), PathBuf::from("out"));
+        let e = Env { lyk_out: Some("/env/out".into()), ..env(false) };
+        assert_eq!(e.state(), PathBuf::from("/env/out"));
     }
 
     #[test]

@@ -112,6 +112,7 @@ cargo run --release -- lookup "everybody's"         # a word, phrase or stroke, 
 cargo run --release -- resolve STKPW                # a stroke not in the dictionary: what the solver types
 cargo run --release -- solve KOPL/+PU/+TER          # every reading of a run, cheapest first (--eval N: how often it is right)
 cargo run --release -- keys                         # no word: type and the answer follows every key, all three theories
+cargo run --release -- practice                     # a typing drill: 50 common words, no outlines or hints (see Practice)
 ```
 
 `lookup` (alias `keys`), `resolve` (alias `stroke`), `explain`, `ergonomics`, `paths` and `family`
@@ -128,6 +129,30 @@ what a change did to the built dictionary.
 | Bigram frequency | Norvig's Google Books Ngrams (`count_2w.txt`), which picks the word pairs that become [phrases](https://noahlyk.github.io/lyk-steno-theory/#/ref/phrases) |
 | Dictionaries to match | Plover `main.json` and `commands.json`, Lapwing dictionaries |
 | Other theories' briefs | Stan's (a Magnum derivative), Josiah theory and thirteen Stenovations theories (StenEd, StarTran, Steno Foundation, Tri-C, RealWrite and more), `dictionaries/theory-*.json`: a pool of one-stroke briefs, each kept only if it saves a stroke ([collisions](https://noahlyk.github.io/lyk-steno-theory/#/ref/collisions)) |
+
+## Practice
+
+`lyk practice` is a monkeytype-style word feed in the terminal: a few lines of upcoming words, the
+current one highlighted, what you typed green or red against it, a quiet speed and accuracy line
+(`--quiet` hides it) and nothing else, no outlines, keyboard or hints. Your steno machine types the
+words through keymux as ordinary characters, so it only reads plain key presses.
+
+```
+lyk practice                                  # 50 words from the 1,000 commonest
+lyk practice --time 60 --rank 1-200           # one minute from the 200 commonest
+lyk practice --source mistakes --outlines     # your drill words; the results show their outlines
+lyk practice --source phrases --count 100     # the phrasing grammar's phrases, typed as text
+lyk practice --history                        # recent runs and the trend
+```
+
+Space or Enter commits a word; a wrong word is an error and the feed moves on
+(`--stop-on-error` requires it right). Backspace or `*` deletes, Ctrl-Backspace or Ctrl-W deletes a
+word, Esc or Ctrl-C ends the run with the results so far. Sources: `common` (`--rank`, `--bands`,
+`--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
+`--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
+shape the feed. The results show speed, raw speed, accuracy, errors, time, consistency, the ten
+slowest words and the missed ones; each run is added to `practice.jsonl` in the state folder (`out/`
+in a checkout). All flags: the Reference, Build and files.
 
 ## Full benchmarks
 

@@ -6,6 +6,7 @@ post_install() {
     echo "    lyk build      # generate the dictionary from the rules"
     echo "    lyk deploy     # copy it into keymux's config (needs keymux installed and"
     echo "                   #   ~/.config/keymux set up: run 'keymux init' first)"
+    echo "    lyk practice   # a typing drill: raw word feed, speed and accuracy, no hints"
     echo ""
     echo "==> Where things live (change with LYK_DATA / LYK_OUT, or 'lyk --data DIR'):"
     echo "    data:    \${XDG_DATA_HOME:-~/.local/share}/lyk/data"

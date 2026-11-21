@@ -24,6 +24,7 @@ mod num;
 mod output;
 mod paths;
 mod phrases;
+mod practice;
 mod prose;
 mod gold;
 mod ipa;
@@ -370,6 +371,9 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
+    /// Typing drill in the terminal: a raw word feed, no outlines or hints; speed, accuracy and the
+    /// slow and missed words at the end
+    Practice(practice::Args),
     /// Misstrokes on the steno tape: undone near-misses, key-level errors, trend; `--drill` makes a
     /// personal drill set. Runs once, reads the tape read-only, writes only to out/mistakes/
     Mistakes {
@@ -447,7 +451,7 @@ fn main() -> Result<()> {
     let data_dir = paths::data_dir();
     let needs_data = !matches!(
         cli.command,
-        Command::Version | Command::Where | Command::Fetch | Command::Mistakes { .. } | Command::Deploy { rollback: true, .. }
+        Command::Version | Command::Where | Command::Fetch | Command::Mistakes { .. } | Command::Practice(_) | Command::Deploy { rollback: true, .. }
     );
     if needs_data {
         paths::require_data(&data_dir)?;
@@ -553,6 +557,7 @@ fn main() -> Result<()> {
         Command::Ergonomics { query, common, briefs, rebuild } => {
             commands::run_ergonomics(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild)
         }
+        Command::Practice(args) => practice::run(args),
         Command::Mistakes { tape, dict, last, since, min_errors, min_attempts, top, json, drill, out, words } => {
             let tape = expand_home(tape);
             mistakes::run(&mistakes::Options {
