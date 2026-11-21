@@ -1,0 +1,126 @@
+lyk-steno-theory
+Copyright (C) noahlyk
+
+lyk is free software under the GNU General Public License, version 3 or (at your option) any later
+version: see LICENSE. This file credits the projects lyk's files are derived from and the data lyk
+downloads. It states facts found by reading each upstream's own license file or page; it is not
+legal advice and draws no legal conclusion. Where a license could not be confirmed, it says
+"unverified". Checked on 2026-11-20.
+
+======================================================================================
+1. Files in this repository derived from other projects
+======================================================================================
+
+rules/reserved/emilys-modifiers.py (and rules/reserved/emilys-modifiers.json, generated from it)
+    Derived from "Emily's Modifier Dictionary" (https://github.com/EPLHREU/emily-modifiers, file
+    emily-modifiers.py), by way of the copy shipped in Lapwing's plover-lapwing-aio
+    (https://github.com/aerickt/plover-lapwing-aio, plover_lapwing/dictionaries/emily-modifiers.py),
+    whose ender "LGTS" this file keeps. The file's own header says it was forked from
+    steno/disabled_20-lapwing-extras/ (an older Lapwing path, not checked).
+    License of the upstream: the EPLHREU/emily-modifiers repository has no LICENSE file, its README
+    states no license and GitHub reports none: no license is granted that could be read. The
+    plover-lapwing-aio repository is MIT (copy below), which covers its own authors' work only.
+    The author's rights in Emily's file are unverified; ask the author if in doubt.
+
+rules/reserved/punctuation.json
+    The Reference describes it as forked from Plover's punctuation strokes (Plover is
+    https://github.com/openstenoproject/plover; its repository LICENSE.txt is GNU GPL version 2,
+    and setup.cfg says "GPL-2.0-or-later"). Which entries are copied and which are lyk's own is
+    not recorded in the repository: unverified. Copyright line seen in Plover's source:
+    "Copyright (c) 2010-2011 Joshua Harlan Lifton" (plover/__init__.py, "See LICENSE.txt").
+
+rules/reserved/commands.json
+    Uses Plover's command syntax ({PLOVER:...}, {#key}); the strokes are lyk's. No copied
+    Plover file is recorded: unverified.
+
+rules/plover.toml
+    A transcription of Plover theory's sound-to-key assignments as rules (the notation and the
+    layout are Plover's). It holds no file text from Plover: unverified whether more than that.
+
+Everything else under src/, rules/ (the other files), tools/, site/ and build.rs has no recorded
+upstream. rules/reserved/sticky-plus.rs and rules/reserved/regenerate.py are written for lyk.
+The Cargo dependencies are listed in section 4.
+
+======================================================================================
+2. Compatibility with GPL-3.0-or-later (facts, not conclusions)
+======================================================================================
+
+ - Plover: GPL-2.0-or-later per its setup.cfg; "or later" permits GPL-3.0. Its LICENSE.txt is the
+   GPL version 2 text, whose "any later version" wording is in the file. The Plover dictionaries
+   lyk downloads (section 3) are in that repository.
+ - Lapwing (plover-lapwing-aio): MIT, a permissive license, one-way compatible with GPL-3.0.
+   Lapwing's book repository (aerickt/lapwing-for-beginners) reports GPL-3.0; lyk uses neither.
+ - Emily's Modifier Dictionary: no license found, so compatibility cannot be confirmed:
+   unverified, and this is the one open item.
+
+======================================================================================
+3. Data `lyk fetch` downloads (src/fetch.rs)
+======================================================================================
+
+Nothing below is shipped in this repository: `lyk fetch` downloads it into the data folder. The
+dictionary `lyk build` generates is derived from it (pronunciations, word frequencies, the
+Plover/Lapwing/other-theory dictionaries it is compared and merged with). What follows is what the
+upstream states; how it applies to the generated dictionary is not decided here.
+
+ Pronunciations
+ - CMUdict (cmusphinx/cmudict): "Copyright (C) 1993-2015 Carnegie Mellon University", a
+   redistribution license keeping the copyright notice and disclaimer (LICENSE read; notice below).
+ - MFA US English dictionary v3.1.0 (MontrealCorpusTools/mfa-models): CC BY 4.0 (the release page
+   states it; the repository LICENSE is CC BY 4.0).
+ - WikiPron US English broad (CUNY-CL/wikipron): the code is Apache-2.0; its README says the
+   Wiktionary data has "its own licensing terms" (Wiktionary:Copyrights), not read further here.
+ Frequencies and text
+ - FrequencyWords en_full.txt (hermitdave/FrequencyWords, from OpenSubtitles 2018): README says MIT
+   for code and CC-BY-SA-4.0 for content.
+ - Norvig's count_2w.txt (https://www.norvig.com/ngrams/): license unverified (not read).
+ - Project Gutenberg books (Pride and Prejudice, Huckleberry Finn, A Tale of Two Cities, Moby Dick,
+   Walden; src/corpus_extract.rs): public-domain works by the authors; the Gutenberg license text
+   itself was not read here: unverified. Used only by `score`'s benchmark corpus.
+ Dictionaries of other theories (a pool of outlines the generator weighs)
+ - Plover main.json and commands.json (openstenoproject/plover): GPL-2.0 repository, see above.
+ - Lapwing dictionaries (aerickt/plover-lapwing-aio): MIT, Copyright (c) 2024 Aerick (below).
+ - Stan's dictionaries (stanographer/steno-dictionaries): no license file; the README's License
+   section reads "Don't care.": not a formal license, unverified.
+ - Josiah theory (Josiah-tan/Josiah_theory): no license file or statement found: unverified.
+ - Thirteen Stenovations theories via user202729/plover-resources: no license file or statement
+   found, and each theory's own authors' terms are unknown: unverified.
+ Run time only (not fetched by `lyk fetch`)
+ - `lyk quote` asks https://zenquotes.io/api/random for a quote (src/quote.rs): its terms were
+   not read: unverified.
+
+======================================================================================
+4. Rust dependencies (Cargo.lock, `cargo metadata --locked`, 120 packages incl. all targets)
+======================================================================================
+
+By the license expression each crate declares: MIT OR Apache-2.0 (and spelling variants) 78;
+Unicode-3.0 18; MIT 9; ISC 2; CDLA-Permissive-2.0 2; Apache-2.0 AND ISC 1; Apache-2.0 WITH
+LLVM-exception OR Apache-2.0 OR MIT 3; 0BSD OR MIT OR Apache-2.0 1; Unlicense OR MIT 1;
+MIT OR Zlib OR Apache-2.0 1; Apache-2.0 OR ISC OR MIT 1; BSD-3-Clause 1; (MIT OR Apache-2.0) AND
+Unicode-3.0 1; Zlib 1. None is GPL-2.0-only, proprietary or undeclared. The declared expressions
+were not checked against each crate's source.
+
+======================================================================================
+License texts that require to be kept
+======================================================================================
+
+CMUdict (data downloaded, not shipped):
+    Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+    See https://github.com/cmusphinx/cmudict/blob/master/LICENSE for the full conditions.
+
+plover-lapwing-aio (MIT):
+    Copyright (c) 2024 Aerick
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+    and associated documentation files (the "Software"), to deal in the Software without
+    restriction, including without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or
+    substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+    BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
