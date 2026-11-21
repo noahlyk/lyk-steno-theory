@@ -8,13 +8,18 @@
 // Counts and seconds become percentages and rates: the casts are exact at these sizes.
 #![allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
 
+pub mod adaptive;
 mod engine;
 mod feed;
 mod history;
+pub mod pool;
 mod sources;
 mod ui;
 
+pub use feed::is_plain_word;
+
 use crate::paths;
+use crate::vocab::{self, Vocab};
 use anyhow::{Context, Result, bail};
 use clap::{Args as ClapArgs, ValueEnum};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -27,6 +32,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Copy, ValueEnum, PartialEq, Eq, Debug)]
 pub enum Source {
+    /// Words you are learning, due reviews and new words you have earned (the default)
+    Adaptive,
     /// The commonest words (see --rank, --bands)
     Common,
     /// The weighted drill words of `lyk mistakes --drill`
@@ -42,6 +49,7 @@ pub enum Source {
 impl Source {
     const fn name(self) -> &'static str {
         match self {
+            Self::Adaptive => "adaptive",
             Self::Common => "common",
             Self::Mistakes => "mistakes",
             Self::File => "file",
@@ -54,9 +62,27 @@ impl Source {
 #[derive(ClapArgs, Debug)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Args {
-    /// Where the words come from [default: common; file when --file is given]
+    /// Where the words come from [default: adaptive; file when --file is given]
     #[arg(long, value_enum)]
     source: Option<Source>,
+    /// Adaptive: new words entering in one test
+    #[arg(long, default_value_t = 3)]
+    new_per_session: usize,
+    /// Adaptive: most words being learned at once
+    #[arg(long, default_value_t = 15)]
+    learning_cap: usize,
+    /// Adaptive: which word lists the new words come from
+    #[arg(long, value_enum, default_value = "both")]
+    wordlist: pool::Wordlist,
+    /// Adaptive: rank multiplier for words in Monkeytype's english, 1k, 5k and 10k lists (below 1 meets them earlier)
+    #[arg(long, default_value_t = pool::DEFAULT_WEIGHT)]
+    monkeytype_weight: f64,
+    /// Adaptive: play the feed without updating vocab.json
+    #[arg(long)]
+    no_adapt: bool,
+    /// Adaptive: the steno tape, read once to seed vocab.json when it is first made
+    #[arg(long, default_value = "~/.local/state/keymux/steno-tape.txt")]
+    tape: PathBuf,
     /// The text file for `--source file`
     #[arg(long, value_name = "PATH")]
     file: Option<PathBuf>,
@@ -125,9 +151,13 @@ pub fn run(args: &Args) -> Result<()> {
     if !(std::io::stdin().is_terminal() && std::io::stdout().is_terminal()) {
         bail!("lyk practice needs a terminal: stdin and stdout must both be a TTY (run it in a terminal, not through a pipe or redirect); `lyk practice --history` works anywhere");
     }
-    let source = args.source.unwrap_or_else(|| if args.file.is_some() { Source::File } else { Source::Common });
-    let pool = make_pool(args, source)?;
-    if feed::build(pool.clone(), &feed_opts(args, next_seed(args.seed, 0, random_seed()))).is_empty() {
+    let source = args.source.unwrap_or_else(|| if args.file.is_some() { Source::File } else { Source::Adaptive });
+    let mut feeder = if source == Source::Adaptive {
+        Feeder::Adaptive(Box::new(Adaptive::open(args)?))
+    } else {
+        Feeder::Fixed(make_pool(args, source)?)
+    };
+    if feeder.words(args, next_seed(args.seed, 0, random_seed())).is_empty() {
         bail!("the filters leave no words to practise: loosen --min-len, --max-len, --lowercase-only or --rank");
     }
     let limit = args.time.map(|t| t as f64);
@@ -138,8 +168,11 @@ pub fn run(args: &Args) -> Result<()> {
         let _restore = Restore;
         let mut round = 0;
         loop {
-            let words = feed::build(pool.clone(), &feed_opts(args, next_seed(args.seed, round, random_seed())));
+            let words = feeder.words(args, next_seed(args.seed, round, random_seed()));
             let mut session = Session::new(words, args.stop_on_error);
+            if let Feeder::Adaptive(a) = &feeder {
+                session = session.with_respacing(a.cfg.respace_gap, a.cfg.max_respace);
+            }
             let clock = Instant::now();
             let outcome = type_loop(&mut terminal, &mut session, &clock, args.quiet, limit)?;
             let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
@@ -157,7 +190,19 @@ pub fn run(args: &Args) -> Result<()> {
             }
             let results = session.results(session.finished_at.unwrap_or(0.0));
             let outlines = if args.outlines { outlines_for(&results, &args.dict) } else { HashMap::new() };
-            let lines = ui::result_lines(&results, source.name(), &outlines);
+            let mut lines = ui::result_lines(&results, source.name(), &outlines);
+            if let (Feeder::Adaptive(a), Outcome::Finished, false) = (&mut feeder, outcome, args.no_adapt) {
+                match a.learn(&session) {
+                    Ok(summary) => {
+                        let text = summary.line();
+                        if !text.is_empty() {
+                            lines.push(String::new());
+                            lines.push(format!("{}{text}", ui::VOCAB_PREFIX));
+                        }
+                    }
+                    Err(e) => save_error = Some(format!("could not save {}: {e:#}", vocab::file().display())),
+                }
+            }
             if outcome == Outcome::Quit {
                 // Esc or Ctrl-C quit at once, with no results screen
                 last = Some(lines);
@@ -219,6 +264,100 @@ fn random_seed() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64)
 }
 
+/// Where a test's words come from.
+enum Feeder {
+    /// Bands of units drawn at random
+    Fixed(Vec<Vec<String>>),
+    /// The adaptive vocabulary
+    Adaptive(Box<Adaptive>),
+}
+
+impl Feeder {
+    fn words(&mut self, args: &Args, seed: u64) -> Vec<String> {
+        match self {
+            Self::Fixed(pool) => feed::build(pool.clone(), &feed_opts(args, seed)),
+            Self::Adaptive(a) => a.feed(args, seed),
+        }
+    }
+}
+
+/// The adaptive source: the word pool, the vocabulary and what teaches it.
+struct Adaptive {
+    pool: pool::Pool,
+    vocab: Vocab,
+    cfg: adaptive::Config,
+    /// Whether finished tests are written to vocab.json
+    save: bool,
+}
+
+impl Adaptive {
+    fn open(args: &Args) -> Result<Self> {
+        let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names };
+        let pool = pool::Pool::open(&paths::data_dir(), &opts)?;
+        for name in &pool.missing {
+            eprintln!("note: Monkeytype list {name} is not downloaded (run `lyk fetch`); the pool is without it");
+        }
+        let cfg = adaptive::Config { new_per_session: args.new_per_session, learning_cap: args.learning_cap, ..adaptive::Config::default() };
+        let path = vocab::file();
+        let mut vocab = Vocab::load(&path)?;
+        if !vocab.seeded {
+            eprintln!("first run: reading your practice history and the steno tape into {} (once)", path.display());
+            let tape = expand_home(&args.tape);
+            let added = vocab::ensure_seeded(&mut vocab, &tape, &args.dict, &cfg, today());
+            eprintln!("{added} words on file");
+            if !args.no_adapt {
+                vocab.save(&path)?;
+            }
+        }
+        Ok(Self { pool, vocab, cfg, save: !args.no_adapt })
+    }
+
+    fn feed(&mut self, args: &Args, seed: u64) -> Vec<String> {
+        let (min, max, lower) = (args.min_len, args.max_len, args.lowercase_only);
+        let keep = move |w: &str| {
+            let n = w.chars().count();
+            n >= min && n <= max && !(lower && w.chars().any(char::is_uppercase))
+        };
+        let size = feed_opts(args, seed).count;
+        adaptive::plan_feed(&self.vocab, &mut self.pool, &self.cfg, today(), size, seed, &keep).words
+    }
+
+    /// Teaches the vocabulary a finished test and saves it.
+    fn learn(&mut self, session: &Session) -> Result<adaptive::Summary> {
+        let summary = adaptive::apply(&mut self.vocab, &attempts_of(session), &self.cfg, today());
+        if self.save {
+            self.vocab.save(&vocab::file())?;
+        }
+        Ok(summary)
+    }
+}
+
+/// The attempts of a test, in order: the words `--stop-on-error` refused (misses), then each
+/// committed word with the time since the one before it (none for the first, which carries no
+/// recall time).
+fn attempts_of(session: &Session) -> Vec<adaptive::Attempt> {
+    let mut out: Vec<adaptive::Attempt> =
+        session.refusals().iter().map(|m| adaptive::Attempt { word: m.word.clone(), hit: false, secs: None }).collect();
+    out.extend(session.done.iter().enumerate().map(|(i, d)| adaptive::Attempt { word: d.target.clone(), hit: d.correct(), secs: (i > 0).then_some(d.secs) }));
+    out
+}
+
+fn today() -> u32 {
+    vocab::day_of(SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs()), vocab::local_offset())
+}
+
+fn expand_home(path: &std::path::Path) -> PathBuf {
+    match (path.strip_prefix("~"), std::env::var_os("HOME")) {
+        (Ok(rest), Some(home)) => PathBuf::from(home).join(rest),
+        _ => path.to_path_buf(),
+    }
+}
+
+/// Missed words of the recorded runs, one entry per miss: all `vocab seeding` knows of them.
+pub fn history_misses(path: &std::path::Path) -> Vec<String> {
+    history::read(path).into_iter().flat_map(|r| r.missed).collect()
+}
+
 /// Restores the terminal when dropped, however the run ends. (`ratatui::try_init` also installs a
 /// panic hook that does the same.)
 struct Restore;
@@ -245,6 +384,7 @@ fn feed_opts(args: &Args, seed: u64) -> feed::Opts {
 /// The source's words, read once: the bands each test's feed is drawn from.
 fn make_pool(args: &Args, source: Source) -> Result<Vec<Vec<String>>> {
     let bands = match source {
+        Source::Adaptive => bail!("the adaptive source has no fixed pool"),
         Source::Common => {
             let spec = args.bands.as_deref().or(args.rank.as_deref()).unwrap_or("1-1000");
             let bands = feed::parse_bands(spec)?;
@@ -504,6 +644,37 @@ mod tests {
     }
 
     #[test]
+    fn a_session_becomes_attempts_with_times_except_the_first_word() {
+        let words: Vec<String> = ["the", "cat", "sat"].map(String::from).to_vec();
+        let mut s = Session::new(words, false);
+        for (c, t) in "the ".chars().map(|c| (c, 1.0)).chain("cax ".chars().map(|c| (c, 2.5))).chain("sat".chars().map(|c| (c, 3.0))) {
+            s.apply(Input::Char(c), t);
+        }
+        let got = attempts_of(&s);
+        assert_eq!(
+            got,
+            vec![
+                adaptive::Attempt { word: "the".into(), hit: true, secs: None },
+                adaptive::Attempt { word: "cat".into(), hit: false, secs: Some(1.5) },
+                adaptive::Attempt { word: "sat".into(), hit: true, secs: Some(0.5) },
+            ]
+        );
+        // stop on error: the refused commit is a miss, then the right word is a hit
+        let mut s = Session::new(vec!["cat".into()], true);
+        for c in "cax ".chars() {
+            s.apply(Input::Char(c), 1.0);
+        }
+        for _ in 0..3 {
+            s.apply(Input::Backspace, 1.0);
+        }
+        for c in "cat".chars() {
+            s.apply(Input::Char(c), 2.0);
+        }
+        let got = attempts_of(&s);
+        assert_eq!((got[0].hit, got[1].hit, got.len()), (false, true, 2), "{got:?}");
+    }
+
+    #[test]
     fn count_defaults_to_25() {
         use clap::Parser;
         #[derive(Parser)]
@@ -519,6 +690,12 @@ mod tests {
         // under `cargo test` stdin is not a terminal
         let args = Args {
             source: None,
+            new_per_session: 3,
+            learning_cap: 15,
+            wordlist: pool::Wordlist::Both,
+            monkeytype_weight: 0.7,
+            no_adapt: true,
+            tape: PathBuf::new(),
             file: None,
             bands: None,
             rank: None,

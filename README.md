@@ -81,7 +81,7 @@ lyk solve KOPL/+PU/+TER            # every reading of a run, cheapest first
 lyk explain moon                   # which rules wrote a word
 lyk mistakes --drill               # misstrokes on the steno tape, and a personal drill set for the site
 lyk quote                          # a random quote stroked in all three theories
-lyk practice                       # a typing drill: 25 common words, no outlines or hints (see Practice)
+lyk practice                       # a typing drill on your own growing vocabulary, no outlines or hints (see Practice)
 ```
 
 With no word, `lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` open an interactive
@@ -96,11 +96,14 @@ above the feed and a one-line key hint below it (`--quiet` hides both); no outli
 words through keymux as ordinary characters, so it only reads plain key presses.
 
 ```
-lyk practice                                  # 25 words from the 1,000 commonest
+lyk practice                                  # 25 words: what you are learning, reviews due, a few new ones
+lyk practice --source common                  # 25 words from the 1,000 commonest
 lyk practice --time 60 --rank 1-200           # one minute from the 200 commonest
 lyk practice --source mistakes --outlines     # your drill words; the results show their outlines
 lyk practice --source phrases --count 100     # the phrasing grammar's phrases, typed as text
 lyk practice --history                        # recent runs and the trend
+lyk vocab                                     # the vocabulary: size, frontier, learning, due, lapses
+lyk vocab know the and                        # retire words you know: never shown again
 ```
 
 Space or Enter commits a word; a wrong word is an error and the feed moves on
@@ -112,12 +115,23 @@ options and a new random seed (with `--seed N`, N+1, N+2, ... so each differs an
 an abandoned test is not saved. The clock starts at the first character after a start or restart, and
 the live line (`wpm 84   acc 97%   12/25   0:09`) keeps updating about four times a second. On the results
 screen Tab or Enter starts again and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C work at once, while the
-first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `common` (`--rank`, `--bands`,
+first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `adaptive` (the default, below), `common` (`--rank`, `--bands`,
 `--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
 `--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
 shape the feed. The results show speed, raw speed, accuracy, errors, time, consistency, the ten
 slowest words and the missed ones; each finished test is added to `practice.jsonl` in the state folder (`out/`
 in a checkout). All flags: the Reference, Build and files.
+
+The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. Each test
+holds the words you are learning, reviews that are due, and up to 3 new words, which are earned (a free
+slot among 15 learning words, 92% right over your last 50 attempts) and come in frequency order from
+lyk's list merged with Monkeytype's English lists (`lyk fetch` downloads them; words in Monkeytype's
+common lists are met a little earlier, `--monkeytype-weight`), all the way down the long tail. A word
+you type right 10 times over 3 days becomes a review and returns after 1, 3, 7, 21, 60 and 180 days; a
+miss steps it back, two in a row send it back to learning. The state is `vocab.json` beside
+`practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
+already type well are not new. `lyk vocab` shows it and `know`, `skip`, `forget`, `reset --yes` edit
+it; `--no-adapt` plays a feed without changing it. The rules are in the Reference, Build and files.
 
 ## Full benchmarks
 

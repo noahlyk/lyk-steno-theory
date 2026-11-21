@@ -157,6 +157,13 @@ pub fn practice_history() -> PathBuf {
     env().state().join("practice.jsonl")
 }
 
+/// What the adaptive practice source knows about each word: `lyk/vocab.json` under the state
+/// home when installed, else inside out, beside `practice.jsonl`.
+#[must_use]
+pub fn vocab_file() -> PathBuf {
+    env().state().join("vocab.json")
+}
+
 /// The built dictionary, `out/lyk`.
 #[must_use]
 pub fn built_dir() -> PathBuf {

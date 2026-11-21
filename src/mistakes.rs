@@ -1017,6 +1017,63 @@ pub fn run(opt: &Options) -> Result<()> {
     Ok(())
 }
 
+/// One ordinary word's use on the tape: counts and dates only, never any tape text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TapeWord {
+    pub word: String,
+    /// Strokes that stayed typed plus mistakes
+    pub attempts: usize,
+    pub errors: usize,
+    /// Distinct days it was typed on
+    pub days: usize,
+    /// The calendar day (days since 1970-01-01) of its last use, when the tape can be dated
+    pub last_day: Option<i64>,
+}
+
+/// Per-word usage for the words `ordinary` accepts, out of the tape's text. `anchor` is the date of
+/// the tape's last day.
+fn word_stats_from(text: &str, anchor: Option<i64>, ordinary: &dyn Fn(&str) -> bool) -> Vec<TapeWord> {
+    let events = parse_tape(text);
+    let Some(final_day) = events.last().map(|e| e.day) else { return Vec::new() };
+    let r = replay(&events);
+    // word -> (kept, errors, days seen)
+    let mut by: HashMap<&str, (usize, usize, std::collections::BTreeSet<u32>)> = HashMap::new();
+    for &i in &r.kept {
+        let Kind::Text { word, .. } = &events[i].kind else { continue };
+        let e = by.entry(word).or_default();
+        e.0 += 1;
+        e.2.insert(events[i].day);
+    }
+    for f in &r.fixes {
+        let e = by.entry(&f.word).or_default();
+        e.1 += 1;
+        e.2.insert(f.day);
+    }
+    let mut out: Vec<TapeWord> = by
+        .into_iter()
+        .filter(|(w, _)| ordinary(w))
+        .map(|(w, (kept, errors, days))| TapeWord {
+            word: w.to_owned(),
+            attempts: kept + errors,
+            errors,
+            days: days.len(),
+            last_day: days.iter().next_back().and_then(|d| anchor.map(|a| a - i64::from(final_day - d))),
+        })
+        .collect();
+    out.sort_by(|a, b| a.word.cmp(&b.word));
+    out
+}
+
+/// Per-word usage of the ordinary words on the steno tape, for seeding `lyk vocab`: a word counts
+/// when the built dictionary in `dict` has it (letters and apostrophes only when that is not built).
+pub fn word_stats(tape: &Path, dict: &Path) -> Result<Vec<TapeWord>> {
+    let text = std::fs::read_to_string(tape).with_context(|| tape.display().to_string())?;
+    let anchor = parse_tape(&text).last().and_then(|l| anchor_day(tape, l.sec));
+    let built = Dict::load(dict).ok();
+    let ordinary = |w: &str| built.as_ref().map_or_else(|| w.len() <= 24 && crate::practice::is_plain_word(w, false), |d| d.ordinary(w));
+    Ok(word_stats_from(&text, anchor, &ordinary))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1177,6 +1234,22 @@ mod tests {
         assert!(text.split_whitespace().all(|w| w == "late" || w == "lead"), "{text}");
         assert_eq!(text.lines().count(), 3, "{text}");
         assert!(!text.contains('|') && !text.contains("HRAED"), "{text}");
+    }
+
+    #[test]
+    fn word_stats_count_attempts_errors_and_days_for_ordinary_words_only() {
+        // day 0: late (undone), lead, cat; "typed" lines are barriers; day 1 (time goes back): cat, a non-word
+        let tape = "10:00:00  HRAET        \" late\"\n10:00:01  *            -5 \"\"\n10:00:02  HRAED        \" lead\"\n10:00:03  KAT          \" cat\"\n\
+                    10:00:04  typed        \"hunter2\"\n09:00:00  KAT          \" cat\"\n09:00:01  TKOG         \" zzqx\"\n";
+        let ordinary = |w: &str| matches!(w, "lead" | "cat" | "late");
+        let got = word_stats_from(tape, Some(20_000), &ordinary);
+        let cat = got.iter().find(|w| w.word == "cat").expect("cat");
+        assert_eq!((cat.attempts, cat.errors, cat.days, cat.last_day), (2, 0, 2, Some(20_000)));
+        let lead = got.iter().find(|w| w.word == "lead").expect("lead");
+        assert_eq!((lead.attempts, lead.errors, lead.days, lead.last_day), (2, 1, 1, Some(19_999)));
+        assert!(got.iter().all(|w| w.word != "zzqx" && w.word != "hunter2"), "non-dictionary words are dropped: {got:?}");
+        assert_eq!(word_stats_from("", None, &ordinary).len(), 0);
+        assert_eq!(word_stats_from(tape, None, &ordinary)[0].last_day, None);
     }
 
     #[test]

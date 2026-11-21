@@ -66,6 +66,13 @@ upstream states; how it applies to the generated dictionary is not decided here.
  Frequencies and text
  - FrequencyWords en_full.txt (hermitdave/FrequencyWords, from OpenSubtitles 2018): README says MIT
    for code and CC-BY-SA-4.0 for content.
+ - Monkeytype English word lists (monkeytypegame/monkeytype, frontend/static/languages/: english
+   200 words, english_1k 1,000, english_5k 5,000, english_10k 9,944, english_25k 24,141,
+   english_450k 450,012; saved as data/wordlists/monkeytype-*.json, read by `lyk practice`'s
+   adaptive source only): the repository's LICENSE is the GNU General Public License version 3
+   (GitHub reports GPL-3.0; the file is the unmodified FSF text, with no project copyright line).
+   The languages folder holds no README or separate note on the word lists, so where each list
+   came from is not stated there: unverified. GPL-3.0 is compatible with lyk's GPL-3.0-or-later.
  - Norvig's count_2w.txt (https://www.norvig.com/ngrams/): license unverified (not read).
  - Project Gutenberg books (Pride and Prejudice, Huckleberry Finn, A Tale of Two Cities, Moby Dick,
    Walden; src/corpus_extract.rs): public-domain works by the authors; the Gutenberg license text

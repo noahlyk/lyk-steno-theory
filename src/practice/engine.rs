@@ -52,6 +52,10 @@ pub struct Session {
     key_ok: usize,
     key_bad: usize,
     refused: Vec<Miss>,
+    /// A missed word comes back this many words later, at most this many times: `(gap, times)`
+    respace: Option<(usize, u32)>,
+    /// How many times each missed word has been put back
+    put_back: Vec<(String, u32)>,
 }
 
 impl Session {
@@ -68,7 +72,41 @@ impl Session {
             key_ok: 0,
             key_bad: 0,
             refused: Vec::new(),
+            respace: None,
+            put_back: Vec::new(),
         }
+    }
+
+    /// The commits `stop_on_error` refused (wrong words that were not accepted).
+    #[must_use]
+    pub fn refusals(&self) -> &[Miss] {
+        &self.refused
+    }
+
+    /// A missed word re-enters the feed `gap` words later, at most `times` times in all.
+    #[must_use]
+    pub const fn with_respacing(mut self, gap: usize, times: u32) -> Self {
+        self.respace = Some((gap, times));
+        self
+    }
+
+    /// Puts a missed word back `gap` words ahead (not next to itself), if it has been put back
+    /// fewer than `times` times.
+    fn put_back_missed(&mut self, target: &str) {
+        let Some((gap, times)) = self.respace else { return };
+        let used = self.put_back.iter().position(|(w, _)| w == target);
+        if used.is_some_and(|i| self.put_back[i].1 >= times) {
+            return;
+        }
+        match used {
+            Some(i) => self.put_back[i].1 += 1,
+            None => self.put_back.push((target.to_owned(), 1)),
+        }
+        let mut at = (self.done.len() + gap.max(1) - 1).min(self.words.len());
+        while at < self.words.len() && (self.words[at] == target || at > 0 && self.words[at - 1] == target) {
+            at += 1;
+        }
+        self.words.insert(at, target.to_owned());
     }
 
     /// The index of the word being typed.
@@ -154,7 +192,10 @@ impl Session {
         }
         let secs = (now - self.last_commit).max(0.0);
         self.last_commit = now;
-        self.done.push(Done { target, typed: std::mem::take(&mut self.typed), secs });
+        self.done.push(Done { target: target.clone(), typed: std::mem::take(&mut self.typed), secs });
+        if !right {
+            self.put_back_missed(&target);
+        }
         if self.done.len() >= self.words.len() {
             self.finish(now);
         }
@@ -250,6 +291,46 @@ mod tests {
         for c in text.chars() {
             s.apply(Input::Char(c), t);
         }
+    }
+
+    #[test]
+    fn a_missed_word_comes_back_a_few_words_later_at_most_twice() {
+        let mut s = session(&["aa", "bb", "cc", "dd", "ee", "ff", "gg"], false).with_respacing(4, 2);
+        type_str(&mut s, "xx ", 1.0); // aa missed: back three words after the next one
+        assert_eq!(s.words, ["aa", "bb", "cc", "dd", "aa", "ee", "ff", "gg"].map(String::from), "{:?}", s.words);
+        type_str(&mut s, "bb cc dd ", 2.0);
+        type_str(&mut s, "xx ", 3.0); // aa missed again
+        assert_eq!(s.words.iter().filter(|w| *w == "aa").count(), 3, "{:?}", s.words);
+        let at = s.words.iter().rposition(|w| w == "aa").unwrap();
+        assert!(at > s.current(), "ahead of the typist");
+        // the third miss of aa is not put back
+        let before = s.words.len();
+        while s.target() != Some("aa") {
+            let t = s.target().unwrap().to_owned();
+            type_str(&mut s, &format!("{t} "), 4.0);
+        }
+        type_str(&mut s, "xx ", 5.0);
+        assert_eq!(s.words.len(), before, "put back twice already");
+        // the feed runs on to the end and the session finishes only then
+        while !s.finished() {
+            let t = s.target().unwrap().to_owned();
+            type_str(&mut s, &format!("{t} "), 6.0);
+        }
+        assert_eq!(s.done.len(), s.words.len());
+        assert_eq!(s.done.iter().filter(|d| !d.correct()).count(), 3);
+    }
+
+    #[test]
+    fn a_missed_last_word_is_put_back_at_the_end_and_without_respacing_nothing_moves() {
+        let mut s = session(&["aa", "bb"], false).with_respacing(4, 2);
+        type_str(&mut s, "aa xx ", 1.0);
+        assert!(!s.finished(), "the missed last word is not done yet");
+        assert_eq!(s.words, ["aa", "bb", "bb"].map(String::from));
+        type_str(&mut s, "bb", 2.0);
+        assert!(s.finished());
+        let mut plain = session(&["aa", "bb"], false);
+        type_str(&mut plain, "xx ", 1.0);
+        assert_eq!(plain.words, ["aa", "bb"].map(String::from));
     }
 
     #[test]

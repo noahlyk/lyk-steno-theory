@@ -15,6 +15,11 @@ const LAPWING: &str =
     "https://raw.githubusercontent.com/aerickt/plover-lapwing-aio/main/plover_lapwing/dictionaries";
 const GUTENBERG: &str = "https://www.gutenberg.org/files";
 const RAW: &str = "https://raw.githubusercontent.com";
+const MONKEYTYPE: &str = "https://raw.githubusercontent.com/monkeytypegame/monkeytype/master/frontend/static/languages";
+
+/// Monkeytype's English word lists (`{name, words[]}` JSON), for `lyk practice`'s adaptive source.
+/// The first five are ordered by frequency; `english_450k` is an unordered dictionary.
+pub const MONKEYTYPE_LISTS: [&str; 6] = ["english", "english_1k", "english_5k", "english_10k", "english_25k", "english_450k"];
 
 /// The other theories whose dictionaries are free to download, as (file name, source). Magnum's
 /// own is sold with the book (Stan's is its derivative); Platinum's is a members' download, and
@@ -80,6 +85,10 @@ fn sources() -> Vec<(String, String)> {
             format!("dictionaries/{name}.json"),
             format!("{LAPWING}/{name}.json"),
         ));
+    }
+    // Monkeytype's English word lists (GPL-3.0 repository), the second word pool of `lyk practice`
+    for name in MONKEYTYPE_LISTS {
+        files.push((format!("wordlists/monkeytype-{name}.json"), format!("{MONKEYTYPE}/{name}.json")));
     }
     // Other theories' dictionaries, each a pool of gold outlines for the generator to weigh
     // (`Gold::extra`): the Magnum derivative Stan's, and the court-reporting theories Stenovations

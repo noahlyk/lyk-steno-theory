@@ -9,6 +9,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use std::collections::HashMap;
 
+/// Starts the one dim results line the adaptive source adds (`vocab  +2 new  1 mastered  3 due`).
+pub const VOCAB_PREFIX: &str = "vocab  ";
 const MAX_WIDTH: u16 = 80;
 const LINES: usize = 3;
 const DIM: Color = Color::DarkGray;
@@ -166,6 +168,7 @@ pub fn draw_results(frame: &mut Frame, lines: &[String]) {
             let style = match i {
                 0 => Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
                 1 | 2 => Style::default().fg(Color::Gray),
+                _ if l.starts_with(VOCAB_PREFIX) => Style::default().fg(DIM),
                 _ if !l.starts_with(' ') && !l.is_empty() => Style::default().fg(Color::Yellow),
                 _ => Style::default(),
             };
