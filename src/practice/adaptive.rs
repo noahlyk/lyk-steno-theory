@@ -1407,7 +1407,7 @@ mod tests {
             .collect();
         tape.extend((0..10).map(|i| TapeWord { word: format!("h{i:02}"), attempts: 30, errors: 20, days: 9, last_day: Some(i64::from(today)) }));
         let easy = tape.iter().filter(|t| t.word.starts_with('e')).map(|t| t.word.clone()).collect();
-        (crate::vocab::seed(&tape, &[], c, today), easy)
+        (crate::vocab::seed(&tape, &[], c, today, &|_| true), easy)
     }
 
     struct Run {

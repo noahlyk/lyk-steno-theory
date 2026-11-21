@@ -3277,3 +3277,24 @@ about 10 tests to fill a word's window of 10: more tests a day, not longer tests
 A learner clean 5% of the time on every learning word still earned new words (stuck by day 15, 4 or more new
 words in 60 days) where the old gate stayed shut. What regresses if undone: a test grows and
 becomes the same words, or no word can be earned while the learning words are drilled.
+
+**One practice-word predicate (`practice::words`); `vocab clean`.** The vocabulary had words nobody
+chose: `tash` (a one-stroke outline held by a rare word, typed 78 times), suffix and fragment tokens
+typed through suffix strokes (`er`, `ed`, `ing`, `kon`, `le`, `st`, `ta`, `ent`), and 428 of 2,528 `new`
+words in neither Monkeytype's 25k nor lyk's top 10,000, 305 of them 3 letters or fewer (`ab`, `ack`,
+`ahn`). Causes: the tape seed took any dictionary word the tape produced, and the pool accepted any plain
+word of lyk's counts or Monkeytype's lists, including the 450k dictionary. Now one predicate serves the
+pool, the seeding, the adaptive feed and `lyk vocab clean`: letters (contractions from a fixed list),
+two letters or more except `a` and `I`; a word of Monkeytype's lists up to the 25k, or of a short list of
+spoken words those lists leave out (`ok`, profanity, `till`), or within lyk rank 20,000 and in the 450k
+dictionary (read as written lowercase, so `Sam` is not `sam`) with four letters or more (three within rank 5,000); not a morpheme
+fragment (suffix and prefix texts of the rules plus a fixed list, unless also a Monkeytype word up to the
+10k: `age`, `less`, `over`); not noise (`prose::noise_letters`); not a Plover or Lapwing capitalised-only
+name. `--deep` lifts only the frequency limits. Seeding also skips tape words typed by a `+`
+continuation stroke. Why a list of spoken words: a rank band without the dictionary check admitted names
+(`jack`, `frank`, `tom`) and subtitle noise (`sighs`, `goin`); `ok` and `shit` are in neither Monkeytype
+list nor its 450k dictionary but are words the typist says. `vocab clean` removes non-practice words from
+every status into `hidden` (never seeded or introduced again), writes `vocab.json.bak`, and is
+idempotent; `practice` runs it once for a file whose `filter_version` is lower than the current one. What
+regresses if undone: junk words in review and new, and the practice pool shaped by what the steno
+dictionary happens to give a one-stroke outline.

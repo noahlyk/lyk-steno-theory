@@ -1040,11 +1040,16 @@ fn word_stats_from(text: &str, anchor: Option<i64>, ordinary: &dyn Fn(&str) -> b
     let mut by: HashMap<&str, (usize, usize, std::collections::BTreeSet<u32>)> = HashMap::new();
     for &i in &r.kept {
         let Kind::Text { word, .. } = &events[i].kind else { continue };
+        // A continuation stroke (`+`) types a piece joined onto the word before it: a suffix, a
+        // prefix or a fragment, never a word the typist chose.
+        if events[i].stroke.starts_with('+') {
+            continue;
+        }
         let e = by.entry(word).or_default();
         e.0 += 1;
         e.2.insert(events[i].day);
     }
-    for f in &r.fixes {
+    for f in r.fixes.iter().filter(|f| !f.intended.starts_with('+')) {
         let e = by.entry(&f.word).or_default();
         e.1 += 1;
         e.2.insert(f.day);
@@ -1289,6 +1294,17 @@ mod tests {
         assert!(got.iter().all(|w| w.word != "zzqx" && w.word != "hunter2"), "non-dictionary words are dropped: {got:?}");
         assert_eq!(word_stats_from("", None, &ordinary).len(), 0);
         assert_eq!(word_stats_from(tape, None, &ordinary)[0].last_day, None);
+    }
+
+    #[test]
+    fn word_stats_leave_out_words_typed_by_continuation_strokes() {
+        // `+AOBG` types "book" onto "note": a piece of a longer word, not a word the typist chose
+        let tape = "10:00:00  NOT          \" note\"\n10:00:01  +AOBG        \"book\"  plugin:05-lyk-solver \"notebook\"\n10:00:02  PWAOBG       \" book\"\n\
+                    10:00:03  +-G          \"ing\"\n10:00:04  +-G          \"ing\"\n";
+        let got = word_stats_from(tape, None, &|_| true);
+        let book = got.iter().find(|w| w.word == "book").expect("book");
+        assert_eq!(book.attempts, 1, "only the word stroke counts: {got:?}");
+        assert!(got.iter().all(|w| w.word != "ing"), "a suffix stroke is no word: {got:?}");
     }
 
     #[test]

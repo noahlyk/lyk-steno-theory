@@ -12,10 +12,11 @@ use crate::mistakes::TapeWord;
 use crate::paths;
 use crate::practice::adaptive::{Config, accuracy_ok, base_accuracy, due_reviews, learning_accuracy, recent_tests_accuracy, window_accuracy};
 use crate::practice::pool::{self, Candidates, Pool};
+use crate::practice::words::{FILTER_VERSION, WordFilter};
 use anyhow::{Context, Result, bail};
 use clap::{Args as ClapArgs, Subcommand};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
@@ -160,12 +161,19 @@ pub struct Vocab {
     /// The day a new word last entered (0: not known yet)
     #[serde(default)]
     pub last_new: u32,
+    /// The version of the practice-word filter (`practice::words`) this file was last cleaned with;
+    /// 0 for a file written before there was one
+    #[serde(default)]
+    pub filter_version: u32,
+    /// Words `lyk vocab clean` removed: never seeded or introduced again (`lyk vocab unhide`)
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub hidden: BTreeSet<String>,
     pub words: BTreeMap<String, Word>,
 }
 
 impl Default for Vocab {
     fn default() -> Self {
-        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), base_recent: String::new(), base_tests: Vec::new(), gate: None, last_new: 0, words: BTreeMap::new() }
+        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), base_recent: String::new(), base_tests: Vec::new(), gate: None, last_new: 0, filter_version: FILTER_VERSION, hidden: BTreeSet::new(), words: BTreeMap::new() }
     }
 }
 
@@ -392,9 +400,15 @@ fn median_error_rate(tape: &[TapeWord]) -> f64 {
 ///   `cfg.learning_cap` with the most errors start in learning.
 /// - Every other word with a history is kept as new with its counts, so it is introduced in pool
 ///   order.
+///
+/// Only words `accept` (the practice-word predicate) are read, from the tape and from the missed
+/// words alike: a fragment, a name or a rare word the typist's strokes happened to type is not a
+/// word they chose to practise.
 #[must_use]
-pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> Vocab {
+pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32, accept: &dyn Fn(&str) -> bool) -> Vocab {
     let mut v = Vocab { seeded: true, ..Vocab::default() };
+    let tape: Vec<TapeWord> = tape.iter().filter(|t| accept(&t.word)).cloned().collect();
+    let tape = tape.as_slice();
     let day_of_tape = |t: &TapeWord| t.last_day.map_or(today, |d| u32::try_from(d.max(0)).unwrap_or(today).min(today));
     let median = median_error_rate(tape);
     let mut by_use: Vec<&TapeWord> = tape.iter().filter(|t| t.attempts > 0).collect();
@@ -429,7 +443,7 @@ pub fn seed(tape: &[TapeWord], missed: &[String], cfg: &Config, today: u32) -> V
     }
     // A word missed in a past run and not on the tape: its misses are all that is known.
     let on_tape: std::collections::HashSet<&str> = tape.iter().map(|t| t.word.as_str()).collect();
-    for m in missed.iter().filter(|m| !on_tape.contains(m.as_str())) {
+    for m in missed.iter().filter(|m| !on_tape.contains(m.as_str()) && accept(m)) {
         let w = v.words.entry(m.clone()).or_default();
         w.attempts += 1;
         w.push_result(false);
@@ -465,6 +479,9 @@ pub struct Args {
     /// Count names as words
     #[arg(long, global = true)]
     names: bool,
+    /// The dictionary's whole tail counts as practice words (as `practice --deep`)
+    #[arg(long, global = true)]
+    deep: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -497,6 +514,15 @@ enum Action {
         #[arg(long, default_value = paths::built_dir_text())]
         dict: PathBuf,
     },
+    /// Remove the words that are not practice words (fragments such as `er`, names, rare words)
+    /// from every status and hide them for good; writes `vocab.json.bak` first
+    Clean {
+        /// Print what would go, write nothing
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Let hidden words be introduced again (if they are practice words)
+    Unhide { words: Vec<String> },
     /// Spread the due days of reviews that all fall on one day (never practised since the seeding);
     /// writes `vocab.json.bak` first
     Spread,
@@ -525,22 +551,85 @@ pub fn history_misses(path: &Path) -> Vec<String> {
 
 /// Seeds `vocab` from the history and tape when it has not been seeded; a missing tape or
 /// dictionary only means less is read. Returns the number of words added.
-pub fn ensure_seeded(vocab: &mut Vocab, tape: &Path, dict: &Path, cfg: &Config, today: u32) -> usize {
+pub fn ensure_seeded(vocab: &mut Vocab, tape: &Path, dict: &Path, cfg: &Config, today: u32, filter: &WordFilter) -> usize {
     if vocab.seeded {
         return 0;
     }
     let before = vocab.words.len();
-    merge_seed(vocab, tape, dict, cfg, today);
+    merge_seed(vocab, tape, dict, cfg, today, filter);
     vocab.words.len() - before
 }
 
-fn merge_seed(vocab: &mut Vocab, tape: &Path, dict: &Path, cfg: &Config, today: u32) {
+fn merge_seed(vocab: &mut Vocab, tape: &Path, dict: &Path, cfg: &Config, today: u32, filter: &WordFilter) {
     let stats = crate::mistakes::word_stats(tape, dict).unwrap_or_default();
-    let seeded = seed(&stats, &history_misses(&paths::practice_history()), cfg, today);
-    for (word, state) in seeded.words {
+    let seeded = seed(&stats, &history_misses(&paths::practice_history()), cfg, today, &|w| filter.accepts(w));
+    for (word, state) in seeded.words.into_iter().filter(|(w, _)| !vocab.hidden.contains(w)) {
         vocab.words.entry(word).or_insert(state);
     }
     vocab.seeded = true;
+    vocab.filter_version = FILTER_VERSION;
+}
+
+/// What `clean` took out: the word, its status and its attempts, most-used reviews first.
+pub type Removed = Vec<(String, Status, u32)>;
+
+/// Removes every word that is not a practice word under `filter` (any status) and records it in
+/// `hidden`, so it is never seeded or introduced again. Marks the vocabulary as cleaned with this
+/// filter version. Idempotent: a second run finds nothing.
+pub fn clean(vocab: &mut Vocab, filter: &WordFilter) -> Removed {
+    let mut removed: Removed = Vec::new();
+    for (w, s) in std::mem::take(&mut vocab.words) {
+        if filter.accepts(&w) {
+            vocab.words.insert(w, s);
+        } else {
+            removed.push((w, s.status, s.attempts));
+        }
+    }
+    removed.sort_by(|a, b| status_rank(a.1).cmp(&status_rank(b.1)).then(b.2.cmp(&a.2)).then(a.0.cmp(&b.0)));
+    vocab.hidden.extend(removed.iter().map(|(w, ..)| w.clone()));
+    vocab.filter_version = FILTER_VERSION;
+    removed
+}
+
+const fn status_rank(s: Status) -> u8 {
+    match s {
+        Status::Learning => 0,
+        Status::Review => 1,
+        Status::Retired => 2,
+        Status::New => 3,
+    }
+}
+
+/// Counts of a removal by status: (learning, review, retired, new).
+#[must_use]
+pub fn removed_counts(removed: &Removed) -> [usize; 4] {
+    let mut n = [0; 4];
+    for (_, s, _) in removed {
+        n[usize::from(status_rank(*s))] += 1;
+    }
+    n
+}
+
+/// What `lyk vocab clean` prints: counts by status and the first `shown` words.
+#[must_use]
+pub fn clean_report(removed: &Removed, kept: usize, dry_run: bool, shown: usize) -> String {
+    let [learning, review, retired, new] = removed_counts(removed);
+    let mut out = format!(
+        "{} {} not practice words: {learning} learning, {review} review, {retired} retired, {new} new on file; {kept} words stay\n",
+        if dry_run { "would remove" } else { "removed" },
+        removed.len()
+    );
+    let list: Vec<String> = removed.iter().take(shown).map(|(w, s, a)| format!("{w} ({}, {a})", s.name())).collect();
+    if !list.is_empty() {
+        let _ = writeln!(out, "first {}: {}", list.len(), list.join(", "));
+    }
+    out
+}
+
+/// Cleans a vocabulary written by an older filter, once: when `filter_version` is below the
+/// current one. Returns the words removed, or `None` when nothing was due.
+pub fn migrate(vocab: &mut Vocab, filter: &WordFilter) -> Option<Removed> {
+    (vocab.filter_version < FILTER_VERSION).then(|| clean(vocab, filter))
 }
 
 fn expand_home(path: &Path) -> PathBuf {
@@ -598,6 +687,34 @@ pub fn run(args: &Args) -> Result<()> {
             print!("{}", stuck_report(&vocab, &extras, args.json)?);
             return Ok(());
         }
+        Some(Action::Clean { dry_run }) => {
+            let filter = WordFilter::load(&paths::data_dir(), args.deep, args.names);
+            let mut cleaned = vocab.clone();
+            let removed = clean(&mut cleaned, &filter);
+            print!("{}", clean_report(&removed, cleaned.words.len(), *dry_run, CLEAN_SHOWN));
+            if *dry_run || cleaned == vocab {
+                return Ok(());
+            }
+            if path.exists() {
+                let bak = path.with_extension("json.bak");
+                std::fs::copy(&path, &bak).with_context(|| format!("cannot back up {} to {}", path.display(), bak.display()))?;
+                println!("the old file is {}", bak.display());
+            }
+            vocab = cleaned;
+        }
+        Some(Action::Unhide { words }) => {
+            let filter = WordFilter::load(&paths::data_dir(), args.deep, args.names);
+            for w in lower(words) {
+                let note = if !vocab.hidden.remove(&w) {
+                    "was not hidden"
+                } else if filter.accepts(&w) {
+                    "can be introduced again"
+                } else {
+                    "unhidden, but it is still not a practice word, so it stays out of the feed"
+                };
+                println!("{w}: {note}");
+            }
+        }
         Some(Action::Spread) => {
             let mut spread_vocab = vocab.clone();
             let moved = spread(&mut spread_vocab, today);
@@ -613,7 +730,7 @@ pub fn run(args: &Args) -> Result<()> {
         }
         Some(Action::Seed { tape, dict }) => {
             let before = vocab.words.len();
-            merge_seed(&mut vocab, &expand_home(tape), dict, &cfg, today);
+            merge_seed(&mut vocab, &expand_home(tape), dict, &cfg, today, &WordFilter::load(&paths::data_dir(), args.deep, args.names));
             println!("{} words added from the history and the tape", vocab.words.len() - before);
         }
     }
@@ -645,13 +762,15 @@ pub fn find_frontier(vocab: &Vocab, pool: &mut dyn Candidates) -> Frontier {
 
 fn frontier(args: &Args) -> Result<Frontier> {
     let data = paths::data_dir();
-    let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names };
+    let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names, deep: args.deep };
     let Ok(mut p) = Pool::open(&data, &opts) else { return Ok(Frontier::default()) };
     let vocab = Vocab::load(&file())?;
     Ok(find_frontier(&vocab, &mut p))
 }
 
 const LIST: usize = 15;
+/// Words `lyk vocab clean` lists.
+const CLEAN_SHOWN: usize = 30;
 
 /// Days without a new word before `lyk vocab` says why.
 pub const STUCK_DAYS: u32 = 14;
@@ -878,6 +997,73 @@ mod tests {
         TapeWord { word: word.into(), attempts, errors, days, last_day: Some(last) }
     }
 
+    fn live(attempts: u32) -> Word {
+        Word { status: Status::Review, attempts, hits: attempts, ..Word::default() }
+    }
+
+    fn test_filter() -> WordFilter {
+        WordFilter::from_parts(&["the", "cat", "dog", "it's"], &[], &[], &[], &["ben"], false)
+    }
+
+    #[test]
+    fn seeding_reads_only_practice_words() {
+        let tape = [tw("the", 50, 1, 3, 10), tw("er", 112, 30, 3, 10), tw("tash", 72, 0, 3, 10), tw("cat", 30, 1, 5, 10)];
+        let v = seed(&tape, &["er".into(), "dog".into(), "zzzz".into()], &Config::default(), 20, &|w| test_filter().accepts(w));
+        let mut words: Vec<&str> = v.words.keys().map(String::as_str).collect();
+        words.sort_unstable();
+        assert_eq!(words, ["cat", "dog", "the"], "fragments, rare words and unknown missed words stay out");
+    }
+
+    #[test]
+    fn clean_removes_every_non_practice_word_hides_it_and_is_idempotent() {
+        let mut v = Vocab { filter_version: 0, ..Vocab::default() };
+        for (w, status) in [("the", Status::Review), ("er", Status::Review), ("tash", Status::Learning), ("abb", Status::New), ("ing", Status::Retired), ("cat", Status::New)] {
+            v.words.insert(w.into(), Word { status, ..live(10) });
+        }
+        let removed = clean(&mut v, &test_filter());
+        assert_eq!(removed.iter().map(|r| r.0.as_str()).collect::<Vec<_>>(), ["tash", "er", "ing", "abb"], "learning, review, retired, new; most used first");
+        assert_eq!(removed_counts(&removed), [1, 1, 1, 1]);
+        assert_eq!(v.words.keys().map(String::as_str).collect::<Vec<_>>(), ["cat", "the"]);
+        assert_eq!(v.hidden.iter().map(String::as_str).collect::<Vec<_>>(), ["abb", "er", "ing", "tash"]);
+        assert_eq!(v.filter_version, FILTER_VERSION);
+        let again = clean(&mut v, &test_filter());
+        assert!(again.is_empty(), "a second clean finds nothing: {again:?}");
+        assert_eq!(v.hidden.len(), 4, "and hides nothing more");
+        let report = clean_report(&removed, v.words.len(), true, 2);
+        assert!(report.starts_with("would remove 4 not practice words: 1 learning, 1 review, 1 retired, 1 new on file; 2 words stay"), "{report}");
+        assert!(report.contains("first 2: tash (learning, 10), er (review, 10)"), "{report}");
+    }
+
+    #[test]
+    fn a_hidden_word_is_not_seeded_again_and_the_file_round_trips() {
+        let dir = std::env::temp_dir().join(format!("lyk-vocab-clean-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("vocab.json");
+        let mut v = Vocab::default();
+        v.hidden.insert("cat".into());
+        v.save(&path).unwrap();
+        let loaded = Vocab::load(&path).unwrap();
+        assert!(loaded.hidden.contains("cat") && loaded.filter_version == FILTER_VERSION);
+        let mut seeded = loaded;
+        merge_seed(&mut seeded, Path::new("/no/such/tape"), Path::new("/no/dict"), &Config::default(), 10, &test_filter());
+        assert!(!seeded.words.contains_key("cat"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_file_of_an_older_filter_version_is_cleaned_once() {
+        // a file written before `filter_version` and `hidden` existed
+        let old = r#"{"version":1,"seeded":true,"words":{"cat":{"status":"review","attempts":5,"hits":5},"er":{"status":"review","attempts":50,"hits":40}}}"#;
+        let mut v: Vocab = serde_json::from_str(old).unwrap();
+        assert_eq!(v.filter_version, 0);
+        assert!(v.hidden.is_empty());
+        let removed = migrate(&mut v, &test_filter()).expect("older version: cleaned");
+        assert_eq!(removed.len(), 1);
+        assert_eq!(v.filter_version, FILTER_VERSION);
+        assert!(migrate(&mut v, &test_filter()).is_none(), "current version: nothing to do");
+        assert!(v.words.contains_key("cat") && v.hidden.contains("er"));
+    }
+
     #[test]
     fn days_and_dates() {
         assert_eq!(date(0), "1970-01-01");
@@ -937,7 +1123,7 @@ mod tests {
             tw("rare", 3, 1, 1, 100),   // few attempts: new
             tw("zero", 0, 0, 0, 100),   // nothing: not on file
         ];
-        let v = seed(&tape, &["bad".into(), "lead".into(), "ghost".into(), "ghost".into()], &cfg, 105);
+        let v = seed(&tape, &["bad".into(), "lead".into(), "ghost".into(), "ghost".into()], &cfg, 105, &|_| true);
         assert!(v.seeded);
         assert_eq!(v.last_new, 105, "the gate's clock starts at the seeding");
         let the = &v.words["the"];
@@ -966,7 +1152,7 @@ mod tests {
         tape.push(tw("sure", 20, 5, 5, 100)); // 25%, below the median: level 1
         tape.push(tw("hard", 20, 8, 5, 100)); // 40%, above it: learning
         tape.push(tw("easy", 900, 90, 20, 100)); // 10% and typed most: level 3
-        let v = seed(&tape, &[], &cfg, 105);
+        let v = seed(&tape, &[], &cfg, 105, &|_| true);
         let lv = |w: &str| (v.words[w].status, v.words[w].level);
         assert_eq!(lv("cat"), (Status::Review, 2));
         assert_eq!(lv("sure"), (Status::Review, 1));
@@ -980,7 +1166,7 @@ mod tests {
     fn seeded_learning_obeys_the_cap_worst_first() {
         let cfg = Config { learning_cap: 2, ..Config::default() };
         let tape = [tw("a1", 10, 5, 3, 1), tw("b1", 10, 9, 3, 1), tw("c1", 10, 7, 3, 1), tw("d1", 10, 6, 3, 1)];
-        let v = seed(&tape, &[], &cfg, 5);
+        let v = seed(&tape, &[], &cfg, 5, &|_| true);
         assert_eq!(v.count(Status::Learning), 2);
         assert_eq!(v.words["b1"].status, Status::Learning);
         assert_eq!(v.words["c1"].status, Status::Learning);
@@ -988,8 +1174,8 @@ mod tests {
         assert_eq!(v.words["a1"].status, Status::New, "at the median (capped at 50%) is not worse than typical");
         // the default pool is 10
         let many: Vec<TapeWord> = (0..40).map(|i| tw(&format!("w{i:02}"), 10, 6 + i % 4, 3, 1)).collect();
-        assert_eq!(seed(&many, &[], &Config::default(), 5).count(Status::Learning), 10);
-        assert!(seed(&[], &[], &Config::default(), 5).words.is_empty());
+        assert_eq!(seed(&many, &[], &Config::default(), 5, &|_| true).count(Status::Learning), 10);
+        assert!(seed(&[], &[], &Config::default(), 5, &|_| true).words.is_empty());
     }
 
     #[test]
@@ -998,7 +1184,7 @@ mod tests {
         let mut undated = tw("the", 50, 0, 3, 0);
         undated.last_day = None;
         let future = tw("of", 50, 0, 3, 9999);
-        let v = seed(&[undated, future], &[], &cfg, 100);
+        let v = seed(&[undated, future], &[], &cfg, 100, &|_| true);
         assert_eq!(v.words["the"].last_seen, 100);
         assert_eq!(v.words["of"].last_seen, 100);
     }
@@ -1006,7 +1192,7 @@ mod tests {
     #[test]
     fn seeded_files_hold_words_and_numbers_only() {
         let cfg = Config::default();
-        let v = seed(&[tw("the", 50, 1, 3, 10)], &["cat".into()], &cfg, 20);
+        let v = seed(&[tw("the", 50, 1, 3, 10)], &["cat".into()], &cfg, 20, &|_| true);
         let text = serde_json::to_string(&v).unwrap();
         // keys of the object are the words; every value is a number, a short mark string or a status
         let value: serde_json::Value = serde_json::from_str(&text).unwrap();
@@ -1023,11 +1209,11 @@ mod tests {
     #[test]
     fn ensure_seeded_reads_once_and_a_missing_tape_leaves_it_empty() {
         let mut v = Vocab::default();
-        let n = ensure_seeded(&mut v, Path::new("/no/such/tape"), Path::new("/no/dict"), &Config::default(), 10);
+        let n = ensure_seeded(&mut v, Path::new("/no/such/tape"), Path::new("/no/dict"), &Config::default(), 10, &WordFilter::default());
         assert!(v.seeded);
         assert_eq!(n, v.words.len());
         v.words.insert("kept".into(), Word::default());
-        assert_eq!(ensure_seeded(&mut v, Path::new("/no/such/tape"), Path::new("/no/dict"), &Config::default(), 10), 0, "already seeded");
+        assert_eq!(ensure_seeded(&mut v, Path::new("/no/such/tape"), Path::new("/no/dict"), &Config::default(), 10, &WordFilter::default()), 0, "already seeded");
     }
 
     #[test]
@@ -1115,7 +1301,7 @@ mod tests {
         let cfg = Config::default();
         // 300 words typed cleanly, two thirds of them at 10% wrong: levels 2 and 3, the rest level 1
         let tape: Vec<TapeWord> = (0..300).map(|i| tw(&format!("w{i:03}"), 400 - i, if i % 3 == 0 { 120 } else { 40 }, 9, 100)).collect();
-        let v = seed(&tape, &[], &cfg, 200);
+        let v = seed(&tape, &[], &cfg, 200, &|_| true);
         let mut per_day: BTreeMap<u32, usize> = BTreeMap::new();
         for w in v.words.values().filter(|w| w.status == Status::Review) {
             let (lo, hi) = SEED_WINDOWS[usize::from(w.level).clamp(1, 3) - 1];
@@ -1127,9 +1313,9 @@ mod tests {
         assert!(per_day.len() >= 20, "spread over {} days", per_day.len());
         assert_eq!(per_day.values().sum::<usize>(), v.count(Status::Review));
         // reproducible
-        assert_eq!(seed(&tape, &[], &cfg, 200), v);
+        assert_eq!(seed(&tape, &[], &cfg, 200, &|_| true), v);
         // a level inside its window when there is room: a few words only
-        let few = seed(&[tw("cat", 30, 1, 5, 100), tw("dog", 30, 1, 5, 100)], &[], &cfg, 200);
+        let few = seed(&[tw("cat", 30, 1, 5, 100), tw("dog", 30, 1, 5, 100)], &[], &cfg, 200, &|_| true);
         for w in few.words.values() {
             let (lo, hi) = SEED_WINDOWS[usize::from(w.level).clamp(1, 3) - 1];
             assert!((200 + lo..=200 + hi).contains(&w.due), "level {} due {}", w.level, w.due);

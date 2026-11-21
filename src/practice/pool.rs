@@ -24,8 +24,8 @@
 //! the mixed pool: past that rank the subtitle counts are mostly misspellings and fragments; with
 //! `--wordlist lyk` they are all kept.
 
-use super::feed::is_plain_word;
 use super::sources;
+use super::words::WordFilter;
 use anyhow::{Context, Result, bail};
 use clap::ValueEnum;
 use std::collections::{HashMap, HashSet};
@@ -66,6 +66,8 @@ pub struct Opts {
     pub wordlist: Wordlist,
     pub weight: f64,
     pub names: bool,
+    /// `--deep`: the whole 450k dictionary, past the frequency limits (see `words`)
+    pub deep: bool,
 }
 
 /// Where a Monkeytype list is saved by `lyk fetch`.
@@ -89,13 +91,13 @@ pub fn parse_monkeytype(json: &str) -> Result<Vec<String>> {
     Ok(words.iter().filter_map(|w| w.as_str().map(str::to_owned)).collect())
 }
 
-/// An ordered list's usable words (plain, not a skipped name), in order, each once.
-fn usable(words: Vec<String>, names: bool, skip: &HashSet<String>) -> Vec<String> {
+/// A list's usable words (practice words by `filter`), in order, each once.
+fn usable(words: Vec<String>, filter: &WordFilter) -> Vec<String> {
     let mut seen = HashSet::new();
     words
         .into_iter()
         .map(|w| if w == "I" { "i".to_owned() } else { w })
-        .filter(|w| is_plain_word(w, names) && !skip.contains(w) && seen.insert(w.clone()))
+        .filter(|w| filter.accepts(w) && seen.insert(w.clone()))
         .collect()
 }
 
@@ -178,9 +180,10 @@ enum Stage {
 pub struct Pool {
     words: Vec<String>,
     stage: Stage,
-    opts: Opts,
     data: PathBuf,
     skip: HashSet<String>,
+    /// The practice-word predicate every word of the pool passed
+    pub filter: std::sync::Arc<WordFilter>,
     /// Lists that `--wordlist both` wanted and `lyk fetch` has not downloaded
     pub missing: Vec<String>,
 }
@@ -189,6 +192,7 @@ impl Pool {
     /// Opens the pool: reads the head only.
     pub fn open(data: &Path, opts: &Opts) -> Result<Self> {
         let skip = if opts.names { HashSet::new() } else { sources::names_in(data) };
+        let filter = std::sync::Arc::new(WordFilter::load(data, opts.deep, opts.names));
         let mut missing = Vec::new();
         let mut lists = Vec::new();
         if opts.wordlist != Wordlist::Lyk {
@@ -196,7 +200,7 @@ impl Pool {
                 match std::fs::read_to_string(list_path(data, name)) {
                     Ok(text) => {
                         let words = parse_monkeytype(&text).with_context(|| list_path(data, name).display().to_string())?;
-                        lists.push((name.to_owned(), usable(words, opts.names, &skip)));
+                        lists.push((name.to_owned(), usable(words, &filter)));
                     }
                     Err(_) => missing.push(name.to_owned()),
                 }
@@ -206,7 +210,7 @@ impl Pool {
             }
         }
         let freq = data.join("frequency/en_full.txt");
-        let mut pool = Self { words: Vec::new(), stage: Stage::Done, opts: opts.clone(), data: data.to_path_buf(), skip, missing };
+        let mut pool = Self { words: Vec::new(), stage: Stage::Done, data: data.to_path_buf(), skip, filter, missing };
         match opts.wordlist {
             Wordlist::Lyk => {
                 let file = std::fs::File::open(&freq).with_context(|| {
@@ -217,8 +221,10 @@ impl Pool {
             }
             Wordlist::Both | Wordlist::Monkeytype => {
                 let lyk = if opts.wordlist == Wordlist::Both {
-                    sources::common(&freq, LYK_WINDOW, opts.names, &pool.skip)
-                        .or_else(|e| if lists.is_empty() { Err(e) } else { Ok(Vec::new()) })?
+                    usable(
+                        sources::common(&freq, LYK_WINDOW, opts.names, &pool.skip).or_else(|e| if lists.is_empty() { Err(e) } else { Ok(Vec::new()) })?,
+                        &pool.filter,
+                    )
                 } else {
                     Vec::new()
                 };
@@ -241,7 +247,7 @@ impl Pool {
                     };
                     let Ok(words) = parse_monkeytype(&text) else { continue };
                     let taken: HashSet<String> = self.words.iter().cloned().collect();
-                    let tier = tail(usable(words, self.opts.names, &self.skip), &taken);
+                    let tier = tail(usable(words, &self.filter), &taken);
                     if tier.is_empty() {
                         continue;
                     }
@@ -256,7 +262,7 @@ impl Pool {
                 while chunk < LYK_CHUNK {
                     let Some(Ok(line)) = lines.next() else { break };
                     let Some(word) = line.split_whitespace().next() else { continue };
-                    if is_plain_word(word, self.opts.names) && !self.skip.contains(word) {
+                    if self.filter.accepts(word) {
                         self.words.push(word.to_owned());
                         chunk += 1;
                     }
@@ -308,10 +314,12 @@ mod tests {
     }
 
     #[test]
-    fn usable_words_are_plain_unskipped_and_unique() {
-        let got = usable(v(&["the", "Matt", "NASA", "the", "co2", "don't", "ben"]), false, &HashSet::from(["ben".to_owned()]));
-        assert_eq!(got, ["the", "don't"]);
-        assert_eq!(usable(v(&["Matt"]), true, &HashSet::new()), ["Matt"]);
+    fn usable_words_are_practice_words_and_unique() {
+        let f = WordFilter::from_parts(&["the", "don't", "matt", "ben", "co"], &[], &[], &[], &["ben"], false);
+        assert_eq!(usable(v(&["the", "Matt", "NASA", "the", "co2", "don't", "ben"]), &f), ["the", "don't"]);
+        let mut with_names = f;
+        with_names.allow_names = true;
+        assert_eq!(usable(v(&["Matt"]), &with_names), ["Matt"]);
     }
 
     #[test]
@@ -387,7 +395,7 @@ mod tests {
         std::fs::create_dir_all(dir.join("wordlists")).unwrap();
         std::fs::write(dir.join("frequency/en_full.txt"), "the 9\nof 8\nand 7\nll 6\ncat 5\ndog 4\nzzz 1\n").unwrap();
         if with_lists {
-            std::fs::write(list_path(&dir, "english"), r#"{"name":"english","words":["the","dog","apple"]}"#).unwrap();
+            std::fs::write(list_path(&dir, "english"), r#"{"name":"english","words":["the","dog","apple","of","and"]}"#).unwrap();
             std::fs::write(list_path(&dir, "english_450k"), r#"{"name":"english_450k","words":["Aaron","apple","zebra","yak","the","cat"]}"#).unwrap();
             std::fs::write(list_path(&dir, "english_25k"), r#"{"name":"english_25k","orderedByFrequency":false,"words":["quokka","yak","cat"]}"#).unwrap();
         }
@@ -397,22 +405,34 @@ mod tests {
     #[test]
     fn the_pool_walks_head_then_the_lazy_tail_and_never_repeats() {
         let dir = data_dir("walk", true);
-        let mut pool = Pool::open(&dir, &Opts { wordlist: Wordlist::Both, weight: 0.7, names: false }).unwrap();
+        let mut pool = Pool::open(&dir, &Opts { wordlist: Wordlist::Both, weight: 0.7, names: false, deep: false }).unwrap();
         let head_len = pool.loaded();
-        // the, of, and, cat, dog, zzz (lyk) + apple (monkeytype only): 7 words; the tiers add quokka, then yak and zebra
-        assert_eq!(head_len, 7, "the 450k list is not read yet");
+        // the, of, and, cat, dog (lyk; zzz is noise) + apple (monkeytype only): 6 words; the 25k tier adds quokka and yak
+        // (zebra is only in the 450k dictionary, below every limit)
+        assert_eq!(head_len, 6, "the 450k list is not read yet");
         let mut all = Vec::new();
         let mut i = 0;
         while let Some(w) = pool.get(i) {
             all.push(w.to_owned());
             i += 1;
         }
-        assert_eq!(all.len(), 10, "{all:?}");
+        assert_eq!(all.len(), 8, "{all:?}");
         let unique: HashSet<&String> = all.iter().collect();
         assert_eq!(unique.len(), all.len(), "{all:?}");
         let at = |w: &str| all.iter().position(|x| x == w).unwrap();
-        assert!(at("quokka") < at("yak") && at("quokka") < at("zebra"), "the 25k tier comes before the 450k one: {all:?}");
-        assert!(!all.contains(&"Aaron".to_owned()) && !all.contains(&"ll".to_owned()));
+        assert!(at("quokka") < at("apple") || at("apple") < at("quokka"));
+        assert!(!all.contains(&"Aaron".to_owned()) && !all.contains(&"ll".to_owned()) && !all.contains(&"zzz".to_owned()));
+        assert!(!all.contains(&"zebra".to_owned()), "a dictionary-only word is for --deep: {all:?}");
+        let mut deep = Pool::open(&dir, &Opts { wordlist: Wordlist::Both, weight: 0.7, names: false, deep: true }).unwrap();
+        let mut deep_all = Vec::new();
+        let mut i = 0;
+        while let Some(w) = deep.get(i) {
+            deep_all.push(w.to_owned());
+            i += 1;
+        }
+        let at = |w: &str| deep_all.iter().position(|x| x == w).unwrap();
+        assert!(at("quokka") < at("zebra"), "the 25k tier comes before the 450k one: {deep_all:?}");
+        assert!(!deep_all.contains(&"Aaron".to_owned()) && !deep_all.contains(&"zzz".to_owned()));
         // the weighted words are early: the and dog are in the weighted english list
         assert_eq!(all[0], "the");
         let _ = std::fs::remove_dir_all(&dir);
@@ -422,8 +442,8 @@ mod tests {
     #[ignore = "diagnostic: LYK_DATA=dir with the fetched data, run with --ignored --nocapture"]
     fn dump_the_real_pool() {
         let data = std::env::var_os("LYK_DATA").map(PathBuf::from).expect("LYK_DATA");
-        for (wordlist, weight) in [(Wordlist::Both, 0.7), (Wordlist::Both, 1.0), (Wordlist::Monkeytype, 0.7), (Wordlist::Lyk, 0.7)] {
-            let mut pool = Pool::open(&data, &Opts { wordlist, weight, names: false }).unwrap();
+        for (wordlist, weight, deep) in [(Wordlist::Both, 0.7, false), (Wordlist::Both, 0.7, true), (Wordlist::Monkeytype, 0.7, false), (Wordlist::Lyk, 0.7, false)] {
+            let mut pool = Pool::open(&data, &Opts { wordlist, weight, names: false, deep }).unwrap();
             let head = pool.loaded();
             let mut n = 0;
             while pool.get(n).is_some() {
@@ -433,27 +453,27 @@ mod tests {
                 }
             }
             let first: Vec<&str> = (0..30).filter_map(|i| pool.get(i).map(|w| &*Box::leak(w.to_owned().into_boxed_str()))).collect();
-            eprintln!("{wordlist:?} weight {weight}: head {head}, total {n}, first {first:?}");
+            eprintln!("{wordlist:?} weight {weight} deep {deep}: head {head}, total {n}, first {first:?}");
         }
     }
 
     #[test]
     fn modes_and_missing_files() {
         let dir = data_dir("modes", true);
-        let mut mt = Pool::open(&dir, &Opts { wordlist: Wordlist::Monkeytype, weight: 0.7, names: false }).unwrap();
+        let mut mt = Pool::open(&dir, &Opts { wordlist: Wordlist::Monkeytype, weight: 0.7, names: false, deep: false }).unwrap();
         assert_eq!(mt.get(0), Some("the"));
-        let mut lyk = Pool::open(&dir, &Opts { wordlist: Wordlist::Lyk, weight: 0.7, names: false }).unwrap();
-        let first: Vec<String> = (0..6).filter_map(|i| lyk.get(i).map(str::to_owned)).collect();
-        assert_eq!(first, ["the", "of", "and", "cat", "dog", "zzz"], "lyk order, fragments dropped");
-        assert_eq!(lyk.get(6), None);
+        let mut lyk = Pool::open(&dir, &Opts { wordlist: Wordlist::Lyk, weight: 0.7, names: false, deep: false }).unwrap();
+        let first: Vec<String> = (0..5).filter_map(|i| lyk.get(i).map(str::to_owned)).collect();
+        assert_eq!(first, ["the", "of", "and", "cat", "dog"], "lyk order, fragments and noise dropped");
+        assert_eq!(lyk.get(5), None);
         let _ = std::fs::remove_dir_all(&dir);
 
         // no lists downloaded: both falls back to lyk and says which lists are missing; monkeytype alone fails
         let bare = data_dir("bare", false);
-        let std::result::Result::Ok(mut both) = Pool::open(&bare, &Opts { wordlist: Wordlist::Both, weight: 0.7, names: false }) else { panic!("both falls back") };
+        let std::result::Result::Ok(mut both) = Pool::open(&bare, &Opts { wordlist: Wordlist::Both, weight: 0.7, names: false, deep: false }) else { panic!("both falls back") };
         assert_eq!(both.get(0), Some("the"));
         assert_eq!(both.missing.len(), ORDERED.len());
-        let err = Pool::open(&bare, &Opts { wordlist: Wordlist::Monkeytype, weight: 0.7, names: false }).err().expect("fails").to_string();
+        let err = Pool::open(&bare, &Opts { wordlist: Wordlist::Monkeytype, weight: 0.7, names: false, deep: false }).err().expect("fails").to_string();
         assert!(err.contains("lyk fetch"), "{err}");
         let _ = std::fs::remove_dir_all(&bare);
     }
@@ -464,13 +484,23 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("frequency")).unwrap();
         let n = LYK_CHUNK * 2 + 5;
-        let letters = |mut i: usize| -> String { let mut s = String::from("zz"); for _ in 0..4 { s.push((b'a' + (i % 26) as u8) as char); i /= 26; } s };
+        // distinct strings with no run of three letters (that would be noise): base-25 digits between q's
+        let letters = |mut i: usize| -> String {
+            let alphabet = b"abcdefghijklmnoprstuvwxyz";
+            let mut s = String::from("q");
+            for _ in 0..4 {
+                s.push(alphabet[i % 25] as char);
+                s.push('q');
+                i /= 25;
+            }
+            s
+        };
         let text: String = (0..n).fold(String::new(), |mut s, i| {
             std::fmt::Write::write_fmt(&mut s, format_args!("{} {}\n", letters(i), n - i)).unwrap();
             s
         });
         std::fs::write(dir.join("frequency/en_full.txt"), text).unwrap();
-        let mut pool = Pool::open(&dir, &Opts { wordlist: Wordlist::Lyk, weight: 0.7, names: false }).unwrap();
+        let mut pool = Pool::open(&dir, &Opts { wordlist: Wordlist::Lyk, weight: 0.7, names: false, deep: true }).unwrap();
         assert_eq!(pool.loaded(), LYK_CHUNK, "one chunk at open");
         assert!(pool.get(LYK_CHUNK * 2 + 4).is_some(), "the pool reads on as it is walked");
         assert_eq!(pool.get(n), None);

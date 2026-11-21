@@ -15,6 +15,7 @@ mod history;
 pub mod pool;
 mod sources;
 mod ui;
+pub mod words;
 
 pub use feed::is_plain_word;
 
@@ -80,6 +81,9 @@ pub struct Args {
     /// Adaptive: rank multiplier for words in Monkeytype's english, 1k, 5k and 10k lists (below 1 meets them earlier)
     #[arg(long, default_value_t = pool::DEFAULT_WEIGHT)]
     monkeytype_weight: f64,
+    /// Adaptive: also practise the rest of the 450k dictionary (rarer real words, past the frequency limits; fragments, names and noise stay out)
+    #[arg(long)]
+    deep: bool,
     /// Adaptive: play the feed without updating vocab.json
     #[arg(long)]
     no_adapt: bool,
@@ -300,7 +304,7 @@ struct Adaptive {
 
 impl Adaptive {
     fn open(args: &Args) -> Result<Self> {
-        let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names };
+        let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names, deep: args.deep };
         let pool = pool::Pool::open(&paths::data_dir(), &opts)?;
         for name in &pool.missing {
             eprintln!("note: Monkeytype list {name} is not downloaded (run `lyk fetch`); the pool is without it");
@@ -309,10 +313,20 @@ impl Adaptive {
         let mut vocab = Vocab::load(&path)?;
         let base = adaptive::Config { new_per_session: args.new_per_session, learning_cap: args.learning_cap, ..adaptive::Config::default() };
         let cfg = vocab::with_gate(&base, &vocab, args.gate);
+        if let Some(removed) = vocab::migrate(&mut vocab, &pool.filter) {
+            if !args.no_adapt {
+                if path.exists() {
+                    let bak = path.with_extension("json.bak");
+                    std::fs::copy(&path, &bak).with_context(|| format!("cannot back up {} to {}", path.display(), bak.display()))?;
+                }
+                vocab.save(&path)?;
+            }
+            eprintln!("\x1b[2mvocab cleaned: {} words hidden (lyk vocab clean --dry-run to review)\x1b[0m", removed.len());
+        }
         if !vocab.seeded {
             eprintln!("first run: reading your practice history and the steno tape into {} (once)", path.display());
             let tape = expand_home(&args.tape);
-            let added = vocab::ensure_seeded(&mut vocab, &tape, &args.dict, &cfg, today());
+            let added = vocab::ensure_seeded(&mut vocab, &tape, &args.dict, &cfg, today(), &pool.filter);
             eprintln!("{added} words on file");
             if !args.no_adapt {
                 vocab.save(&path)?;
@@ -323,9 +337,10 @@ impl Adaptive {
 
     fn feed(&mut self, args: &Args, seed: u64) -> Vec<String> {
         let (min, max, lower) = (args.min_len, args.max_len, args.lowercase_only);
+        let (filter, hidden) = (self.pool.filter.clone(), self.vocab.hidden.clone());
         let keep = move |w: &str| {
             let n = w.chars().count();
-            n >= min && n <= max && !(lower && w.chars().any(char::is_uppercase))
+            n >= min && n <= max && !(lower && w.chars().any(char::is_uppercase)) && filter.accepts(w) && !hidden.contains(w)
         };
         let size = feed_opts(args, seed).count;
         let plan = adaptive::plan_feed(&self.vocab, &mut self.pool, &self.cfg, today(), size, seed, &keep);
@@ -714,15 +729,14 @@ mod tests {
         assert_eq!(stuck_line(4).as_deref(), Some("4 stuck words: lyk vocab stuck"));
     }
 
-    #[test]
-    fn a_pipe_is_refused_with_a_message() {
-        // under `cargo test` stdin is not a terminal
-        let args = Args {
+    fn test_args() -> Args {
+        Args {
             source: None,
             new_per_session: 3,
             learning_cap: 10,
             gate: None,
             wordlist: pool::Wordlist::Both,
+            deep: false,
             monkeytype_weight: 0.7,
             no_adapt: true,
             tape: PathBuf::new(),
@@ -744,7 +758,13 @@ mod tests {
             no_save: true,
             history: false,
             dict: PathBuf::new(),
-        };
+        }
+    }
+
+    #[test]
+    fn a_pipe_is_refused_with_a_message() {
+        // under `cargo test` stdin is not a terminal
+        let args = test_args();
         if !std::io::stdin().is_terminal() {
             let err = run(&args).unwrap_err().to_string();
             assert!(err.contains("needs a terminal"), "{err}");
@@ -775,5 +795,19 @@ mod tests {
         assert!(!got.contains_key("cat"), "only asked-for words: {got:?}");
         assert!(outlines_for(&r, &dir.join("missing")).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[ignore = "diagnostic: LYK_DATA, LYK_OUT (a COPY with vocab.json); prints a 200-word feed and checks it against the hidden words"]
+    fn a_real_feed_holds_no_hidden_or_non_practice_word() {
+        for deep in [false, true] {
+            let args = Args { count: 200, no_adapt: true, deep, ..test_args() };
+            let mut a = Adaptive::open(&args).unwrap();
+            let before = a.vocab.hidden.len();
+            let feed = a.feed(&args, 7);
+            let bad: Vec<&String> = feed.iter().filter(|w| a.vocab.hidden.contains(*w) || !a.pool.filter.accepts(w)).collect();
+            eprintln!("deep {deep}: hidden {before}, feed {} words, junk in the feed {:?}", feed.len(), bad);
+            assert!(bad.is_empty(), "{bad:?}");
+        }
     }
 }

@@ -107,6 +107,8 @@ lyk vocab know the and                        # retire words you know: never sho
 lyk vocab gate 60                             # lower the gate for new words (default 70)
 lyk vocab stuck                               # words that stay unclean: out of the learning cap, with their outline
 lyk vocab spread                              # spread a wall of reviews that are all due on one day
+lyk vocab clean --dry-run                     # which words on file are not practice words (fragments, names, rare words)
+lyk practice --deep                           # also the rest of the 450k dictionary (rare real words; no fragments or names)
 ```
 
 Space or Enter commits a word; a wrong word is an error and the feed moves on
@@ -133,7 +135,13 @@ review words you type cleanly. New words are earned: a free slot among 10 learni
 not count) and the easy base 70% clean (the first attempts of review words, last 50), so drilling hard
 words does not close the gate. They come in frequency order from
 lyk's list merged with Monkeytype's English lists (`lyk fetch` downloads them; words in Monkeytype's
-common lists are met a little earlier, `--monkeytype-weight`), all the way down the long tail. An attempt
+common lists are met a little earlier, `--monkeytype-weight`). Only practice words enter the pool, the
+seeding and the feed: real, common-enough words (Monkeytype's lists up to the 25k, or within rank
+20,000 of lyk's list and in Monkeytype's 450k dictionary), never a suffix or prefix piece (`er`, `ing`,
+`kon`), a name, an exclamation or a word the steno tape only typed by a suffix stroke. That is about
+35,000 words; `--deep` adds the rest of the 450k dictionary (those filters stay). `lyk vocab clean`
+removes the words on file that are not practice words and hides them for good (`unhide` undoes it);
+`lyk practice` does it once for a file written by an older version, after writing `vocab.json.bak`. An attempt
 counts as clean only when the word was right and needed no correction on the way (a `*` or backspace
 before the space is a stumble, even if the word then commits right); a stumbled or wrong word comes
 back 3 words later in the same test in place of a base word (so the test keeps its length; at most 2
@@ -145,8 +153,8 @@ lightly and is listed by `lyk vocab stuck` (a hint that its outline does not sui
 `practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
 already type well are not new (their first reviews are spread over 1 to 30 days). `lyk vocab` shows it
 (filler and learning clean rates, the stumble rate, the words stumbled most this week, and why no new
-word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`, `spread`
-edit it; `--no-adapt` plays a feed without changing it. `--history` ends with the stuck count. The rules are in the Reference, Build and files.
+word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`, `spread`,
+`clean`, `unhide` edit it; `--no-adapt` plays a feed without changing it. `--history` ends with the stuck count. The rules are in the Reference, Build and files.
 
 ## Full benchmarks
 

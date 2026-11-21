@@ -49,7 +49,7 @@ pub fn book_uses(data: &Path) -> HashMap<String, u32> {
 }
 
 /// Whether the letters are a vocal noise: a run of three of one letter, or an exclamation's shape.
-fn noise_letters(word: &str) -> bool {
+pub fn noise_letters(word: &str) -> bool {
     if word.as_bytes().windows(3).any(|w| w[0] == w[1] && w[1] == w[2]) {
         return true;
     }
