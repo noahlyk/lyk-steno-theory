@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "lyk is steno with explicit word boundaries: every stroke after a word's first carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (Plover JSON) from phonetic rules, starting from Plover's and Lapwing's outlines and measured against them. Rust, rules as data. American English only. See [the join key](#/ref/join-key)."
+   "x": "lyk is steno with explicit word boundaries: every stroke after a word's first carries a join key (`+`), so a stroke without it always starts a word. The program generates the dictionary (steno JSON) from phonetic rules, starting from Plover's and Lapwing's outlines and measured against them. Rust, rules as data. American English only. See [the join key](#/ref/join-key)."
   },
   {
    "t": "h",
@@ -237,7 +237,7 @@
   },
   {
    "t": "p",
-   "x": "`!build` writes several small Plover JSON files, one per **way an entry came about**; `!deploy` puts them in keymux's folder next to the reserved-stroke files. The split does not change what a stroke means."
+   "x": "`!build` writes several small steno JSON files, one per **way an entry came about**; `!deploy` puts them in keymux's folder next to the reserved-stroke files. The split does not change what a stroke means."
   },
   {
    "t": "table",

@@ -9,11 +9,11 @@
   },
   {
    "t": "p",
-   "x": "`rules/reserved/punctuation.json`: **117 strokes**: 65 marks and symbols plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **81 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "`rules/reserved/punctuation.json`: **117 strokes**: 65 marks and symbols plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **82 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
-   "x": "**One stroke per mark and per command** ([how it is chosen](#/ref/reserved-strokes/what-it-guarantees)). A mark differing in spacing or capital code (`{.}` and `{^.^}`, `{^-^}` and `-`) is a different output with its own stroke. The **Plover code** column is what the stroke sends. `^` next to a mark attaches it."
+   "x": "**One stroke per mark and per command** ([how it is chosen](#/ref/reserved-strokes/what-it-guarantees)). A mark differing in spacing or capital code (`{.}` and `{^.^}`, `{^-^}` and `-`) is a different output with its own stroke. The **Dictionary text** column is what the stroke sends. `^` next to a mark attaches it."
   },
   {
    "t": "table",
@@ -140,7 +140,7 @@
    "t": "table",
    "head": [
     "Types",
-    "Plover code",
+    "Dictionary text",
     "Strokes"
    ],
    "rows": [
@@ -189,7 +189,7 @@
    "t": "table",
    "head": [
     "Types",
-    "Plover code",
+    "Dictionary text",
     "Strokes"
    ],
    "rows": [
@@ -258,7 +258,7 @@
    "t": "table",
    "head": [
     "Types",
-    "Plover code",
+    "Dictionary text",
     "Strokes",
     "Example"
    ],
@@ -327,7 +327,7 @@
    "t": "table",
    "head": [
     "Types",
-    "Plover code",
+    "Dictionary text",
     "Strokes"
    ],
    "rows": [
@@ -500,7 +500,7 @@
   },
   {
    "t": "p",
-   "x": "81 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice) and Plover-only commands (`{PLOVER:CONFIGURE}`, `{MODE:CAPS}`). No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 28 strokes (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "82 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice), its commands that open Plover's own windows (keymux has no counterpart) and `{MODE:CAPS}`. No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 30 strokes (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -619,7 +619,7 @@
   },
   {
    "t": "p",
-   "x": "Example: hold `STPH` (left hand) and tap `-R` three times: [[STPH-R]] three times, Left, Left, Left. Still holding, tap `-P`: [[STPH-P]], Up. Add `*` and the same taps select ([[STPH*R]], Shift+Left). Rule for every entry below: hold all but one key of the stroke, tap the last. The cursor entries exempt the held base `STPH*`: lifting it first sends nothing. In an entry the marker sits **in front of** the command and the `{^}`, `{:firstup:except=STPH*}{#Left}{^}`, never after, so Plover reads the rest the same way. The marker types nothing and changes no spacing."
+   "x": "Example: hold `STPH` (left hand) and tap `-R` three times: [[STPH-R]] three times, Left, Left, Left. Still holding, tap `-P`: [[STPH-P]], Up. Add `*` and the same taps select ([[STPH*R]], Shift+Left). Rule for every entry below: hold all but one key of the stroke, tap the last. The cursor entries exempt the held base `STPH*`: lifting it first sends nothing. In an entry the marker sits **in front of** the command and the `{^}`, `{:firstup:except=STPH*}{#Left}{^}`, never after, so a reader that does not know the marker reads the rest the same way. The marker types nothing and changes no spacing."
   },
   {
    "t": "table",
@@ -725,8 +725,8 @@
      "Each is its own chord with no shared base: nothing to hold and tap, nothing useful to repeat."
     ],
     [
-     "`{PLOVER:...}` commands, [[TKUPT]]",
-     "They are engine commands that run once."
+     "[[PHRO*F]] [[PHROLG]] (`{:engine:suspend}`, `{:engine:toggle}`), [[PW*FP]] (`{:back}`)",
+     "Engine commands run once, and `{:back}` is a single erase."
     ],
     [
      "[[PHRO*TZ]] (clear the tape), [[PHRO*PLZ]] (free the engine from RAM)",
@@ -901,7 +901,7 @@
   },
   {
    "t": "h3",
-   "x": "Plover control"
+   "x": "Engine control"
   },
   {
    "t": "table",
@@ -912,19 +912,11 @@
    "rows": [
     [
      "[[PHRO*F]]",
-     "Suspend Plover"
-    ],
-    [
-     "[[PHRO*PB]]",
-     "Resume Plover"
+     "`{:engine:suspend}`: leave the steno layer (the layer's own keys turn steno on again)"
     ],
     [
      "[[PHROLG]]",
-     "Toggle Plover"
-    ],
-    [
-     "[[TKUPT]]",
-     "Plover's add-translation dialog"
+     "`{:engine:toggle}`: the same as suspend; from inside the layer there is nothing to switch back on"
     ]
    ]
   },
@@ -1007,7 +999,7 @@
   },
   {
    "t": "p",
-   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the Plover control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
+   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the engine control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
   },
   {
    "t": "h3",
@@ -1071,7 +1063,7 @@
   },
   {
    "t": "p",
-   "x": "A stroke carrying `{:transparent}` is invisible to the translation history. A lookup mid-join does not break it: `THAS`, [[PHRUP]], then `+EUFG` still joins as if the lookup had not been struck, and `*` after the lookup skips past it. Every control needs it. The marker sits **in front of** the command, like `{:firstup}`, types nothing and changes no spacing. Related Keymux markers no lyk stroke uses: `{:barrier}` (end any join here), `{:nobarrier}`, and `{:back}` (erase and let undo bring it back)."
+   "x": "A stroke carrying `{:transparent}` is invisible to the translation history. A lookup mid-join does not break it: `THAS`, [[PHRUP]], then `+EUFG` still joins as if the lookup had not been struck, and `*` after the lookup skips past it. Every control needs it. The marker sits **in front of** the command, like `{:firstup}`, types nothing and changes no spacing. Related Keymux markers no lyk stroke uses: `{:barrier}` (end any join here) and `{:nobarrier}`."
   },
   {
    "t": "h3",
@@ -1079,7 +1071,7 @@
   },
   {
    "t": "p",
-   "x": "Four more Keymux-only commands act on the typing history. None needs the overlay."
+   "x": "Five more Keymux-only commands act on the typing history. None needs the overlay."
   },
   {
    "t": "table",
@@ -1108,6 +1100,11 @@
      "[[SWA*P]]",
      "`{:swap}`",
      "Swap the last two words"
+    ],
+    [
+     "[[PW*FP]]",
+     "`{:back}`",
+     "Erase the last character of what was typed, as part of the history: `*` types it again (`{:back:3}` erases three; no stroke). With nothing typed to erase it presses Backspace. [[PW-FP]] is the Backspace key itself, which `*` cannot bring back. `{:back}` is a barrier (see [the undo stroke](#/ref/punctuation/the-undo-stroke)): `*` takes the erase back first and goes no further back than it"
     ]
    ]
   },
@@ -1153,12 +1150,12 @@
   },
   {
    "t": "h3",
-   "x": "In plain Plover"
+   "x": "A reader that does not know keymux's metas"
   },
   {
    "t": "note",
    "kind": "warn",
-   "x": "**Plover does not know these metas.** Plover reads `{:name}` as a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `outline`, `engine`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 18 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError` in plain Plover, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 17 entries removed (for [[PHRUP]] use `{PLOVER:LOOKUP}`, Plover's own lookup); or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged for Plover; Keymux is the target engine."
+   "x": "**A dictionary reader that does not know keymux's metas** (plain Plover is one) reads `{:name}` as a call to a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `outline`, `engine`, `back`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 20 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError`, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 19 entries removed; or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged; Keymux is the target engine."
   }
  ]
 }

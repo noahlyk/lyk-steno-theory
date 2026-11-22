@@ -369,9 +369,21 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         ("TK*UPS", "=undo"),
         ("TKPWA*EPB", "{:again}"),
         ("SWA*P", "{:swap}"),
+        ("PW*FP", "{:back}"),
+        ("PHRO*F", "{:engine:suspend}"),
+        ("PHROLG", "{:engine:toggle}"),
     ] {
         assert_eq!(commands.get(outline).map(String::as_str), Some(value), "{outline}");
+        assert!(!punctuation.contains_key(outline), "{outline} is also a punctuation stroke");
+        assert!(reserved.contains_key(outline), "{outline} is not reserved");
     }
+    // keymux's own command names only: no legacy `{PLOVER:...}` spelling, and the strokes of the
+    // two legacy commands keymux ignores (resume, add translation) are free again.
+    assert!(commands.values().all(|v| !v.to_ascii_uppercase().contains("{PLOVER:")), "legacy engine command");
+    for freed in ["PHRO*PB", "TKUPT"] {
+        assert!(!reserved.contains_key(freed), "{freed} should be free");
+    }
+    assert_eq!(commands.len(), 82, "commands.json entry count changed: update the Reference (82 strokes)");
 }
 
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and

@@ -3298,3 +3298,17 @@ every status into `hidden` (never seeded or introduced again), writes `vocab.jso
 idempotent; `practice` runs it once for a file whose `filter_version` is lower than the current one. What
 regresses if undone: junk words in review and new, and the practice pool shaped by what the steno
 dictionary happens to give a one-stroke outline.
+
+## Native engine command names; `{:back}` on `PW*FP` (2026-11-22)
+
+keymux now spells its engine commands natively, so `commands.json` writes `PHRO*F` as
+`{:engine:suspend}` and `PHROLG` as `{:engine:toggle}`; lyk's dictionary syntax no longer uses the
+`{PLOVER:...}` spelling. The two legacy commands keymux has no counterpart for (`ADD_TRANSLATION` on
+`TKUPT`, `RESUME` on `PHRO*PB`) are removed, which freed both strokes (the generator may now give
+`PHRO*PB` to a word: *maron* took it and *micron* moved to `PHROPB`). `{:back}` (erase, and `*` types
+it again) sits on `PW*FP`: the star version of the Backspace key `PW-FP`, in the undo family's star
+column, free of every word, name and other theory's brief that starts a longer outline. Rejected:
+`PW*BG` (*barbecue*'s one stroke), `PWA*BG` (*bak*, and the first stroke of over 100 outlines),
+`PW*PB` (*button*, 52 outlines start with it). Not added: `{:undo:N}` and `{:redo:N}` (a held `*` and
+`R*EUD` repeat), `{:tape:show/hide}` and `{:keyboard:show/hide}` (toggle covers them), `{:barrier}`
+and `{:nobarrier}` (markers inside an entry, not strokes).

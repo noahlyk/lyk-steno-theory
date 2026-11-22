@@ -12,7 +12,7 @@
 a suffix can be as short as `-G` or `-D` without being read as a word, and a stem can overlap a
 word: `-D` is *do*, `ED/+-D` is *ended*.
 
-The program generates the dictionary (Plover JSON) from phonetic rules, measured against Plover and
+The program generates the dictionary (steno JSON) from phonetic rules, measured against Plover and
 Lapwing. Rust, rules as data. American English only.
 
 ## Where lyk stands

@@ -26,7 +26,8 @@ rules/reserved/punctuation.json
     "Copyright (c) 2010-2011 Joshua Harlan Lifton" (plover/__init__.py, "See LICENSE.txt").
 
 rules/reserved/commands.json
-    Uses Plover's command syntax ({PLOVER:...}, {#key}); the strokes are lyk's. No copied
+    Uses Plover's translation syntax ({#key}, {^}); the engine commands are keymux's
+    ({:engine:...}); the strokes are lyk's. No copied
     Plover file is recorded: unverified.
 
 rules/plover.toml
