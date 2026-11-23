@@ -82,7 +82,6 @@ lyk solve KOPL/+PU/+TER            # every reading of a run, cheapest first
 lyk explain moon                   # which rules wrote a word
 lyk mistakes --drill               # misstrokes on the steno tape, and a personal drill set for the site
 lyk quote                          # a random quote stroked in all three theories
-lyk practice                       # a typing drill on your own growing vocabulary, no outlines or hints (see Practice)
 ```
 
 With no word, `lookup`, `resolve`, `explain`, `ergonomics`, `paths` and `family` open an interactive
@@ -91,83 +90,12 @@ has scripts for measuring what a change did to the built dictionary.
 
 ## Practice
 
-`lyk practice` is a monkeytype-style word feed in the terminal: a few lines of upcoming words, the
-current one highlighted, what you typed green or red against it, a live speed, accuracy and time line
-above the feed and a one-line key hint below it (`--quiet` hides both); no outlines or keyboard. Your steno machine types the
-words through keymux as ordinary characters, so it only reads plain key presses.
-
-```
-lyk practice                                  # 25 words: what you are learning, reviews due, a few new ones
-lyk practice --source common                  # 25 words from the 1,000 commonest
-lyk practice --time 60 --rank 1-200           # one minute from the 200 commonest
-lyk practice --source mistakes --outlines     # your drill words; the results show their outlines
-lyk practice --source phrases --count 100     # the phrasing grammar's phrases, typed as text
-lyk practice --history                        # recent runs and the trend
-lyk vocab                                     # the vocabulary: size, frontier, learning, due, lapses
-lyk vocab know the and                        # retire words you know: never shown again
-lyk vocab gate 60                             # lower the gate for new words (default 70)
-lyk vocab stuck                               # words that stay unclean: out of the learning cap, with their outline
-lyk vocab spread                              # spread a wall of reviews that are all due on one day
-lyk vocab clean --dry-run                     # which words on file are not practice words (fragments, names, rare words)
-lyk practice --deep                           # also the rest of the 450k dictionary (rare real words; no fragments or names)
-```
-
-Space or Enter commits a word; a wrong word is an error and the feed moves on
-(`--stop-on-error` requires it right). Backspace or `*` deletes, Ctrl-Backspace or Ctrl-W deletes a
-word. Esc or Ctrl-C quit at once at any time (the words typed so far are printed and saved as an
-incomplete run); `q` is a plain letter in a test. Tab
-restarts at any time, in a test or on the results screen (Enter too there): a fresh feed with the same
-options and a new random seed (with `--seed N`, N+1, N+2, ... so each differs and the session repeats);
-an abandoned test is not saved. The clock starts at the first character after a start or restart, and
-the live line (`wpm 84   acc 97%   12/25   0:09`) keeps updating about four times a second. On the results
-screen Tab or Enter starts again and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C work at once, while the
-first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `adaptive` (the default, below), `common` (`--rank`, `--bands`,
-`--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
-`--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
-shape the feed. The results screen follows monkeytype's: `wpm` and `acc` in big digits, a chart of
-speed over the test (speed smoothed over 3 seconds, raw speed, errors as red points), then `test`,
-`raw`, `characters` (`correct/incorrect/extra/missed`), `consistency` and `time`; then, in colour, the
-words you stumbled on (red, with `×3` for more than once), the words mastered (green), new (cyan) and
-stuck (orange), the learning set as `word 7/10` chips (red under 30% clean, yellow, green at 9 of 10),
-and your level bar (below). It fits 80x24; a larger terminal gets a bigger chart (the block is as wide as its widest row, at most 104
-columns wide, centred, one panel to a row); a smaller one drops the chart first. Each finished test is added to
-`practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
-words next to the missed ones, and `--history` shows a stumbled-count column. After quitting, the
-same numbers are printed as text. All flags: the Reference, Build and files.
-
-The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. A test has
-exactly `--count` words (25): at most 40% words you are learning (once each, a second copy for the worst
-few), at most 30% reviews that are due, up to 2 new words (twice each), and the rest an easy base of
-review words you type cleanly. New words are earned: a free slot among 10 learning words (stuck ones do
-not count) and the easy base 70% clean (the first attempts of review words, last 50), so drilling hard
-words does not close the gate. They come in frequency order from
-lyk's list merged with Monkeytype's English lists (`lyk fetch` downloads them; words in Monkeytype's
-common lists are met a little earlier, `--monkeytype-weight`). Only practice words enter the pool, the
-seeding and the feed: real, common-enough words (Monkeytype's lists up to the 25k, or within rank
-20,000 of lyk's list and in Monkeytype's 450k dictionary), never a suffix or prefix piece (`er`, `ing`,
-`kon`), a name, an exclamation or a word the steno tape only typed by a suffix stroke. That is about
-35,000 words; `--deep` adds the rest of the 450k dictionary (those filters stay). `lyk vocab clean`
-removes the words on file that are not practice words and hides them for good (`unhide` undoes it);
-`lyk practice` does it once for a file written by an older version, after writing `vocab.json.bak`. An attempt
-counts as clean only when the word was right and needed no correction on the way (a `*` or backspace
-before the space is a stumble, even if the word then commits right). The feed is fixed when the test
-starts and does not change while you type; a stumbled or wrong word is drilled first in the next tests
-(`--requeue` also puts it back 3 words later in the same test, in place of a base word). A word 9 of
-whose last 10 attempts are clean (and that is not much slower than your other words) becomes a review
-and returns after 1, 3, 7, 21, 60 and 180 days; a miss or stumble steps it back, two in a row send it back to learning. A learning word with 30
-or more practice attempts, under 30% of them clean, over 7 days, is stuck: it leaves the cap, is drilled
-lightly and is listed by `lyk vocab stuck` (a hint that its outline does not suit your hands). The state is `vocab.json` beside
-`practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
-already type well are not new (their first reviews are spread over 1 to 30 days). `lyk vocab` shows it
-(filler and learning clean rates, the stumble rate, the words stumbled most this week, and why no new
-word has come in 14 days, if so) and prints the tier table (below); `know`, `skip`, `forget`, `reset --yes`, `gate N`, `goal`, `spread`,
-`clean`, `unhide` edit it; `--no-adapt` plays a feed without changing it. `--history` ends with the stuck count. The rules are in the Reference, Build and files.
-
-Levels: the pool is cut into tiers by the list a word first appears in (Monkeytype's `english` 200, `1k`,
-`5k`, `10k`, `25k`, then lyk's own top 20,000, then with `--deep` the rest); a tier is complete at 90% of
-its words known (in review or retired), and your level is the first tier that is not. `lyk vocab` prints
-the table and `lyk vocab goal 1k` (or `5k`, `monkeytype-10k`, a number of words; `clear` removes it)
-sets a goal that gets its own bar.
+The typing test moved to its own package, [typeladder](https://github.com/noahlyk/typeladder): an
+adaptive word feed that grows your vocabulary from Monkeytype's lists (200, 1k, 5k ...) for any
+steno theory, text expander or plain typing. `lyk deploy` gives it lyk's outlines
+(`~/.config/typeladder/dictionaries/lyk.codes.json`) for its hints and `lookup`. Your old progress:
+`typeladder import --from-lyk` (from a checkout: `--lyk-state out`). `lyk practice` and `lyk vocab`
+now only print this pointer.
 
 ## Full benchmarks
 

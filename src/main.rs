@@ -24,7 +24,6 @@ mod num;
 mod output;
 mod paths;
 mod phrases;
-mod practice;
 mod prose;
 mod gold;
 mod ipa;
@@ -41,10 +40,9 @@ mod solve;
 mod stroke;
 mod verify_lookup;
 mod version;
-mod vocab;
 mod view;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
@@ -372,11 +370,18 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
-    /// Typing drill in the terminal: a raw word feed, no outlines or hints; speed, accuracy and the
-    /// slow and missed words at the end
-    Practice(practice::Args),
-    /// The adaptive practice vocabulary: counts, the words being learned, reviews due; `know`, `skip`, `forget`, `reset`, `seed`, `gate`
-    Vocab(vocab::Args),
+    /// Moved to typeladder (its own package): prints where to go
+    #[command(hide = true)]
+    Practice {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        rest: Vec<String>,
+    },
+    /// Moved to typeladder (`typeladder vocab`): prints where to go
+    #[command(hide = true)]
+    Vocab {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        rest: Vec<String>,
+    },
     /// Misstrokes on the steno tape: undone near-misses, key-level errors, trend; `--drill` makes a
     /// personal drill set. Runs once, reads the tape read-only, writes only to out/mistakes/
     Mistakes {
@@ -449,6 +454,15 @@ enum Command {
     },
 }
 
+/// `lyk practice` and `lyk vocab` moved to typeladder, a separate package.
+fn moved_to_typeladder() -> Result<()> {
+    let installed = deploy::installed("typeladder", &std::env::var_os("PATH").unwrap_or_default(), &deploy::pacman_has);
+    let how = if installed { "run `typeladder` (`typeladder vocab` for the vocabulary)" } else { "install typeladder, then run `typeladder`" };
+    bail!(
+        "the typing test moved to typeladder: {how}. Your progress: `typeladder import --from-lyk --lyk-state out` from a checkout (or with lyk's state folder). `lyk deploy` gives typeladder lyk's outlines as hints."
+    )
+}
+
 fn expand_home(path: &Path) -> PathBuf {
     match (path.strip_prefix("~"), std::env::var_os("HOME")) {
         (Ok(rest), Some(home)) => PathBuf::from(home).join(rest),
@@ -464,7 +478,7 @@ fn main() -> Result<()> {
     let data_dir = paths::data_dir();
     let needs_data = !matches!(
         cli.command,
-        Command::Version | Command::Where | Command::Fetch | Command::Mistakes { .. } | Command::Practice(_) | Command::Vocab(_) | Command::Deploy { rollback: true, .. }
+        Command::Version | Command::Where | Command::Fetch | Command::Mistakes { .. } | Command::Practice { .. } | Command::Vocab { .. } | Command::Deploy { rollback: true, .. }
     );
     if needs_data {
         paths::require_data(&data_dir)?;
@@ -570,8 +584,7 @@ fn main() -> Result<()> {
         Command::Ergonomics { query, common, briefs, rebuild } => {
             commands::run_ergonomics(&setup, query.as_deref(), *common, briefs.as_deref(), *rebuild)
         }
-        Command::Practice(args) => practice::run(args),
-        Command::Vocab(args) => vocab::run(args),
+        Command::Practice { .. } | Command::Vocab { .. } => moved_to_typeladder(),
         Command::Mistakes { tape, dict, last, since, min_errors, min_attempts, top, json, drill, out, words } => {
             let tape = expand_home(tape);
             mistakes::run(&mistakes::Options {

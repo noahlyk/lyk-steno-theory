@@ -3380,3 +3380,17 @@ belong to typeladder and are never touched. Chosen over exporting a separate `ly
 because the user already runs `deploy` after every rule change, so the export cannot go stale. What
 regresses if undone: a machine without keymux cannot run `deploy` cleanly, and typeladder has no
 dictionary to read.
+
+## Practice moved out: typeladder
+
+`lyk practice` and `lyk vocab` (the adaptive typing test, its vocabulary, tiers and results
+screen) moved to their own package, typeladder (`~/code/noahlyk/typeladder`), made generic: any
+steno theory, text expander or plain typing, with the theory's outlines read from a dictionaries
+folder as optional hints. Why: the test is not steno theory; a friend on a text expander wanted
+the same tool, and the adaptive part is what matters, not the engine. lyk keeps only the side that
+is lyk's: `lyk deploy` writes `lyk.codes.json` for it. Removed with it: the practice-only tape
+helpers in `mistakes.rs` (`word_stats`, `wrong_words`), the state-folder paths, the Monkeytype
+frequency lists in `fetch` (the 450k list stays, for `verify --giant`) and the `ratatui`
+dependency. `lyk practice` and `lyk vocab` stay as hidden commands that print the pointer, so old
+muscle memory gets directions instead of "unknown command". What regresses if undone: two copies
+of the same test to keep in step.

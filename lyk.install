@@ -7,7 +7,7 @@ post_install() {
     echo "    lyk deploy     # hand it to what is installed: keymux (its config; run"
     echo "                   #   'keymux init' first) and typeladder (its dictionary file)."
     echo "                   #   keymux is optional: without it that step is skipped"
-    echo "    lyk practice   # a typing drill: raw word feed, speed and accuracy, no hints"
+    echo "    typeladder     # the typing test (moved out of lyk; typeladder import --from-lyk)"
     echo ""
     echo "==> Where things live (change with LYK_DATA / LYK_OUT, or 'lyk --data DIR'):"
     echo "    data:    \${XDG_DATA_HOME:-~/.local/share}/lyk/data"

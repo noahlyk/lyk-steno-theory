@@ -1017,110 +1017,9 @@ pub fn run(opt: &Options) -> Result<()> {
     Ok(())
 }
 
-/// One ordinary word's use on the tape: counts and dates only, never any tape text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TapeWord {
-    pub word: String,
-    /// Strokes that stayed typed plus mistakes
-    pub attempts: usize,
-    pub errors: usize,
-    /// Distinct days it was typed on
-    pub days: usize,
-    /// The calendar day (days since 1970-01-01) of its last use, when the tape can be dated
-    pub last_day: Option<i64>,
-}
-
-/// Per-word usage for the words `ordinary` accepts, out of the tape's text. `anchor` is the date of
-/// the tape's last day.
-fn word_stats_from(text: &str, anchor: Option<i64>, ordinary: &dyn Fn(&str) -> bool) -> Vec<TapeWord> {
-    let events = parse_tape(text);
-    let Some(final_day) = events.last().map(|e| e.day) else { return Vec::new() };
-    let r = replay(&events);
-    // word -> (kept, errors, days seen)
-    let mut by: HashMap<&str, (usize, usize, std::collections::BTreeSet<u32>)> = HashMap::new();
-    for &i in &r.kept {
-        let Kind::Text { word, .. } = &events[i].kind else { continue };
-        // A continuation stroke (`+`) types a piece joined onto the word before it: a suffix, a
-        // prefix or a fragment, never a word the typist chose.
-        if events[i].stroke.starts_with('+') {
-            continue;
-        }
-        let e = by.entry(word).or_default();
-        e.0 += 1;
-        e.2.insert(events[i].day);
-    }
-    for f in r.fixes.iter().filter(|f| !f.intended.starts_with('+')) {
-        let e = by.entry(&f.word).or_default();
-        e.1 += 1;
-        e.2.insert(f.day);
-    }
-    let mut out: Vec<TapeWord> = by
-        .into_iter()
-        .filter(|(w, _)| ordinary(w))
-        .map(|(w, (kept, errors, days))| TapeWord {
-            word: w.to_owned(),
-            attempts: kept + errors,
-            errors,
-            days: days.len(),
-            last_day: days.iter().next_back().and_then(|d| anchor.map(|a| a - i64::from(final_day - d))),
-        })
-        .collect();
-    out.sort_by(|a, b| a.word.cmp(&b.word));
-    out
-}
-
-/// Per-word usage of the ordinary words on the steno tape, for seeding `lyk vocab`: a word counts
-/// when the built dictionary in `dict` has it (letters and apostrophes only when that is not built).
-pub fn word_stats(tape: &Path, dict: &Path) -> Result<Vec<TapeWord>> {
-    let text = std::fs::read_to_string(tape).with_context(|| tape.display().to_string())?;
-    let anchor = parse_tape(&text).last().and_then(|l| anchor_day(tape, l.sec));
-    let built = Dict::load(dict).ok();
-    let ordinary = |w: &str| built.as_ref().map_or_else(|| w.len() <= 24 && crate::practice::is_plain_word(w, false), |d| d.ordinary(w));
-    Ok(word_stats_from(&text, anchor, &ordinary))
-}
-
-/// For each of `wanted`, the ordinary word the tape most often typed when it was the one meant (a
-/// struck stroke that was undone or missed and then retried as that word), with how many times.
-/// Counts only: no tape text.
-fn wrong_from(text: &str, wanted: &std::collections::HashSet<String>, ordinary: &dyn Fn(&str) -> bool) -> HashMap<String, (String, usize)> {
-    let events = parse_tape(text);
-    let mut by: HashMap<&str, HashMap<&str, usize>> = HashMap::new();
-    let r = replay(&events);
-    for f in &r.fixes {
-        let Some(typed) = f.struck_word.as_deref() else { continue };
-        if wanted.contains(&f.word) && typed != f.word && ordinary(typed) {
-            *by.entry(&f.word).or_default().entry(typed).or_default() += 1;
-        }
-    }
-    by.into_iter()
-        .filter_map(|(w, typed)| typed.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(a.0))).map(|(t, n)| (w.to_owned(), (t.to_owned(), n))))
-        .collect()
-}
-
-/// The most common wrong ordinary word the tape typed for each of `wanted` (see `wrong_from`); empty
-/// when the tape cannot be read.
-#[must_use]
-pub fn wrong_words(tape: &Path, dict: &Path, wanted: &std::collections::HashSet<String>) -> HashMap<String, (String, usize)> {
-    let Ok(text) = std::fs::read_to_string(tape) else { return HashMap::new() };
-    let built = Dict::load(dict).ok();
-    let ordinary = |w: &str| built.as_ref().map_or_else(|| w.len() <= 24 && crate::practice::is_plain_word(w, false), |d| d.ordinary(w));
-    wrong_from(&text, wanted, &ordinary)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_wrong_word_for_an_intended_one_is_the_most_common_struck_word() {
-        let tape = "10:00:00  HRAET        \" late\"\n10:00:01  *            -5 \"\"\n10:00:02  HRAED        \" lead\"\n10:00:03  KAT          \" cat\"\n";
-        let want: std::collections::HashSet<String> = ["lead".to_owned(), "cat".to_owned()].into();
-        let got = wrong_from(tape, &want, &|w: &str| dict().ordinary(w));
-        assert_eq!(got.get("lead"), Some(&("late".to_owned(), 1)), "{got:?}");
-        assert!(!got.contains_key("cat"));
-        let none = wrong_from(tape, &std::collections::HashSet::new(), &|_: &str| true);
-        assert!(none.is_empty(), "nothing asked for: {none:?}");
-    }
 
     fn dict() -> Dict {
         let mut d = Dict::default();
@@ -1278,33 +1177,6 @@ mod tests {
         assert!(text.split_whitespace().all(|w| w == "late" || w == "lead"), "{text}");
         assert_eq!(text.lines().count(), 3, "{text}");
         assert!(!text.contains('|') && !text.contains("HRAED"), "{text}");
-    }
-
-    #[test]
-    fn word_stats_count_attempts_errors_and_days_for_ordinary_words_only() {
-        // day 0: late (undone), lead, cat; "typed" lines are barriers; day 1 (time goes back): cat, a non-word
-        let tape = "10:00:00  HRAET        \" late\"\n10:00:01  *            -5 \"\"\n10:00:02  HRAED        \" lead\"\n10:00:03  KAT          \" cat\"\n\
-                    10:00:04  typed        \"hunter2\"\n09:00:00  KAT          \" cat\"\n09:00:01  TKOG         \" zzqx\"\n";
-        let ordinary = |w: &str| matches!(w, "lead" | "cat" | "late");
-        let got = word_stats_from(tape, Some(20_000), &ordinary);
-        let cat = got.iter().find(|w| w.word == "cat").expect("cat");
-        assert_eq!((cat.attempts, cat.errors, cat.days, cat.last_day), (2, 0, 2, Some(20_000)));
-        let lead = got.iter().find(|w| w.word == "lead").expect("lead");
-        assert_eq!((lead.attempts, lead.errors, lead.days, lead.last_day), (2, 1, 1, Some(19_999)));
-        assert!(got.iter().all(|w| w.word != "zzqx" && w.word != "hunter2"), "non-dictionary words are dropped: {got:?}");
-        assert_eq!(word_stats_from("", None, &ordinary).len(), 0);
-        assert_eq!(word_stats_from(tape, None, &ordinary)[0].last_day, None);
-    }
-
-    #[test]
-    fn word_stats_leave_out_words_typed_by_continuation_strokes() {
-        // `+AOBG` types "book" onto "note": a piece of a longer word, not a word the typist chose
-        let tape = "10:00:00  NOT          \" note\"\n10:00:01  +AOBG        \"book\"  plugin:05-lyk-solver \"notebook\"\n10:00:02  PWAOBG       \" book\"\n\
-                    10:00:03  +-G          \"ing\"\n10:00:04  +-G          \"ing\"\n";
-        let got = word_stats_from(tape, None, &|_| true);
-        let book = got.iter().find(|w| w.word == "book").expect("book");
-        assert_eq!(book.attempts, 1, "only the word stroke counts: {got:?}");
-        assert!(got.iter().all(|w| w.word != "ing"), "a suffix stroke is no word: {got:?}");
     }
 
     #[test]

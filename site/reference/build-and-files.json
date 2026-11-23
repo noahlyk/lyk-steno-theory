@@ -42,7 +42,7 @@
    "rows": [
     [
      "`fetch`",
-     "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Monkeytype's English word lists (`wordlists/monkeytype-*.json`, for `practice`), Plover and Lapwing, and the fifteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
+     "Download the data into `data/` (safe to re-run): pronunciations, frequencies, Monkeytype's 450k English word list (`wordlists/monkeytype-english_450k.json`, for `verify --giant`), Plover and Lapwing, and the fifteen other theories as `dictionaries/theory-*.json` (see [other theories' briefs](#/ref/collisions))."
     ],
     [
      "`where`",
@@ -125,44 +125,14 @@
      "Score a stroke or a word's built outline finger by finger. With nothing after it, the interactive session; Enter leaves the answer on screen and scores the line."
     ],
     [
-     "`practice [--source S] [--new-per-session N] [--learning-cap N] [--gate PERCENT] [--wordlist monkeytype|lyk|both] [--monkeytype-weight X] [--deep] [--no-adapt] [--tape FILE] [--file PATH] [--rank MIN-MAX|--bands A-B,C-D] [--count N|--time SECS] [--seed N] [--weighted] [--no-repeat] [--lowercase-only] [--min-len N] [--max-len N] [--names] [--stop-on-error] [--requeue] [--quiet] [--outlines] [--no-save] [--dict DIR]`, `practice --history`",
-     "A typing drill in the terminal: a raw word feed, no outlines, keyboard or hints. The steno machine types the words through keymux as ordinary characters, so it reads plain key presses (a `*` undo arrives as backspaces). Space or Enter commits a word; a wrong word is an error and the feed moves on (`--stop-on-error`: it must be right first); Backspace deletes, and backspacing over the space reopens the word before; Ctrl-Backspace or Ctrl-W deletes a word; Esc or Ctrl-C quit at once at any time, with no results screen: the words typed so far are printed and saved as an incomplete run (nothing is printed or saved if no word was typed). `q` is an ordinary letter during a test. Tab restarts the test at any time, during a test or on the results screen: a fresh feed with the same options and a new random seed (with `--seed N` the seed goes up by 1 on each restart, so the feeds differ and stay reproducible), the timer and counters reset, and an abandoned test is not saved to the history. The clock starts at the first character typed after a start or restart; until then the live line reads `wpm 0`. The live line above the feed (`wpm 84   acc 97%   12/25   0:09`: words done out of the count and the time so far; in a `--time` run the words done and the time left) redraws about four times a second with no key pressed, so the time runs on and the speed falls. Under the feed a dim hint reads `tab restart  esc quit`. On the results screen Tab or Enter starts another test and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C act at once, while for 0.7 s after the screen appears (and after each key it swallows) letters, Tab and Enter are ignored so keys still arriving from the run cannot restart or dismiss it, and afterwards they act at once. After quitting, the last results are printed into the terminal. `--source`: `adaptive` (the default: your own vocabulary, see [the adaptive vocabulary](#/ref/build-and-files/the-adaptive-vocabulary)), `common` (the commonest plain words of the subtitle counts, names left out unless `--names`; `--rank 1-1000` is the default, `--bands 1-200,201-1000` takes several bands, and `--weighted` draws each band equally often instead of each word), `mistakes` (the words of `lyk mistakes --drill`, a word once per copy in the set), `file` (`--file PATH`: the words of a text file), `phrases` (the phrasing grammar's phrases, `out/lyk/02-lyk-phrasing.json`, typed as their text), `quotes` (sentences from the books in `data/corpus`). `--count N` (default 25) or `--time SECS`; `--seed N` repeats a feed; `--no-repeat` uses each word once; `--lowercase-only`, `--min-len` and `--max-len` filter. Speed is correct characters over five per minute (raw counts every typed character); accuracy is by key press and by word; a word's time is since the word before it (a steno word arrives in one burst); consistency is 100 minus the spread of those times as a share of their mean. The results screen follows monkeytype's end screen on one screen: `wpm` (soft white) and `acc` (green from 97%, yellow from 90%, red under) in big block digits (top left); to their right a chart of speed over the test (x is seconds from the first key; a thick line is the speed over a trailing 3 seconds, a dim line the raw speed of each second, red points the seconds with an error: a wrong key, or a word committed short); a row of small stats, `test` (`25 words  monkeytype 200`, or `60s` in a `--time` run, then the level's tier or the source), `raw`, `characters`, `consistency` and `time`. `characters` is `correct/incorrect/extra/missed` as monkeytype counts them over the committed words: correct is the letters of the words committed right and the spaces after them (none after the last word), incorrect the wrong letters inside a wrong word, extra the letters typed past a word's end, missed the letters of a word never typed. Under them, in groups headed by a thin rule (`this test`, `learning`, `level`; the rules and the blank rows go first when rows run out), panels that are left out when empty, their words in one aligned grid (a shared column width, so the words of different panels line up) in soft muted colours: `stumbled` (red: each word that was wrong or corrected before it was committed, once, in order, with `×N` when it was unclean N times in the test; a run of backspaces is one correction, and backspacing over the space to reopen the word before counts against that word), `mastered` (green: words that went from learning to review in this test, and words retired), `new` (cyan: words that entered learning in this test), `stuck` (orange: the words that are stuck), `wordset` (the learning set now, stuck words aside, as a grid of `word 7/10` chips, the nearest to mastery first: 7 of the last 10 attempts clean; red under 3, green at 9, yellow between) and the level bars (see **Levels and the goal** below). The adaptive source fills them; the other sources show the numbers and `stumbled` only. Size: the block is as wide as its widest row (72 to 104 columns) and centred with equal margins, one panel to a row, blank rows between the groups when there is room; at 80x24 and up the chart is drawn beside `wpm` and `acc` (side by side; larger terminals give it more rows, and from 36 rows `wpm` and `acc` stack on the left of a taller chart); under 60 columns or 20 rows the chart goes first and `wpm` and `acc` sit side by side, and when rows run out the panels are dropped lowest first (the order kept: mastered, stumbled, the small stats, the level bars, new, stuck, wordset; a cut panel ends in an ellipsis), below 32 columns the numbers are plain text; the footer `tab/enter again  q/esc quit` is always the last row. After quitting, the same content is printed as text, without the chart (the numbers, one line a panel, the bars, and the vocabulary line `vocab  +2 new  1 mastered  3 due`). `--quiet` hides the live line and the hint; `--outlines` adds lyk's outline in parentheses after each stumbled word (needs `lyk build`). Each finished test adds a line to `practice.jsonl` (`$XDG_STATE_HOME/lyk/` installed, `out/` in a checkout: time, source, words, speed, accuracy, errors, the missed feed words, the stumbled feed words); `--no-save` skips it, and `practice --history` prints the recent runs (with a `stb` column: words stumbled) and the trend. With the adaptive source a finished test (not one quit with Esc or restarted with Tab) also updates `vocab.json` (`--no-adapt` plays the feed without it) and the panels say what changed (the printed text ends with `vocab  +2 new  1 mastered  1 stuck  3 due`); the feed is fixed at the start of a test (`--requeue` puts a missed or stumbled word back three words later in place of a base word, so the test keeps its length; see [the adaptive vocabulary](#/ref/build-and-files/the-adaptive-vocabulary)); with `--history` the last line is `N stuck words: lyk vocab stuck` when there are any. Needs a terminal on stdin and stdout."
-    ],
-    [
-     "`vocab [know WORD...|skip WORD...|forget WORD...|gate PERCENT|goal [TIER|N|clear]|reset --yes|seed|stuck|spread|clean [--dry-run]|unhide WORD...] [--json] [--wordlist L] [--monkeytype-weight X] [--names] [--deep]`",
-     "The adaptive vocabulary in `vocab.json`. With nothing after it: the vocabulary size (learning + review + retired words), the counts by status, the rank frontier (the next word the pool would introduce), the easy base's clean share against the gate (`filler clean x% (gate y%)`, with the last 3 tests' share) and the learning words' own clean share, the stumble rate over all attempts, the learning pool (stuck words marked), the reviews due now and next due with their dates, the recently mastered words, the words stumbled most in the last 7 days and the lapses (and, when no new word has come in for more than 14 days, why: the pool is full, or the easy base is under the gate); `--json` prints the same as JSON. `gate PERCENT` (0 to 100, or `default`) sets the gate for new words and keeps it in `vocab.json`; `--gate` on `practice` overrides it for one run. `know` and `skip` retire words (never shown, never introduced; kept on file); `forget` removes them from the file; `reset --yes` empties it (without `--yes` it only says what it would do) and does not read the history again; `seed [--tape FILE] [--dict DIR]` reads the history and the tape into the words not on file yet. `stuck [--json] [--tape FILE] [--dict DIR]` lists the stuck learning words, worst first: the last-10 clean count, the clean share and count of attempts since it entered learning, its stumbles, its best outline in the built dictionary with the key count and ergonomic cost (`lyk ergonomics`' weighted cost), and the ordinary word the tape most often typed when it was meant (counts only, no tape text); `--json` prints it as JSON. `spread` re-spreads the due days of reviews that are still as the seeding left them (never practised, missed, passed or lapsed) when more than 15 of them are due on one day, each into its level's window from today (level 1: 1 to 14 days, 2: 3 to 21, 3: 7 to 30, by a hash of the word, at most 15 due a day); it writes `vocab.json.bak` first and a second run changes nothing. `clean` removes from every status (learning, review, retired, new on file) each word that is not a practice word (see **Practice words** below) and records it in `hidden`, so it is never seeded or introduced again; it writes `vocab.json.bak` first, prints the counts by status and the first 30 words removed, and a second run removes nothing; `clean --dry-run` prints the same and writes nothing. `unhide WORD...` takes words off `hidden` (a word that still fails the predicate stays out of the feed, and the command says so). `know` and `skip` take any number of words. The plain summary also prints the tier table (see **Levels and the goal** below: tier, words, known, percent, the level marked); `--json` has `tiers`, `level` and `goal`. `goal` with nothing after it prints the goal and its bar; `goal TIER` sets it (`200`, `1k`, `5k`, `10k`, `25k`, `lyk`, `deep`, with or without a `monkeytype-` prefix, or a plain number of words such as `3000`), `goal clear` removes it; it is kept in `vocab.json` and an older file without one loads as no goal."
+     "`practice`, `vocab`",
+     "Moved to [typeladder](https://github.com/noahlyk/typeladder), a separate package: the adaptive typing test and its vocabulary. Both commands only print that pointer and fail. `typeladder import --from-lyk` copies the old `vocab.json` and `practice.jsonl` (from a checkout: `--lyk-state out`); `lyk deploy` writes lyk's outlines to typeladder's `dictionaries/lyk.codes.json` (see Deploy targets)."
     ]
    ]
   },
   {
    "t": "p",
    "x": "`--rules FILE` and `--briefs FILE` make a command use your own rules and briefs."
-  },
-  {
-   "t": "h3",
-   "x": "The adaptive vocabulary"
-  },
-  {
-   "t": "p",
-   "x": "`practice`'s default source builds each test from `vocab.json` (`$XDG_STATE_HOME/lyk/` installed, `out/` in a checkout, beside `practice.jsonl`): per word a status, attempts and hits, the last 10 results as marks, a speed average, day numbers (days since 1970-01-01), a review level, counts of promotions, lapses and stumbles (with the last 7 days of stumbles by day), the attempts typed in practice (all, and since it entered learning with how many were clean), whether it is stuck, the last 50 first attempts of review words and the last 3 tests' share of them (the easy base the gate reads), and the gate if one was set, the `hidden` words (removed by `clean`) and `filter_version` (the version of the practice-word predicate the file was last cleaned with; `lyk practice` cleans a file with a lower one once, writing `vocab.json.bak` first and printing a dim line `vocab cleaned: N words hidden (lyk vocab clean --dry-run to review)`); nothing typed that was not a feed word. A word is `new` (on file with past counts only, or not on file), `learning`, `review` or `retired`. Every constant is a field of `Config` in `src/practice/adaptive.rs`; `--new-per-session`, `--learning-cap` and `--gate` set three of them."
-  },
-  {
-   "t": "list",
-   "items": [
-    "**The pool and its order.** The union of lyk's frequency list (filtered as `--source common`: plain words, no names unless `--names`) and Monkeytype's lists, each word once. A word in lyk's list ranks by that rank. A word only in a frequency-ordered Monkeytype list (`english`, `english_1k`, `english_5k`, `english_10k`) ranks by its position in the list times the list's scale (the median of lyk rank over list position for the words both have). A word in any of those four lists has its rank multiplied by `--monkeytype-weight` (0.7: met earlier than its rank says; 1 turns it off). After them come the words only in `english_25k`, then those only in `english_450k`; both files are unordered, so each tier is in a fixed scrambled order. Only practice words enter the pool (the next item); a lyk-only word is in the mixed pool only within rank 20,000 and only if Monkeytype's 450k dictionary has it. `--wordlist monkeytype` leaves lyk's list out, `--wordlist lyk` leaves Monkeytype's out and reads the whole frequency list on in chunks (the default is `both`). The first ~50,000 words are built when the command starts and the tiers are read only when the walk reaches them, so nothing is loaded early. By default the pool is about 35,000 words (about 24,700 in the head and 10,600 in the 25k tier); `--deep` adds the rest of the 450k dictionary (about 420,000 words in all).",
-    "**Practice words.** One predicate (`practice::words`) decides which words the pool, the seeding, `vocab clean` and the adaptive feed accept. A word qualifies when: (1) it is letters only, with an inner apostrophe only in a real contraction of a fixed list (`don't`, `can't`, `it's`, `I'm`, ...), two letters or more except `a` and `I`; (2) it is a contraction of that list, or in one of Monkeytype's `english`, `english_1k`, `english_5k`, `english_10k` or `english_25k` lists, or in the short list of ordinary spoken words those lists leave out (`ok`, the profanity of speech, `till`, `tv`), or within rank 20,000 of lyk's frequency list *and* in the 450k dictionary (written lowercase there, so capitalised names do not count) with four letters or more (three letters within rank 5,000); (3) it is not a morpheme fragment: no text of a suffix or prefix entry of lyk's rules (`rules/suffixes.toml`, `rules/morphemes.toml`, the family endings and prefixes) and none of a fixed list of fragments (`er`, `ed`, `ly`, `le`, `en`, `ent`, `st`, `ta`, `kon`, `eer`, `ing`, `ion`, `ism`, ...), unless it is also a word of Monkeytype's lists up to the 10k or of a short list (`age`, `less`, `over`, `or`); (4) it is not a vocal noise or an exclamation (the `no prose use` letter shapes: `ugh`, `hmm`, `zzz`, `ooh`); (5) it is not a name that Plover and Lapwing only write capitalised, unless `--names`. `--deep` lifts only the frequency limits of (2): any lowercase word of the 450k dictionary qualifies, and (1), (3), (4) and (5) still apply; a rare real word of the dictionary (not a name by those sources) can still show up there, and a rank alone never qualifies a word while the 450k list is downloaded. Without the Monkeytype lists the rank within 20,000 decides.",
-    "**A clean attempt.** An attempt is clean only when the word was committed right and no correction was made while it was open: no backspace or word delete that removed characters of it, and no backspacing over the space after the previous word to reopen it (a run of backspaces, such as a steno `*` over a whole word, is one stumble; a reopened word is a stumble of that word). A word committed right after a stumble is right but not clean, and counts as a miss everywhere below. A word refused by `--stop-on-error` is a miss; deleting the refused word is not a second one. The word is the first in pool order that is not learning, in review or retired. Each new word is in its first test twice.",
-    "**Mastery.** A learning word becomes `review`, level 1, when at least 9 of its last 10 attempts are clean and its speed average is within 1.5 times the median of the words that have one (not checked while fewer than 10 have). There is no day count: every attempt counts, a second copy of the word in the same test included, so a word is mastered the test its last 10 attempts reach 9 clean (at least 10 attempts on record, about 5 tests at 2 copies a test for a new word, 10 at one).",
-    "**Review.** Intervals by level 1 to 6: 1, 3, 7, 21, 60 and 180 days. A due review word passed (every attempt in the test clean) moves up a level and is due one interval later; at level 6 it stays. A miss moves it down one level (never below 1) and makes it due tomorrow; two misses in a row send it back to learning (when 10 words are already learning, it stays a level-1 review, the lapse counted). A review word not yet due does not move when passed.",
-    "**A test has exactly `--count` words** (25 by default). Learning words (new and stuck ones included) are at most 40% of it (10 of 25), in this order of priority: up to 2 stuck words (the longest unseen first), the new words twice each, the learning words that stumbled or missed in the last 2 tests (the most stumbles first), then the other learning words by recent error rate (a recent stumble adds weight, more for more stumbles); each once; then a second copy for the 3 with the highest recent error rate if room is left. Due reviews fill at most 30% (7 of 25), the longest overdue first. The rest is the easy base: reviews not yet due, drawn from the cleanest (lowest recent error rate, then the higher level, then the more typed). A vocabulary too small to fill a test (a fresh start with no tape) fills it with more due reviews and then repeats of the learning and new words (5 times each at most). Shuffled with `--seed`, no word twice in a row. A `--time` test repeats the rounds without adding new words.",
-    "**Within a test.** The feed is fixed when the test starts: exactly `--count` words, none replaced or added while you type (a stumbled or wrong word is drilled first in the next tests instead). With `--requeue` a word that stumbled or was committed wrong comes back 3 words later (not next to itself) *in place of* a later easy-base word, never a due review or a learning word, so the test keeps its length; a word is in a test at most twice, a returned copy included, and three times once it has been unclean twice; with no base word ahead it does not return. Backspacing over the space to reopen a word gives the base word back until it is committed again.",
-    "**Earning a new word.** The learning cap has a free slot (stuck words do not count) and the *easy base* is clean enough: the clean share of the first attempts of review words in tests (not the learning words, which are drilled every test and mostly unclean) over the last 50 such attempts is at least the gate (70%; `lyk vocab gate`), or the last 3 tests' easy base together reach it; with fewer than 20 on record it is not held against you. At most 2 new words a test. The gate default is below the typical clean rate of a review word (the tape median 74%) so an ordinary test passes.",
-    "**Stuck.** A learning word with at least 30 practice attempts since it entered learning (a seeded word counts attempts typed in `practice`, not the tape's), under 30% of them clean, and practised on at least 7 days (the day count includes the tape's days for a seeded word) is marked stuck: it leaves the learning cap, so a new word can be earned, and is drilled lightly (at most 2 stuck words in a test, the longest unseen first, once each). It stops being stuck when it is mastered (9 of the last 10 clean: a review) or has 9 of 10 clean while the cap has a free slot. `lyk vocab stuck` lists them; a word that stays stuck is probably an outline that does not suit your hands.",
-    "**Levels and the goal.** The pool is cut into tiers by the list a word first appears in, in this order: Monkeytype `english` (200 words), `english_1k`, `english_5k`, `english_10k`, `english_25k` (each tier holds only the practice words that no earlier list has: about 200, 808, 3,838, 4,676 and 20,480), then `lyk top 20k` (practice words of lyk's frequency list up to rank 20,000 that no Monkeytype list has: about 5,300), and with `--deep` the rest of the 450k dictionary. A word is *known* when it is in review or retired (learning counts 0; hidden words are left out). A tier is complete at 90% known, and your *level* is the first tier that is not complete (`lv1` is the first). The results screen shows it as an aligned bar (`lv1  monkeytype 200  ━━━━━━━━━━━━────────────   52%  104/200    next  monkeytype 1k`, a thin line; the printed text and `lyk vocab` use `[█████░░░░░] 52%  104/200 known   next: monkeytype 1k`). A *goal* (`lyk vocab goal 1k`) adds a second bar under it (cyan): the known share of every word in the tiers up to and including the goal tier (or of the first N words in tier order). New words still come in pool order (frequency rank, with Monkeytype's lists met earlier by `--monkeytype-weight`), not tier by tier, so the order and the tiers agree closely but not exactly.",
-    "**Retired.** `vocab know` and `vocab skip` retire any number of words: never shown, never introduced, kept on file so they are not introduced again. A word `vocab clean` removed is hidden instead: off the file and out of every later seeding.",
-    "**What updates it.** Only a test run to its end (the feed or the clock) counts; Esc, Ctrl-C and Tab leave `vocab.json` as it was. A word's time is the time since the word before it, as the results screen measures it (the first word of a test carries none). The day is the local calendar day.",
-    "**Seeding.** When `vocab.json` does not exist, the first adaptive run reads, once, the missed words of `practice.jsonl` and the steno tape's per-word counts (`lyk mistakes`' replay; ordinary words of the built dictionary that are also practice words (see above) only, and no word the tape typed by a continuation stroke (`+`: a suffix, a prefix or a fragment joined to the word before it); attempts, errors, distinct days and the last day are kept, no tape text): the thresholds are the typist's own, since steno corrections show as undos: the median error share over the words with 20 or more attempts (capped at 50%; the overall share when there are none) is the baseline. A word with 20 or more attempts at or below the median starts in review at level 1; at 20% wrong or less, level 2; among the 200 most typed and at 20% or less, level 3; due on a day inside its level's window counted from the seeding (level 1: 1 to 14 days out, level 2: 3 to 21, level 3: 7 to 30, picked by a hash of the word, at most 15 due a day), so the first reviews are not one wall. An existing `vocab.json` is not re-seeded; `vocab spread` re-spreads a wall. A word with 5 or more attempts above the median that is not in review starts in learning (the 10 with most errors). Every other word with a history is `new` with its counts, so it comes in pool order. No tape: it starts empty. The file records that it was seeded, so `reset` does not seed again; `vocab seed` adds words not yet on file, never a `hidden` one."
-   ]
   },
   {
    "t": "h",
@@ -219,8 +189,8 @@
      "hermitdave/FrequencyWords (OpenSubtitles 2018). Each name's count is cut to a tenth so a name never outranks the word it sounds like (see [names](#/ref/collisions))."
     ],
     [
-     "Practice word lists",
-     "Monkeytype's `english` (200 words), `english_1k`, `english_5k`, `english_10k` (frequency-ordered), `english_25k` and `english_450k` (unordered), from `monkeytypegame/monkeytype` (GPL-3.0), merged with the frequency list above by `practice`'s adaptive source (see [the adaptive vocabulary](#/ref/build-and-files/the-adaptive-vocabulary))."
+     "Monkeytype 450k list",
+     "Monkeytype's `english_450k` (an unordered dictionary) from `monkeytypegame/monkeytype` (GPL-3.0): the giant words of `verify --giant`."
     ],
     [
      "Bigram frequency",
@@ -361,13 +331,31 @@
   },
   {
    "t": "table",
-   "head": ["Where the checkout is", "Version printed"],
+   "head": [
+    "Where the checkout is",
+    "Version printed"
+   ],
    "rows": [
-    ["Exactly on a tag `v1.2.0`", "`1.2.0`"],
-    ["8 commits past that tag", "`1.2.0+8.g0587d41`"],
-    ["Either, with uncommitted changes to tracked files", "`1.2.0+dirty`, `1.2.0+8.g0587d41.dirty`"],
-    ["No version tag (there are none yet)", "Cargo.toml's version and the short hash: `0.1.0+g0587d41`, `0.1.0+g0587d41.dirty`"],
-    ["Not a git checkout, or git missing (a tarball)", "`0.1.0+unknown`"]
+    [
+     "Exactly on a tag `v1.2.0`",
+     "`1.2.0`"
+    ],
+    [
+     "8 commits past that tag",
+     "`1.2.0+8.g0587d41`"
+    ],
+    [
+     "Either, with uncommitted changes to tracked files",
+     "`1.2.0+dirty`, `1.2.0+8.g0587d41.dirty`"
+    ],
+    [
+     "No version tag (there are none yet)",
+     "Cargo.toml's version and the short hash: `0.1.0+g0587d41`, `0.1.0+g0587d41.dirty`"
+    ],
+    [
+     "Not a git checkout, or git missing (a tarball)",
+     "`0.1.0+unknown`"
+    ]
    ]
   },
   {
@@ -388,15 +376,47 @@
   },
   {
    "t": "table",
-   "head": ["Test (file)", "Invariant", "Threshold"],
+   "head": [
+    "Test (file)",
+    "Invariant",
+    "Threshold"
+   ],
    "rows": [
-    ["`no_word_is_stranded_on_a_worse_outline` (`src/generate/report.rs`)", "No word sits on a worse outline than its unclaimed plain reading", "0"],
-    ["`no_two_words_share_the_same_deployed_outline` (`src/quality.rs`)", "No collisions among primary outlines", "0"],
-    ["`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`", "Words the rules cannot place", "at most 450 (371 measured)"],
-    ["`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)", "Words contested after fixed-point peeling", "1 to 19,500 (18,973 measured); at most 35% of the dictionary"],
-    ["`phrase_and_extra_passes_each_add_entries`", "Phrase and extra passes add entries", "each above 0"],
-    ["`what_a_word_costs_has_not_regressed`", "Weighted keys and strokes per word", "at most 2% over 3.272 keys and 1.009 strokes; below Plover on both"],
-    ["`readme_tables_match_score` (ignored; `cargo test --release readme_tables -- --ignored`)", "README tables match `score`", "exact (same as `score --check-readme`)"]
+    [
+     "`no_word_is_stranded_on_a_worse_outline` (`src/generate/report.rs`)",
+     "No word sits on a worse outline than its unclaimed plain reading",
+     "0"
+    ],
+    [
+     "`no_two_words_share_the_same_deployed_outline` (`src/quality.rs`)",
+     "No collisions among primary outlines",
+     "0"
+    ],
+    [
+     "`words_the_rules_could_not_place_stay_under_the_recorded_ceiling`",
+     "Words the rules cannot place",
+     "at most 450 (371 measured)"
+    ],
+    [
+     "`the_contested_count_after_peeling_is_bounded_and_nonempty`; `the_contested_set_after_peeling_stays_a_minority_of_the_dictionary` (`src/quality.rs`)",
+     "Words contested after fixed-point peeling",
+     "1 to 19,500 (18,973 measured); at most 35% of the dictionary"
+    ],
+    [
+     "`phrase_and_extra_passes_each_add_entries`",
+     "Phrase and extra passes add entries",
+     "each above 0"
+    ],
+    [
+     "`what_a_word_costs_has_not_regressed`",
+     "Weighted keys and strokes per word",
+     "at most 2% over 3.272 keys and 1.009 strokes; below Plover on both"
+    ],
+    [
+     "`readme_tables_match_score` (ignored; `cargo test --release readme_tables -- --ignored`)",
+     "README tables match `score`",
+     "exact (same as `score --check-readme`)"
+    ]
    ]
   },
   {
