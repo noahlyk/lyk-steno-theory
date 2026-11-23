@@ -300,6 +300,20 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
     let inner_w = avail.min(MAX_W);
     let inner = within(area, area.x + margin + (avail - inner_w) / 2, area.y, inner_w, area.height);
     let width = usize::from(inner.width);
+    // Under the numbers, in groups: the small stats; what the test changed; the learning set; the
+    // bars. Rows go to the groups in the order of `order` (the first is kept longest), then any
+    // left over become blank rows between the groups, top down.
+    let extra = usize::from(area.height.saturating_sub(24) / 4);
+    let cap = |lines: Vec<Line<'static>>, n: usize| clip(lines, n);
+    let pans = panels(scr, width);
+    let words: Vec<Line<'static>> = [cap(pans.stumbled, 3 + extra), cap(pans.mastered, 2), cap(pans.new, 2), cap(pans.stuck, 2)].concat();
+    let bars = progress_lines_aligned(scr, width);
+    let mut groups: Vec<Vec<Line<'static>>> = vec![small_stats_lines(&small_stats(scr, width)), words, chip_lines(scr, width), bars];
+    // The block is as wide as its widest row (at least 72 columns for the chart), centred: the
+    // margins left and right are equal.
+    let wide = u16::try_from(groups.iter().flatten().map(Line::width).max().unwrap_or(0)).unwrap_or(u16::MAX);
+    let block_w = wide.max(72.min(inner.width)).min(inner.width);
+    let inner = Rect { x: inner.x + (inner.width - block_w) / 2, width: block_w, ..inner };
     // the footer, bottom row
     let body_h = if area.height >= 3 { area.height - 1 } else { area.height };
     if area.height >= 3 {
@@ -338,15 +352,6 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
     if below == 0 {
         return;
     }
-    // Under the numbers, in groups: the small stats; what the test changed; the learning set; the
-    // bars. Rows go to the groups in the order of `order` (the first is kept longest), then any
-    // left over become blank rows between the groups, top down.
-    let extra = usize::from(area.height.saturating_sub(24) / 4);
-    let cap = |lines: Vec<Line<'static>>, n: usize| clip(lines, n);
-    let pans = panels(scr, width);
-    let words: Vec<Line<'static>> = [cap(pans.stumbled, 3 + extra), cap(pans.mastered, 2), cap(pans.new, 2), cap(pans.stuck, 2)].concat();
-    let bars = progress_lines_aligned(scr, width);
-    let mut groups: Vec<Vec<Line<'static>>> = vec![small_stats_lines(&small_stats(scr, width)), words, chip_lines(scr, width), bars];
     let order = [1, 3, 0, 2];
     let caps = [2, usize::MAX, 2 + extra, 2];
     let mut left = below;
