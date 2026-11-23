@@ -4,7 +4,7 @@
 
 import { createBoard } from './board.js';
 import { el } from './dom.js';
-import { parseOutline } from './steno.js';
+import { parseBarOutline } from './steno.js';
 import { define, ensure } from './translate.js';
 
 const STEP_MS = 900;
@@ -71,7 +71,7 @@ export function hidePreview() {
 
 export function showPreview(anchor) {
   const outline = anchor.dataset.outline;
-  const strokes = outline && parseOutline(outline);
+  const strokes = outline && parseBarOutline(outline);
   if (!strokes) return;
   if (!pop) build();
   if (shownFor === anchor) return;

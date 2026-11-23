@@ -3,7 +3,7 @@
 // (src/answer.rs). The tables are data/grammar.json (tools/site_data.py), the strokes are the
 // dictionary's own phrasing file.
 
-import { LEFT, RIGHT, VOWELS, formatStroke, parseStroke } from './steno.js';
+import { LEFT, RIGHT, VOWELS, formatStroke, parseBarStroke, parseStroke } from './steno.js';
 
 /** The words of a query as the grammar's texts have them: lowercase, a curly apostrophe straight,
  *  punctuation gone, `I'm`, `they're`, `I've`, `I'll` spelt out. */
@@ -76,9 +76,9 @@ export function leading(g, query) {
 
 const keyText = (ids) => formatStroke(new Set(ids));
 
-/** What a stroke is made of, as `[{ kind, keys, says }]` in the order starter, auxiliary, not, verb; null if it is not a grammar stroke. */
+/** What a stroke is made of, as `[{ kind, keys, says }]` in the order question, starter, auxiliary, not, verb; null if it is not a grammar stroke. */
 export function explain(g, stroke) {
-  const keys = parseStroke(stroke);
+  const keys = parseBarStroke(stroke);
   if (!keys || keys.has('+')) return null;
   const left = LEFT.filter((k) => keys.has(`${k}-`));
   const starter = g.starters.find(([, chord]) => chord === left.join(''));
@@ -89,7 +89,9 @@ export function explain(g, stroke) {
   const plain = vowels.filter((k) => k !== 'E').join('');
   const modal = plain ? g.modals.find((m) => m[1] === plain) : null;
   if (plain && !modal) return null;
-  const parts = [{ kind: 'starter', keys: starter[1], says: starter[0] }];
+  const parts = [];
+  if (keys.has('#')) parts.push({ kind: 'question', keys: '#', says: 'question' });
+  parts.push({ kind: 'starter', keys: starter[1], says: starter[0] });
   if (past || modal) {
     const says = modal ? (past ? modal[3] : modal[2]) : 'past';
     if (says === null) return null;
@@ -106,4 +108,4 @@ export function explain(g, stroke) {
 }
 
 /** The parts as one line: `SWR starter (I) + E auxiliary (past) + -B verb (be)`. */
-export const describe = (parts) => parts.map((p) => (p.kind === 'not' ? `${p.keys} not` : `${p.keys} ${p.kind} (${p.says})`)).join(' + ');
+export const describe = (parts) => parts.map((p) => (p.kind === 'not' ? `${p.keys} not` : p.kind === 'question' ? `${p.keys} question` : `${p.keys} ${p.kind} (${p.says})`)).join(' + ');

@@ -3299,6 +3299,44 @@ idempotent; `practice` runs it once for a file whose `filter_version` is lower t
 regresses if undone: junk words in review and new, and the practice pool shaped by what the steno
 dictionary happens to give a one-stroke outline.
 
+## Question forms: the number bar on the grammar strokes (2026-11-23)
+
+The grammar had no questions (*can you*, *is it*, *do you think*), the commonest structure in the
+author's own messages to Claude (aggregate counts, 4,546 prose messages, 146k words: *can you* is in
+9% of them; 94 question phrases would save about 1,000 strokes, 0.63%, of 160k). Every one cost two
+strokes. Choices:
+
+- **`#` on the statement's stroke, words in question order.** `KPWRA` *you can* → `#KPWRA` *can
+  you*; 3,738 questions (3,758 statements; the 20 below are kept as they are). The bar is on none of
+  the 3,758 statement strokes and none of the 3,758 `#` strokes is held by any entry, so a question
+  takes nothing from anything; the keys are the ones the typist already presses plus one.
+- **Why not a merged pair or a new key.** Of 28 two-word gaps tested (*can you*, *can i*, *do i*,
+  *did you*, *is it*, *but i*, *okay so*...), most share a key between their two words or the merged
+  stroke is held by a word (*curve* `KU`, *key* `KEU`, a backup *sit* `ST`); *can you* is also 1,506th
+  by bigram count, outside the 1,000 that may take a held stroke. Every plain key of the grammar is
+  taken (vowels, star, `E`, the verb codes); the next best, `S` and `H` on the left, are 98-99% free
+  but are starter keys, so a starter chord would read two ways.
+- **Placed last, never changing an entry.** `place_questions` runs after the merged pairs and every
+  word. A question whose text is already an entry keeps it: 20 merged pairs (*do you* `UD`, *are you*
+  `R*U`, *can we* `KWAOE`, *is there* `STHR*`...). They are the exceptions to the rule; moving them
+  onto `#` strokes is a decision about strokes the typist may know, so it waits for him. The
+  built dictionary differs from the one before only by the 3,738 added lines (0 changed, 0 removed).
+- **Do-support for the verb alone.** *have* alone is *do you have* (29 messages, against *have you*
+  15); *have been* keeps *have you been*. A spelt-out *not* goes after the starter (*shall I not*).
+- **Cost: not a convention.** The other six dictionaries in `data/dictionaries` use `#` with letter
+  keys only for 7-97 one-off briefs, never as a flag; stock Plover reads `#` with number-capable keys
+  as digits, so these strokes are lyk/keymux's. keymux types digits only for `#` plus number keys
+  alone and lets an entry win first (`src/steno/numbers.rs`); every starter chord has `K`, `W` or `R`,
+  so no question stroke is a number stroke.
+- **Savings are small on prose that is not speech.** Question entries save 1,014 strokes over 712,328
+  words of novels (0.17%), none on the 3,105-word quote set, 11 of 5,915 strokes on the extracted
+  passages; the 4,886 became 4,875.
+- **Rejected, measured:** a connector prefix (*but I*, *so I*, *if you can*; about 0.9% on the
+  author's messages) needs about six more marker keys and there is no free one; connector + *I* pairs
+  that share `U` (*but i*, *i just*) cannot merge at all. Wh-questions are two strokes (the wh-word,
+  then the question stroke). The independent port in `tools/phrasing_prototype.py` checks all 7,496
+  strokes (0 different).
+
 ## Native engine command names; `{:back}` on `PW*FP` (2026-11-22)
 
 keymux now spells its engine commands natively, so `commands.json` writes `PHRO*F` as

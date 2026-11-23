@@ -250,8 +250,8 @@
     ],
     [
      "`02-lyk-phrasing.json`",
-     "the phrasing grammar: a starter, an auxiliary and a verb in one stroke, 2 to 5 words (see [the phrasing grammar](#/ref/phrases/the-phrasing-grammar))",
-     "3,758 (`rules/grammar.toml`)"
+     "the phrasing grammar: a starter, an auxiliary and a verb in one stroke, 2 to 5 words, and each as a question with `#` (see [the phrasing grammar](#/ref/phrases/the-phrasing-grammar))",
+     "7,496: 3,758 statements and 3,738 questions (`rules/grammar.toml`)"
     ],
     [
      "`02-lyk-suffixes.json`",

@@ -102,13 +102,94 @@ fn the_dictionary_has_every_phrase_and_the_codes_read_back() {
         generated.entries.iter().filter(|e| e.origin == Origin::Grammar).map(|e| (e.word.as_str(), e.outline[0])).collect();
     let codes = codes();
     let phrases = grammar.phrases(&codes);
-    assert_eq!(own.len(), phrases.len(), "left out: {:?}", generated.grammar.unplaced);
+    let questions = grammar.questions(&codes);
+    // every statement and every question is there, except the questions a merged pair already writes
+    assert_eq!(own.len(), phrases.len() + questions.len() - generated.questions.kept.len(), "left out: {:?}", generated.grammar.unplaced);
     assert!(generated.grammar.unplaced.is_empty(), "{:?}", generated.grammar.unplaced);
+    assert!(generated.questions.unplaced.is_empty(), "{:?}", generated.questions.unplaced);
     for phrase in &phrases {
         assert_eq!(own.get(phrase.text.as_str()), Some(&phrase.stroke), "{}", phrase.text);
     }
     // a dictionary read back gives the same codes (what the lookup commands use)
     assert_eq!(grammar.codes_from(|text| own.get(text).copied()), Some(codes));
+}
+
+#[test]
+fn every_question_has_its_own_typable_stroke_and_text() {
+    let grammar = grammar();
+    let codes = codes();
+    let statements = grammar.phrases(&codes);
+    let questions = grammar.questions(&codes);
+    assert_eq!(questions.len(), statements.len());
+    let bar = stroke_of("#").0;
+    let mut strokes: HashMap<Stroke, &str> = statements.iter().map(|p| (p.stroke, p.text.as_str())).collect();
+    let mut texts: HashMap<&str, Stroke> = statements.iter().map(|p| (p.text.as_str(), p.stroke)).collect();
+    for (statement, question) in statements.iter().zip(&questions) {
+        // the same stroke with the number bar down, in no statement's keys
+        assert_eq!(question.stroke.0, statement.stroke.0 | bar, "{}", question.text);
+        assert_eq!(statement.stroke.0 & bar, 0, "{}", statement.text);
+        assert!(question.stroke.typable(), "{} is not typable", question.text);
+        assert!(strokes.insert(question.stroke, &question.text).is_none(), "{} shares a stroke", question.text);
+        assert!(texts.insert(&question.text, question.stroke).is_none(), "{} is also another phrase's text", question.text);
+        assert_eq!(question.parts[0].kind, PartKind::Question);
+        let bits = question.parts.iter().fold(0, |bits, part| bits | stroke_of(&part.keys).0);
+        assert_eq!(bits, question.stroke.0, "{}", question.text);
+    }
+}
+
+#[test]
+fn the_questions_read_in_question_order() {
+    let grammar = grammar();
+    let codes = codes();
+    for (stroke, text) in [
+        ("#KPWRA", "can you"),
+        ("#KPWRAE", "could you"),
+        ("#KPWR", "do you"),
+        ("#KPWR*E", "didn't you"),
+        ("#KPWR-PBG", "do you think"),
+        ("#KPWR*PBG", "don't you think"),
+        ("#KPWH-B", "is it"),
+        ("#KPWH*B", "isn't it"),
+        ("#SWR-B", "am I"),
+        ("#SWR*B", "am I not"),
+        ("#SWR-F", "do I have"),
+        ("#SWR-FB", "have I been"),
+        ("#SWRA*EFB", "couldn't I have been"),
+        ("#SWR*U", "shall I not"),
+        ("#STWH-F", "does he have"),
+        ("#STHR-B", "is there"),
+        ("#STHR-FB", "has there been"),
+        ("#TWR-S", "do we say"),
+        ("#STWHR*EG", "didn't they go"),
+    ] {
+        let found = grammar.questions(&codes).into_iter().find(|p| p.stroke == stroke_of(stroke)).map(|p| p.text);
+        assert_eq!(found.as_deref(), Some(text.to_lowercase().as_str()), "{stroke}");
+    }
+}
+
+#[test]
+fn a_question_never_changes_an_entry_the_dictionary_already_has() {
+    let generated = dictionary_fixture::generated();
+    let questions = grammar().questions(&codes());
+    let others: HashMap<&str, Stroke> =
+        generated.entries.iter().filter(|e| e.origin != Origin::Grammar).filter_map(|e| Some((e.word.as_str(), *e.outline.first()?))).collect();
+    // a question the dictionary already writes keeps its entry (`do you`, `are you`) and is listed
+    let kept: Vec<&str> = generated.questions.kept.iter().map(|(t, _)| t.as_str()).collect();
+    assert!(kept.len() >= 20, "{kept:?}");
+    for text in &kept {
+        assert!(others.contains_key(text), "{text} is kept but is not an entry");
+        assert!(!generated.entries.iter().any(|e| e.origin == Origin::Grammar && e.word == *text), "{text} is written twice");
+    }
+    // every other question is a grammar entry, and its stroke is held by no other entry
+    let mut held: HashMap<Stroke, usize> = HashMap::new();
+    for e in &generated.entries {
+        if let [stroke] = e.outline[..] {
+            *held.entry(stroke).or_default() += 1;
+        }
+    }
+    for q in questions.iter().filter(|q| !kept.contains(&q.text.as_str())) {
+        assert_eq!(held.get(&q.stroke), Some(&1), "{} {}", q.text, render_outline(&[q.stroke]));
+    }
 }
 
 #[test]

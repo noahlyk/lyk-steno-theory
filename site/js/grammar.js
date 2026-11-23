@@ -7,7 +7,7 @@
 import { createBoard } from './board.js';
 import { el } from './dom.js';
 import { chip } from './lesson.js';
-import { parseOutline } from './steno.js';
+import { parseBarStroke } from './steno.js';
 import { grammar } from './data.js';
 
 const beForm = (person, past, neg) => {
@@ -26,8 +26,41 @@ export function auxChoices(g) {
   return out;
 }
 
-/** The English a choice writes, or null where the grammar writes nothing. `verb` is null, a base verb, or be/have/have been. */
-export function phraseText(g, who, modalKeys, past, neg, verb) {
+/** The English a choice writes, or null where the grammar writes nothing. `verb` is null, a base verb, or be/have/have been.
+ *  `question` writes it in question order (the number bar down): `can you`, `isn't it`, `do you think`. */
+export function phraseText(g, who, modalKeys, past, neg, verb, question = false) {
+  return question ? questionText(g, who, modalKeys, past, neg, verb) : statementText(g, who, modalKeys, past, neg, verb);
+}
+
+/** `shall not` and `am not` split around the starter: `shall I not`, `am I not`; everything else leads: `isn't it`. */
+const around = (aux, subject) => (aux.endsWith(' not') ? `${aux.slice(0, -4)} ${subject} not` : `${aux} ${subject}`);
+
+/** The question form of a choice: only an auxiliary opens a question, so the verb alone takes do (`do you have`,
+ *  `did he say`) and have been keeps its own have (`have you been`). Mirrors `Build::question_words` in src/phrases/grammar.rs. */
+function questionText(g, who, modalKeys, past, neg, verb) {
+  const [subject, , person] = who;
+  const third = person === '3s';
+  const modal = g.modals.find((m) => m[1] === modalKeys) ?? null;
+  if (modal && past && modal[3] === null) return null;
+  if (subject === 'there' && verb && !['be', 'have been'].includes(verb)) return null;
+  if (modal) {
+    const aux = neg ? (past ? modal[5] : modal[4]) : (past ? modal[3] : modal[2]);
+    return [around(aux, subject), ...(verb ? [verb] : [])].join(' ');
+  }
+  const d = past ? 'did' : third ? 'does' : 'do';
+  const does = around(neg ? `${d}n't` : d, subject);
+  if (!verb) return subject === 'there' ? null : does;
+  if (verb === 'be') return around(beForm(person, past, neg), subject);
+  if (verb === 'have') return `${does} have`;
+  if (verb === 'have been') {
+    const h = past ? 'had' : third ? 'has' : 'have';
+    return `${around(neg ? `${h}n't` : h, subject)} been`;
+  }
+  const [base] = g.verbs.find((v) => v[0] === verb);
+  return `${does} ${base}`;
+}
+
+function statementText(g, who, modalKeys, past, neg, verb) {
   const [subject, , person] = who;
   const third = person === '3s';
   const modal = g.modals.find((m) => m[1] === modalKeys) ?? null; // [name, keys, pres, past, negPres, negPast]
@@ -67,26 +100,28 @@ export function grammarComposer() {
     const [auxS] = sel('auxiliary', aux.map((a, i) => [i, a[2]]), 1);
     const [verbS] = sel('verb', verbs, 1);
     const notB = el('input', { type: 'checkbox', id: 'gc-not' });
+    const askB = el('input', { type: 'checkbox', id: 'gc-ask' });
     const out = el('div', { class: 'gcomp__out', 'aria-live': 'polite' });
     const boardHost = el('div');
     const board = createBoard(boardHost, { compact: true });
     const lab = (t, n) => el('label', { class: 'gcomp__pick' }, el('span', {}, t), n);
     box.append(
       el('div', { class: 'gcomp__row' }, lab('Starter', whoS), lab('Auxiliary', auxS), lab('Verb', verbS),
-        el('label', { class: 'gcomp__pick gcomp__not' }, notB, el('span', {}, ' not (*)'))),
+        el('label', { class: 'gcomp__pick gcomp__not' }, notB, el('span', {}, ' not (*)')),
+        el('label', { class: 'gcomp__pick gcomp__not' }, askB, el('span', {}, ` question (${g.question})`))),
       out, el('div', { class: 'boardbox__scroll' }, boardHost),
       el('p', { class: 'boardbox__hint' }, 'The board shows the keys; nothing on it is clickable. Every stroke the composer makes is a dictionary entry.'));
     const run = () => {
       const who = g.starters[Number(whoS.value)];
       const [keys, past] = aux[Number(auxS.value)];
       const verb = verbs[Number(verbS.value)][0];
-      const text = phraseText(g, who, keys, past, notB.checked, verb);
-      const stroke = text ? g.entries[text] : null;
+      const text = phraseText(g, who, keys, past, notB.checked, verb, askB.checked);
+      const stroke = text ? (g.entries[text] ?? g.merged[text] ?? null) : null;
       out.replaceChildren(...(stroke ? [...chip(`${text}|${stroke}`)] : [el('span', { class: 'word' }, 'the grammar writes nothing here')]));
-      const parsed = stroke ? parseOutline(stroke) : null;
-      if (parsed) board.show(parsed[0]); else board.clear();
+      const parsed = stroke ? parseBarStroke(stroke) : null;
+      if (parsed) board.show(parsed); else board.clear();
     };
-    for (const n of [whoS, auxS, verbS, notB]) n.addEventListener('change', run);
+    for (const n of [whoS, auxS, verbS, notB, askB]) n.addEventListener('change', run);
     run();
   });
   return box;

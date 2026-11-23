@@ -7,7 +7,7 @@ import { outlineEl } from './outline.js';
 import { el } from './dom.js';
 import { whenActive } from './input.js';
 import { dictionary } from './data.js';
-import { formatStroke, parseOutline } from './steno.js';
+import { formatStroke, parseBarOutline } from './steno.js';
 import { grammarComposer } from './grammar.js';
 
 const TOKEN = /\[\[(.+?)\]\]|`(.+?)`|\*\*(.+?)\*\*|\{\{(.+?)\}\}|\[([^\]]+)\]\(((?:https?:\/\/|#\/)[^)\s]+)\)|\*([^*\s`[][^*`[]*?)\*/g;
@@ -39,7 +39,7 @@ export function chip(spec, { styled = false } = {}) {
   const word = bar < 0 ? null : spec.slice(0, bar);
   const outline = bar < 0 ? spec : spec.slice(bar + 1);
   // the hover board (popover.js) reads data-outline; an outline that is not a stroke has none
-  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseOutline(outline) ? outline : null },
+  const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseBarOutline(outline) ? outline : null },
     styled ? outlineEl(outline) : outline);
   return word ? [el('span', { class: 'word' }, word), ' ', node] : [node];
 }

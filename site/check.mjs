@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import * as P from './js/trainer.js';
 import { needsHyphen } from './js/steno.js';
 import { decodeReport, REPORT_ID } from './js/hid.js';
-import { formatStroke, parseOutline, parseStroke } from './js/steno.js';
+import { formatStroke, parseBarOutline, parseOutline, parseStroke } from './js/steno.js';
 import { auxChoices, phraseText } from './js/grammar.js';
 import { describe, explain, leading, tokens } from './js/phrasing.js';
 
@@ -39,7 +39,7 @@ let strokes = 0;
 
 function claim(where, word, outline) {
   strokes += 1;
-  if (!parseOutline(outline)) fail(`${where}: not a valid outline: ${outline}`);
+  if (!parseBarOutline(outline)) fail(`${where}: not a valid outline: ${outline}`);
   if (word && words[word] && !words[word].includes(outline)) {
     // the lookup keeps the fastest few outlines; the full check is tools/site_data.py
   } else if (word && !words[word]) fail(`${where}: ${word} is not in data/words.json`);
@@ -126,10 +126,11 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   const reached = new Set();
   const noneWithNo = [];
   const verbs = [null, ...grammar.special.map((s) => s[0]), ...grammar.verbs.map((v) => v[0])];
-  for (const who of grammar.starters) for (const [keys, past] of auxChoices(grammar)) for (const neg of [false, true]) for (const verb of verbs) {
-    const text = phraseText(grammar, who, keys, past, neg, verb);
+  for (const who of grammar.starters) for (const [keys, past] of auxChoices(grammar)) for (const neg of [false, true]) for (const verb of verbs) for (const ask of [false, true]) {
+    const text = phraseText(grammar, who, keys, past, neg, verb, ask);
     if (text === null) continue;
-    if (!(text in grammar.entries)) fail(`grammar: the composer writes "${text}" but the dictionary has no stroke for it`);
+    // a question a merged pair already writes (`do you`) is that entry, not a grammar stroke
+    if (!(text in grammar.entries) && !(text in grammar.merged)) fail(`grammar: the composer writes "${text}" but the dictionary has no stroke for it`);
     reached.add(text);
   }
   for (const text of Object.keys(grammar.entries)) if (!reached.has(text)) noneWithNo.push(text);
@@ -154,6 +155,10 @@ for (const id of refListed.filter((i) => refFiles.includes(i))) {
   same("I'm going home", 'I am', 2);
   same('She has been going', 'she has been', 3);
   if (describe(explain(grammar, 'SWRAB')) !== 'SWR starter (I) + A auxiliary (can) + -B verb (be)') fail(`phrasing: SWRAB is ${describe(explain(grammar, 'SWRAB'))}`);
+  if (describe(explain(grammar, '#KPWRA')) !== '# question + KPWR starter (you) + A auxiliary (can)') fail(`phrasing: #KPWRA is ${describe(explain(grammar, '#KPWRA') ?? [])}`);
+  if (grammar.entries['can you'] !== '#KPWRA' || grammar.entries["isn't it"] !== '#KPWH*B' || grammar.merged['do you'] !== 'UD') fail('phrasing: a question has the wrong stroke');
+  same('can you make it', 'can you make', 3);
+  same("isn't it", "isn't it", 2);
   if (describe(explain(grammar, 'SWRA*EFB')) !== 'SWR starter (I) + AE auxiliary (could) + * not + -FB verb (have been)') fail('phrasing: SWRA*EFB is explained wrongly');
   if (explain(grammar, 'KAT') !== null || explain(grammar, '-B') !== null) fail('phrasing: a stroke that is not the grammar\'s is explained');
   if (tokens("It's \"fine\"").join(' ') !== "it's fine") fail('phrasing: tokens');

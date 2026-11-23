@@ -236,11 +236,11 @@ def main():
     with open(os.path.join(SITE, 'data', 'chart.json'), 'w') as f:
         json.dump(chart, f, indent=1)
     print('chart.json written')
-    write_grammar(grammar)
+    write_grammar(grammar, files.get('phrases', {}))
     sys.exit(1 if bad else 0)
 
 
-def write_grammar(grammar):
+def write_grammar(grammar, merged_pairs):
     """site/data/grammar.json: the grammar's parts (`rules/grammar.toml`), the verb codes the built dictionary
     has, and every stroke it writes, for the composer and the lookup."""
     table = tomllib.load(open(path('rules', 'grammar.toml'), 'rb'))
@@ -255,6 +255,21 @@ def write_grammar(grammar):
         assert stroke.startswith(first_chord + '-'), (text, stroke)
         return stroke[len(first_chord):]
 
+    # A question the grammar leaves to a merged pair (`do you`, `are you`) keeps that outline: the composer
+    # shows it from here. Only texts that read as a question (an auxiliary, then a starter) are kept.
+    starter_words = {w.lower() for w, _, _ in starters}
+    aux_words = set()
+    for m in table['modal']:
+        aux_words |= {w.split()[0] for w in (m['present'], m.get('past'), m['negative'], m.get('past_negative')) if w}
+    for form in ('present', 'present_negative', 'past', 'past_negative'):
+        aux_words |= {w.split()[0] for w in table['be'][form].values()}
+    for aux in (table['have'], table['do']):
+        aux_words |= {aux['base'], aux['third'], aux['past']} | {w + aux['negative'] for w in (aux['base'], aux['third'], aux['past'])}
+    merged = {}
+    for outline, text in merged_pairs.items():
+        words = text.lower().split()
+        if len(words) >= 2 and words[0] in aux_words and words[1] in starter_words and text not in grammar:
+            merged[text] = outline
     third = first_person == '3s'
     have = table['have']
     verbs = [[v['base'], v['third'], v['past'], code(v['third'] if third else v['base'])] for v in table['verb']]
@@ -266,10 +281,12 @@ def write_grammar(grammar):
         'special': [['be', be], ['have', code(have['third'] if third else have['base'])],
                     ['have been', code((have['third'] if third else have['base']) + ' been')]],
         'entries': dict(sorted(grammar.items())),
+        'question': table['question'],
+        'merged': dict(sorted(merged.items())),
     }
     with open(os.path.join(SITE, 'data', 'grammar.json'), 'w') as f:
         json.dump(data, f, separators=(',', ':'))
-    print(f'grammar.json: {len(grammar)} strokes')
+    print(f'grammar.json: {len(grammar)} strokes ({sum(1 for o in grammar.values() if o.startswith(table["question"]))} questions), {len(merged)} merged pairs read as questions')
 
 
 if __name__ == '__main__':

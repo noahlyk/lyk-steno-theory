@@ -174,7 +174,7 @@
   },
   {
    "t": "p",
-   "x": "Current build: 7,213 merged and borrowed phrase entries (`02-lyk-phrases.json`) and 3,758 grammar phrases (`02-lyk-phrasing.json`). 87 merged phrases took a stroke from a rarer word. A merge joins two strokes you know into one: *in the* is the stroke for *in* plus the stroke for *the*."
+   "x": "Current build: 7,213 merged and borrowed phrase entries (`02-lyk-phrases.json`) and 7,496 grammar phrases (`02-lyk-phrasing.json`): 3,758 statements and 3,738 questions. 87 merged phrases took a stroke from a rarer word. A merge joins two strokes you know into one: *in the* is the stroke for *in* plus the stroke for *the*."
   },
   {
    "t": "h",
@@ -216,7 +216,7 @@
   },
   {
    "t": "p",
-   "x": "One stroke writes a **starter** (who), an **auxiliary** (when, which modal, not) and a **verb**, each on its own region of the board, so no combination overlaps another: [[I was|SWREB]], [[they wouldn't|STWHRO*E]], [[she has been|SKWH-FB]]. 8 starters, 5 modals, 3 special verbs and 20 verbs (about 36 parts) give **3,758 phrases**, all written to `02-lyk-phrasing.json` by `src/phrases/grammar.rs` from the tables in `rules/grammar.toml`."
+   "x": "One stroke writes a **starter** (who), an **auxiliary** (when, which modal, not) and a **verb**, each on its own region of the board, so no combination overlaps another: [[I was|SWREB]], [[they wouldn't|STWHRO*E]], [[she has been|SKWH-FB]]. 8 starters, 5 modals, 3 special verbs and 20 verbs (about 36 parts) give **3,758 phrases**, all written to `02-lyk-phrasing.json` by `src/phrases/grammar.rs` from the tables in `rules/grammar.toml`. The same stroke with `#` is the phrase as a question ([Questions](#/ref/phrases/questions))."
   },
   {
    "t": "h3",
@@ -508,6 +508,131 @@
   },
   {
    "t": "h3",
+   "x": "Questions"
+  },
+  {
+   "t": "p",
+   "x": "The same stroke with the **number bar `#`** down writes the phrase in question order: the auxiliary first, the starter second. [[can you|#KPWRA]] is [[you can|KPWRA]] plus `#`. One key and one rule for every phrase of the grammar: 3,738 questions beside the 3,758 statements. `#` is on none of the statement strokes, so a question never takes a stroke from anything; they are placed after the merged pairs and every word (`phrases::grammar::place_questions`)."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Statement",
+    "With `#` (question)"
+   ],
+   "rows": [
+    [
+     "[[you can|KPWRA]]",
+     "[[can you|#KPWRA]]"
+    ],
+    [
+     "[[it is|KPWH-B]]",
+     "[[is it|#KPWH-B]]"
+    ],
+    [
+     "[[it isn't|KPWH*B]]",
+     "[[isn't it|#KPWH*B]]"
+    ],
+    [
+     "[[you think|KPWR-PBG]]",
+     "[[do you think|#KPWR-PBG]]"
+    ],
+    [
+     "[[you don't think|KPWR*PBG]]",
+     "[[don't you think|#KPWR*PBG]]"
+    ],
+    [
+     "[[I am not|SWR*B]]",
+     "[[am I not|#SWR*B]]"
+    ],
+    [
+     "[[I have|SWR-F]]",
+     "[[do I have|#SWR-F]]"
+    ],
+    [
+     "[[I have been|SWR-FB]]",
+     "[[have I been|#SWR-FB]]"
+    ],
+    [
+     "[[he said|STWHES]]",
+     "[[did he say|#STWHES]]"
+    ],
+    [
+     "[[I couldn't have been|SWRA*EFB]]",
+     "[[couldn't I have been|#SWRA*EFB]]"
+    ],
+    [
+     "[[there has been|STHR-FB]]",
+     "[[has there been|#STHR-FB]]"
+    ],
+    [
+     "[[I shall not|SWR*U]]",
+     "[[shall I not|#SWR*U]]"
+    ]
+   ]
+  },
+  {
+   "t": "list",
+   "items": [
+    "**A modal or *be* leads**: *can you*, *couldn't you*, *is it*, *were they*. A spelt-out *not* goes after the starter: *shall I not*, *am I not*, *may he not*.",
+    "***have been* keeps its *have***: *have you been*, *hasn't he been*, *has there been*.",
+    "**Everything else takes *do***: the verb alone (*do you*, *did he*), *have* (*do I have*, *didn't he have*) and every lexical verb (*do you think*, *did he say*, *don't you know*). The tense is *do* / *does* / *did*, and the star is *don't* / *doesn't* / *didn't*.",
+    "**The keys are the statement's**: starter, vowels, star and verb code unchanged, plus `#`. *there* takes the same verbs as in a statement (*be*, *have been*, the modals).",
+    "**wh-questions** (*what do you think*, *how do I*) are two strokes: the wh-word, then the question stroke. A tag question (*you can, can't you?*) is two phrases.",
+    "**Not portable to stock Plover**, which reads `#` with number-capable keys as digits. keymux types digits only for `#` plus number keys alone (`S T P H A O -F -P -L -T`), and a dictionary entry always wins first. Every starter chord has a key that is not a number key (`K`, `W` or `R`), so no question stroke is a number stroke."
+   ]
+  },
+  {
+   "t": "h3",
+   "x": "Questions that keep their merged pair"
+  },
+  {
+   "t": "p",
+   "x": "A question whose text the dictionary already writes keeps that outline, and gets no `#` stroke: no stroke you may already know changes. These 20 are the exceptions to the rule above, each a merged pair of two words' own strokes ([phrases compete for strokes](#/ref/phrases/phrases-compete-for-strokes)):"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Question",
+    "Question",
+    "Question",
+    "Question"
+   ],
+   "rows": [
+    [
+     "[[do you|UD]]",
+     "[[are you|R*U]]",
+     "[[were you|WRU]]",
+     "[[would you|WAO*U]]"
+    ],
+    [
+     "[[should you|SH*U]]",
+     "[[does he|STKAO*E]]",
+     "[[did he|TKE]]",
+     "[[does it|STKW-T]]"
+    ],
+    [
+     "[[did it|T*D]]",
+     "[[was it|T-Z]]",
+     "[[would it|WAO*T]]",
+     "[[do we|TKWAOE]]"
+    ],
+    [
+     "[[are we|WRE]]",
+     "[[can we|KWAOE]]",
+     "[[should we|SWHOE]]",
+     "[[do they|THED]]"
+    ],
+    [
+     "[[are they|TWHUB]]",
+     "[[did they|TH*ED]]",
+     "[[is there|STHR*]]",
+     "[[was there|THR-Z]]"
+    ]
+   ]
+  },
+  {
+   "t": "h3",
    "x": "Where the grammar is placed"
   },
   {
@@ -515,6 +640,7 @@
    "items": [
     "**Before any word settles**, like the standalone suffixes: after the reserved strokes, the suffixes, the pronoun *I* and every hand-written `[word]` outline in `rules/briefs.toml`, and before the words' own candidates compete. The words never see a starter stroke as free.",
     "**A held stroke is never taken.** A stroke already held by a reserved entry, a suffix or a hand-written brief leaves its phrase out (none does: all 3,758 are placed); `lyk build --report` lists any phrase left out and what holds its stroke. A word whose own candidates land on a grammar stroke has not got it yet, so it settles on its next outline.",
+    "**The questions come last.** `place_questions` runs after the merged pairs and every word: the number bar is free on all 3,758 strokes, so none takes anything, and a text that is already an entry (a merged pair such as [[do you|UD]]) is left as it is.",
     "**The words that moved.** 122 words changed an outline that is not a backup; of the 5,000 commonest only [[pity|P*EUTD]] (was `KPWR`) and [[impress|EUPL/+PRES]] (was `KPWRES`) changed their primary. Every word keeps an outline; the weighted keys per stroke is unchanged (3.252).",
     "**Merged pairs leave these texts to the grammar.** A pair the grammar writes (*it is*, *I was*, *he could*) gets no merged stroke; 149 merged phrases that wrote one of its texts were dropped, so *it is* is [[it is|KPWH-B]], not `ST`.",
     "A grammar phrase is never taken by a merged pair or a borrowed phrase, and is not a stem the stroke read-back continues."
@@ -540,7 +666,7 @@
   {
    "t": "list",
    "items": [
-    "Questions (*do you*, *are you*, *can I*): the starter after the auxiliary.",
+    "*what*, *how*, *why* inside one stroke (the wh-word is its own stroke, then the question).",
     "*that*, *this*, *what*, *who* as starters; contracted positives (*I'm*, *it's*); other verbs."
    ]
   },
@@ -562,7 +688,7 @@
   },
   {
    "t": "p",
-   "x": "Quote benchmark, merged phrases and grammar together: the phrase-aware walk uses 974 strokes on the 103 hand-picked passages (1,225 word by word) and 4,886 on the 416 extracted ones (5,915): about 20% and 17% fewer. On running prose (five novels, 712,328 words) the grammar saves 1.6% of strokes over the merged phrases alone; passages of speech and messages have more *I*, *you* and *it* pairs per word."
+   "x": "Quote benchmark, merged phrases and grammar together: the phrase-aware walk uses 974 strokes on the 103 hand-picked passages (1,225 word by word) and 4,875 on the 416 extracted ones (5,915): about 20% and 18% fewer. On running prose (five novels, 712,328 words) the grammar saves 1.6% of strokes over the merged phrases alone; passages of speech and messages have more *I*, *you* and *it* pairs per word. The question forms alone save 1,014 strokes on the novels (0.17%) and none on the 3,105 words of the unextracted quote set: they matter for speech and messages, not for narration."
   },
   {
    "t": "p",

@@ -14,7 +14,7 @@
     {
       "t": "note",
       "kind": "rule",
-      "x": "**In the dictionary.** All 3,758 phrases are entries of `02-lyk-phrasing.json`, built from `rules/grammar.toml` and deployed with the rest. Lookup finds them by text (`I was`) or stroke (`SWRAB`). Full rules: [the phrasing grammar](#/ref/phrases/the-phrasing-grammar)."
+      "x": "**In the dictionary.** All 3,758 phrases, and the same strokes with `#` as questions (3,738 more), are entries of `02-lyk-phrasing.json`, built from `rules/grammar.toml` and deployed with the rest. Lookup finds them by text (`I was`) or stroke (`SWRAB`). Full rules: [the phrasing grammar](#/ref/phrases/the-phrasing-grammar)."
     },
     {
       "t": "grammar"

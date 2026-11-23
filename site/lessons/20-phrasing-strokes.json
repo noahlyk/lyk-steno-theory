@@ -74,6 +74,58 @@
     },
     {
       "t": "h",
+      "x": "Questions: add the number bar"
+    },
+    {
+      "t": "p",
+      "x": "Hold `#` (the number bar) with any phrase and it comes out as a question: the auxiliary first, then the starter. [[you can|KPWRA]] is *you can*; [[can you|#KPWRA]] is the same stroke plus `#`. Nothing else changes: starter, vowels, star and verb are where they were."
+    },
+    {
+      "t": "table",
+      "head": [
+        "Say",
+        "Stroke",
+        "Is the statement plus `#`"
+      ],
+      "rows": [
+        [
+          "[[can you|#KPWRA]]",
+          "`#KPWRA`",
+          "[[you can|KPWRA]]"
+        ],
+        [
+          "[[is it|#KPWH-B]]",
+          "`#KPWH-B`",
+          "[[it is|KPWH-B]]"
+        ],
+        [
+          "[[isn't it|#KPWH*B]]",
+          "`#KPWH*B`",
+          "[[it isn't|KPWH*B]]"
+        ],
+        [
+          "[[do you think|#KPWR-PBG]]",
+          "`#KPWR-PBG`",
+          "[[you think|KPWR-PBG]]"
+        ],
+        [
+          "[[have I been|#SWR-FB]]",
+          "`#SWR-FB`",
+          "[[I have been|SWR-FB]]"
+        ],
+        [
+          "[[did he say|#STWHES]]",
+          "`#STWHES`",
+          "[[he said|STWHES]]"
+        ]
+      ]
+    },
+    {
+      "t": "p",
+      "x": "Only an auxiliary can open a question, so a plain verb takes *do*: *you think* becomes *do you think*, *he said* becomes *did he say*, *I have* becomes *do I have*. *have been* keeps its *have* (*have I been*). Twenty common questions already have their own stroke and keep it: [[do you|UD]], [[are you|R*U]], [[can we|KWAOE]], [[is there|STHR*]]. *what*, *how* and *why* are their own stroke, then the question: two strokes. Details and the full list: [questions](#/ref/phrases/questions)."
+    },
+    {
+      "t": "h",
       "x": "There"
     },
     {
@@ -86,7 +138,7 @@
     },
     {
       "t": "p",
-      "x": "The generator fixes the grammar's 3,758 strokes before any word settles, as it does the suffix strokes, so every one is placed and a word whose own candidates landed on one took its next outline: 122 words changed an outline, and of the 5,000 commonest only {{pity}} and {{impress}} moved their primary. The merged two-word phrases leave the texts the grammar writes to it (*it is* is [[it is|KPWH-B]]). Every word keeps an outline."
+      "x": "The generator fixes the grammar's 3,758 strokes before any word settles, as it does the suffix strokes, so every one is placed and a word whose own candidates landed on one took its next outline: 122 words changed an outline, and of the 5,000 commonest only {{pity}} and {{impress}} moved their primary. The merged two-word phrases leave the texts the grammar writes to it (*it is* is [[it is|KPWH-B]]). Every word keeps an outline. The 3,738 question strokes (`#` plus a statement's keys) are placed last, after the merged pairs and every word: the bar is free on all of them and a question that already has an entry keeps it."
     },
     {
       "t": "h",
@@ -117,7 +169,7 @@
     },
     {
       "t": "p",
-      "x": "Measured by `python3 tools/phrasing_prototype.py --savings BEFORE` against a build made without the grammar, the merged two-word phrases counted in both. The novels are third-person past narration; everyday first- and second-person present typing has more of these pairs per word, so this undercounts: the extracted quote passages of the test corpus, which are speech, spend 17% fewer strokes with phrases and grammar than word by word."
+      "x": "Measured by `python3 tools/phrasing_prototype.py --savings BEFORE` against a build made without the grammar, the merged two-word phrases counted in both. The novels are third-person past narration; everyday first- and second-person present typing has more of these pairs per word, so this undercounts: the extracted quote passages of the test corpus, which are speech, spend 17% fewer strokes with phrases and grammar than word by word. The question forms add a little on top: 1,014 fewer strokes on the novels (0.17%), none on these quote passages. They pay off in speech and messages (*can you* is in about one message in eleven of the author's), not in narration."
     },
     {
       "t": "h",
@@ -138,7 +190,7 @@
     {
       "t": "list",
       "items": [
-        "Questions: *do you*, *are you*, *can I* (the starter after the auxiliary).",
+        "*what*, *how*, *why* inside one stroke: they are their own stroke, then the question.",
         "*that*, *this*, *what*, *who* as starters.",
         "*I'm* and *it's*: contracted positives.",
         "More verbs, chosen by measured gain."

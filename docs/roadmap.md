@@ -15,7 +15,7 @@ what shipped and why is in [`decisions.md`](decisions.md); per-task plans in
   rule codas.
 - **Compound suffix strokes** (low priority). One continuation stroke for a common suffix pair
   (`-er`+`-s` as `-ers`). The join key already makes single suffixes cheap, so the win is small.
-- **Phrasing grammar.** Questions (starter after the auxiliary), more starters (*that*, *this*,
+- **Phrasing grammar.** More starters (*that*, *this*,
   *what*, *who*), contracted positives, more verbs ([phrases](https://noahlyk.github.io/lyk-steno-theory/#/ref/phrases), "Not covered by the grammar"). Waits on typing the built grammar.
 - **Homophones and reduced vowels.** The long tail needs deliberate rules, not per-word judgment,
   as briefs run out and the rule-generated tail grows (onyx's write-ups dropped a fully phonetic

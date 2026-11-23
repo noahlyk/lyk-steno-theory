@@ -11,6 +11,12 @@
 past = "E"
 # the key that negates the phrase
 not = "*"
+# the key that makes the phrase a question: the same stroke with the number bar down writes the
+# words in question order (`you can` -> `can you`, `it isn't` -> `isn't it`, `I think` -> `do I
+# think`). The bar is free on every one of these strokes, so a question never takes a stroke
+# from anything, and a text the dictionary already has (a merged pair such as `do you`) keeps
+# the outline it has.
+question = "#"
 # added after the first-consonant step when the code is still taken
 extra = "-Z"
 

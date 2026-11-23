@@ -61,6 +61,28 @@ export function parseStroke(text) {
   return keys;
 }
 
+/** A stroke that may carry the number bar with letter keys (`#KPWRA`, lyk's question strokes) as a Set of key ids with
+ *  `#` among them; null if it is not one. `parseStroke` itself never reads `#`: a bar stroke is the typing engine's number
+ *  or name-lane stroke, not a letter chord. */
+export function parseBarStroke(text) {
+  const t = text.trim();
+  if (!t.startsWith('#')) return parseStroke(t);
+  const rest = parseStroke(t.slice(1));
+  return rest && t.length > 1 ? new Set(['#', ...rest]) : null;
+}
+
+/** An outline whose strokes may carry the number bar (see `parseBarStroke`): the strokes as key Sets, or null. For showing an
+ *  outline (a chip, its popover); the engine and the trainers read outlines with `parseOutline`. */
+export function parseBarOutline(text) {
+  const out = [];
+  for (const part of text.split('/')) {
+    const s = parseBarStroke(part);
+    if (!s) return null;
+    out.push(s);
+  }
+  return out;
+}
+
 /** The text of a set of keys in steno order, with the hyphen only where it is needed. */
 export function formatStroke(keys) {
   const has = (id) => keys.has(id);
@@ -69,7 +91,7 @@ export function formatStroke(keys) {
   const right = RIGHT.filter((k) => has(`-${k}`)).join('');
   const hyphen = vow === '' && right !== '' ? '-' : '';
   const body = left + vow + hyphen + right;
-  return (has('+') ? '+' : '') + body;
+  return (has('+') ? '+' : '') + (has('#') ? '#' : '') + body;
 }
 
 /**
@@ -85,7 +107,7 @@ export function needsHyphen(keys) {
   const right = RIGHT.filter((k) => has(`-${k}`)).join('');
   if (right === '') return false;
   const read = parseStroke(left + right);
-  const want = new Set([...keys].filter((k) => k !== '+'));
+  const want = new Set([...keys].filter((k) => k !== '+' && k !== '#'));
   return !read || !sameKeys(read, want);
 }
 

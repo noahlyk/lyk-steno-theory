@@ -18,7 +18,7 @@ STARTERS = {
     'I': ('SWR', '1s'), 'you': ('KPWR', '2'), 'he': ('STWH', '3s'), 'she': ('SKWH', '3s'),
     'it': ('KPWH', '3s'), 'we': ('TWR', 'pl'), 'they': ('STWHR', 'pl'), 'there': ('STHR', '3s'),
 }
-PAST, NOT = 'E', '*'
+PAST, NOT, QUESTION = 'E', '*', '#'
 # modal: vowel keys, present form, past form (None: no past), negative of each
 MODALS = {
     'can': ('A', 'can', 'could', "can't", "couldn't"),
@@ -77,8 +77,37 @@ def be_form(person, past, negative):
     return word
 
 
-def entries():
-    """Every (outline, text) the grammar writes."""
+def around(aux, subject):
+    """The auxiliary and the starter in question order: `can you`; a spelt-out `not` goes after the
+    starter (`shall I not`, `am I not`)."""
+    if aux.endswith(' not'):
+        return f'{aux[:-4]} {subject} not'
+    return f'{aux} {subject}'
+
+
+def question_words(subject, person, aux, past, negative, verb, spec):
+    """The phrase as a question: the auxiliary first, then the starter. Only an auxiliary opens a
+    question, so the verb alone takes do (`do you have`, `did he say`) and have been keeps its own have."""
+    third = person == '3s'
+    if aux:
+        return around(aux, subject) + (f' {verb}' if verb else '')
+    do = 'did' if past else ('does' if third else 'do')
+    do = do + "n't" if negative else do
+    if verb is None:
+        return around(do, subject)
+    if verb == 'be':
+        return around(be_form(person, past, negative), subject)
+    if verb == 'have':
+        return around(do, subject) + ' have'
+    if verb == 'have been':
+        hv = 'had' if past else ('has' if third else 'have')
+        return around(hv + "n't" if negative else hv, subject) + ' been'
+    return around(do, subject) + f' {verb}'
+
+
+def entries(questions=False):
+    """Every (outline, text) the grammar writes: its statements, or with `questions` the same strokes
+    with the number bar down and the words in question order."""
     out = {}
     for subject, (left, person) in STARTERS.items():
         third = person == '3s'
@@ -119,7 +148,10 @@ def entries():
                                 words = [subject, do, base]
                             else:
                                 words = [subject, ed if past else (s3 if third else base)]
-                        out[chord(left, middle, code)] = ' '.join(words)
+                        if questions:
+                            out[QUESTION + chord(left, middle, code)] = question_words(subject, person, aux, past, negative, verb, spec)
+                        else:
+                            out[chord(left, middle, code)] = ' '.join(words)
     return out
 
 
@@ -131,12 +163,17 @@ def cross_check(directory):
     built = json.load(open(os.path.join(directory, '02-lyk-phrasing.json')))
     spec = entries()
     assert len(set(spec.values())) == len(spec), 'two strokes write the same phrase'
+    # a question a merged pair already writes (`do you`, `are you`) keeps that entry and is not a grammar stroke
+    merged = {t.lower() for t in json.load(open(os.path.join(directory, '02-lyk-phrases.json'))).values()}
+    asked = {o: t for o, t in entries(questions=True).items() if t.lower() not in merged}
+    assert len(set(asked.values())) == len(asked) and not set(asked.values()) & set(spec.values()), 'a question reads as another phrase'
+    spec.update(asked)
     bad = 0
     for outline in sorted(set(spec) | set(built)):
         if spec.get(outline) != built.get(outline):
             bad += 1
             print(f'  {outline}: prototype {spec.get(outline)!r}, generator {built.get(outline)!r}')
-    print(f'{len(spec)} prototype strokes, {len(built)} generator strokes, {bad} different')
+    print(f'{len(spec)} prototype strokes ({len(asked)} questions), {len(built)} generator strokes, {bad} different')
     return bad
 
 

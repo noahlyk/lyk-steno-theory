@@ -20,6 +20,8 @@ const BUILT_IN: &str = include_str!("../../rules/grammar.toml");
 /// Which part of the stroke says a piece of the phrase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PartKind {
+    /// The number bar: the words are in question order
+    Question,
     /// The left bank: who
     Starter,
     /// The vowels: which modal, and `E` for the past
@@ -33,6 +35,7 @@ pub enum PartKind {
 impl PartKind {
     pub const fn name(self) -> &'static str {
         match self {
+            Self::Question => "question",
             Self::Starter => "starter",
             Self::Auxiliary => "auxiliary",
             Self::Not => "not",
@@ -108,6 +111,7 @@ struct Verb {
 struct Tables {
     past: String,
     not: String,
+    question: String,
     extra: String,
     starter: Vec<Starter>,
     modal: Vec<Modal>,
@@ -168,6 +172,8 @@ fn keys_text(bits: u32) -> String {
 struct Build<'a> {
     g: &'a Grammar,
     codes: &'a Codes,
+    /// Write each phrase as a question (the number bar down, the words in question order)
+    question: bool,
     out: Vec<Phrase>,
 }
 
@@ -239,7 +245,18 @@ impl Grammar {
 
     /// Every phrase the grammar writes, in the order of the tables.
     pub fn phrases(&self, codes: &Codes) -> Vec<Phrase> {
-        let mut build = Build { g: self, codes, out: Vec::new() };
+        let mut build = Build { g: self, codes, question: false, out: Vec::new() };
+        for starter in &self.t.starter {
+            build.starter(starter);
+        }
+        build.out
+    }
+
+    /// The question form of every phrase: the same stroke with the number bar down, the words in
+    /// question order (`can you`, `isn't it`, `do I think`). One for each of [`Self::phrases`], in
+    /// the same order.
+    pub fn questions(&self, codes: &Codes) -> Vec<Phrase> {
+        let mut build = Build { g: self, codes, question: true, out: Vec::new() };
         for starter in &self.t.starter {
             build.starter(starter);
         }
@@ -273,7 +290,12 @@ impl Phrasing {
         }
         let grammar = Grammar::built_in().ok()?;
         let codes = grammar.codes_from(|text| own.get(text).copied())?;
-        let phrases: Vec<Phrase> = grammar.phrases(&codes).into_iter().filter(|p| own.get(p.text.as_str()) == Some(&p.stroke)).collect();
+        let phrases: Vec<Phrase> = grammar
+            .phrases(&codes)
+            .into_iter()
+            .chain(grammar.questions(&codes))
+            .filter(|p| own.get(p.text.as_str()) == Some(&p.stroke))
+            .collect();
         let by_text = phrases.iter().enumerate().map(|(i, p)| (p.text.clone(), i)).collect();
         let by_stroke = phrases.iter().enumerate().map(|(i, p)| (p.stroke, i)).collect();
         Some(Self { phrases, by_text, by_stroke })
@@ -341,7 +363,13 @@ impl Build<'_> {
                         if !starter.only.is_empty() && slot == Slot::None && modal.is_none() {
                             continue;
                         }
-                        let Some(words) = self.words(starter, third, modal, past, negative, slot, verb_name) else { continue };
+                        let Some(words) = (if self.question {
+                            self.question_words(starter, third, modal, past, negative, slot, verb_name)
+                        } else {
+                            self.words(starter, third, modal, past, negative, slot, verb_name)
+                        }) else {
+                            continue;
+                        };
                         self.push(starter, modal, past, negative, slot, &words);
                     }
                 }
@@ -396,10 +424,57 @@ impl Build<'_> {
         })
     }
 
+    /// The whole phrase as a question: the auxiliary, the starter, then the rest (`can you go`,
+    /// `isn't it`, `do you think`, `am I not`). Only an auxiliary opens a question, so the verb
+    /// alone takes *do* (`do you have`, `did he say`) and *have been* keeps its own *have*.
+    #[allow(clippy::too_many_arguments)]
+    fn question_words(&self, starter: &Starter, third: bool, modal: Option<&Modal>, past: bool, negative: bool, slot: Slot, verb_name: Option<String>) -> Option<String> {
+        let t = &self.g.t;
+        let who = starter.word.to_lowercase();
+        // an auxiliary with its `not` spelt out (`shall not`, `am not`) splits around the starter
+        let around = |aux: &str| aux.strip_suffix(" not").map_or_else(|| format!("{aux} {who}"), |head| format!("{head} {who} not"));
+        if let Some(m) = modal {
+            let aux = match (negative, past) {
+                (false, false) => Some(&m.present),
+                (false, true) => m.past.as_ref(),
+                (true, false) => Some(&m.negative),
+                (true, true) => m.past_negative.as_ref(),
+            }?;
+            let head = around(aux);
+            return Some(verb_name.map_or_else(|| head.clone(), |v| format!("{head} {v}")));
+        }
+        let neg = |word: &str, suffix: &str| if negative { format!("{word}{suffix}") } else { word.to_owned() };
+        let do_ = &t.do_;
+        let have = &t.have;
+        let does = around(&neg(if past { &do_.past } else if third { &do_.third } else { &do_.base }, &do_.negative));
+        Some(match slot {
+            Slot::None => does,
+            Slot::Be => {
+                let table = match (past, negative) {
+                    (false, false) => &t.be.present,
+                    (false, true) => &t.be.present_negative,
+                    (true, false) => &t.be.past,
+                    (true, true) => &t.be.past_negative,
+                };
+                around(table.get(starter.person.as_str())?)
+            }
+            Slot::Have => format!("{does} {}", have.base),
+            Slot::HaveBeen => format!("{} been", around(&neg(if past { &have.past } else if third { &have.third } else { &have.base }, &have.negative))),
+            Slot::Lexical(i) => format!("{does} {}", t.verb[i].base),
+        })
+    }
+
     fn push(&mut self, starter: &Starter, modal: Option<&Modal>, past: bool, negative: bool, slot: Slot, words: &str) {
         let t = &self.g.t;
-        let mut parts = vec![Part { kind: PartKind::Starter, keys: starter.chord.clone(), says: starter.word.clone() }];
-        let mut bits = stroke_of(&starter.chord).0;
+        let mut parts = Vec::new();
+        let mut bits = 0;
+        if self.question {
+            let bar = stroke_of(&t.question).0;
+            parts.push(Part { kind: PartKind::Question, keys: keys_text(bar), says: "question".to_owned() });
+            bits |= bar;
+        }
+        parts.push(Part { kind: PartKind::Starter, keys: starter.chord.clone(), says: starter.word.clone() });
+        bits |= stroke_of(&starter.chord).0;
         let mut vowels = modal.map_or(0, |m| stroke_of(&m.keys).0);
         if past {
             vowels |= stroke_of(&t.past).0;
@@ -422,7 +497,8 @@ impl Build<'_> {
             parts.push(Part { kind: PartKind::Verb, keys: keys_text(code.0), says: self.name(slot).unwrap_or_default() });
             bits |= code.0;
         }
-        self.out.push(Phrase { text: format!("{} {words}", starter.word.to_lowercase()), stroke: Stroke(bits), parts });
+        let text = if self.question { words.to_owned() } else { format!("{} {words}", starter.word.to_lowercase()) };
+        self.out.push(Phrase { text, stroke: Stroke(bits), parts });
     }
 }
 
@@ -435,6 +511,9 @@ pub struct Placed {
     pub unplaced: Vec<(String, String, String)>,
     /// Each verb with the code the rule gave it
     pub codes: Vec<(String, String)>,
+    /// Questions the dictionary already writes as an entry (a merged pair): the text and the
+    /// outline it keeps
+    pub kept: Vec<(String, String)>,
 }
 
 /// Fix the grammar's phrases in the book before any word settles, as the standalone suffixes are:
@@ -452,6 +531,32 @@ pub fn fix(setup: &Setup, book: &mut Book) -> Result<Placed, String> {
     for phrase in grammar.phrases(&codes) {
         let text = render_outline(&[phrase.stroke]);
         if !typable(&[phrase.stroke]) {
+            placed.unplaced.push((text, phrase.text, "cannot be pressed (the right pinky)".to_owned()));
+        } else if let Some(holder) = book.taken.get(&text) {
+            let why = format!("{holder:?} has the stroke");
+            placed.unplaced.push((text, phrase.text, why));
+        } else {
+            book.place(&phrase.text, vec![phrase.stroke], Origin::Grammar, text);
+            placed.added += 1;
+        }
+    }
+    Ok(placed)
+}
+
+/// Fix the question forms in the book, after the merged pairs and every word have settled. A
+/// question stroke is a statement's with the number bar down, which nothing else uses, so it never
+/// takes a stroke from anything; a question whose text the dictionary already has (a merged pair
+/// such as `do you`, `are you`) is left alone and keeps its outline.
+pub fn place_questions(setup: &Setup, book: &mut Book) -> Result<Placed, String> {
+    let grammar = Grammar::built_in().map_err(|e| e.to_string())?;
+    let codes = grammar.derive_codes(setup)?;
+    let have: HashMap<String, String> = book.entries.iter().map(|e| (e.word.clone(), render_outline(&e.outline))).collect();
+    let mut placed = Placed::default();
+    for phrase in grammar.questions(&codes) {
+        let text = render_outline(&[phrase.stroke]);
+        if let Some(outline) = have.get(&phrase.text) {
+            placed.kept.push((phrase.text, outline.clone()));
+        } else if !typable(&[phrase.stroke]) {
             placed.unplaced.push((text, phrase.text, "cannot be pressed (the right pinky)".to_owned()));
         } else if let Some(holder) = book.taken.get(&text) {
             let why = format!("{holder:?} has the stroke");
