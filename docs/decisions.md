@@ -3344,3 +3344,20 @@ goal's bar (cumulative, 1,008 words) is a separate thing from the tier's. A goal
 older readers ignore it). Because new words come in rank order rather than tier by tier, a rare word of
 a lower tier can come after a frequent word of the next one: the bars follow the vocabulary, not a
 fixed course. What regresses if undone: no way to see progress toward a word set.
+
+## Practice: a monkeytype-style results screen
+
+The results screen was a list (ten slowest words, every missed and stumbled word) that said little
+about what the test changed. It is now one screen after monkeytype's: big `wpm` and `acc`, a chart of
+speed per second, a row of small stats, and panels for stumbled (red), mastered (green), new, stuck
+and the learning set with how clean each word is (`word 7/10`), then the level and goal bars. The
+engine keeps one counter triple per second (typed, correct, errors), nothing per key; the chart's speed
+is the correct characters over a trailing 3 seconds, the raw line one second alone (a steno word arrives
+as one burst, so a second alone is spiky). Characters are counted as monkeytype counts them
+(`correct/incorrect/extra/missed`), `correct` being the letters and spaces of right words only. What
+changed in the vocabulary is computed by comparing the vocabulary before and after the test, so the
+panels cannot disagree with `vocab.json`. The slowest-words list is gone (a word's time is not what
+stumbles show), `--outlines` now annotates the stumbled words. A smaller terminal loses the chart
+first, then the lowest panels, so 80x24 still shows the numbers, mastered and stumbled; the text
+version printed after quitting has the same content without the chart. What regresses if undone: the
+typist cannot see which words are close to mastery or how far the level bar is.

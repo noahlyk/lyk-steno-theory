@@ -1,16 +1,13 @@
 //! What is drawn: the word feed (and a quiet stats line), and the results screen. Nothing else:
 //! no outlines, no keyboard, no hints.
 
-use super::engine::{Results, Session};
+use super::engine::Session;
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use std::collections::HashMap;
 
-/// Starts the one dim results line the adaptive source adds (`vocab  +2 new  1 mastered  3 due`).
-pub const VOCAB_PREFIX: &str = "vocab  ";
 const MAX_WIDTH: u16 = 80;
 const LINES: usize = 3;
 const DIM: Color = Color::DarkGray;
@@ -129,68 +126,6 @@ pub fn draw(frame: &mut Frame, view: &View) {
         frame.render_widget(Paragraph::new(format!("\n{HINT}")).style(Style::default().fg(DIM)), parts[2]);
     }
     frame.render_widget(Paragraph::new(rows), parts[1]);
-}
-
-/// The results as lines of text (the screen shows them, and they are printed after it closes).
-/// `outlines` has a word's outline when `--outlines` found one.
-#[must_use]
-pub fn result_lines(r: &Results, source: &str, outlines: &HashMap<String, String>) -> Vec<String> {
-    let outline = |w: &str| outlines.get(w).map_or_else(String::new, |o| format!("  {o}"));
-    let mut out = vec![
-        format!("{:.0} wpm   raw {:.0}   accuracy {:.1}%   words {:.1}%", r.wpm, r.raw, r.accuracy, r.word_accuracy),
-        format!("errors {}   stumbled {}   time {:.1}s   words {}   source {source}", r.errors, r.stumbled.len(), r.secs, r.words),
-    ];
-    out.push(r.consistency.map_or_else(|| "consistency  n/a (under three words)".to_owned(), |c| format!("consistency  {c:.0}%")));
-    if !r.slow.is_empty() {
-        out.push(String::new());
-        out.push("slowest (seconds since the word before)".to_owned());
-        for (w, t) in &r.slow {
-            out.push(format!("  {w:<16}{t:>6.2}{}", outline(w)));
-        }
-    }
-    if !r.misses.is_empty() {
-        out.push(String::new());
-        out.push("missed".to_owned());
-        for m in &r.misses {
-            out.push(format!("  {:<16}typed {}{}", m.word, if m.typed.is_empty() { "(nothing)" } else { &m.typed }, outline(&m.word)));
-        }
-    }
-    if !r.stumbled.is_empty() {
-        out.push(String::new());
-        out.push("stumbled (corrected before the word was committed)".to_owned());
-        for (w, n) in &r.stumbled {
-            out.push(format!("  {w:<16}{n}x{}", outline(w)));
-        }
-    }
-    out
-}
-
-pub fn draw_results(frame: &mut Frame, lines: &[String]) {
-    let area = frame.area();
-    let width = area.width.saturating_sub(4).clamp(10, MAX_WIDTH);
-    let rows: Vec<Line> = lines
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            let style = match i {
-                0 => Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
-                1 | 2 => Style::default().fg(Color::Gray),
-                _ if l.starts_with(VOCAB_PREFIX) => Style::default().fg(DIM),
-                _ if !l.starts_with(' ') && !l.is_empty() => Style::default().fg(Color::Yellow),
-                _ => Style::default(),
-            };
-            Line::styled(l.clone(), style)
-        })
-        .collect();
-    let x = area.x + area.width.saturating_sub(width) / 2;
-    frame.render_widget(
-        Paragraph::new(rows),
-        Rect { x, y: area.y + 1, width: width.min(area.width), height: area.height.saturating_sub(3) },
-    );
-    if area.height >= 3 {
-        let foot = Rect { x, y: area.y + area.height - 1, width: width.min(area.width), height: 1 };
-        frame.render_widget(Paragraph::new(RESULTS_HINT).style(Style::default().fg(DIM)), foot);
-    }
 }
 
 #[cfg(test)]
@@ -314,33 +249,5 @@ mod tests {
         let text = screen(&term).join("\n");
         assert!(!text.contains("wpm") && !text.contains("restart"), "{text}");
         assert!(text.contains("the cat"), "{text}");
-    }
-
-    #[test]
-    fn the_results_screen_has_its_footer() {
-        let r = session(&["a"]).results(1.0);
-        let mut term = Terminal::new(TestBackend::new(60, 12)).unwrap();
-        term.draw(|f| draw_results(f, &result_lines(&r, "common", &HashMap::new()))).unwrap();
-        let rows = screen(&term);
-        assert_eq!(rows.last().map(|r| r.trim()), Some(RESULTS_HINT), "{rows:?}");
-    }
-
-    #[test]
-    fn the_results_name_no_outlines_unless_given() {
-        let mut s = session(&["the", "cat", "sat"]);
-        for (t, w) in [(1.0, "teh "), (3.0, "cat "), (4.0, "sat")] {
-            for c in w.chars() {
-                s.apply(Input::Char(c), t);
-            }
-        }
-        let r = s.results(10.0);
-        let none = result_lines(&r, "common", &HashMap::new()).join("\n");
-        assert!(none.contains("missed") && none.contains("typed teh") && none.contains("slowest"), "{none}");
-        assert!(!none.contains("-T"), "{none}");
-        let with = result_lines(&r, "common", &HashMap::from([("the".to_owned(), "-T".to_owned())])).join("\n");
-        assert!(with.contains("the") && with.contains("-T"), "{with}");
-        let mut term = Terminal::new(TestBackend::new(60, 20)).unwrap();
-        term.draw(|f| draw_results(f, &result_lines(&r, "common", &HashMap::new()))).unwrap();
-        assert!(screen(&term).join("\n").contains("accuracy"), "results screen shows accuracy");
     }
 }

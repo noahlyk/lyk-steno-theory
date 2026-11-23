@@ -63,6 +63,69 @@ pub const MAX_COPIES_TWICE_UNCLEAN: usize = 3;
 /// Extra characters allowed past the end of a word.
 const OVERFLOW: usize = 8;
 
+/// One second of the test: what was typed in it. Kept per second, not per key.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Bucket {
+    /// Characters typed (key presses, and the space that commits a word)
+    pub typed: u32,
+    /// Of those, the right ones (a space counts when the word it commits is right)
+    pub correct: u32,
+    /// Wrong key presses, and words committed short without a wrong key
+    pub errors: u32,
+}
+
+/// Characters of a finished test as monkeytype counts them: `correct/incorrect/extra/missed`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Chars {
+    /// Characters of the words committed right, and the spaces after them (none after the last word)
+    pub correct: usize,
+    /// Wrong characters typed inside a committed wrong word, up to the word's length
+    pub incorrect: usize,
+    /// Characters typed past the end of a committed word
+    pub extra: usize,
+    /// Characters of a committed word that were never typed
+    pub missed: usize,
+}
+
+/// The points of the results chart: `(second, value)` with the first second at 1.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Series {
+    /// Speed over a trailing window of `SMOOTH` seconds
+    pub wpm: Vec<(f64, f64)>,
+    /// Speed of each second alone, every typed character counted
+    pub raw: Vec<(f64, f64)>,
+    /// Where an error happened: the second, at the height of the speed there
+    pub errors: Vec<(f64, f64)>,
+}
+
+/// Seconds the chart's speed line is averaged over.
+pub const SMOOTH: usize = 3;
+/// Characters in a word, for speeds.
+const WORD: f64 = 5.0;
+
+/// The chart's series from the per-second buckets of a test that lasted `secs` seconds. A speed
+/// is characters over five, per minute: a second's typed characters times 12.
+#[must_use]
+pub fn series(buckets: &[Bucket], secs: f64) -> Series {
+    let n = (secs.ceil().max(1.0) as usize).max(1);
+    let at = |i: usize| buckets.get(i).copied().unwrap_or_default();
+    let per_minute = |chars: f64, seconds: f64| chars / WORD * 60.0 / seconds;
+    let mut out = Series::default();
+    for i in 0..n {
+        let x = (i + 1) as f64;
+        let raw = per_minute(f64::from(at(i).typed), 1.0);
+        let from = (i + 1).saturating_sub(SMOOTH);
+        let window: u32 = (from..=i).map(|j| at(j).correct).sum();
+        let wpm = per_minute(f64::from(window), (i + 1 - from) as f64);
+        out.raw.push((x, raw));
+        out.wpm.push((x, wpm));
+        if at(i).errors > 0 {
+            out.errors.push((x, raw.max(wpm)));
+        }
+    }
+    out
+}
+
 pub struct Session {
     pub words: Vec<String>,
     pub done: Vec<Done>,
@@ -85,6 +148,8 @@ pub struct Session {
     refused_open: bool,
     /// A missed word comes back this many words later in place of a filler word: `(gap, fillers)`
     requeue: Option<(usize, HashSet<String>)>,
+    /// What was typed in each second since the first key
+    buckets: Vec<Bucket>,
 }
 
 impl Session {
@@ -106,6 +171,7 @@ impl Session {
             removing: false,
             refused_open: false,
             requeue: None,
+            buckets: Vec::new(),
         }
     }
 
@@ -220,6 +286,15 @@ impl Session {
         }
     }
 
+    /// The second `now` falls in, counted from the first key (its bucket grown to exist).
+    fn bucket(&mut self, now: f64) -> &mut Bucket {
+        let i = self.started.map_or(0.0, |s| (now - s).max(0.0)).floor() as usize;
+        if self.buckets.len() <= i {
+            self.buckets.resize(i + 1, Bucket::default());
+        }
+        &mut self.buckets[i]
+    }
+
     fn push(&mut self, c: char, now: f64) {
         let Some(target) = self.target() else { return };
         let at = self.typed.chars().count();
@@ -232,6 +307,13 @@ impl Session {
             self.key_ok += 1;
         } else {
             self.key_bad += 1;
+        }
+        let b = self.bucket(now);
+        b.typed += 1;
+        if hit {
+            b.correct += 1;
+        } else {
+            b.errors += 1;
         }
         self.typed.push(c);
         // The last word is finished the moment it is typed right, with no space needed.
@@ -246,6 +328,14 @@ impl Session {
         }
         let Some(target) = self.target().map(str::to_owned) else { return };
         let right = target == self.typed;
+        let (last, short) = (self.done.len() + 1 >= self.words.len(), target.starts_with(self.typed.as_str()) && !right);
+        let b = self.bucket(now);
+        if !last {
+            b.typed += 1;
+            b.correct += u32::from(right);
+        }
+        // a word committed short has no wrong key to show for it
+        b.errors += u32::from(short);
         if !right && self.stop_on_error {
             self.refused.push(Miss { word: target, typed: self.typed.clone() });
             self.refused_open = true;
@@ -280,6 +370,46 @@ impl Session {
             self.removing = false;
             self.stumble();
         }
+    }
+
+    /// The characters of the committed words, as monkeytype counts them (see [`Chars`]).
+    #[must_use]
+    pub fn chars(&self) -> Chars {
+        let mut c = Chars::default();
+        for (i, d) in self.done.iter().enumerate() {
+            let (t, u) = (d.target.chars().count(), d.typed.chars().count());
+            if d.correct() {
+                c.correct += t + usize::from(i + 1 < self.words.len());
+                continue;
+            }
+            c.incorrect += d.target.chars().zip(d.typed.chars()).filter(|(a, b)| a != b).count();
+            c.extra += u.saturating_sub(t);
+            c.missed += t.saturating_sub(u);
+        }
+        c
+    }
+
+    /// The chart's series for the test as of `now`.
+    #[must_use]
+    pub fn series(&self, now: f64) -> Series {
+        let end = self.finished_at.unwrap_or(now);
+        series(&self.buckets, self.started.map_or(0.0, |s| (end - s).max(0.0)))
+    }
+
+    /// The words of the test that were not clean, in order of first appearance, with how many
+    /// times each was unclean (wrong, or corrected before it was committed; a refused commit
+    /// counts once).
+    #[must_use]
+    pub fn unclean(&self) -> Vec<(String, u32)> {
+        let mut out: Vec<(String, u32)> = Vec::new();
+        let marks = self.done.iter().filter(|d| !d.clean()).map(|d| &d.target).chain(self.refused.iter().map(|m| &m.word));
+        for w in marks {
+            match out.iter_mut().find(|(x, _)| x == w) {
+                Some(e) => e.1 += 1,
+                None => out.push((w.clone(), 1)),
+            }
+        }
+        out
     }
 
     /// The numbers for a finished (or abandoned) run, as of `now`.
@@ -710,5 +840,113 @@ mod tests {
     fn nothing_typed_is_zero_not_a_division() {
         let r = session(&["a"], false).results(5.0);
         assert!(r.wpm.abs() < 1e-9 && r.secs.abs() < 1e-9, "wpm {} secs {}", r.wpm, r.secs);
+    }
+
+    // ---- the chart's per-second buckets, the character counts, the unclean words ----
+
+    #[test]
+    fn keys_fall_into_the_second_they_were_typed_in_counted_from_the_first_key() {
+        let mut s = session(&["cat", "dog", "end"], false);
+        type_str(&mut s, "ca", 10.0); // second 0: two right
+        type_str(&mut s, "x", 10.9); // still second 0: a wrong key
+        s.apply(Input::Backspace, 10.95);
+        type_str(&mut s, "t ", 11.2); // second 1: a right key and the space of a right word
+        type_str(&mut s, "do", 13.5); // second 3
+        assert_eq!(s.buckets.len(), 4, "{:?}", s.buckets);
+        assert_eq!(s.buckets[0], Bucket { typed: 3, correct: 2, errors: 1 });
+        assert_eq!(s.buckets[1], Bucket { typed: 2, correct: 2, errors: 0 });
+        assert_eq!(s.buckets[2], Bucket::default(), "a second with no key stays empty");
+        assert_eq!(s.buckets[3], Bucket { typed: 2, correct: 2, errors: 0 });
+    }
+
+    #[test]
+    fn the_space_of_a_wrong_word_is_typed_but_not_correct_and_the_last_word_has_no_space() {
+        let mut s = session(&["aa", "bb"], false);
+        type_str(&mut s, "xx ", 1.0);
+        assert_eq!(s.buckets[0], Bucket { typed: 3, correct: 0, errors: 2 });
+        type_str(&mut s, "bb", 1.0); // the last word finishes on its last right key, no space
+        assert!(s.finished());
+        assert_eq!(s.buckets[0], Bucket { typed: 5, correct: 2, errors: 2 });
+        // a word committed short has no wrong key, and is an error all the same
+        let mut s = session(&["aaa", "bb"], false);
+        type_str(&mut s, "aa ", 2.0);
+        assert_eq!(s.buckets[0], Bucket { typed: 3, correct: 2, errors: 1 });
+    }
+
+    #[test]
+    fn the_series_has_a_point_a_second_with_a_smoothed_speed_a_raw_speed_and_error_marks() {
+        let buckets = [
+            Bucket { typed: 10, correct: 10, errors: 0 },
+            Bucket { typed: 5, correct: 5, errors: 0 },
+            Bucket { typed: 0, correct: 0, errors: 0 },
+            Bucket { typed: 10, correct: 5, errors: 2 },
+        ];
+        let s = series(&buckets, 3.2);
+        assert_eq!(s.raw.len(), 4, "3.2 seconds make four points");
+        // a second's raw speed: characters times 12
+        assert_eq!(s.raw.iter().map(|p| p.1).collect::<Vec<_>>(), [120.0, 60.0, 0.0, 120.0]);
+        assert_eq!(s.raw[0].0, 1.0, "the first second is x = 1");
+        // the speed is a trailing mean of up to SMOOTH seconds
+        assert!((s.wpm[0].1 - 120.0).abs() < 1e-9);
+        assert!((s.wpm[1].1 - 90.0).abs() < 1e-9, "(10 + 5) / 2 seconds");
+        assert!((s.wpm[2].1 - 60.0).abs() < 1e-9, "(10 + 5 + 0) / 3");
+        assert!((s.wpm[3].1 - 40.0).abs() < 1e-9, "(5 + 0 + 5) / 3 seconds: {:?}", s.wpm);
+        // errors sit on the second they happened, at the height of the speed there
+        assert_eq!(s.errors, [(4.0, 120.0)]);
+        // nothing typed: one empty second, no panic
+        let e = series(&[], 0.0);
+        assert_eq!((e.wpm.len(), e.errors.len()), (1, 0));
+    }
+
+    #[test]
+    fn a_session_hands_out_its_series_at_the_end_of_the_run() {
+        let mut s = session(&["aa", "bb"], false);
+        type_str(&mut s, "aa ", 5.0);
+        type_str(&mut s, "bb", 7.5);
+        let r = s.series(100.0);
+        assert_eq!(r.raw.len(), 3, "from the first key at 5.0 to the end at 7.5: three seconds");
+        assert_eq!(r.errors.len(), 0, "{:?}", r.errors);
+    }
+
+    #[test]
+    fn characters_are_counted_the_way_monkeytype_counts_them() {
+        // right words: their letters and the spaces between them (not after the last)
+        let mut s = session(&["cat", "dog", "end"], false);
+        type_str(&mut s, "cat dog end", 1.0);
+        assert_eq!(s.chars(), Chars { correct: 3 + 1 + 3 + 1 + 3, incorrect: 0, extra: 0, missed: 0 });
+        // a wrong word: incorrect letters, extras past the end, missed letters never typed
+        let mut s = session(&["cat", "dog", "end", "fox"], false);
+        type_str(&mut s, "cxt ", 1.0); // 1 incorrect
+        type_str(&mut s, "dogss ", 2.0); // 2 extra
+        type_str(&mut s, "e ", 3.0); // 2 missed
+        type_str(&mut s, "fox", 4.0); // right, the last: no space
+        assert_eq!(s.chars(), Chars { correct: 3, incorrect: 1, extra: 2, missed: 2 }, "{:?}", s.done);
+        // a wrong word typed at the right length and every letter wrong
+        let mut s = session(&["ab", "cd"], false);
+        type_str(&mut s, "ba cd", 1.0);
+        assert_eq!(s.chars(), Chars { correct: 2, incorrect: 2, extra: 0, missed: 0 });
+        // nothing committed: nothing counted
+        assert_eq!(session(&["a"], false).chars(), Chars::default());
+    }
+
+    #[test]
+    fn unclean_words_are_the_wrong_and_the_corrected_ones_with_how_often() {
+        let mut s = session(&["aa", "bb", "aa", "cc", "dd"], false);
+        type_str(&mut s, "xx ", 1.0); // aa wrong
+        type_str(&mut s, "bb ", 1.0); // clean
+        type_str(&mut s, "ax", 1.0);
+        s.apply(Input::Backspace, 1.1);
+        type_str(&mut s, "a ", 1.2); // aa right after a stumble: unclean again
+        type_str(&mut s, "cc dd", 1.3);
+        assert_eq!(s.unclean(), [("aa".to_owned(), 2)]);
+        // refused commits count once
+        let mut s = session(&["cat"], true);
+        type_str(&mut s, "cax ", 1.0);
+        for _ in 0..3 {
+            s.apply(Input::Backspace, 1.1);
+        }
+        type_str(&mut s, "cat", 1.2);
+        assert_eq!(s.unclean(), [("cat".to_owned(), 1)]);
+        assert_eq!(session(&["a"], false).unclean().len(), 0);
     }
 }

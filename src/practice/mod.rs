@@ -13,6 +13,8 @@ mod engine;
 mod feed;
 mod history;
 pub mod pool;
+mod report;
+mod screen;
 mod sources;
 pub mod tiers;
 mod ui;
@@ -202,25 +204,28 @@ pub fn run(args: &Args) -> Result<()> {
             }
             let results = session.results(session.finished_at.unwrap_or(0.0));
             let outlines = if args.outlines { outlines_for(&results, &args.dict) } else { HashMap::new() };
-            let mut lines = ui::result_lines(&results, source.name(), &outlines);
+            let mut extra = report::Extra { stumbled: session.unclean(), ..report::Extra::default() };
+            let mut vocab_line = String::new();
             if let (Feeder::Adaptive(a), Outcome::Finished, false) = (&mut feeder, outcome, args.no_adapt) {
-                match a.learn(&session) {
-                    Ok(summary) => {
-                        let text = summary.line();
-                        if !text.is_empty() {
-                            lines.push(String::new());
-                            lines.push(format!("{}{text}", ui::VOCAB_PREFIX));
-                        }
-                    }
-                    Err(e) => save_error = Some(format!("could not save {}: {e:#}", vocab::file().display())),
+                let (summary, before, saved) = a.learn(&session);
+                vocab_line = summary.line();
+                extra = report::compose(&before, &a.vocab, session.unclean(), a.cfg.mastery_accuracy);
+                if let Err(e) = saved {
+                    save_error = Some(format!("could not save {}: {e:#}", vocab::file().display()));
                 }
             }
+            let progress = if let Feeder::Adaptive(a) = &feeder { tiers::progress(&a.tiers, &a.vocab) } else { None };
+            let wordset = progress.as_ref().map_or_else(|| source.name().to_owned(), |p| p.label.clone());
+            let test = format!("{}  {wordset}", args.time.map_or_else(|| format!("{} words", session.words.len()), |t| format!("{t}s")));
+            let mut screen = report::Screen::new(&results, test, session.chars(), session.series(session.finished_at.unwrap_or(0.0)), extra, progress, outlines);
+            screen.vocab_line = vocab_line;
+            let lines = report::text_lines(&screen);
             if outcome == Outcome::Quit {
                 // Esc or Ctrl-C quit at once, with no results screen
                 last = Some(lines);
                 break;
             }
-            let after = show_results(&mut terminal, &lines)?;
+            let after = show_results(&mut terminal, &screen)?;
             last = Some(lines);
             if after == After::Quit {
                 break;
@@ -313,6 +318,8 @@ struct Adaptive {
     save: bool,
     /// The easy-base words of the current feed: a missed word may replace one of them
     fillers: HashSet<String>,
+    /// The pool cut into levels, for the results screen's bars
+    tiers: Vec<tiers::Tier>,
 }
 
 impl Adaptive {
@@ -345,7 +352,8 @@ impl Adaptive {
                 vocab.save(&path)?;
             }
         }
-        Ok(Self { pool, vocab, cfg, save: !args.no_adapt, fillers: HashSet::new() })
+        let tiers = pool.tiers(args.deep);
+        Ok(Self { pool, vocab, cfg, save: !args.no_adapt, fillers: HashSet::new(), tiers })
     }
 
     fn feed(&mut self, args: &Args, seed: u64) -> Vec<String> {
@@ -361,13 +369,13 @@ impl Adaptive {
         plan.words
     }
 
-    /// Teaches the vocabulary a finished test and saves it.
-    fn learn(&mut self, session: &Session) -> Result<adaptive::Summary> {
+    /// Teaches the vocabulary a finished test and saves it. Returns what changed, the vocabulary
+    /// as it was before, and whether it was saved.
+    fn learn(&mut self, session: &Session) -> (adaptive::Summary, Vocab, Result<()>) {
+        let before = self.vocab.clone();
         let summary = adaptive::apply(&mut self.vocab, &attempts_of(session), &self.cfg, today());
-        if self.save {
-            self.vocab.save(&vocab::file())?;
-        }
-        Ok(summary)
+        let saved = if self.save { self.vocab.save(&vocab::file()) } else { Ok(()) };
+        (summary, before, saved)
     }
 }
 
@@ -551,8 +559,8 @@ impl Gate {
 }
 
 /// Shows the results until the typist quits or asks for another test.
-fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<After> {
-    terminal.draw(|f| ui::draw_results(f, lines))?;
+fn show_results(terminal: &mut DefaultTerminal, screen: &report::Screen) -> Result<After> {
+    terminal.draw(|f| screen::draw(f, screen))?;
     let clock = Instant::now();
     let mut gate = Gate::new(0.0);
     loop {
@@ -566,7 +574,7 @@ fn show_results(terminal: &mut DefaultTerminal, lines: &[String]) -> Result<Afte
                 }
             }
             Event::Resize(..) => {
-                terminal.draw(|f| ui::draw_results(f, lines))?;
+                terminal.draw(|f| screen::draw(f, screen))?;
             }
             _ => {}
         }
@@ -752,6 +760,23 @@ mod tests {
         let mut plain = make_session(words.clone(), &on, None);
         miss(&mut plain);
         assert_eq!(plain.words, words);
+    }
+
+    #[test]
+    fn a_finished_session_becomes_the_results_screen_numbers() {
+        let words: Vec<String> = ["the", "cat", "sat", "mat"].map(String::from).to_vec();
+        let mut s = Session::new(words, false);
+        for (c, t) in "the ".chars().map(|c| (c, 1.0)).chain("cax ".chars().map(|c| (c, 2.2))).chain("sat ".chars().map(|c| (c, 3.4))).chain("mat".chars().map(|c| (c, 4.0))) {
+            s.apply(Input::Char(c), t);
+        }
+        assert!(s.finished());
+        let r = s.results(s.finished_at.unwrap());
+        let screen = report::Screen::new(&r, "4 words  common".into(), s.chars(), s.series(s.finished_at.unwrap()), report::Extra { stumbled: s.unclean(), ..report::Extra::default() }, None, HashMap::new());
+        assert_eq!(screen.chars, engine::Chars { correct: 3 + 1 + 3 + 1 + 3, incorrect: 1, extra: 0, missed: 0 }, "the, sat, mat right with their spaces; cax has one wrong letter");
+        assert_eq!(screen.series.raw.len(), 3, "first key at 1.0, last at 4.0");
+        assert_eq!(screen.extra.stumbled, [("cat".to_owned(), 1)]);
+        let text = report::text_lines(&screen).join("\n");
+        assert!(text.contains("characters 11/1/0/0") && text.contains("stumbled  cat") && text.contains("test 4 words  common"), "{text}");
     }
 
     #[test]

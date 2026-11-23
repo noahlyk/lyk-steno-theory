@@ -123,10 +123,16 @@ screen Tab or Enter starts again and `q`, Esc or Ctrl-C quit; Esc and Ctrl-C wor
 first 0.7 s ignores Tab, Enter and letters so a stray burst cannot restart or dismiss it. Sources: `adaptive` (the default, below), `common` (`--rank`, `--bands`,
 `--weighted`), `mistakes` (`lyk mistakes --drill`), `file` (`--file`), `phrases`, `quotes`.
 `--count`, `--time`, `--seed`, `--no-repeat`, `--lowercase-only`, `--min-len`, `--max-len`, `--names`
-shape the feed. The results show speed, raw speed, accuracy, errors, stumbles, time, consistency, the ten
-slowest words, the missed ones and the stumbled ones (a word you corrected before committing it); each
-finished test is added to `practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
-words next to the missed ones, and `--history` shows a stumbled-count column. All flags: the Reference, Build and files.
+shape the feed. The results screen follows monkeytype's: `wpm` and `acc` in big digits, a chart of
+speed over the test (speed smoothed over 3 seconds, raw speed, errors as red points), then `test`,
+`raw`, `characters` (`correct/incorrect/extra/missed`), `consistency` and `time`; then, in colour, the
+words you stumbled on (red, with `×3` for more than once), the words mastered (green), new (cyan) and
+stuck (orange), the learning set as `word 7/10` chips (red under 30% clean, yellow, green at 9 of 10),
+and your level bar (below). It fits 80x24; a larger terminal gets a bigger chart and, from 100
+columns, panels side by side; a smaller one drops the chart first. Each finished test is added to
+`practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
+words next to the missed ones, and `--history` shows a stumbled-count column. After quitting, the
+same numbers are printed as text. All flags: the Reference, Build and files.
 
 The default source is **adaptive**: it grows a vocabulary instead of drawing from a fixed band. A test has
 exactly `--count` words (25): at most 40% words you are learning (once each, a second copy for the worst
