@@ -16,16 +16,18 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Axis, Chart, Dataset, GraphType, Paragraph};
 
 /// Dim text: labels, axes, the footer.
-const DIM: Color = Color::DarkGray;
+const DIM: Color = Color::Rgb(98, 104, 122);
+/// Body text: soft white, never pure.
+const TEXT: Color = Color::Rgb(205, 208, 218);
 /// The big numbers.
-const BIG: Color = Color::White;
-pub const RED: Color = Color::Red;
-pub const GREEN: Color = Color::Green;
-pub const YELLOW: Color = Color::Yellow;
+const BIG: Color = TEXT;
+pub const RED: Color = Color::Rgb(218, 125, 138);
+pub const GREEN: Color = Color::Rgb(140, 190, 158);
+pub const YELLOW: Color = Color::Rgb(224, 190, 118);
 /// New words.
-pub const CYAN: Color = Color::Cyan;
+pub const CYAN: Color = Color::Rgb(125, 180, 202);
 /// Stuck words (xterm 208).
-pub const ORANGE: Color = Color::Indexed(208);
+pub const ORANGE: Color = Color::Rgb(214, 152, 100);
 /// Columns the labels of the panels take (`stumbled  `).
 const LABEL: usize = 10;
 /// Width of the big numbers' column.
@@ -77,29 +79,26 @@ pub fn big_values(s: &Screen) -> (String, String) {
     (format!("{:.0}", s.wpm), format!("{:.0}%", s.accuracy))
 }
 
-/// A panel's lines: a label, then the items in order, wrapped at `width` with the label's width
-/// kept as an indent.
-fn panel(label: &str, color: Color, items: Vec<(String, Style)>, width: usize) -> Vec<Line<'static>> {
-    let label_style = Style::default().fg(color).add_modifier(Modifier::BOLD);
-    let mut lines: Vec<Line<'static>> = Vec::new();
-    let mut spans = vec![Span::styled(format!("{label:<LABEL$}"), label_style)];
-    let mut used = LABEL;
-    for (text, style) in items {
-        let need = text.chars().count() + if used > LABEL { 2 } else { 0 };
-        if used + need > width && used > LABEL {
-            lines.push(Line::from(std::mem::take(&mut spans)));
-            spans = vec![Span::raw(" ".repeat(LABEL))];
-            used = LABEL;
-        }
-        if used > LABEL {
-            spans.push(Span::raw("  "));
-            used += 2;
-        }
-        used += text.chars().count();
-        spans.push(Span::styled(text, style));
-    }
-    lines.push(Line::from(spans));
-    lines
+/// The grid cell for these items: the widest plus three columns of gap.
+fn cell_of<'a>(texts: impl Iterator<Item = &'a String>) -> usize {
+    texts.map(|t| t.chars().count()).max().unwrap_or(0) + 3
+}
+
+/// A panel's lines: the label, then the items in an aligned grid (every cell as wide as the widest
+/// item), the label's width kept as an indent on the later rows.
+fn panel(label: &str, color: Color, items: &[(String, Style)], width: usize, cell: usize) -> Vec<Line<'static>> {
+    let label_style = Style::default().fg(color);
+    let per = (width.saturating_sub(LABEL) / cell).max(1);
+    items
+        .chunks(per)
+        .enumerate()
+        .map(|(row, chunk)| {
+            let head = if row == 0 { Span::styled(format!("{label:<LABEL$}"), label_style) } else { Span::raw(" ".repeat(LABEL)) };
+            let mut spans = vec![head];
+            spans.extend(chunk.iter().map(|(t, st)| Span::styled(format!("{t:<cell$}"), *st)));
+            Line::from(spans)
+        })
+        .collect()
 }
 
 fn word_style(color: Color) -> Style {
@@ -116,17 +115,15 @@ struct Panels {
 
 fn panels(s: &Screen, width: usize) -> Panels {
     let e = &s.extra;
+    let stumbled: Vec<(String, Style)> = e.stumbled.iter().map(|(w, n)| (format!("{}{}", report::counted(w, *n), s.outline(w)), word_style(RED))).collect();
+    let done: Vec<(String, Style)> = e.mastered.iter().chain(&e.retired).map(|w| (w.clone(), word_style(GREEN))).collect();
     let words = |ws: &[String], color: Color| ws.iter().map(|w| (w.clone(), word_style(color))).collect::<Vec<_>>();
-    let stumbled = if e.stumbled.is_empty() {
-        Vec::new()
-    } else {
-        panel("stumbled", RED, e.stumbled.iter().map(|(w, n)| (format!("{}{}", report::counted(w, *n), s.outline(w)), word_style(RED))).collect(), width)
-    };
-    let done: Vec<String> = e.mastered.iter().chain(&e.retired).cloned().collect();
-    let mastered = if done.is_empty() { Vec::new() } else { panel("mastered", GREEN, words(&done, GREEN), width) };
-    let new = if e.new.is_empty() { Vec::new() } else { panel("new", CYAN, words(&e.new, CYAN), width) };
-    let stuck = if e.stuck.is_empty() { Vec::new() } else { panel("stuck", ORANGE, words(&e.stuck, ORANGE), width) };
-    Panels { stumbled, mastered, new, stuck }
+    let new = words(&e.new, CYAN);
+    let stuck = words(&e.stuck, ORANGE);
+    // one column width for all four, so their words line up
+    let cell = cell_of([&stumbled, &done, &new, &stuck].into_iter().flatten().map(|(t, _)| t));
+    let make = |label: &str, color: Color, items: Vec<(String, Style)>| if items.is_empty() { Vec::new() } else { panel(label, color, &items, width, cell) };
+    Panels { stumbled: make("stumbled", RED, stumbled), mastered: make("mastered", GREEN, done), new: make("new", CYAN, new), stuck: make("stuck", ORANGE, stuck) }
 }
 
 /// Keeps the first `rows` lines, with an ellipsis ending the last when some were cut.
@@ -166,14 +163,14 @@ fn small_stats_lines(cols: &[(String, String)]) -> Vec<Line<'static>> {
         let w = l.chars().count().max(v.chars().count());
         let gap = if i + 1 < cols.len() { "   " } else { "" };
         labels.push(Span::styled(format!("{l:<w$}{gap}"), Style::default().fg(DIM)));
-        values.push(Span::styled(format!("{v:<w$}{gap}"), Style::default().fg(Color::Gray)));
+        values.push(Span::styled(format!("{v:<w$}{gap}"), Style::default().fg(TEXT)));
     }
     vec![Line::from(labels), Line::from(values)]
 }
 
 fn progress_lines(s: &Screen, width: usize) -> Vec<Line<'static>> {
     let Some(p) = &s.progress else { return Vec::new() };
-    let mut lines = vec![Line::styled(report::progress_line_fit(p, width), Style::default().fg(Color::Gray))];
+    let mut lines = vec![Line::styled(report::progress_line_fit(p, width), Style::default().fg(TEXT))];
     if let Some(g) = &p.goal {
         lines.push(Line::styled(report::goal_line_fit(g, width), Style::default().fg(DIM)));
     }
@@ -227,27 +224,15 @@ fn chip_lines(s: &Screen, width: usize) -> Vec<Line<'static>> {
         Heat::Yellow => YELLOW,
         Heat::Green => GREEN,
     };
-    let texts: Vec<String> = chips.iter().map(|c| format!("{} {}/{}", c.word, c.clean, crate::vocab::WORD_WINDOW)).collect();
-    let cell = texts.iter().map(|t| t.chars().count()).max().unwrap_or(0) + 2;
-    let per = (width.saturating_sub(LABEL) / cell).max(1);
-    let label_style = Style::default().fg(YELLOW).add_modifier(Modifier::BOLD);
-    texts
-        .chunks(per)
-        .zip(chips.chunks(per))
-        .enumerate()
-        .map(|(row, (ts, cs))| {
-            let head = if row == 0 { Span::styled(format!("{:<LABEL$}", "wordset"), label_style) } else { Span::raw(" ".repeat(LABEL)) };
-            let mut spans = vec![head];
-            spans.extend(ts.iter().zip(cs).map(|(t, c)| Span::styled(format!("{t:<cell$}"), word_style(color(c.heat)))));
-            Line::from(spans)
-        })
-        .collect()
+    let items: Vec<(String, Style)> = chips.iter().map(|c| (format!("{} {}/{}", c.word, c.clean, crate::vocab::WORD_WINDOW), word_style(color(c.heat)))).collect();
+    let cell = cell_of(items.iter().map(|(t, _)| t));
+    panel("wordset", YELLOW, &items, width, cell)
 }
 
 /// One bar: `filled` green-ish blocks of `width`, the rest dim.
 fn bar(percent: usize, width: usize, color: Color) -> Vec<Span<'static>> {
     let filled = (percent.min(100) * width + 50) / 100;
-    vec![Span::styled("█".repeat(filled), Style::default().fg(color)), Span::styled("░".repeat(width - filled), Style::default().fg(DIM))]
+    vec![Span::styled("━".repeat(filled), Style::default().fg(color)), Span::styled("─".repeat(width - filled), Style::default().fg(DIM))]
 }
 
 /// The level and goal as aligned bars: name, bar, percent and counts (and the next level when
@@ -270,9 +255,9 @@ fn bar_lines(s: &Screen, width: usize) -> Option<Vec<Line<'static>>> {
     }
     let dim = Style::default().fg(DIM);
     let row = |name: String, known: usize, size: usize, color: Color, next: Option<&String>| {
-        let mut spans = vec![Span::styled(format!("{name:<name_w$}"), Style::default().fg(Color::Gray))];
+        let mut spans = vec![Span::styled(format!("{name:<name_w$}"), Style::default().fg(TEXT))];
         spans.extend(bar(tiers::percent(known, size), bar_w, color));
-        spans.push(Span::styled(format!("  {:<tail_w$}", tail(known, size)), Style::default().fg(Color::Gray)));
+        spans.push(Span::styled(format!("  {:<tail_w$}", tail(known, size)), Style::default().fg(TEXT)));
         if let Some(n) = next {
             spans.push(Span::styled(format!("   {n}"), dim));
         }
@@ -332,7 +317,7 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
     };
     let top_y = area.y + pad;
     let (wpm, acc) = big_values(scr);
-    let wpm_block = stat_block("wpm", &wpm, YELLOW);
+    let wpm_block = stat_block("wpm", &wpm, TEXT);
     let acc_block = stat_block("acc", &acc, acc_colour(scr.accuracy));
     if tall {
         frame.render_widget(Paragraph::new([wpm_block, acc_block].concat()), within(area, inner.x, top_y, STATS_W, 12));
@@ -361,12 +346,18 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
         left -= rows[i];
     }
     let mut row_y = top_y + top_h;
-    for (lines, n) in groups.iter_mut().zip(rows) {
+    let titles = [None, Some("this test"), Some("learning"), Some("level")];
+    for (g, (lines, n)) in groups.iter_mut().zip(rows).enumerate() {
         if n == 0 {
             continue;
         }
         if left > 0 {
             left -= 1;
+            if let Some(title) = titles[g] {
+                let rule = format!("── {title} ");
+                let fill = usize::from(inner.width).saturating_sub(rule.chars().count());
+                frame.render_widget(Paragraph::new(format!("{rule}{}", "─".repeat(fill))).style(Style::default().fg(DIM)), within(area, inner.x, row_y, inner.width, 1));
+            }
             row_y += 1;
         }
         let height = u16::try_from(n).unwrap_or(0);
@@ -486,7 +477,7 @@ mod tests {
         assert!(all.contains("stumbled") && all.contains("find×3") && all.contains("every×2") && all.contains("could"), "{all}");
         assert!(all.contains("mastered") && all.contains("about"), "{all}");
         assert!(all.contains("lv1  monkeytype 200") && all.contains("52%  104/200") && all.contains("next  monkeytype 1k"), "{all}");
-        assert!(all.contains('█') && all.contains('░'), "the bar: {all}");
+        assert!(all.contains('━') && all.contains('─'), "the bar: {all}");
         assert!(text.last().is_some_and(|r| r.trim() == RESULTS_HINT), "the footer is the last row: {all}");
         assert!(all.chars().any(|c| ('\u{2800}'..='\u{28ff}').contains(&c)), "the chart is drawn in braille: {all}");
     }
