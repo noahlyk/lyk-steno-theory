@@ -14,6 +14,7 @@ mod feed;
 mod history;
 pub mod pool;
 mod sources;
+pub mod tiers;
 mod ui;
 pub mod words;
 

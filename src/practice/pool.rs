@@ -92,7 +92,7 @@ pub fn parse_monkeytype(json: &str) -> Result<Vec<String>> {
 }
 
 /// A list's usable words (practice words by `filter`), in order, each once.
-fn usable(words: Vec<String>, filter: &WordFilter) -> Vec<String> {
+pub(super) fn usable(words: Vec<String>, filter: &WordFilter) -> Vec<String> {
     let mut seen = HashSet::new();
     words
         .into_iter()
@@ -273,6 +273,12 @@ impl Pool {
                 chunk > 0
             }
         }
+    }
+
+    /// The tiers of this pool's data (see `tiers`); `deep` adds the 450k dictionary's tail.
+    #[must_use]
+    pub fn tiers(&self, deep: bool) -> Vec<super::tiers::Tier> {
+        super::tiers::load(&self.data, &self.filter, &self.skip, deep)
     }
 
     /// Words loaded so far.

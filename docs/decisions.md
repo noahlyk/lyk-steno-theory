@@ -3329,3 +3329,18 @@ new words) and to 163 with `--requeue` (33 new; 164 before, with the day rule): 
 nothing in the simulation, because its learner's clean rate is the limit, not the calendar; the fixed
 feed has fewer attempts per word (no copies put back), so it grows a little slower. What regresses if
 undone: a word that is typed clean 9 of 10 times still waits for the calendar.
+
+## Practice: levels from the pool's lists, and a goal
+
+The typist wanted to see which word set practice draws from and how far to the next ('we're in lv1
+monkeytype250 and I want to do all of monkeytype 1k'). The pool was already ordered by frequency rank
+(a Monkeytype word's rank times 0.7), which is least to most frequent with Monkeytype's words met
+earlier, so the order was not changed. Levels are a *view*: the pool's practice words cut by the list a
+word first appears in (`english`, `1k`, `5k`, `10k`, `25k`, lyk's top 20,000, `deep` with `--deep`),
+a tier complete at 90% known (review or retired; learning 0; hidden left out), the level the first
+incomplete tier. Tiers hold the words a list adds, so `monkeytype 1k` is about 808 words and the 1k
+goal's bar (cumulative, 1,008 words) is a separate thing from the tier's. A goal is a tier key or
+`words:N` in `vocab.json` (`serde(default)`, not written when unset, so older files load unchanged and
+older readers ignore it). Because new words come in rank order rather than tier by tier, a rare word of
+a lower tier can come after a frequent word of the next one: the bars follow the vocabulary, not a
+fixed course. What regresses if undone: no way to see progress toward a word set.

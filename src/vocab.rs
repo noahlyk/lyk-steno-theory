@@ -12,6 +12,7 @@ use crate::mistakes::TapeWord;
 use crate::paths;
 use crate::practice::adaptive::{Config, accuracy_ok, base_accuracy, due_reviews, learning_accuracy, recent_tests_accuracy, window_accuracy};
 use crate::practice::pool::{self, Candidates, Pool};
+use crate::practice::tiers::{self, Tier};
 use crate::practice::words::{FILTER_VERSION, WordFilter};
 use anyhow::{Context, Result, bail};
 use clap::{Args as ClapArgs, Subcommand};
@@ -168,12 +169,16 @@ pub struct Vocab {
     /// Words `lyk vocab clean` removed: never seeded or introduced again (`lyk vocab unhide`)
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub hidden: BTreeSet<String>,
+    /// The typist's goal for `lyk vocab goal`: a tier key (`english_1k`) or `words:N`; none when
+    /// not set (files written before it have no field)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<String>,
     pub words: BTreeMap<String, Word>,
 }
 
 impl Default for Vocab {
     fn default() -> Self {
-        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), base_recent: String::new(), base_tests: Vec::new(), gate: None, last_new: 0, filter_version: FILTER_VERSION, hidden: BTreeSet::new(), words: BTreeMap::new() }
+        Self { version: VERSION, seeded: false, sessions: 0, recent: String::new(), base_recent: String::new(), base_tests: Vec::new(), gate: None, last_new: 0, filter_version: FILTER_VERSION, hidden: BTreeSet::new(), goal: None, words: BTreeMap::new() }
     }
 }
 
@@ -523,6 +528,13 @@ enum Action {
     },
     /// Let hidden words be introduced again (if they are practice words)
     Unhide { words: Vec<String> },
+    /// The goal shown as a second bar on the practice results: a tier (`200`, `1k`, `5k`, `10k`,
+    /// `25k`, `lyk`, `deep`, or `monkeytype-1k`) or a number of words; `clear` removes it, nothing
+    /// prints it
+    Goal {
+        /// A tier, a number of words, or `clear`
+        goal: Option<String>,
+    },
     /// Spread the due days of reviews that all fall on one day (never practised since the seeding);
     /// writes `vocab.json.bak` first
     Spread,
@@ -647,7 +659,12 @@ pub fn run(args: &Args) -> Result<()> {
     let lower = |words: &[String]| words.iter().map(|w| w.to_lowercase()).collect::<Vec<_>>();
     match &args.action {
         None => {
-            print!("{}", summary(&vocab, &cfg, today, &frontier(args)?, args.json)?);
+            let tiers = tiers_of(args);
+            print!("{}", summary(&vocab, &cfg, today, &frontier(args)?, &tiers, args.json)?);
+            return Ok(());
+        }
+        Some(Action::Goal { goal }) => {
+            goal_command(args, &mut vocab, &path, goal.as_deref())?;
             return Ok(());
         }
         Some(Action::Know { words } | Action::Skip { words }) => {
@@ -758,6 +775,38 @@ pub fn find_frontier(vocab: &Vocab, pool: &mut dyn Candidates) -> Frontier {
         i += 1;
     }
     Frontier { rank: i + 1, next: None }
+}
+
+/// `lyk vocab goal [TIER|N|clear]`: sets, clears or prints the goal, and its bar.
+fn goal_command(args: &Args, vocab: &mut Vocab, path: &Path, goal: Option<&str>) -> Result<()> {
+    let tiers = tiers_of(args);
+    match goal {
+        None => {}
+        Some("clear") => {
+            vocab.goal = None;
+            vocab.save(path)?;
+        }
+        Some(text) => {
+            let key = tiers::parse_goal(text).with_context(|| format!("{text:?} is not a tier (200, 1k, 5k, 10k, 25k, lyk, deep) or a number of words, or `clear`"))?;
+            vocab.goal = Some(key);
+            vocab.save(path)?;
+        }
+    }
+    match vocab.goal.as_deref() {
+        Some(g) => match tiers::goal_progress(&tiers, vocab, g) {
+            Some((k, n)) => println!("goal: {}  {} {}%  {k} of {n} words known", tiers::goal_label(g), tiers::bar(k, n, 10), tiers::percent(k, n)),
+            None => println!("goal: {} (its list is not on file{})", tiers::goal_label(g), if g == "deep" { "; `deep` needs --deep" } else { ": run `lyk fetch`" }),
+        },
+        None => println!("goal: none (lyk vocab goal 1k sets one)"),
+    }
+    Ok(())
+}
+
+/// The tiers of the pool the command is measuring, empty when no list is on file.
+fn tiers_of(args: &Args) -> Vec<Tier> {
+    let data = paths::data_dir();
+    let opts = pool::Opts { wordlist: args.wordlist, weight: args.monkeytype_weight, names: args.names, deep: args.deep };
+    Pool::open(&data, &opts).map_or_else(|_| Vec::new(), |p| p.tiers(args.deep))
 }
 
 fn frontier(args: &Args) -> Result<Frontier> {
@@ -899,7 +948,7 @@ pub fn stuck_report(vocab: &Vocab, extras: &BTreeMap<String, StuckExtra>, json: 
 
 /// The summary: counts, size, frontier, the learning pool, the next due reviews, the recently
 /// mastered words and the lapses, as text or JSON.
-pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, json: bool) -> Result<String> {
+pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, tiers: &[Tier], json: bool) -> Result<String> {
     let learning: Vec<(&String, &Word)> = vocab.words.iter().filter(|(_, w)| w.status == Status::Learning).collect();
     let mut reviews: Vec<(&String, &Word)> = vocab.words.iter().filter(|(_, w)| w.status == Status::Review).collect();
     reviews.sort_by(|a, b| a.1.due.cmp(&b.1.due).then(a.0.cmp(b.0)));
@@ -913,6 +962,7 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
     let stumble_rate = accuracy.map(|a| 1.0 - a);
     let week = stumbled_this_week(vocab, today);
     let stuck = stuck_reason(vocab, cfg, today);
+    let tier_stats = tiers::stats(tiers, vocab);
     if json {
         let item = |(w, s): &(&String, &Word)| serde_json::json!({"word": w, "level": s.level, "due": (s.status == Status::Review).then(|| date(s.due)), "accuracy": 1.0 - s.error_rate(), "lapses": s.lapses, "stuck": s.stuck});
         let value = serde_json::json!({
@@ -924,6 +974,9 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
             "learning_active": vocab.active_learning(), "stuck": vocab.stuck_count(),
             "stumbled_this_week": week.iter().take(LIST).map(|(w, n)| serde_json::json!({"word": w, "stumbles": n})).collect::<Vec<_>>(),
             "no_new_words": stuck,
+            "level": tiers::progress(tiers, vocab).map(|p| serde_json::json!({"level": p.level, "tier": p.label, "known": p.known, "size": p.size, "percent": p.percent(), "all_complete": p.all_complete})),
+            "goal": vocab.goal.as_deref().map(|g| serde_json::json!({"goal": g, "label": tiers::goal_label(g), "progress": tiers::goal_progress(tiers, vocab, g).map(|(k, n)| serde_json::json!({"known": k, "size": n}))})),
+            "tiers": tier_stats.iter().map(|t| serde_json::json!({"key": t.key, "label": t.label, "size": t.size, "known": t.known})).collect::<Vec<_>>(),
             "learning_pool": learning.iter().map(item).collect::<Vec<_>>(),
             "next_due": reviews.iter().take(LIST).map(item).collect::<Vec<_>>(),
             "recently_mastered": mastered.iter().take(LIST).map(|(w, s)| serde_json::json!({"word": w, "date": s.mastered.map(date)})).collect::<Vec<_>>(),
@@ -946,6 +999,9 @@ pub fn summary(vocab: &Vocab, cfg: &Config, today: u32, frontier: &Frontier, jso
         Some(w) => writeln!(out, "frontier: rank {} is next ({w}); every word above it is learning, in review, retired or on file", frontier.rank),
         None => writeln!(out, "frontier: no word list loaded or every word introduced"),
     };
+    if !tiers.is_empty() {
+        out.push_str(&tiers::table(tiers, vocab));
+    }
     let pct = |x: Option<f64>| x.map_or_else(|| "none yet".to_owned(), |a| format!("{:.0}%", a * 100.0));
     let _ = writeln!(
         out,
@@ -1225,13 +1281,13 @@ mod tests {
         v.words.insert("owl".into(), Word { status: Status::Review, level: 1, due: 60, mastered: Some(45), ..Word::default() });
         v.words.insert("zed".into(), Word { status: Status::Retired, ..Word::default() });
         let f = Frontier { rank: 12, next: Some("horse".into()) };
-        let text = summary(&v, &cfg, 55, &f, false).unwrap();
+        let text = summary(&v, &cfg, 55, &f, &[], false).unwrap();
         assert!(text.contains("vocabulary 4 words"), "{text}");
         assert!(text.contains("rank 12 is next (horse)"), "{text}");
         assert!(text.contains("learning (1 of 10)") && text.contains("cat"), "{text}");
         assert!(text.contains("1 due now"), "{text}");
         assert!(text.contains("lapses:") && text.contains("dog"), "{text}");
-        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 55, &f, true).unwrap()).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 55, &f, &[], true).unwrap()).unwrap();
         assert_eq!(json["vocabulary"], 4);
         assert_eq!(json["frontier_rank"], 12);
         assert_eq!(json["next_due"][0]["word"], "dog");
@@ -1261,7 +1317,7 @@ mod tests {
         let why = stuck_reason(&v, &cfg, 120).expect("20 days with 60% against a 70% gate");
         assert!(why.contains("filler clean 60%") && why.contains("70%") && why.contains("lyk vocab gate"), "{why}");
         let f = Frontier { rank: 4, next: Some("x".into()) };
-        let text = summary(&v, &cfg, 120, &f, false).unwrap();
+        let text = summary(&v, &cfg, 120, &f, &[], false).unwrap();
         assert!(text.contains("no new word for 20 days") && text.contains("lyk vocab gate"), "{text}");
         // a lower gate lets it through
         v.gate = Some(0.5);
@@ -1274,7 +1330,7 @@ mod tests {
         assert!(stuck_reason(&v, &low, 120).is_some_and(|w| w.contains("pool is full")));
         // never a test taken, or a new word lately: nothing to say
         assert!(stuck_reason(&Vocab::default(), &cfg, 500).is_none());
-        let json: serde_json::Value = serde_json::from_str(&summary(&v, &low, 120, &f, true).unwrap()).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &low, 120, &f, &[], true).unwrap()).unwrap();
         assert!(json["no_new_words"].is_string());
     }
 
@@ -1286,11 +1342,11 @@ mod tests {
         v.words.insert("dog".into(), Word { status: Status::Learning, stumbles: 1, stumble_days: vec![[100, 1]], ..Word::default() });
         v.words.insert("old".into(), Word { status: Status::Learning, stumbles: 9, stumble_days: vec![[90, 9]], ..Word::default() });
         let f = Frontier::default();
-        let text = summary(&v, &cfg, 101, &f, false).unwrap();
+        let text = summary(&v, &cfg, 101, &f, &[], false).unwrap();
         assert!(text.contains("stumble rate over all words 25%"), "{text}");
         let week = text.split("stumbled most this week").nth(1).expect("the list is there");
         assert!(week.find("cat").unwrap() < week.find("dog").unwrap() && !week.contains("old"), "{text}");
-        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 101, &f, true).unwrap()).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 101, &f, &[], true).unwrap()).unwrap();
         assert_eq!(json["stumbled_this_week"][0]["word"], "cat");
         assert_eq!(json["stumbled_this_week"][0]["stumbles"], 4);
         assert!((json["stumble_rate"].as_f64().unwrap() - 0.25).abs() < 1e-9);
@@ -1386,13 +1442,54 @@ mod tests {
         v.words.insert("cat".into(), Word { status: Status::Learning, recent: "0000000001".into(), ..Word::default() });
         v.words.insert("dog".into(), Word { status: Status::Learning, stuck: true, recent: "0000000000".into(), ..Word::default() });
         let f = Frontier::default();
-        let text = summary(&v, &cfg, 120, &f, false).unwrap();
+        let text = summary(&v, &cfg, 120, &f, &[], false).unwrap();
         assert!(text.contains("filler clean 85% (gate 70%") && text.contains("learning clean 5%") && text.contains("stumble rate over all words 88%"), "{text}");
         assert!(text.contains("learning (1 of 10, 1 stuck: lyk vocab stuck)") && text.contains("stuck"), "{text}");
-        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 120, &f, true).unwrap()).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &cfg, 120, &f, &[], true).unwrap()).unwrap();
         assert!((json["filler_accuracy"].as_f64().unwrap() - 0.85).abs() < 1e-9);
         assert!((json["learning_accuracy"].as_f64().unwrap() - 0.05).abs() < 1e-9);
         assert_eq!((json["stuck"].as_u64(), json["learning_active"].as_u64()), (Some(1), Some(1)));
+    }
+
+    #[test]
+    fn a_goal_is_kept_in_the_file_and_an_old_file_without_one_still_loads() {
+        let dir = std::env::temp_dir().join(format!("lyk-vocab-goal-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("vocab.json");
+        // a file written before the field existed (no `goal`, no `hidden`)
+        std::fs::write(&path, r#"{"version":1,"seeded":true,"sessions":4,"words":{"cat":{"status":"review","attempts":3,"hits":3}}}"#).unwrap();
+        let mut v = Vocab::load(&path).unwrap();
+        assert_eq!((v.goal.clone(), v.sessions, v.words.len()), (None, 4, 1));
+        v.goal = tiers::parse_goal("monkeytype-1k");
+        v.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains(r#""goal":"english_1k""#), "{text}");
+        let back = Vocab::load(&path).unwrap();
+        assert_eq!(back.goal.as_deref(), Some("english_1k"));
+        assert_eq!(back, v);
+        // no goal: the field is not written, so older readers see the file they know
+        v.goal = None;
+        v.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(!text.contains("goal"), "{text}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_summary_shows_the_tier_table_and_the_goal() {
+        let tiers = tiers::build(&[("english".into(), vec!["cat".into(), "dog".into()]), ("english_1k".into(), vec!["cat".into(), "dog".into(), "owl".into()])], &[], &[]);
+        let mut v = Vocab { goal: Some("english_1k".into()), ..Vocab::default() };
+        v.words.insert("cat".into(), Word { status: Status::Review, ..Word::default() });
+        let f = Frontier::default();
+        let text = summary(&v, &Config::default(), 55, &f, &tiers, false).unwrap();
+        assert!(text.contains("monkeytype 200") && text.contains("<- you are here") && text.contains("goal: monkeytype 1k"), "{text}");
+        let json: serde_json::Value = serde_json::from_str(&summary(&v, &Config::default(), 55, &f, &tiers, true).unwrap()).unwrap();
+        assert_eq!(json["tiers"][0]["known"], 1);
+        assert_eq!(json["level"]["tier"], "monkeytype 200");
+        assert_eq!(json["goal"]["progress"]["size"], 3);
+        // no tiers on file: no table, no level
+        let text = summary(&v, &Config::default(), 55, &f, &[], false).unwrap();
+        assert!(!text.contains("tiers ("), "{text}");
     }
 
     #[test]

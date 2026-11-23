@@ -153,8 +153,14 @@ lightly and is listed by `lyk vocab stuck` (a hint that its outline does not sui
 `practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you
 already type well are not new (their first reviews are spread over 1 to 30 days). `lyk vocab` shows it
 (filler and learning clean rates, the stumble rate, the words stumbled most this week, and why no new
-word has come in 14 days, if so) and `know`, `skip`, `forget`, `reset --yes`, `gate N`, `spread`,
+word has come in 14 days, if so) and prints the tier table (below); `know`, `skip`, `forget`, `reset --yes`, `gate N`, `goal`, `spread`,
 `clean`, `unhide` edit it; `--no-adapt` plays a feed without changing it. `--history` ends with the stuck count. The rules are in the Reference, Build and files.
+
+Levels: the pool is cut into tiers by the list a word first appears in (Monkeytype's `english` 200, `1k`,
+`5k`, `10k`, `25k`, then lyk's own top 20,000, then with `--deep` the rest); a tier is complete at 90% of
+its words known (in review or retired), and your level is the first tier that is not. `lyk vocab` prints
+the table and `lyk vocab goal 1k` (or `5k`, `monkeytype-10k`, a number of words; `clear` removes it)
+sets a goal that gets its own bar.
 
 ## Full benchmarks
 
