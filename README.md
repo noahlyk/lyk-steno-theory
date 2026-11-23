@@ -143,11 +143,11 @@ seeding and the feed: real, common-enough words (Monkeytype's lists up to the 25
 removes the words on file that are not practice words and hides them for good (`unhide` undoes it);
 `lyk practice` does it once for a file written by an older version, after writing `vocab.json.bak`. An attempt
 counts as clean only when the word was right and needed no correction on the way (a `*` or backspace
-before the space is a stumble, even if the word then commits right); a stumbled or wrong word comes
-back 3 words later in the same test in place of a base word (so the test keeps its length; at most 2
-copies of a word, 3 after two unclean ones) and is drilled in the next. A word 9 of
-whose last 10 attempts are clean, over 3 days, becomes a review and returns after 1, 3, 7, 21, 60 and
-180 days; a miss or stumble steps it back, two in a row send it back to learning. A learning word with 30
+before the space is a stumble, even if the word then commits right). The feed is fixed when the test
+starts and does not change while you type; a stumbled or wrong word is drilled first in the next tests
+(`--requeue` also puts it back 3 words later in the same test, in place of a base word). A word 9 of
+whose last 10 attempts are clean (and that is not much slower than your other words) becomes a review
+and returns after 1, 3, 7, 21, 60 and 180 days; a miss or stumble steps it back, two in a row send it back to learning. A learning word with 30
 or more practice attempts, under 30% of them clean, over 7 days, is stuck: it leaves the cap, is drilled
 lightly and is listed by `lyk vocab stuck` (a hint that its outline does not suit your hands). The state is `vocab.json` beside
 `practice.jsonl`; the first run seeds it from your practice history and the steno tape, so words you

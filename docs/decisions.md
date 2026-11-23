@@ -3312,3 +3312,20 @@ column, free of every word, name and other theory's brief that starts a longer o
 `PW*PB` (*button*, 52 outlines start with it). Not added: `{:undo:N}` and `{:redo:N}` (a held `*` and
 `R*EUD` repeat), `{:tape:show/hide}` and `{:keyboard:show/hide}` (toggle covers them), `{:barrier}`
 and `{:nobarrier}` (markers inside an entry, not strokes).
+
+## Practice: fixed feed, mastery without a day count
+
+Two changes from the typist's and a friend's use of `lyk practice`. (1) The feed is fixed when the test
+starts: it no longer regenerates under the typist's hands (a stumbled or wrong word used to replace a
+later base word mid-test). `--requeue` keeps the old behaviour; the next-test drill of recently
+stumbled words is unchanged. (2) Mastery is 9 of the last 10 attempts clean and a speed within 1.5 times
+the median; the condition of 3 distinct practice days is gone (speed and accuracy over 10 attempts
+already measure it, and it made a word wait days after it was typed well). `stuck_days` (7 days
+practised) stays: it only decides when a word is called stuck. Every attempt counts toward the window,
+including the second copy of a word in the same test, so a new word (2 copies in its first test) can be
+mastered in about 5 tests and a one-copy word in 10. Simulated (90 days, one 25-word test a day, the
+same learner and seed as the entries above, five bad days): 130 words grow to 156 with the fixed feed (26
+new words) and to 163 with `--requeue` (33 new; 164 before, with the day rule): the day rule cost almost
+nothing in the simulation, because its learner's clean rate is the limit, not the calendar; the fixed
+feed has fewer attempts per word (no copies put back), so it grows a little slower. What regresses if
+undone: a word that is typed clean 9 of 10 times still waits for the calendar.

@@ -129,6 +129,9 @@ pub struct Args {
     /// A wrong word is not accepted until it is right
     #[arg(long)]
     stop_on_error: bool,
+    /// Adaptive: a word that stumbled or was typed wrong comes back 3 words later in place of a base word (the feed is fixed at the start by default)
+    #[arg(long)]
+    requeue: bool,
     /// No live speed and accuracy line and no key hint
     #[arg(long)]
     quiet: bool,
@@ -179,10 +182,8 @@ pub fn run(args: &Args) -> Result<()> {
         let mut round = 0;
         loop {
             let words = feeder.words(args, next_seed(args.seed, round, random_seed()));
-            let mut session = Session::new(words, args.stop_on_error);
-            if let Feeder::Adaptive(a) = &feeder {
-                session = session.with_requeue(a.cfg.respace_gap, a.fillers.clone());
-            }
+            let requeue = if let Feeder::Adaptive(a) = &feeder { Some((a.cfg.respace_gap, a.fillers.clone())) } else { None };
+            let mut session = make_session(words, args, requeue);
             let clock = Instant::now();
             let outcome = type_loop(&mut terminal, &mut session, &clock, args.quiet, limit)?;
             let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
@@ -238,6 +239,17 @@ pub fn run(args: &Args) -> Result<()> {
         eprintln!("{e}");
     }
     Ok(())
+}
+
+/// The typing session of a feed. The feed is fixed when the test starts; only with `--requeue`
+/// (and an adaptive feed, whose base words are the `requeue` pair: gap and replaceable words) does
+/// a stumbled or wrong word come back later in place of a base word.
+fn make_session(words: Vec<String>, args: &Args, requeue: Option<(usize, HashSet<String>)>) -> Session {
+    let session = Session::new(words, args.stop_on_error);
+    match requeue {
+        Some((gap, fillers)) if args.requeue => session.with_requeue(gap, fillers),
+        _ => session,
+    }
 }
 
 /// How a test ended.
@@ -712,6 +724,36 @@ mod tests {
     }
 
     #[test]
+    fn the_feed_is_fixed_unless_requeue_is_given() {
+        use clap::Parser;
+        #[derive(Parser)]
+        struct Cli {
+            #[command(flatten)]
+            args: Args,
+        }
+        let fillers = || Some((3, ["dd", "ee"].iter().map(|w| (*w).to_owned()).collect::<HashSet<String>>()));
+        let words: Vec<String> = ["aa", "bb", "cc", "dd", "ee"].map(String::from).to_vec();
+        let miss = |s: &mut Session| {
+            for c in "xx ".chars() {
+                s.apply(Input::Char(c), 1.0);
+            }
+        };
+        let default = Cli::parse_from(["x"]).args;
+        assert!(!default.requeue, "off by default");
+        let mut fixed = make_session(words.clone(), &default, fillers());
+        miss(&mut fixed);
+        assert_eq!(fixed.words, words, "a missed word replaces nothing: {:?}", fixed.words);
+        let on = Cli::parse_from(["x", "--requeue"]).args;
+        let mut requeued = make_session(words.clone(), &on, fillers());
+        miss(&mut requeued);
+        assert_eq!(requeued.words, ["aa", "bb", "cc", "aa", "ee"].map(String::from), "--requeue replaces a later base word: {:?}", requeued.words);
+        // a source without base words has nothing to replace, flag or not
+        let mut plain = make_session(words.clone(), &on, None);
+        miss(&mut plain);
+        assert_eq!(plain.words, words);
+    }
+
+    #[test]
     fn count_defaults_to_25() {
         use clap::Parser;
         #[derive(Parser)]
@@ -753,6 +795,7 @@ mod tests {
             max_len: 30,
             names: false,
             stop_on_error: false,
+            requeue: false,
             quiet: false,
             outlines: false,
             no_save: true,

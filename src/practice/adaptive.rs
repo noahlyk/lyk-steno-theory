@@ -20,10 +20,10 @@
 //!   (c) fewer than `new_per_session` (2) new words have entered this test. The word is the next
 //!   one in pool order that is not already learning, in review or retired.
 //! - **Mastery.** A learning word becomes review (level 1) when at least `mastery_accuracy` (90%:
-//!   9 of 10) of its last 10 attempts are clean, it has been practised on at least
-//!   `mastery_days` (3) different days, and its speed is within `speed_factor` (1.5x) of the
-//!   median speed of the words with a measured speed (the check is skipped while fewer than 10
-//!   words have one).
+//!   9 of 10) of its last 10 attempts are clean and its speed is within `speed_factor` (1.5x) of
+//!   the median speed of the words with a measured speed (the check is skipped while fewer than 10
+//!   words have one). There is no day count: every attempt in a test counts, a second copy of a
+//!   word in the same test included, so a word can master within one day once it has 10 attempts.
 //! - **Stuck.** A learning word with at least `stuck_attempts` (30) practice attempts since it
 //!   entered learning, under `stuck_clean` (30%) of them clean, and practised on at least
 //!   `stuck_days` (7) days is marked stuck: it leaves the learning cap (so a new word can be
@@ -44,7 +44,9 @@
 //!   with the seed, no word twice in a row. In the typing session a word that stumbled or was
 //!   committed wrong comes back `respace_gap` (3) words later in place of a later base word (never
 //!   a due review or a learning word), so the test keeps its length; at most 2 copies of a word in
-//!   a test, 3 once it has been unclean twice.
+//!   a test, 3 once it has been unclean twice. That in-test replacement is off by default: the feed
+//!   is fixed when the test starts (`lyk practice --requeue` turns it on); a stumbled word is still
+//!   drilled first in the *next* tests.
 
 use super::feed::Rng;
 use super::pool::Candidates;
@@ -64,8 +66,6 @@ pub struct Config {
     pub accuracy_min_attempts: usize,
     /// Share of the last `WORD_WINDOW` attempts that must be clean for mastery
     pub mastery_accuracy: f64,
-    /// Distinct days a word must be practised for mastery
-    pub mastery_days: u32,
     /// A word's speed may be this many times the median speed
     pub speed_factor: f64,
     /// Words with a measured speed needed before the speed check applies
@@ -106,7 +106,6 @@ impl Default for Config {
             accuracy_threshold: 0.70,
             accuracy_min_attempts: 20,
             mastery_accuracy: 0.90,
-            mastery_days: 3,
             speed_factor: 1.5,
             speed_min_words: 10,
             speed_alpha: 0.3,
@@ -448,7 +447,6 @@ fn mastered(w: &Word, median: Option<f64>, cfg: &Config) -> bool {
     let (ok, n) = w.window();
     n >= WORD_WINDOW
         && ok as f64 / n as f64 >= cfg.mastery_accuracy
-        && w.days >= cfg.mastery_days
         && match (w.speed_ms, median) {
             (Some(s), Some(m)) => s <= cfg.speed_factor * m,
             _ => true,
@@ -940,10 +938,10 @@ mod tests {
     }
 
     #[test]
-    fn mastery_needs_nine_of_ten_clean_three_days_and_a_speed_near_the_median() {
+    fn mastery_needs_nine_of_ten_clean_and_a_speed_near_the_median_and_no_days() {
         let mut v = Vocab::default();
         v.words.insert("cat".into(), learning("111111111", 3));
-        // ten right, three days: mastered, review level 1, due tomorrow
+        // ten right: mastered, review level 1, due tomorrow
         let s = apply(&mut v, &[hit("cat")], &cfg(), 60);
         assert_eq!(s.mastered, ["cat"]);
         let cat = &v.words["cat"];
@@ -959,13 +957,10 @@ mod tests {
         let mut v = Vocab::default();
         v.words.insert("cat".into(), learning("111101111", 3));
         none(&apply(&mut v, &[stumble("cat", 1)], &cfg(), 60).mastered);
-        // only two days (the third is today)... the word's days counter already counts today when it is the first attempt of the day
+        // no day count: a word on its first day with ten clean attempts is mastered
         let mut v = Vocab::default();
-        v.words.insert("cat".into(), Word { last_seen: 60, ..learning("111111111", 2) });
-        assert!(apply(&mut v, &[hit("cat")], &cfg(), 60).mastered.is_empty(), "two distinct days");
-        let mut v = Vocab::default();
-        v.words.insert("cat".into(), Word { last_seen: 59, ..learning("111111111", 2) });
-        assert_eq!(apply(&mut v, &[hit("cat")], &cfg(), 60).mastered, ["cat"], "today is the third day");
+        v.words.insert("cat".into(), Word { last_seen: 60, ..learning("111111111", 1) });
+        assert_eq!(apply(&mut v, &[hit("cat")], &cfg(), 60).mastered, ["cat"], "one day is enough");
         // too few results
         let mut v = Vocab::default();
         v.words.insert("cat".into(), learning("11111111", 5));
@@ -1164,7 +1159,7 @@ mod tests {
         assert_eq!((c.new_per_session, c.learning_cap, c.respace_gap, c.second_copies), (2, 10, 3, 3));
         assert!((c.accuracy_threshold - 0.70).abs() < 1e-9 && (c.mastery_accuracy - 0.90).abs() < 1e-9);
         assert!((c.review_share - 0.30).abs() < 1e-9 && (c.learning_share - 0.40).abs() < 1e-9);
-        assert_eq!((c.mastery_days, c.stumble_sessions, c.stuck_attempts, c.stuck_days, c.stuck_per_test), (3, 2, 30, 7, 2));
+        assert_eq!((c.stumble_sessions, c.stuck_attempts, c.stuck_days, c.stuck_per_test), (2, 30, 7, 2));
         assert!((c.speed_factor - 1.5).abs() < 1e-9 && (c.stuck_clean - 0.30).abs() < 1e-9);
     }
 
@@ -1295,8 +1290,13 @@ mod tests {
         for i in 0..10 {
             v.words.insert(format!("l{i}"), learning("1", 1));
         }
-        v.words.insert("hard".into(), Word { stuck: true, learn_n: 40, learn_hits: 8, days: 2, last_seen: 70, ..learning("1111111110", 2) });
+        // (slow for its level, so it is not mastered: mastery has no day count)
+        for i in 0..12 {
+            v.words.insert(format!("f{i}"), Word { status: Status::Review, level: 2, due: 999, attempts: 20, speed_ms: Some(1000.0), ..Word::default() });
+        }
+        v.words.insert("hard".into(), Word { stuck: true, learn_n: 40, learn_hits: 8, days: 2, last_seen: 70, speed_ms: Some(9000.0), attempts: 9, ..learning("1111111110", 2) });
         let s = apply(&mut v, &[hit("hard")], &c, 70);
+        none(&s.mastered);
         none(&s.unstuck);
         assert!(v.words["hard"].stuck, "the pool is full: it waits");
         // entering learning (or lapsing back to it) starts the count over
@@ -1371,8 +1371,11 @@ mod tests {
     /// Types a test through the real typing session: a clean word is typed and committed; an
     /// unclean one is mostly typed wrong, corrected and typed right (a stumble), sometimes
     /// committed wrong. Returns the session.
-    fn play(plan: &Plan, learner: &mut Learner, c: &Config, day: u32, mood: f64) -> Session {
-        let mut s = Session::new(plan.words.clone(), false).with_requeue(c.respace_gap, plan.fillers.iter().cloned().collect());
+    fn play(plan: &Plan, learner: &mut Learner, c: &Config, day: u32, mood: f64, requeue: bool) -> Session {
+        let mut s = Session::new(plan.words.clone(), false);
+        if requeue {
+            s = s.with_requeue(c.respace_gap, plan.fillers.iter().cloned().collect());
+        }
         let mut t = 0.0;
         let mut n: f64 = 0.0;
         while let Some(target) = s.target().map(str::to_owned) {
@@ -1424,6 +1427,11 @@ mod tests {
     /// `days` days of one 25-word test each. `bad` is a run of days `[from, to)` on which the typist
     /// is at 35% of their usual; `hard_p` makes every hard word that likely clean, always.
     fn simulate(days: u32, seed: u64, bad: Option<(u32, u32)>, retire: Option<(u32, &str)>, hard_p: Option<f64>) -> Run {
+        simulate_with(days, seed, bad, retire, hard_p, false)
+    }
+
+    /// As `simulate`; `requeue` plays the tests with the in-test replacement of stumbled words on.
+    fn simulate_with(days: u32, seed: u64, bad: Option<(u32, u32)>, retire: Option<(u32, &str)>, hard_p: Option<f64>, requeue: bool) -> Run {
         let c = cfg();
         let mut pool = names(5000);
         let (mut vocab, easy) = seeded(&c, 1000);
@@ -1457,7 +1465,7 @@ mod tests {
             if !plan.new_words.is_empty() {
                 assert!(accuracy_ok(&vocab, &c), "day {d}: new words came with an easy base of {:?} over {} attempts", base_accuracy(&vocab), vocab.base_recent.len());
             }
-            let session = play(&plan, &mut learner, &c, day, mood);
+            let session = play(&plan, &mut learner, &c, day, mood, requeue);
             assert_eq!(session.words.len(), 25, "day {d}: the test did not grow");
             assert_eq!(session.done.len(), 25, "day {d}: and all of it was typed");
             let attempts = attempts_of(&session);
@@ -1483,7 +1491,7 @@ mod tests {
             assert!(size <= run.start_size + 2 * d as usize, "day {d}: vocabulary {size}");
         }
         let size = |d: u32| run.curve[d as usize - 1].1;
-        assert!(size(90) >= run.start_size + 30, "growth is real: {} words after 90 days from {}", size(90), run.start_size);
+        assert!(size(90) >= run.start_size + 20, "growth is real: {} words after 90 days from {}", size(90), run.start_size);
         assert!(size(30) < size(60) && size(60) < size(90), "keeps growing: {} {} {}", size(30), size(60), size(90));
         // five bad days empty the easy base: the day after them introduces nothing
         let (_, after_bad) = &run.plans[45];
@@ -1513,6 +1521,23 @@ mod tests {
     }
 
     #[test]
+    fn the_simulation_also_runs_with_the_requeue_on_and_both_keep_the_test_length() {
+        let fixed = simulate_with(90, 42, Some((40, 45)), None, None, false);
+        let requeued = simulate_with(90, 42, Some((40, 45)), None, None, true);
+        // a fixed feed is exactly what was planned (`simulate` asserts the length and that every word was typed)
+        for (_, p) in fixed.plans.iter().chain(&requeued.plans) {
+            assert_eq!(p.words.len(), 25);
+        }
+        assert_eq!(requeued.plans.len(), 90);
+        let at = |r: &Run, d: usize| r.curve[d - 1].1;
+        eprintln!(
+            "mastery without days, 90 days: fixed feed {} (day 30 {}, day 60 {}) words, requeued {} (day 30 {}, day 60 {}), {} and {} new words",
+            fixed.vocab.size(), at(&fixed, 30), at(&fixed, 60), requeued.vocab.size(), at(&requeued, 30), at(&requeued, 60),
+            fixed.summaries.iter().map(|s| s.new.len()).sum::<usize>(), requeued.summaries.iter().map(|s| s.new.len()).sum::<usize>()
+        );
+    }
+
+    #[test]
     fn new_words_are_still_earned_while_every_learning_word_stumbles() {
         // the dead end: learning words clean 5% of the time, drilled every test, so the overall
         // clean share is tiny; the easy base is clean 90% so the gate is open, and the stuck words
@@ -1521,7 +1546,7 @@ mod tests {
         let new: usize = run.summaries.iter().map(|s| s.new.len()).sum();
         assert!(new >= 4, "{new} new words in 60 days with every learning word stumbling");
         let stuck_at = run.curve.iter().position(|c| c.4 > 0).expect("a word gets stuck");
-        assert!(stuck_at < 20, "stuck by day {stuck_at}");
+        assert!(stuck_at < 35, "stuck by day {stuck_at}");
         assert!(run.curve.iter().all(|c| c.3 <= 10), "the cap holds: {:?}", run.curve);
         assert!(run.summaries.iter().map(|s| s.stuck.len()).sum::<usize>() >= 10, "the first ten learning words all get stuck");
         let overall = window_accuracy(&run.vocab).unwrap();
