@@ -45,6 +45,7 @@ pub fn deploy(
     common: usize,
     to: &Path,
     validate: Validate,
+    select: crate::deploy::Select,
 ) -> Result<()> {
     let to = expand_home(to)?;
     let words_out = crate::paths::built_dir();
@@ -86,15 +87,38 @@ pub fn deploy(
         Ok(())
     };
     let path_var = std::env::var_os("PATH").unwrap_or_default();
-    crate::deploy::install(&items, &to, validate, &path_var, &cleanup)?;
-
-    println!("deployed to {} ({generated} generated, {} static)", to.display(), STATIC_FILES.len());
-    Ok(())
+    let env = crate::deploy::Env {
+        path_var: &path_var,
+        probe: &crate::deploy::pacman_has,
+        typeladder_dir: crate::deploy::typeladder_config_dir_from_env(),
+    };
+    crate::deploy::run(
+        select,
+        &env,
+        || {
+            crate::deploy::install(&items, &to, validate, &path_var, &cleanup)?;
+            println!("deployed to {} ({generated} generated, {} static)", to.display(), STATIC_FILES.len());
+            Ok(())
+        },
+        |config_dir| {
+            let entries = dictionary_entries(setup, None, common, false)?;
+            let codes = crate::deploy::codes(&entries);
+            crate::deploy::export_codes(config_dir, &codes)?;
+            Ok(codes.len())
+        },
+    )
 }
 
 /// `deploy --rollback`: put back the files the last deploy replaced.
-pub fn deploy_rollback(to: &Path) -> Result<()> {
-    crate::deploy::rollback(&expand_home(to)?)
+pub fn deploy_rollback(to: &Path, select: crate::deploy::Select) -> Result<()> {
+    let to = expand_home(to)?;
+    let path_var = std::env::var_os("PATH").unwrap_or_default();
+    let env = crate::deploy::Env {
+        path_var: &path_var,
+        probe: &crate::deploy::pacman_has,
+        typeladder_dir: crate::deploy::typeladder_config_dir_from_env(),
+    };
+    crate::deploy::run_rollback(select, &env, || crate::deploy::rollback(&to))
 }
 
 /// A leading `~/` or bare `~`, expanded against `$HOME`; any other path is returned as-is.

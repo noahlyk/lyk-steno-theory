@@ -11,7 +11,8 @@ url="https://github.com/noahlyk/lyk-steno-theory"
 license=('GPL-3.0-or-later')
 depends=('gcc-libs')
 makedepends=('rust' 'cargo')
-optdepends=('keymux: the steno engine `lyk deploy` writes into (and `keymux steno validate` checks the files)'
+optdepends=('keymux: the steno engine `lyk deploy` writes into when installed (and `keymux steno validate` checks the files)'
+            'typeladder: the typing trainer that `lyk deploy` gives the dictionary to when installed'
             'python: the measuring scripts in tools/ (checkout only)'
             'nodejs: the lesson site checks, site/check.mjs and site/test.mjs (checkout only)')
 options=('!debug' '!lto')

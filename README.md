@@ -54,8 +54,8 @@ make pkg && sudo pacman -U dist/lyk-steno-theory-*.pkg.tar.zst   # Arch package 
 ```
 
 Or unpack a release tarball (`lyk-VERSION-ARCH.tar.gz` on the releases page) and copy `lyk` onto
-your `PATH`. Then, from any folder: `lyk fetch`, `lyk build`, `lyk deploy` (needs
-[keymux](https://github.com/noahlyk/keymux)). `lyk where` shows the folders in use.
+your `PATH`. Then, from any folder: `lyk fetch`, `lyk build`, `lyk deploy` (hands the
+dictionary to [keymux](https://github.com/noahlyk/keymux) and to typeladder, each only when installed). `lyk where` shows the folders in use.
 
 Installed, data lives in `${XDG_DATA_HOME:-~/.local/share}/lyk/data` and build output in
 `${XDG_STATE_HOME:-~/.local/state}/lyk/out`; in a checkout, `data/` and `out/`. `LYK_DATA`, `LYK_OUT` or
@@ -70,7 +70,8 @@ In a checkout write `cargo run --release --` for `lyk`. Every command, option an
 ```
 lyk fetch                          # download the data (safe to re-run), the other theories included
 lyk build                          # briefs + rules -> out/lyk/02-lyk-*.json (--report: every diagnostic and the cost tables)
-lyk deploy                         # build, validate with keymux, copy into ~/.config/keymux/steno/lyk (--to), with the solver plugin and no backups
+lyk deploy                         # build, then each installed target: keymux (validate, copy into ~/.config/keymux/steno/lyk (--to), with the solver plugin and no backups), typeladder (dictionaries/lyk.codes.json)
+lyk deploy --only keymux           # one target (also --only typeladder, --no-keymux, --no-typeladder)
 lyk deploy --rollback              # put back the files the last deploy replaced
 lyk where                          # the version and the folders in use
 lyk score --check-readme           # do this README's tables still match? (--write-readme rewrites a stale one)

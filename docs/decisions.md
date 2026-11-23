@@ -3361,3 +3361,22 @@ stumbles show), `--outlines` now annotates the stumbled words. A smaller termina
 first, then the lowest panels, so 80x24 still shows the numbers, mastered and stumbled; the text
 version printed after quitting has the same content without the chart. What regresses if undone: the
 typist cannot see which words are close to mastery or how far the level bar is.
+
+## Deploy: only to what is installed, and a dictionary export for typeladder
+
+`lyk deploy` assumed keymux and wrote `~/.config/keymux` regardless. `lyk practice` is moving out into
+its own program, typeladder, which needs lyk's words and outlines but no engine. So `deploy` now
+builds, then hands the result to each *detected* target: keymux (`keymux` on `PATH` or `pacman -Q
+keymux`; absent means one `keymux: not installed, skipped` line, exit 0, nothing created) and
+typeladder (`typeladder` on `PATH`, `pacman -Q typeladder`, or its config folder existing).
+`--only` forces one target (installed or not), `--no-keymux`/`--no-typeladder` leave one out. Every
+keymux safeguard (staging, validation, previous files, rollback) is unchanged. typeladder gets one
+file, `<config>/dictionaries/lyk.codes.json`: a flat `{"text": "OUTLINE"}` object, sorted, one entry
+per plain word or phrase, the outline being what `lyk lookup` lists first (`cheapest_deployed`, so a
+backup stands for a word only when the word has no other entry). Written by temp file and rename, the
+file it replaces kept as `.previous` (not when the content is identical, so a repeat deploy cannot
+erase the real previous), and `--rollback` restores it too. `config.toml` and every other file there
+belong to typeladder and are never touched. Chosen over exporting a separate `lyk export` command
+because the user already runs `deploy` after every rule change, so the export cannot go stale. What
+regresses if undone: a machine without keymux cannot run `deploy` cleanly, and typeladder has no
+dictionary to read.

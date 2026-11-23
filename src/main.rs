@@ -414,8 +414,9 @@ enum Command {
         #[arg(long, default_value_t = 150)]
         words: usize,
     },
-    /// Build the dictionary, then copy it straight into the live keymux config along with the
-    /// reserved stroke tables: the one command for everything `build` otherwise leaves as a manual copy/paste
+    /// Build the dictionary, then hand it to every installed target: copy it into the live keymux
+    /// config with the reserved stroke tables (only when keymux is installed), and write
+    /// typeladder's `dictionaries/lyk.codes.json` (only when typeladder is installed)
     Deploy {
         /// Where keymux's lyk config lives
         #[arg(long, default_value = "~/.config/keymux/steno/lyk")]
@@ -436,6 +437,15 @@ enum Command {
         /// and do nothing else
         #[arg(long, conflicts_with = "briefs")]
         rollback: bool,
+        /// Deploy to this target alone, installed or not (default: every installed target)
+        #[arg(long, value_enum, conflicts_with_all = ["no_keymux", "no_typeladder"])]
+        only: Option<deploy::Target>,
+        /// Leave keymux out
+        #[arg(long)]
+        no_keymux: bool,
+        /// Leave typeladder out
+        #[arg(long)]
+        no_typeladder: bool,
     },
 }
 
@@ -578,8 +588,10 @@ fn main() -> Result<()> {
                 words: *words,
             })
         }
-        Command::Deploy { to, rollback: true, .. } => commands::deploy_rollback(to),
-        Command::Deploy { to, common, briefs, no_validate, strict_validate, rollback: false } => {
+        Command::Deploy { to, rollback: true, only, no_keymux, no_typeladder, .. } => {
+            commands::deploy_rollback(to, deploy::Select::from_flags(*only, *no_keymux, *no_typeladder))
+        }
+        Command::Deploy { to, common, briefs, no_validate, strict_validate, rollback: false, only, no_keymux, no_typeladder } => {
             let validate = if *no_validate {
                 deploy::Validate::Skip
             } else if *strict_validate {
@@ -589,7 +601,7 @@ fn main() -> Result<()> {
             };
             let setup = setup(Some(*common))?;
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
-            commands::deploy(&setup, &briefs, *common, to, validate)
+            commands::deploy(&setup, &briefs, *common, to, validate, deploy::Select::from_flags(*only, *no_keymux, *no_typeladder))
         }
     }
 }

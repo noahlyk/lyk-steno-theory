@@ -329,6 +329,233 @@ pub fn install(
     Ok(())
 }
 
+// ---- targets: keymux and typeladder, each only when installed ----
+
+/// A program `lyk deploy` can hand the theory to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Target {
+    Keymux,
+    Typeladder,
+}
+
+/// How one target was chosen on the command line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pick {
+    /// Deployed to when detected (the default)
+    Auto,
+    /// `--only`: deployed to whether or not it is detected
+    Force,
+    /// `--no-keymux`, `--no-typeladder`, or left out by `--only`
+    Off,
+}
+
+/// The targets as the command line chose them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Select {
+    pub keymux: Pick,
+    pub typeladder: Pick,
+}
+
+impl Select {
+    pub fn from_flags(only: Option<Target>, no_keymux: bool, no_typeladder: bool) -> Self {
+        let pick = |target: Target, off: bool| match only {
+            Some(only) if only == target => Pick::Force,
+            Some(_) => Pick::Off,
+            None if off => Pick::Off,
+            None => Pick::Auto,
+        };
+        Self { keymux: pick(Target::Keymux, no_keymux), typeladder: pick(Target::Typeladder, no_typeladder) }
+    }
+}
+
+/// What detection looks at, injectable for tests.
+pub struct Env<'a> {
+    /// The value of `$PATH`
+    pub path_var: &'a OsStr,
+    /// Whether the package manager has this package installed (`pacman -Q`)
+    pub probe: &'a dyn Fn(&str) -> bool,
+    /// typeladder's config folder, if it can be worked out
+    pub typeladder_dir: Option<PathBuf>,
+}
+
+/// `pacman -Q name` succeeding. False when there is no pacman.
+pub fn pacman_has(name: &str) -> bool {
+    use std::process::Stdio;
+    Command::new("pacman")
+        .args(["-Q", name])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+/// Whether `name` is installed: an executable of that name in `path_var`, or `probe` says the
+/// package is.
+pub fn installed(name: &str, path_var: &OsStr, probe: &dyn Fn(&str) -> bool) -> bool {
+    find_on_path(name, path_var).is_some() || probe(name)
+}
+
+/// typeladder's config folder: `$TYPELADDER_CONFIG_DIR`, else `$XDG_CONFIG_HOME/typeladder`, else
+/// `$HOME/.config/typeladder`. An unset or empty variable counts as unset.
+pub fn typeladder_config_dir(own: Option<&OsStr>, xdg: Option<&OsStr>, home: Option<&OsStr>) -> Option<PathBuf> {
+    let set = |v: Option<&OsStr>| v.filter(|v| !v.is_empty()).map(PathBuf::from);
+    set(own).or_else(|| set(xdg).map(|d| d.join("typeladder"))).or_else(|| set(home).map(|h| h.join(".config").join("typeladder")))
+}
+
+/// [`typeladder_config_dir`] from the environment.
+pub fn typeladder_config_dir_from_env() -> Option<PathBuf> {
+    let var = |name: &str| std::env::var_os(name);
+    typeladder_config_dir(var("TYPELADDER_CONFIG_DIR").as_deref(), var("XDG_CONFIG_HOME").as_deref(), var("HOME").as_deref())
+}
+
+impl Env<'_> {
+    /// Whether keymux is installed.
+    pub fn has_keymux(&self) -> bool {
+        installed("keymux", self.path_var, self.probe)
+    }
+
+    /// Whether typeladder is installed or already has a config folder.
+    pub fn has_typeladder(&self) -> bool {
+        installed("typeladder", self.path_var, self.probe) || self.typeladder_dir.as_ref().is_some_and(|d| d.is_dir())
+    }
+}
+
+/// Whether a target is deployed to: never when off, always when forced, else when detected.
+fn wants(pick: Pick, detected: impl FnOnce() -> bool) -> bool {
+    match pick {
+        Pick::Off => false,
+        Pick::Force => true,
+        Pick::Auto => detected(),
+    }
+}
+
+/// The file typeladder reads, inside its config folder.
+pub const CODES_DIR: &str = "dictionaries";
+pub const CODES_FILE: &str = "lyk.codes.json";
+const CODES_PREVIOUS: &str = "lyk.codes.json.previous";
+
+/// The skip line for keymux.
+pub const KEYMUX_SKIPPED: &str = "keymux: not installed, skipped (the dictionary is built in out/lyk)";
+
+/// Whether `text` is something to type as words: letters, apostrophes and hyphens in words
+/// separated by single spaces. Commands, braces, punctuation and digits are not.
+fn is_plain_text(text: &str) -> bool {
+    !text.is_empty()
+        && text.split(' ').all(|word| {
+            word.chars().any(char::is_alphabetic) && word.chars().all(|c| c.is_alphabetic() || c == '\'' || c == '-')
+        })
+}
+
+/// Each plain word or phrase to the outline `lyk lookup` lists first for it (the deployed
+/// dictionary's cheapest, `generate::cheapest_deployed`), sorted by text.
+pub fn codes(entries: &[crate::generate::Entry]) -> std::collections::BTreeMap<String, String> {
+    crate::generate::cheapest_deployed(entries)
+        .into_iter()
+        .map(|(word, outline)| (crate::generate::written(word), crate::stroke::render_outline(outline)))
+        .filter(|(text, _)| is_plain_text(text))
+        .collect()
+}
+
+/// Write `bytes` to `dest` in one rename.
+fn write_atomic(dest: &Path, bytes: &[u8]) -> Result<()> {
+    let name = dest.file_name().unwrap_or_default().to_string_lossy();
+    let temp = dest.with_file_name(format!(".{name}.lyk-tmp"));
+    fs::write(&temp, bytes).with_context(|| temp.display().to_string())?;
+    fs::rename(&temp, dest)
+        .inspect_err(|_| {
+            let _ = fs::remove_file(&temp);
+        })
+        .with_context(|| dest.display().to_string())
+}
+
+/// Write the export into `config_dir/dictionaries/lyk.codes.json`, keeping the file it replaces
+/// as `lyk.codes.json.previous` (not when the content is the same, so a repeat deploy keeps the
+/// real previous). Returns the file written.
+pub fn export_codes(config_dir: &Path, codes: &std::collections::BTreeMap<String, String>) -> Result<PathBuf> {
+    let dir = config_dir.join(CODES_DIR);
+    fs::create_dir_all(&dir).with_context(|| dir.display().to_string())?;
+    let live = dir.join(CODES_FILE);
+    let mut text = serde_json::to_string_pretty(codes)?;
+    text.push('\n');
+    match fs::read(&live) {
+        Ok(old) if old == text.as_bytes() => return Ok(live),
+        Ok(old) => write_atomic(&dir.join(CODES_PREVIOUS), &old)?,
+        Err(_) => {}
+    }
+    write_atomic(&live, text.as_bytes())?;
+    Ok(live)
+}
+
+/// Put `lyk.codes.json.previous` back as `lyk.codes.json`. The previous file stays.
+pub fn rollback_codes(config_dir: &Path) -> Result<PathBuf> {
+    let dir = config_dir.join(CODES_DIR);
+    let previous = dir.join(CODES_PREVIOUS);
+    let old = fs::read(&previous).with_context(|| format!("nothing to roll back to: {} is missing", previous.display()))?;
+    let live = dir.join(CODES_FILE);
+    write_atomic(&live, &old)?;
+    Ok(live)
+}
+
+/// Deploy to every selected, detected target. `keymux` installs the keymux folder and `typeladder`
+/// writes the export into the config folder it is given and returns the entry count. A target
+/// that is not detected is skipped with one line, never an error.
+pub fn run(
+    select: Select,
+    env: &Env<'_>,
+    keymux: impl FnOnce() -> Result<()>,
+    typeladder: impl FnOnce(&Path) -> Result<usize>,
+) -> Result<()> {
+    if wants(select.keymux, || env.has_keymux()) {
+        keymux()?;
+    } else if select.keymux == Pick::Auto {
+        println!("{KEYMUX_SKIPPED}");
+    }
+    if wants(select.typeladder, || env.has_typeladder()) {
+        let Some(dir) = &env.typeladder_dir else {
+            bail!("typeladder: no config folder ($TYPELADDER_CONFIG_DIR, $XDG_CONFIG_HOME and $HOME are all unset)");
+        };
+        let count = typeladder(dir)?;
+        println!("typeladder: wrote {count} entries to {}", dir.join(CODES_DIR).join(CODES_FILE).display());
+    } else if select.typeladder == Pick::Auto {
+        println!("typeladder: not installed, skipped");
+    }
+    Ok(())
+}
+
+/// `--rollback` over the selected, detected targets. A target with nothing to roll back is
+/// reported; it is an error only when no selected target could be rolled back.
+pub fn run_rollback(select: Select, env: &Env<'_>, keymux: impl FnOnce() -> Result<()>) -> Result<()> {
+    let mut failures = Vec::new();
+    let mut done = 0;
+    if wants(select.keymux, || env.has_keymux()) {
+        match keymux() {
+            Ok(()) => done += 1,
+            Err(e) => failures.push(format!("keymux: {e:#}")),
+        }
+    }
+    if wants(select.typeladder, || env.has_typeladder()) {
+        match env.typeladder_dir.as_deref().ok_or_else(|| anyhow::anyhow!("no config folder")).and_then(rollback_codes) {
+            Ok(live) => {
+                println!("typeladder: rolled back {}", live.display());
+                done += 1;
+            }
+            Err(e) => failures.push(format!("typeladder: {e:#}")),
+        }
+    }
+    for failure in &failures {
+        println!("{failure}");
+    }
+    if done == 0 {
+        if failures.is_empty() {
+            println!("nothing to roll back: no target installed");
+            return Ok(());
+        }
+        bail!("nothing rolled back");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -503,5 +730,211 @@ mod tests {
         assert!(live.join("gone.json").exists() && !live.join("b.json").exists());
         let nothing = root.join("steno").join("other");
         assert!(rollback(&nothing).is_err(), "no previous set to restore");
+    }
+
+    // ---- targets ----
+
+    fn fake(root: &Path, name: &str) -> PathBuf {
+        let bin = root.join(format!("bin-{name}"));
+        fs::create_dir_all(&bin).unwrap();
+        let script = bin.join(name);
+        fs::write(&script, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        bin
+    }
+
+    fn entry(word: &str, outline: &str, origin: crate::generate::Origin) -> crate::generate::Entry {
+        crate::generate::Entry { word: word.to_owned(), outline: crate::stroke::parse_outline(outline).unwrap(), origin }
+    }
+
+    #[test]
+    fn detection_needs_the_binary_on_path_or_the_package() {
+        let root = scratch("detect");
+        let with = fake(&root, "keymux");
+        let without = root.join("empty");
+        fs::create_dir_all(&without).unwrap();
+        let yes = |_: &str| true;
+        let no = |_: &str| false;
+        assert!(installed("keymux", with.as_os_str(), &no));
+        assert!(!installed("keymux", without.as_os_str(), &no));
+        assert!(installed("keymux", without.as_os_str(), &yes));
+        let probe_only = |name: &str| name == "typeladder";
+        assert!(!installed("keymux", without.as_os_str(), &probe_only));
+        assert!(installed("typeladder", without.as_os_str(), &probe_only));
+    }
+
+    #[test]
+    fn typeladder_is_also_detected_by_its_config_folder() {
+        let root = scratch("detect-dir");
+        let dir = root.join("typeladder");
+        let no = |_: &str| false;
+        let env = |dir: &Path| Env { path_var: OsStr::new(""), probe: &no, typeladder_dir: Some(dir.to_path_buf()) };
+        assert!(!env(&dir).has_typeladder());
+        fs::create_dir_all(&dir).unwrap();
+        assert!(env(&dir).has_typeladder());
+    }
+
+    #[test]
+    fn the_typeladder_folder_follows_its_variable_then_xdg_then_home() {
+        let s = |t: &'static str| Some(OsStr::new(t));
+        assert_eq!(typeladder_config_dir(s("/own"), s("/xdg"), s("/h")), Some(PathBuf::from("/own")));
+        assert_eq!(typeladder_config_dir(None, s("/xdg"), s("/h")), Some(PathBuf::from("/xdg/typeladder")));
+        assert_eq!(typeladder_config_dir(s(""), s(""), s("/h")), Some(PathBuf::from("/h/.config/typeladder")));
+        assert_eq!(typeladder_config_dir(None, None, None), None);
+    }
+
+    #[test]
+    fn flags_choose_the_targets() {
+        let sel = Select::from_flags;
+        assert_eq!(sel(None, false, false), Select { keymux: Pick::Auto, typeladder: Pick::Auto });
+        assert_eq!(sel(None, true, false), Select { keymux: Pick::Off, typeladder: Pick::Auto });
+        assert_eq!(sel(None, false, true), Select { keymux: Pick::Auto, typeladder: Pick::Off });
+        assert_eq!(sel(Some(Target::Keymux), false, false), Select { keymux: Pick::Force, typeladder: Pick::Off });
+        assert_eq!(sel(Some(Target::Typeladder), false, false), Select { keymux: Pick::Off, typeladder: Pick::Force });
+    }
+
+    #[test]
+    fn the_export_holds_plain_words_and_phrases_with_their_best_outline() {
+        use crate::generate::Origin::{Backup, Brief, Phrase, Rules, Suffix};
+        let entries = [
+            entry("cat", "KAT", Rules),
+            entry("cat", "KA/TKPWAT", Brief),
+            entry("cat", "K", Backup),
+            entry("zebra", "SEB/RA", Backup),
+            entry("i", "EU", Brief),
+            entry("it's", "AOT", Rules),
+            entry("well-known", "WEL", Rules),
+            entry("to the", "TO", Phrase),
+            entry("{:tape:toggle}", "TAEP", Rules),
+            entry("{^ing}", "-G", Suffix),
+            entry("2nd", "TWO", Rules),
+            entry("a.m.", "APL", Rules),
+            entry("ab  cd", "APB", Rules),
+        ];
+        let codes = codes(&entries);
+        let got: Vec<(&str, &str)> = codes.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+        assert_eq!(
+            got,
+            [("I", "EU"), ("cat", "KAT"), ("it's", "AOT"), ("to the", "TO"), ("well-known", "WEL"), ("zebra", "SEB/RA")]
+        );
+    }
+
+    fn map(pairs: &[(&str, &str)]) -> std::collections::BTreeMap<String, String> {
+        pairs.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect()
+    }
+
+    #[test]
+    fn the_export_is_sorted_atomic_and_keeps_the_previous_file() {
+        let root = scratch("export");
+        let dir = root.join("typeladder");
+        let live = export_codes(&dir, &map(&[("zoo", "ZAO"), ("ant", "ANT")])).unwrap();
+        let first = fs::read_to_string(&live).unwrap();
+        assert!(first.find("ant").unwrap() < first.find("zoo").unwrap(), "sorted: {first}");
+        assert!(first.ends_with("}\n"));
+        assert!(!dir.join(CODES_DIR).join(CODES_PREVIOUS).exists());
+        // the same content again changes nothing, and does not push the file into `.previous`
+        export_codes(&dir, &map(&[("zoo", "ZAO"), ("ant", "ANT")])).unwrap();
+        assert!(!dir.join(CODES_DIR).join(CODES_PREVIOUS).exists());
+        // new content keeps the old file
+        export_codes(&dir, &map(&[("ant", "AN")])).unwrap();
+        assert_eq!(fs::read_to_string(dir.join(CODES_DIR).join(CODES_PREVIOUS)).unwrap(), first);
+        assert!(fs::read_to_string(&live).unwrap().contains("\"AN\""));
+        // no temp file is left, and nothing outside `dictionaries/` is made
+        assert_eq!(files_in(&dir.join(CODES_DIR)).unwrap(), [CODES_FILE, CODES_PREVIOUS]);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+        // rollback brings the first file back, and keeps the previous
+        rollback_codes(&dir).unwrap();
+        assert_eq!(fs::read_to_string(&live).unwrap(), first);
+        assert!(dir.join(CODES_DIR).join(CODES_PREVIOUS).exists());
+    }
+
+    #[test]
+    fn rolling_back_the_export_needs_a_previous_file() {
+        let root = scratch("export-rollback");
+        assert!(rollback_codes(&root.join("none")).is_err());
+    }
+
+    #[test]
+    fn without_keymux_the_deploy_succeeds_and_makes_nothing_under_keymux() {
+        let root = scratch("absent");
+        let empty = root.join("empty-bin");
+        fs::create_dir_all(&empty).unwrap();
+        let no = |_: &str| false;
+        let tdir = root.join("typeladder");
+        let env = Env { path_var: empty.as_os_str(), probe: &no, typeladder_dir: Some(tdir.clone()) };
+        let keymux_home = root.join("config").join("keymux").join("steno").join("lyk");
+        let mut keymux_ran = false;
+        let mut typeladder_ran = false;
+        run(
+            Select::from_flags(None, false, false),
+            &env,
+            || {
+                keymux_ran = true;
+                install(&items(&[("a.json", "{}")]), &keymux_home, Validate::Skip, empty.as_os_str(), &|_| Ok(()))
+            },
+            |_| {
+                typeladder_ran = true;
+                Ok(0)
+            },
+        )
+        .unwrap();
+        assert!(!keymux_ran && !typeladder_ran);
+        assert!(!root.join("config").exists() && !tdir.exists());
+    }
+
+    #[test]
+    fn each_detected_target_is_deployed_and_the_other_left_alone() {
+        let root = scratch("present");
+        let bin = fake(&root, "keymux");
+        let no = |_: &str| false;
+        let tdir = root.join("typeladder");
+        let env = Env { path_var: bin.as_os_str(), probe: &no, typeladder_dir: Some(tdir.clone()) };
+        let live = root.join("keymux-lyk");
+        let go = |select| {
+            run(
+                select,
+                &env,
+                || install(&items(&[("a.json", "{}")]), &live, Validate::Skip, OsStr::new(""), &|_| Ok(())),
+                |dir| export_codes(dir, &map(&[("ant", "AN")])).map(|_| 1),
+            )
+        };
+        // keymux is on PATH, typeladder is not: only keymux
+        go(Select::from_flags(None, false, false)).unwrap();
+        assert!(live.join("a.json").exists() && !tdir.exists());
+        // `--only typeladder` deploys it though undetected, and leaves keymux out
+        fs::remove_dir_all(&live).unwrap();
+        go(Select::from_flags(Some(Target::Typeladder), false, false)).unwrap();
+        assert!(!live.exists() && tdir.join(CODES_DIR).join(CODES_FILE).exists());
+        // `--no-keymux`
+        go(Select::from_flags(None, true, false)).unwrap();
+        assert!(!live.exists());
+    }
+
+    #[test]
+    fn a_failed_keymux_deploy_is_still_an_error() {
+        let root = scratch("keymux-fails");
+        let bin = fake(&root, "keymux");
+        let no = |_: &str| false;
+        let env = Env { path_var: bin.as_os_str(), probe: &no, typeladder_dir: None };
+        let result = run(Select::from_flags(None, false, true), &env, || bail!("boom"), |_| Ok(0));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rollback_covers_both_targets_and_errors_only_when_none_could() {
+        let root = scratch("both-rollback");
+        let bin = fake(&root, "keymux");
+        let no = |_: &str| false;
+        let tdir = root.join("typeladder");
+        let env = Env { path_var: bin.as_os_str(), probe: &no, typeladder_dir: Some(tdir.clone()) };
+        let all = Select::from_flags(None, false, false);
+        // nothing kept anywhere (the typeladder folder does not exist, so it is not detected)
+        assert!(run_rollback(all, &env, || bail!("no previous")).is_err());
+        export_codes(&tdir, &map(&[("ant", "AN")])).unwrap();
+        export_codes(&tdir, &map(&[("ant", "AN"), ("bat", "BAT")])).unwrap();
+        // keymux has nothing, typeladder restores: fine
+        run_rollback(all, &env, || bail!("no previous")).unwrap();
+        let text = fs::read_to_string(tdir.join(CODES_DIR).join(CODES_FILE)).unwrap();
+        assert!(!text.contains("bat"));
     }
 }

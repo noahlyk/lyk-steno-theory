@@ -70,7 +70,7 @@
     ],
     [
      "`!deploy`",
-     "`!build`, copied straight into keymux's live config with the reserved stroke tables and the solver plugin, and without the backups, which the solver replaces (see [the solver](#/ref/fallback/no-backups-in-keymux)). Default destination `~/.config/keymux/steno/lyk`; override with `--to`. Checked before it is written, and kept for one deploy: see [deploy checks](#/ref/build-and-files/deploy-checks-and-rollback). `--no-validate`, `--strict-validate` and `--rollback` change that."
+     "`!build`, then handed to every target that is installed (see [deploy targets](#/ref/build-and-files/deploy-targets)). keymux: copied straight into its live config with the reserved stroke tables and the solver plugin, and without the backups, which the solver replaces (see [the solver](#/ref/fallback/no-backups-in-keymux)); default destination `~/.config/keymux/steno/lyk`, override with `--to`; checked before it is written, and kept for one deploy: see [deploy checks](#/ref/build-and-files/deploy-checks-and-rollback). typeladder: its dictionary export. `--no-validate`, `--strict-validate` and `--rollback` change the keymux step; `--only keymux|typeladder`, `--no-keymux` and `--no-typeladder` choose the targets."
     ],
     [
      "`explain [WORD]`",
@@ -170,7 +170,7 @@
   },
   {
    "t": "p",
-   "x": "The binary is `lyk` (package `lyk-steno-theory`). Install it with `make install` (`PREFIX=/usr/local` by default, `DESTDIR` honoured; `make uninstall` removes it), with `makepkg -si` (the `PKGBUILD` builds the checkout you are in; optional dependencies: `keymux` for `deploy`, `python` for `tools/`, `nodejs` for `site/check.mjs`), or from a release tarball (`lyk-VERSION-ARCH.tar.gz`: the binary, README, LICENSE and NOTICE; lyk is GPL-3.0-or-later). The rules are compiled into the binary; nothing but the data below is read at run time. Then `lyk fetch`, `lyk build`, `lyk deploy`."
+   "x": "The binary is `lyk` (package `lyk-steno-theory`). Install it with `make install` (`PREFIX=/usr/local` by default, `DESTDIR` honoured; `make uninstall` removes it), with `makepkg -si` (the `PKGBUILD` builds the checkout you are in; optional dependencies: `keymux` and `typeladder`, the targets `deploy` hands the dictionary to, `python` for `tools/`, `nodejs` for `site/check.mjs`), or from a release tarball (`lyk-VERSION-ARCH.tar.gz`: the binary, README, LICENSE and NOTICE; lyk is GPL-3.0-or-later). The rules are compiled into the binary; nothing but the data below is read at run time. Then `lyk fetch`, `lyk build`, `lyk deploy`."
   },
   {
    "t": "table",
@@ -197,7 +197,7 @@
   },
   {
    "t": "p",
-   "x": "A checkout is the current folder when its `Cargo.toml` names `lyk-steno-theory` and it has `rules/`; then `data/` and `out/` are relative to it, as always. Under out: `lyk/` is the built dictionary (`build --out` and the `--dir`/`--dict` options default to it), `cache/` the lookup cache, `mistakes/` the tape reports. `lyk where` prints the version, the mode, every folder in use with the rule that chose it, and whether it exists. With no data, every command that needs it stops with a message pointing at `lyk fetch`. `deploy` writes `~/.config/keymux/steno/lyk` (`--to`) and needs `keymux` installed for validation. Environment: `LYK_VERSION` sets the version a build reports (release builds), `LYK_NO_STALE_NOTE=1` silences the stale note."
+   "x": "A checkout is the current folder when its `Cargo.toml` names `lyk-steno-theory` and it has `rules/`; then `data/` and `out/` are relative to it, as always. Under out: `lyk/` is the built dictionary (`build --out` and the `--dir`/`--dict` options default to it), `cache/` the lookup cache, `mistakes/` the tape reports. `lyk where` prints the version, the mode, every folder in use with the rule that chose it, and whether it exists. With no data, every command that needs it stops with a message pointing at `lyk fetch`. `deploy` writes `~/.config/keymux/steno/lyk` (`--to`) when `keymux` is installed, and typeladder's `dictionaries/lyk.codes.json` when typeladder is (see [deploy targets](#/ref/build-and-files/deploy-targets)); neither is needed to `build`. Environment: `LYK_VERSION` sets the version a build reports (release builds), `LYK_NO_STALE_NOTE=1` silences the stale note."
   },
   {
    "t": "h",
@@ -409,6 +409,21 @@
   },
   {
    "t": "h",
+   "x": "Deploy targets"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Only what is installed.** `deploy` builds, then deploys to each target it detects. keymux is detected by an executable `keymux` on `PATH`, or `pacman -Q keymux` succeeding. typeladder by an executable `typeladder` on `PATH`, `pacman -Q typeladder` succeeding, or its config folder existing.",
+    "**keymux absent.** One line, `keymux: not installed, skipped (the dictionary is built in out/lyk)`; the command still exits 0 and `~/.config/keymux` is not created. typeladder absent: `typeladder: not installed, skipped`.",
+    "**Choosing.** `--only keymux` or `--only typeladder` deploys to that one target whether or not it is detected (a forced keymux deploy is validated and rolled back as usual). `--no-keymux` and `--no-typeladder` leave one out. Without them, every detected target.",
+    "**typeladder's folder.** `$TYPELADDER_CONFIG_DIR`, else `$XDG_CONFIG_HOME/typeladder`, else `~/.config/typeladder`. `deploy` writes only `dictionaries/lyk.codes.json` and its `.previous` there; never `config.toml`.",
+    "**The export.** `dictionaries/lyk.codes.json` is one flat JSON object, text to outline, sorted by text: `{\"I\": \"EU\", \"cat\": \"KAT\", \"to the\": \"TOTD\"}`. A text is a word or a phrase of words (letters, apostrophes and hyphens, single spaces), its outline the one `lookup` lists first for it: the best deployed entry, the one-stroke entry when there is one; a multi-stroke outline is `A/B`. Commands, braces, punctuation, digits and fingerspelling are left out. Written to a temporary file and renamed, so typeladder never reads a half file.",
+    "**Previous and rollback.** A changed export keeps the file it replaces as `lyk.codes.json.previous`; an export identical to the live one changes nothing. `deploy --rollback` restores keymux's `.lyk-previous/` and typeladder's `.previous` for each detected target; a target with nothing kept is named and skipped, and the command fails only when no target could be rolled back."
+   ]
+  },
+  {
+   "t": "h",
    "x": "Deploy checks and rollback"
   },
   {
@@ -417,7 +432,7 @@
     "**Staged first.** Every file is written to `.lyk-staging/` beside the destination folder (a hidden sibling, so keymux does not read it), checked there, and only then moved into the live folder, one atomic rename per file. The live folder is not touched before the check passes.",
     "**Validated.** The staged `.json` files go through `keymux steno validate --json` (the `keymux` first on `PATH`). Errors stop the deploy and nothing is written. Warnings are printed and the deploy continues; `--strict-validate` stops on them too. `--no-validate` skips the check.",
     "**Summary.** One line of counts (errors, warnings, notes, files, entries), then the first 10 errors and warnings as severity, file, outline and message. `keymux steno validate` lists the rest.",
-    "**No validator.** With no `keymux` on `PATH`, or a validator that cannot run (its exit code 2) or prints no JSON, one `validate: skipped, ...` line says why and the deploy continues.",
+    "**No validator.** With no `keymux` on `PATH` (a package-only detection), or a validator that cannot run (its exit code 2) or prints no JSON, one `validate: skipped, ...` line says why and the deploy continues.",
     "**Previous files.** Before the first rename, every file in the live folder is kept in `.lyk-previous/` beside it (hard links, so no copying; the folder holds one deploy and is replaced by the next). If the swap or the cleanup of old files fails, the live folder is restored from `.lyk-previous/` and the command fails.",
     "**`deploy --rollback`** restores `.lyk-previous/` into the live folder (the files then there are replaced or removed) and does nothing else: no build, no check. It fails when there is no `.lyk-previous/`."
    ]
