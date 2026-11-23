@@ -166,8 +166,6 @@ pub struct Generated {
     pub phrases_displaced: usize,
     /// What the phrasing grammar's placement did (see [`crate::phrases::grammar::Placed`])
     pub grammar: crate::phrases::grammar::Placed,
-    /// What the placement of the grammar's question forms did
-    pub questions: crate::phrases::grammar::Placed,
     /// How many [`Origin::Extra`] entries were added after everything else.
     pub extras_added: usize,
     /// Every word that is another word plus a regular ending, by word - see `crate::family`.
@@ -440,9 +438,6 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         };
         crate::phrases::place(setup, &mut book.entries, &mut book.taken, &pool_index, &stems, &natural, &is_literal_override)
     };
-    // The grammar's question forms come last among the phrases: they leave every text that already
-    // has an entry alone, and the number bar is free on all of them. See `crate::phrases::grammar`.
-    let questions = crate::phrases::grammar::place_questions(setup, &mut book).map_err(anyhow::Error::msg)?;
     let extras_added = fill::extras(setup, &pools, &settled.offers, &mut book, None);
     let stranded = fill::stranded(setup, &book, &settled.released, &noise);
 
@@ -457,7 +452,6 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         phrases_skipped: phrases.skipped,
         phrases_displaced: phrases.displaced,
         grammar,
-        questions,
         extras_added,
         links,
         prefix_links,

@@ -100,19 +100,6 @@ fn print_summary(setup: &Setup, generated: &Generated) {
     for (stroke, text, why) in &grammar.unplaced {
         println!("    left out: {text} ({stroke}): {why}");
     }
-    let questions = &generated.questions;
-    println!(
-        "  grammar questions (the number bar down): {} placed after the merged pairs, {} kept as the entry they already are, {} left out",
-        questions.added,
-        questions.kept.len(),
-        questions.unplaced.len()
-    );
-    for (text, outline) in &questions.kept {
-        println!("    kept: {text} ({outline})");
-    }
-    for (stroke, text, why) in &questions.unplaced {
-        println!("    left out: {text} ({stroke}): {why}");
-    }
     println!("  extra single-stroke entries added last, in strokes nobody else needed: {}", generated.extras_added);
     println!("  phrase entries skipped as collisions: {}", generated.phrases_skipped);
     println!("  words stranded on a worse outline than their own, unclaimed plain reading: {}", generated.stranded.len());
