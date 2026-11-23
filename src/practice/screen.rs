@@ -315,7 +315,25 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
     } else {
         1
     };
-    let top_y = area.y + pad;
+    // Rows under the numbers: to the groups first, then one separator row before each group while
+    // rows are left; what is still left over is split above and below, so the block is centred.
+    let below = usize::from(body_h.saturating_sub(pad + top_h));
+    let order = [1, 3, 0, 2];
+    let caps = [2, usize::MAX, 2 + extra, 2];
+    let mut left = below;
+    let mut rows = [0usize; 4];
+    for &i in &order {
+        rows[i] = groups[i].len().min(caps[i]).min(left);
+        left -= rows[i];
+    }
+    let mut gaps = [false; 4];
+    for (gap, n) in gaps.iter_mut().zip(rows) {
+        if n > 0 && left > 0 {
+            *gap = true;
+            left -= 1;
+        }
+    }
+    let top_y = area.y + pad + u16::try_from(left / 2).unwrap_or(0);
     let (wpm, acc) = big_values(scr);
     let wpm_block = stat_block("wpm", &wpm, TEXT);
     let acc_block = stat_block("acc", &acc, acc_colour(scr.accuracy));
@@ -333,26 +351,13 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
         let line = format!("wpm {wpm}   acc {acc}");
         frame.render_widget(Paragraph::new(line).style(Style::default().fg(BIG).add_modifier(Modifier::BOLD)), within(area, inner.x, top_y, inner.width, 1));
     }
-    let below = usize::from(body_h.saturating_sub(pad + top_h));
-    if below == 0 {
-        return;
-    }
-    let order = [1, 3, 0, 2];
-    let caps = [2, usize::MAX, 2 + extra, 2];
-    let mut left = below;
-    let mut rows = [0usize; 4];
-    for &i in &order {
-        rows[i] = groups[i].len().min(caps[i]).min(left);
-        left -= rows[i];
-    }
     let mut row_y = top_y + top_h;
     let titles = [None, Some("this test"), Some("learning"), Some("level")];
     for (g, (lines, n)) in groups.iter_mut().zip(rows).enumerate() {
         if n == 0 {
             continue;
         }
-        if left > 0 {
-            left -= 1;
+        if gaps[g] {
             if let Some(title) = titles[g] {
                 let rule = format!("── {title} ");
                 let fill = usize::from(inner.width).saturating_sub(rule.chars().count());
@@ -573,5 +578,17 @@ mod tests {
         // continuation lines are indented under the items
         let cont = text.iter().skip_while(|r| !r.contains("stumbled")).nth(1).expect("a second line");
         assert!(cont.trim_start().starts_with("word"), "{all}");
+    }
+
+    #[test]
+    fn spare_rows_are_split_above_and_below_so_the_block_is_vertically_centred() {
+        for (w, h) in [(120, 50), (100, 44), (140, 60)] {
+            let text = rows(&render(&screen(true), w, h));
+            let used: Vec<usize> = text.iter().enumerate().filter(|(i, r)| !r.is_empty() && *i + 1 < text.len()).map(|(i, _)| i).collect();
+            let (first, last) = (used[0], used[used.len() - 1]);
+            let above = first;
+            let below = text.len() - 2 - last; // the footer is the last row
+            assert!(above.abs_diff(below) <= 1, "{w}x{h}: {above} rows above, {below} below");
+        }
     }
 }
