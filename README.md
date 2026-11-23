@@ -128,8 +128,8 @@ speed over the test (speed smoothed over 3 seconds, raw speed, errors as red poi
 `raw`, `characters` (`correct/incorrect/extra/missed`), `consistency` and `time`; then, in colour, the
 words you stumbled on (red, with `×3` for more than once), the words mastered (green), new (cyan) and
 stuck (orange), the learning set as `word 7/10` chips (red under 30% clean, yellow, green at 9 of 10),
-and your level bar (below). It fits 80x24; a larger terminal gets a bigger chart and, from 100
-columns, panels side by side; a smaller one drops the chart first. Each finished test is added to
+and your level bar (below). It fits 80x24; a larger terminal gets a bigger chart (the block is at most 104
+columns wide, centred, one panel to a row); a smaller one drops the chart first. Each finished test is added to
 `practice.jsonl` in the state folder (`out/` in a checkout), with the stumbled
 words next to the missed ones, and `--history` shows a stumbled-count column. After quitting, the
 same numbers are printed as text. All flags: the Reference, Build and files.

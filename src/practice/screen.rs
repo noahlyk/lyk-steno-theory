@@ -1,10 +1,12 @@
 //! The results screen, after monkeytype's: big `wpm` and `acc` numbers, a chart of speed over the
 //! test, a row of small stats, then panels for what the test changed (stumbled, mastered, new,
 //! stuck, the learning set) and the level bars. One screen that fits 80x24: a larger terminal gets
-//! a bigger chart and, from 100 columns, panels side by side; a smaller one loses the chart first,
+//! a bigger chart; the block is at most 104 columns wide and centred, one panel to a row; a smaller
+//! terminal loses the chart first,
 //! then the lowest panels, and keeps `wpm`, `acc`, mastered, stumbled and the footer.
 
 use super::report::{self, Heat, Screen};
+use super::tiers;
 use super::ui::RESULTS_HINT;
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -28,10 +30,6 @@ pub const ORANGE: Color = Color::Indexed(208);
 const LABEL: usize = 10;
 /// Width of the big numbers' column.
 const STATS_W: u16 = 16;
-/// Narrowest terminal that gets the chart, and the least height.
-const CHART_MIN: (u16, u16) = (76, 24);
-/// Narrowest terminal with panels in two columns.
-const TWO_COLUMNS: u16 = 100;
 
 /// The 3x5 font: digits and `%`.
 const fn glyph(c: char) -> [&'static str; 5] {
@@ -67,9 +65,9 @@ pub fn big(text: &str) -> [String; 5] {
 }
 
 /// A label over big numbers: six lines.
-fn stat_block(label: &str, value: &str) -> Vec<Line<'static>> {
+fn stat_block(label: &str, value: &str, color: Color) -> Vec<Line<'static>> {
     let mut lines = vec![Line::styled(label.to_owned(), Style::default().fg(DIM))];
-    lines.extend(big(value).into_iter().map(|r| Line::styled(r, Style::default().fg(BIG).add_modifier(Modifier::BOLD))));
+    lines.extend(big(value).into_iter().map(|r| Line::styled(r, Style::default().fg(color).add_modifier(Modifier::BOLD))));
     lines
 }
 
@@ -108,13 +106,12 @@ fn word_style(color: Color) -> Style {
     Style::default().fg(color)
 }
 
-/// The panels of a screen, each as its lines at `width`: stumbled, mastered, new, stuck, wordset.
+/// The word panels of a screen, each as its lines at `width`: stumbled, mastered, new, stuck.
 struct Panels {
     stumbled: Vec<Line<'static>>,
     mastered: Vec<Line<'static>>,
     new: Vec<Line<'static>>,
     stuck: Vec<Line<'static>>,
-    chips: Vec<Line<'static>>,
 }
 
 fn panels(s: &Screen, width: usize) -> Panels {
@@ -129,17 +126,7 @@ fn panels(s: &Screen, width: usize) -> Panels {
     let mastered = if done.is_empty() { Vec::new() } else { panel("mastered", GREEN, words(&done, GREEN), width) };
     let new = if e.new.is_empty() { Vec::new() } else { panel("new", CYAN, words(&e.new, CYAN), width) };
     let stuck = if e.stuck.is_empty() { Vec::new() } else { panel("stuck", ORANGE, words(&e.stuck, ORANGE), width) };
-    let chips = if e.chips.is_empty() {
-        Vec::new()
-    } else {
-        let color = |h: Heat| match h {
-            Heat::Red => RED,
-            Heat::Yellow => YELLOW,
-            Heat::Green => GREEN,
-        };
-        panel("wordset", YELLOW, e.chips.iter().map(|c| (format!("{} {}/{}", c.word, c.clean, crate::vocab::WORD_WINDOW), word_style(color(c.heat)))).collect(), width)
-    };
-    Panels { stumbled, mastered, new, stuck, chips }
+    Panels { stumbled, mastered, new, stuck }
 }
 
 /// Keeps the first `rows` lines, with an ellipsis ending the last when some were cut.
@@ -218,22 +205,90 @@ fn within(area: Rect, x: u16, y: u16, width: u16, height: u16) -> Rect {
     Rect { x, y, width, height }.intersection(area)
 }
 
-/// One band under the numbers: one column of lines, or two side by side.
-struct Slot {
-    cols: Vec<Vec<Line<'static>>>,
-    /// Its columns share the row: the two-column layout
-    paired: bool,
-}
-
-impl Slot {
-    fn one(lines: Vec<Line<'static>>) -> Self {
-        Self { cols: vec![lines], paired: false }
-    }
-
-    fn rows(&self) -> usize {
-        self.cols.iter().map(Vec::len).max().unwrap_or(0)
+/// The accuracy's colour: green from 97%, yellow from 90%, red under.
+fn acc_colour(acc: f64) -> Color {
+    if acc >= 97.0 {
+        GREEN
+    } else if acc >= 90.0 {
+        YELLOW
+    } else {
+        RED
     }
 }
+
+/// The learning set as a grid: aligned cells, the label on the first row, colour by progress.
+fn chip_lines(s: &Screen, width: usize) -> Vec<Line<'static>> {
+    let chips = &s.extra.chips;
+    if chips.is_empty() {
+        return Vec::new();
+    }
+    let color = |h: Heat| match h {
+        Heat::Red => RED,
+        Heat::Yellow => YELLOW,
+        Heat::Green => GREEN,
+    };
+    let texts: Vec<String> = chips.iter().map(|c| format!("{} {}/{}", c.word, c.clean, crate::vocab::WORD_WINDOW)).collect();
+    let cell = texts.iter().map(|t| t.chars().count()).max().unwrap_or(0) + 2;
+    let per = (width.saturating_sub(LABEL) / cell).max(1);
+    let label_style = Style::default().fg(YELLOW).add_modifier(Modifier::BOLD);
+    texts
+        .chunks(per)
+        .zip(chips.chunks(per))
+        .enumerate()
+        .map(|(row, (ts, cs))| {
+            let head = if row == 0 { Span::styled(format!("{:<LABEL$}", "wordset"), label_style) } else { Span::raw(" ".repeat(LABEL)) };
+            let mut spans = vec![head];
+            spans.extend(ts.iter().zip(cs).map(|(t, c)| Span::styled(format!("{t:<cell$}"), word_style(color(c.heat)))));
+            Line::from(spans)
+        })
+        .collect()
+}
+
+/// One bar: `filled` green-ish blocks of `width`, the rest dim.
+fn bar(percent: usize, width: usize, color: Color) -> Vec<Span<'static>> {
+    let filled = (percent.min(100) * width + 50) / 100;
+    vec![Span::styled("█".repeat(filled), Style::default().fg(color)), Span::styled("░".repeat(width - filled), Style::default().fg(DIM))]
+}
+
+/// The level and goal as aligned bars: name, bar, percent and counts (and the next level when
+/// there is room). None when the width is too small for a bar; the caller then uses the text lines.
+fn bar_lines(s: &Screen, width: usize) -> Option<Vec<Line<'static>>> {
+    let p = s.progress.as_ref()?;
+    let level = format!("lv{}  {}", p.level, p.label);
+    let goal = p.goal.as_ref().map(|(label, known, size)| (format!("goal  {label}"), *known, *size));
+    let name_w = level.chars().count().max(goal.as_ref().map_or(0, |g| g.0.chars().count())) + 2;
+    let tail = |known: usize, size: usize| format!("{:>3}%  {known}/{size}", tiers::percent(known, size));
+    let tail_w = tail(p.known, p.size).chars().count().max(goal.as_ref().map_or(0, |g| tail(g.1, g.2).chars().count()));
+    let next = (!p.all_complete).then(|| p.next.as_ref().map(|n| format!("next  {n}"))).flatten();
+    let room = width.checked_sub(name_w + tail_w + 2)?;
+    let (bar_w, next) = match next {
+        Some(n) if room >= 12 + n.chars().count() + 3 => (24.min(room - n.chars().count() - 3), Some(n)),
+        _ => (24.min(room), None),
+    };
+    if bar_w < 6 {
+        return None;
+    }
+    let dim = Style::default().fg(DIM);
+    let row = |name: String, known: usize, size: usize, color: Color, next: Option<&String>| {
+        let mut spans = vec![Span::styled(format!("{name:<name_w$}"), Style::default().fg(Color::Gray))];
+        spans.extend(bar(tiers::percent(known, size), bar_w, color));
+        spans.push(Span::styled(format!("  {:<tail_w$}", tail(known, size)), Style::default().fg(Color::Gray)));
+        if let Some(n) = next {
+            spans.push(Span::styled(format!("   {n}"), dim));
+        }
+        Line::from(spans)
+    };
+    let mut lines = vec![row(level, p.known, p.size, GREEN, next.as_ref())];
+    if let Some((name, known, size)) = goal {
+        lines.push(row(name, known, size, CYAN, None));
+    }
+    Some(lines)
+}
+
+/// The widest block of the screen: a wider terminal centres it rather than stretching it.
+const MAX_W: u16 = 104;
+/// The least height for the tall layout: the numbers stacked on the left, the chart beside them.
+const TALL: u16 = 36;
 
 pub fn draw(frame: &mut Frame, scr: &Screen) {
     let area = frame.area();
@@ -241,31 +296,40 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
         return;
     }
     let margin = if area.width >= 84 { 2 } else { u16::from(area.width >= 40) };
-    let inner = within(area, area.x + margin, area.y, area.width.saturating_sub(2 * margin), area.height);
+    let avail = area.width.saturating_sub(2 * margin);
+    let inner_w = avail.min(MAX_W);
+    let inner = within(area, area.x + margin + (avail - inner_w) / 2, area.y, inner_w, area.height);
     let width = usize::from(inner.width);
     // the footer, bottom row
     let body_h = if area.height >= 3 { area.height - 1 } else { area.height };
     if area.height >= 3 {
         frame.render_widget(Paragraph::new(RESULTS_HINT).style(Style::default().fg(DIM)), within(area, inner.x, area.y + area.height - 1, inner.width, 1));
     }
-    let chart_mode = area.width >= CHART_MIN.0 && area.height >= CHART_MIN.1;
+    let tall = inner.width >= 60 && area.height >= TALL;
+    let chart_beside = !tall && inner.width >= 60 && area.height >= 20;
     let big_mode = inner.width >= 32 && body_h >= 8;
     let pad = u16::from(body_h >= 26);
-    let top_h: u16 = if chart_mode {
-        12 + ((area.height - CHART_MIN.1) / 2).min(6)
-    } else if big_mode {
-        6
+    let top_h: u16 = if tall {
+        12 + ((area.height - TALL) / 3).min(4)
+    } else if chart_beside || big_mode {
+        if chart_beside { 7 + (area.height.saturating_sub(24) / 2).min(5) } else { 6 }
     } else {
         1
     };
     let top_y = area.y + pad;
     let (wpm, acc) = big_values(scr);
-    if chart_mode {
-        frame.render_widget(Paragraph::new([stat_block("wpm", &wpm), stat_block("acc", &acc)].concat()), within(area, inner.x, top_y, STATS_W, 12));
+    let wpm_block = stat_block("wpm", &wpm, YELLOW);
+    let acc_block = stat_block("acc", &acc, acc_colour(scr.accuracy));
+    if tall {
+        frame.render_widget(Paragraph::new([wpm_block, acc_block].concat()), within(area, inner.x, top_y, STATS_W, 12));
         draw_chart(frame, within(area, inner.x + STATS_W + 2, top_y, inner.width.saturating_sub(STATS_W + 2), top_h), scr);
     } else if big_mode {
-        frame.render_widget(Paragraph::new(stat_block("wpm", &wpm)), within(area, inner.x, top_y, STATS_W, 6));
-        frame.render_widget(Paragraph::new(stat_block("acc", &acc)), within(area, inner.x + STATS_W + 2, top_y, STATS_W, 6));
+        frame.render_widget(Paragraph::new(wpm_block), within(area, inner.x, top_y, STATS_W, 6));
+        frame.render_widget(Paragraph::new(acc_block), within(area, inner.x + STATS_W, top_y, STATS_W, 6));
+        if chart_beside {
+            let x = inner.x + 2 * STATS_W + 2;
+            draw_chart(frame, within(area, x, top_y, (inner.x + inner.width).saturating_sub(x), top_h), scr);
+        }
     } else {
         let line = format!("wpm {wpm}   acc {acc}");
         frame.render_widget(Paragraph::new(line).style(Style::default().fg(BIG).add_modifier(Modifier::BOLD)), within(area, inner.x, top_y, inner.width, 1));
@@ -274,51 +338,41 @@ pub fn draw(frame: &mut Frame, scr: &Screen) {
     if below == 0 {
         return;
     }
-    // What goes under the numbers: the slots in display order, the order they are given rows in
-    // (the first is kept longest), and the most rows each may take.
-    let two = inner.width >= TWO_COLUMNS;
-    let col_w = if two { width.saturating_sub(2) / 2 } else { width };
-    let pans = panels(scr, col_w);
-    let full = panels(scr, width);
-    let stats = Slot::one(small_stats_lines(&small_stats(scr, width)));
-    let progress = Slot::one(progress_lines(scr, width));
-    let extra_rows = usize::from(area.height.saturating_sub(24) / 3);
-    let (mut slots, order, caps): (Vec<Slot>, Vec<usize>, Vec<usize>) = if two {
-        (
-            vec![stats, Slot { cols: vec![pans.stumbled, pans.mastered], paired: true }, Slot { cols: vec![pans.new, pans.stuck], paired: true }, Slot::one(full.chips), progress],
-            vec![1, 0, 4, 2, 3],
-            vec![2, 4, 3, 4 + extra_rows, 2],
-        )
-    } else {
-        (
-            vec![stats, Slot::one(pans.stumbled), Slot::one(pans.mastered), Slot::one(pans.new), Slot::one(pans.stuck), Slot::one(full.chips), progress],
-            vec![2, 1, 0, 6, 3, 4, 5],
-            vec![2, 3, 2, 2, 1, 3 + extra_rows, 2],
-        )
-    };
+    // Under the numbers, in groups: the small stats; what the test changed; the learning set; the
+    // bars. Rows go to the groups in the order of `order` (the first is kept longest), then any
+    // left over become blank rows between the groups, top down.
+    let extra = usize::from(area.height.saturating_sub(24) / 4);
+    let cap = |lines: Vec<Line<'static>>, n: usize| clip(lines, n);
+    let pans = panels(scr, width);
+    let words: Vec<Line<'static>> = [cap(pans.stumbled, 3 + extra), cap(pans.mastered, 2), cap(pans.new, 2), cap(pans.stuck, 2)].concat();
+    let bars = progress_lines_aligned(scr, width);
+    let mut groups: Vec<Vec<Line<'static>>> = vec![small_stats_lines(&small_stats(scr, width)), words, chip_lines(scr, width), bars];
+    let order = [1, 3, 0, 2];
+    let caps = [2, usize::MAX, 2 + extra, 2];
     let mut left = below;
-    // one blank row under the numbers when there is room for it after everything else
-    let wanted: usize = slots.iter().zip(&caps).map(|(sl, c)| sl.rows().min(*c)).sum();
-    let gap = usize::from(left > wanted);
-    left -= gap;
-    let mut rows = vec![0; slots.len()];
+    let mut rows = [0usize; 4];
     for &i in &order {
-        rows[i] = slots[i].rows().min(caps[i]).min(left);
+        rows[i] = groups[i].len().min(caps[i]).min(left);
         left -= rows[i];
     }
-    let mut row_y = top_y + top_h + u16::try_from(gap).unwrap_or(0);
-    for (slot, n) in slots.iter_mut().zip(rows) {
+    let mut row_y = top_y + top_h;
+    for (lines, n) in groups.iter_mut().zip(rows) {
         if n == 0 {
             continue;
         }
-        let height = u16::try_from(n).unwrap_or(0);
-        let paired = slot.paired;
-        for (col, lines) in std::mem::take(&mut slot.cols).into_iter().enumerate() {
-            let (left, span) = if paired { (inner.x + u16::try_from(col * (col_w + 2)).unwrap_or(0), u16::try_from(col_w).unwrap_or(0)) } else { (inner.x, inner.width) };
-            frame.render_widget(Paragraph::new(clip(lines, n)), within(area, left, row_y, span, height));
+        if left > 0 {
+            left -= 1;
+            row_y += 1;
         }
+        let height = u16::try_from(n).unwrap_or(0);
+        frame.render_widget(Paragraph::new(clip(std::mem::take(lines), n)), within(area, inner.x, row_y, inner.width, height));
         row_y += height;
     }
+}
+
+/// The bars when there is room for them, the shortened text lines otherwise.
+fn progress_lines_aligned(s: &Screen, width: usize) -> Vec<Line<'static>> {
+    bar_lines(s, width).unwrap_or_else(|| progress_lines(s, width))
 }
 
 #[cfg(test)]
@@ -426,7 +480,8 @@ mod tests {
         assert!(all.contains("25 words  monkeytype 200"), "{all}");
         assert!(all.contains("stumbled") && all.contains("find×3") && all.contains("every×2") && all.contains("could"), "{all}");
         assert!(all.contains("mastered") && all.contains("about"), "{all}");
-        assert!(all.contains("lv1  monkeytype 200  [█████░░░░░] 52%  104/200 known   next: monkeytype 1k"), "{all}");
+        assert!(all.contains("lv1  monkeytype 200") && all.contains("52%  104/200") && all.contains("next  monkeytype 1k"), "{all}");
+        assert!(all.contains('█') && all.contains('░'), "the bar: {all}");
         assert!(text.last().is_some_and(|r| r.trim() == RESULTS_HINT), "the footer is the last row: {all}");
         assert!(all.chars().any(|c| ('\u{2800}'..='\u{28ff}').contains(&c)), "the chart is drawn in braille: {all}");
     }
@@ -450,13 +505,18 @@ mod tests {
     }
 
     #[test]
-    fn a_larger_terminal_gets_a_bigger_chart_and_panels_side_by_side() {
+    fn a_larger_terminal_gets_the_tall_layout_one_panel_to_a_row_and_a_centred_block() {
         let term = render(&screen(true), 120, 40);
         let text = rows(&term);
         let all = text.join("\n");
         eprintln!("{all}");
-        assert!(text.iter().any(|r| r.contains("stumbled") && r.contains("mastered")), "stumbled and mastered share a row: {all}");
-        assert!(text.iter().any(|r| r.contains("new") && r.contains("stuck")), "{all}");
+        let has = |w: &str| text.iter().filter(|r| r.trim_start().starts_with(w)).count();
+        assert!(has("stumbled") == 1 && has("mastered") == 1 && has("new") == 1 && has("stuck") == 1, "one row each, never side by side: {all}");
+        assert!(!text.iter().any(|r| r.contains("stumbled") && r.contains("mastered")), "{all}");
+        // wider than the cap, the block is centred, not stretched
+        let wide = rows(&render(&screen(true), 200, 40));
+        let left = wide.iter().find(|r| r.contains("stumbled")).map_or(0, |r| r.len() - r.trim_start().len());
+        assert!(left >= 40 && wide.iter().all(|r| r.chars().count() <= 200), "centred: left {left}");
         // the chart is taller than at 80x24: its axis label sits lower than row 12
         let axis = text.iter().position(|r| r.contains("31s")).expect("x axis");
         assert!(axis > 12, "axis at row {axis}");
