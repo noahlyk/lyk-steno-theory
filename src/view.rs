@@ -143,24 +143,6 @@ const fn piece_colour(keys: u32) -> &'static str {
     }
 }
 
-/// One stroke in raw notation as pieces, a key each: how Plover's and Lapwing's columns are
-/// written.
-fn raw_pieces(stroke: Stroke) -> Vec<Piece> {
-    let text = stroke.to_string();
-    let mut keys = (0..23u32).filter(|bit| stroke.0 & (1 << bit) != 0).map(|bit| 1u32 << bit);
-    text.chars()
-        .map(|c| {
-            let keys = match c {
-                '+' => Stroke::JOIN,
-                '~' => Stroke::SPELL,
-                '-' => 0,
-                _ => keys.next().unwrap_or(0),
-            };
-            Piece { text: c.to_string(), keys }
-        })
-        .collect()
-}
-
 /// One stroke's pieces, each coloured by its part of the keyboard, and pieces one finger plays
 /// together (a finger group shared with the piece beside it) underlined.
 fn pieces_text(pieces: &[Piece]) -> String {
@@ -180,7 +162,7 @@ fn pieces_text(pieces: &[Piece]) -> String {
 /// One stroke in raw notation, coloured (see [`pieces_text`]).
 #[cfg(test)]
 fn stroke_text(stroke: Stroke) -> String {
-    pieces_text(&raw_pieces(stroke))
+    pieces_text(&crate::notation::raw_pieces(stroke))
 }
 
 /// The physical keys that press each stroke, strokes split by `/`; keys within a stroke run
@@ -349,7 +331,8 @@ impl View {
     }
 
     /// The outline column of a row for theory `t` and its width on screen: lyk's in the short
-    /// notation ([`crate::notation`]), Plover's and Lapwing's raw (their own theories' keys).
+    /// notation where its split is known, else raw ([`crate::notation`]); Plover's and Lapwing's
+    /// raw (their own theories' keys).
     fn outline_cell(self, row: &Row, t: usize) -> (String, usize) {
         let missing = |text: &str, codes: &str| (paint(text, codes, self.color), text.len());
         match &row.cells[t] {
@@ -359,7 +342,7 @@ impl View {
                 let pieces: Vec<Vec<Piece>> = if t == 0 {
                     crate::notation::shown().outline_pieces(strokes)
                 } else {
-                    strokes.iter().map(|&s| raw_pieces(s)).collect()
+                    strokes.iter().map(|&s| crate::notation::raw_pieces(s)).collect()
                 };
                 let plain = pieces.iter().map(|s| s.iter().map(|p| p.text.as_str()).collect::<String>()).collect::<Vec<_>>().join("/");
                 let width = plain.chars().count();
@@ -461,39 +444,47 @@ mod tests {
     }
 
     #[test]
-    fn plain_text_spells_lyks_outlines_short_and_the_others_raw() {
+    fn plain_text_spells_lyks_known_outlines_short_and_the_rest_raw() {
         let lines = lines("KAT", ALL, false, false);
         assert!(lines[0].starts_with("word") && lines[0].contains("lyk") && !lines[0].contains("plover"));
         assert!(lines[1].starts_with("\"cat\"") && lines[1].contains("KAT"), "{lines:?}");
-        // lyk's column short, Plover's and Lapwing's raw; a short or a raw query alike
-        for query in ["enemy", "NAEM", "TPHAEPL"] {
-            let first = |q: &str| self::lines(q, ALL, false, false)[1].clone();
-            let line = first(query);
-            assert!(line.contains("NAEM"), "{query}: {line}");
+        // An outline written from its sounds is short in lyk's column; Plover's and Lapwing's raw;
+        // a short or a raw query alike
+        let flight = self::lines("flight", ALL, false, false);
+        assert_eq!(flight[1].split_whitespace().nth(1), Some("FLĪT"), "{flight:?}");
+        for query in ["FLĪT", "TPHRAOEUT"] {
+            assert!(self::lines(query, ALL, false, false)[1].contains("\"flight\""), "{query}");
         }
+        // `nature`'s outlines, a brief and a dropped vowel: raw, `TPHR` the N and R it is
+        let nature = self::lines("nature", ALL, false, false);
+        assert_eq!(nature[1].split_whitespace().nth(1), Some("TPHAEUFP"), "{nature:?}");
+        assert!(nature.iter().any(|l| l.split_whitespace().next() == Some("TPHRAEUFP")), "{nature:?}");
+        // A brief stays raw, and so does a stroke no entry has, though both read as input short
         let enemy = self::lines("enemy", ALL, false, false);
-        assert!(enemy[1].split_whitespace().skip(2).all(|o| o == "TPHAEPL"), "{enemy:?}");
-        let flower = self::lines("flower", ALL, false, false);
-        assert!(flower[1].split_whitespace().nth(1) == Some("FLOUR"), "{flower:?}");
-        assert!(self::lines("FLOUR", ALL, false, false)[1].contains("\"flower\""));
+        assert_eq!(enemy[1].split_whitespace().nth(1), Some("TPHAEPL"), "{enemy:?}");
+        assert!(self::lines("NAEM", ALL, false, false)[1].contains("TPHAEPL"));
+        let miss = self::lines("TPHAOEUTS/TKPWAOEUT", ALL, false, false);
+        assert!(miss[1].contains("TPHAOEUTS/TKPWAOEUT"), "{miss:?}");
     }
 
     #[test]
-    fn an_alias_is_coloured_as_one_piece_of_its_hand() {
-        let cell = Cell { strokes: crate::stroke::parse_outline("TPHAEPL/+-PB").unwrap(), how: How::Entry };
-        let row = Row { word: "x".into(), cells: [Some(cell), None, None], mark: Mark::Entry, detail: Vec::new() };
-        let (text, width) = View { show_keys: false, color: true }.outline_cell(&row, 0);
-        assert_eq!(strip(&text), "NAEM/+-N");
-        assert_eq!(width, 8);
-        assert!(text.contains("\x1b[32mN\x1b[0m"), "N (TPH) green, one piece: {text:?}");
-        assert!(text.contains("\x1b[31mM\x1b[0m"), "M (-PL) red: {text:?}");
-        assert!(text.contains("\x1b[36m+"), "the join key cyan: {text:?}");
-        // A number-key stroke and an outline written its own way
-        let cell = |raw: &str| Row { word: "x".into(), cells: [Some(Cell { strokes: crate::stroke::parse_outline(raw).unwrap(), how: How::Entry }), None, None], mark: Mark::Entry, detail: Vec::new() };
+    fn a_group_is_coloured_as_one_piece_of_its_hand() {
+        let cell = |raw: &str| Row {
+            word: "x".into(),
+            cells: [Some(Cell { strokes: crate::stroke::parse_outline(raw).unwrap(), how: How::Entry }), None, None],
+            mark: Mark::Entry,
+            detail: Vec::new(),
+        };
+        let (text, width) = View { show_keys: false, color: true }.outline_cell(&cell("TPHRAOEUT"), 0);
+        assert_eq!(strip(&text), "FLĪT");
+        assert_eq!(width, 4);
+        assert!(text.contains("\x1b[32mFL\x1b[0m"), "FL (TPHR) green, one piece: {text:?}");
+        assert!(text.contains("\x1b[33mĪ\x1b[0m"), "Ī (AOEU) yellow, one piece: {text:?}");
+        assert!(text.contains("\x1b[31mT\x1b[0m"), "-T red: {text:?}");
+        // A brief: raw, a key a piece
         let plain = View { show_keys: false, color: false };
-        assert_eq!(plain.outline_cell(&cell("#TPH-PB"), 0).0, "#N-N");
+        assert_eq!(plain.outline_cell(&cell("TPHAEPL/+-PB"), 0).0, "TPHAEPL/+-PB");
         assert_eq!(plain.outline_cell(&cell("ORB"), 0).0, "ORB");
-        assert_eq!(strip(&View { show_keys: false, color: true }.outline_cell(&cell("ORB"), 0).0), "ORB");
     }
 
     #[test]
@@ -543,7 +534,7 @@ mod tests {
             ),
             "{lines:?}"
         );
-        assert!(lines[1].contains("EFB/+-NTS") && lines[1].contains(" - "), "{lines:?}");
+        assert!(lines[1].contains("EFB/+-PBTS") && lines[1].contains(" - "), "{lines:?}");
     }
 
     #[test]

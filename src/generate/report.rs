@@ -50,10 +50,12 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     let path = out.join(crate::notation::FILE);
     std::fs::write(&path, measured.notation.to_json()).with_context(|| path.display().to_string())?;
     println!(
-        "  {:<24} the short notation: {} aliases, {} outlines written their own way",
+        "  {:<24} the short notation: {} aliases, {} vowel marks, {} outlines written their own way, {} known to split as the table reads them",
         crate::notation::FILE,
         measured.notation.left.len() + measured.notation.right.len(),
-        measured.notation.outlines.len()
+        measured.notation.middle.len(),
+        measured.notation.outlines.len(),
+        measured.notation.agree.len()
     );
     if report {
         print!("{}", crate::notation::report(&measured));
