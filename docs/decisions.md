@@ -3432,3 +3432,20 @@ frequency lists in `fetch` (the 450k list stays, for `verify --giant`) and the `
 dependency. `lyk practice` and `lyk vocab` stay as hidden commands that print the pointer, so old
 muscle memory gets directions instead of "unknown command". What regresses if undone: two copies
 of the same test to keep in step.
+
+## Wrapping a word in a pair of marks: the number bar on the pair's strokes
+
+Six pairs (backtick, double and single quotes, parentheses, square and curly brackets) gained two
+strokes each: `#` + the open stroke wraps the next word (`{:surround:next:OPEN:CLOSE}`), `#` + the
+close stroke wraps the word just typed (`{:surround:last:OPEN:CLOSE}`); and `{` got its missing
+opening stroke, `TPR-BGT`, the mirror of `[` `PWR-BGT` / `PWR*BGT` beside its existing `}`
+`TPR*BGT`. Why the number bar and not a right-hand key: the pairs' strokes share no free key that
+every one of them can take. `-D` collides with words on `A*E`/`AE` (single quote), `PREPB`,
+`PR*EPB` and `PWR-BGT`; `-Z` on `AE`, `A*E`, `KR-GS` and `PREPB`; `-F` on `AE`, `A*E`, `KW-GS`,
+`KR-GS`, `PREPB` and `TR-RL` (checked against `rules/`, a fresh build and the deployed files). `#`
+is free on all twelve (lyk uses it only for the name lane's lone `#` and the phrasing grammar's
+questions), so one rule covers every pair with no exception, and it repeats a rule the typist
+already knows: the number bar turns a stroke into a variant of itself (a statement into its
+question). The wrapping itself is a generic keymux meta (`{:surround}`); lyk only maps strokes to
+it. What regresses if undone: wrapping a word takes three strokes (open, word, close) and wrapping
+one already typed needs undo and retype.

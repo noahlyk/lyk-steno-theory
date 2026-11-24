@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "`rules/reserved/punctuation.json`: **117 strokes**: 65 marks and symbols plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **82 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "`rules/reserved/punctuation.json`: **130 strokes**: 78 marks and symbols (12 of them the [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks)) plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **82 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
@@ -244,11 +244,104 @@
      "[[PWR-BGS]]"
     ],
     [
+     "`{` attached to the next word",
+     "`{\\{^}`",
+     "[[TPR-BGT]]"
+    ],
+    [
      "`}` attached to the previous word",
      "`{^}\\}`",
      "[[TPR*BGT]]"
     ]
    ]
+  },
+  {
+   "t": "h",
+   "x": "Wrapping a word in a pair of marks"
+  },
+  {
+   "t": "p",
+   "x": "Every pair has four strokes: its **open** and **close** marks, and the same two with the **number bar `#`** added. **`#` + the open stroke wraps the next word**: [[#PREPB]], then *dog*, types `(dog)`. **`#` + the close stroke wraps the word just typed**: *dog*, then [[#PR*EPB]], turns it into `(dog)`. The same for all six pairs."
+  },
+  {
+   "t": "table",
+   "head": [
+    "Pair",
+    "Open",
+    "Close",
+    "Wrap the next word",
+    "Wrap the word just typed",
+    "Marks in the entry"
+   ],
+   "rows": [
+    [
+     "backtick",
+     "[[TR-RL]]",
+     "[[TR*RL]]",
+     "[[#TR-RL]]",
+     "[[#TR*RL]]",
+     "a backtick, one mark for both sides"
+    ],
+    [
+     "double quotes `\" \"`",
+     "[[KW-GS]]",
+     "[[KR-GS]]",
+     "[[#KW-GS]]",
+     "[[#KR-GS]]",
+     "`\"`, one mark for both sides"
+    ],
+    [
+     "single quotes `' '`",
+     "[[A*E]]",
+     "[[AE]]",
+     "[[#A*E]]",
+     "[[#AE]]",
+     "`'`, one mark for both sides"
+    ],
+    [
+     "parentheses `( )`",
+     "[[PREPB]]",
+     "[[PR*EPB]]",
+     "[[#PREPB]]",
+     "[[#PR*EPB]]",
+     "`(:)`"
+    ],
+    [
+     "square brackets `[ ]`",
+     "[[PWR-BGT]]",
+     "[[PWR*BGT]]",
+     "[[#PWR-BGT]]",
+     "[[#PWR*BGT]]",
+     "`[:]`"
+    ],
+    [
+     "curly braces `{ }`",
+     "[[TPR-BGT]]",
+     "[[TPR*BGT]]",
+     "[[#TPR-BGT]]",
+     "[[#TPR*BGT]]",
+     "`\\{:\\}` (a brace is escaped in any entry)"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "**Dictionary text.** `#` + open sends `{:surround:next:OPEN:CLOSE}`, `#` + close sends `{:surround:last:OPEN:CLOSE}`, with the marks of the last column (one mark: the same on both sides)."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Wrap the next word.** A space goes before the open mark as before any word; the close mark is attached to the word; a pending capital lands on the word: [[TP-PL]], [[#KW-GS]], *dog* types `. \"Dog\"`.",
+    "**What the next word is.** The next stroke that types text, and a multi-stroke outline as a whole. A stroke that only sets the case ([[KPA]]) in between passes the marks on; a key or command stroke in between (Return, a cursor move) drops them.",
+    "**After a wrapped word**, punctuation and endings attach outside the close mark: `(dog).`",
+    "**Wrap the word just typed** wraps the text since the last space, punctuation included: *dog.* becomes `(dog.)`. With nothing typed it does nothing.",
+    "**Undo `*`.** After wrap-last: back to the bare word. After a wrapped word: the word goes and the marks stay armed for the next word. Right after wrap-next: only disarms; the word before stays."
+   ]
+  },
+  {
+   "t": "note",
+   "kind": "warn",
+   "x": "Keymux runs these (`{:surround:...}`): a keymux too old to know the meta warns `unknown_meta` at deploy and the 12 strokes do nothing. Install the new keymux before deploying."
   },
   {
    "t": "h",
@@ -1155,7 +1248,7 @@
   {
    "t": "note",
    "kind": "warn",
-   "x": "**A dictionary reader that does not know keymux's metas** (plain Plover is one) reads `{:name}` as a call to a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `outline`, `engine`, `back`, `undo_or`, `redo`, `undo_word`, `again` and `swap`. In plain Plover those 20 strokes error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError`, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 19 entries removed; or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged; Keymux is the target engine."
+   "x": "**A dictionary reader that does not know keymux's metas** (plain Plover is one) reads `{:name}` as a call to a registered meta plugin and raises `KeyError` (as for `{:firstup}`) for `transparent`, `overlay`, `tape`, `keyboard`, `lookup`, `outline`, `engine`, `back`, `undo_or`, `redo`, `undo_word`, `again`, `swap` and `surround`. In plain Plover those 20 command strokes and the 12 [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks) error instead of acting; every other stroke is unaffected. **`*` is the one that matters**, the most-used key: its `{:undo_or:...}` meta raises `KeyError`, so the lone `*` does not undo. Workarounds: a copy of `commands.json` with `\"*\": \"=undo\"` (Plover's own undo) and the other 19 entries removed, plus a copy of `punctuation.json` without the 12 `#` wrap strokes; or no-op meta plugins with those names (fine for the overlay, which does not exist there; a no-op `undo_or` leaves `*` dead). The theory is unchanged; Keymux is the target engine."
   }
  ]
 }

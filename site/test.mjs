@@ -31,6 +31,10 @@ expect('have + ing', say('SR/+-G'), 'having');
 expect('and + er', say('SKP/+-R'), 'ander');
 // the lone star is the smart undo, a command that types nothing
 expect('* is a command', engine.translate(strokes('*')).text, '⟨undo⟩');
+// reserved marks: text outside the braces, an escaped brace, and a carried capital type as written
+expect('quotes', say('KW-GS/KAT/KR-GS'), '"cat"');
+expect('glued paren', say('KAT/P*PB/KAT'), 'cat(cat');
+expect('braces', say('KAT/TPR-BGT/KAT/TPR*BGT'), 'cat {cat}');
 // a stroke nothing reads
 expect('empty', engine.translate([]).text, '');
 

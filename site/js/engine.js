@@ -146,10 +146,18 @@ function dropSilentE(stem, nextStartsWithVowel) {
 
 /** What a reserved entry such as `{.}` or `{^ing^}` does to the text around it. */
 function reserved(value) {
-  // the first-up marker (`{:firstup}`, `{:firstup:except=*}`) says when a stroke goes, not what it types
-  const tokens = [...value.matchAll(/\{([^}]*)\}/g)].map((m) => m[1]).filter((t) => !/^:firstup\b/.test(t));
+  // atoms in order: a `{...}` meta or plain text between them; `\{` `\}` are literal braces in either
+  const unescape = (t) => t.replace(/\\([{}])/g, '$1');
+  const atoms = [...value.matchAll(/\{((?:\\[{}]|[^{}])*)\}|(?:\\[{}]|[^{}])+/g)]
+    .map((m) => (m[1] !== undefined ? { meta: unescape(m[1]) } : { text: unescape(m[0]) }))
+    // the first-up marker (`{:firstup}`, `{:firstup:except=*}`) says when a stroke goes, not what it types
+    .filter((a) => !(a.meta !== undefined && /^:firstup\b/.test(a.meta)));
+  const tokens = atoms.filter((a) => a.meta !== undefined).map((a) => a.meta);
   // `*` itself: undo (Keymux `{:undo_or:...}`, or plain `=undo`); it types nothing here
   if (value === '=undo' || tokens.some((t) => /^:undo_or\b/.test(t))) return { kind: 'command', text: '⟨undo⟩' };
+  // Keymux's `{:surround:next:(:)}` / `{:surround:last:(:)}`: shown, not run, here
+  const wrap = tokens.find((t) => /^:surround:/.test(t));
+  if (wrap) return { kind: 'command', text: `⟨${wrap.slice(1).replace(/\\([:\\])/g, '$1')}⟩` };
   if (!tokens.length) return { kind: 'word', text: value };
   if (tokens.some((t) => t.startsWith('#'))) return { kind: 'command', text: `⟨${tokens.find((t) => t.startsWith('#')).slice(1)}⟩` };
   let text = '';
@@ -157,8 +165,13 @@ function reserved(value) {
   let lower = false;
   let attachPrev = false;
   let attachNext = false;
-  for (const t of tokens) {
-    if (t === '>') lower = true;
+  for (const atom of atoms) {
+    // `~|` carries a pending capital past the mark: the mark itself types as written
+    const t = atom.meta?.replace('~|', '');
+    if (t === undefined) text += atom.text;
+    // a bare `{^}` attaches on the side it stands: before any text the word before, after it the next
+    else if (t === '^') { if (text) attachNext = true; else attachPrev = true; }
+    else if (t === '>') lower = true;
     else if (t === '-|') cap = true;
     else if (t.startsWith('&')) { text += t.slice(1); attachPrev = true; attachNext = true; }
     else if (t.startsWith('^') && t.endsWith('^') && t.length > 1) { text += t.slice(1, -1); attachPrev = true; attachNext = true; }
