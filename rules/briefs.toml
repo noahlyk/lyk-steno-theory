@@ -297,6 +297,7 @@ thought = "-LGT"      # was THAUT, 5 keys -> 3
 "couldn't" = "*BGD"   # was KUPBD, 5 keys -> 4
 think = "-PBG"        # was THEU, 4 keys -> 3
 "doesn't" = "*RBGZ"   # was TKUPBT, 6 keys -> 5
+thats = "TAZ"         # the informal spelling, no apostrophe: TA "that" plus -Z; "that's" stays TH-TS
 
 # The `th` family. Every word that begins with the sound of "th" in `they`, `their`, `these`,
 # `those` is written with `TH-`, with the vowel telling them apart, so one of them tells you the

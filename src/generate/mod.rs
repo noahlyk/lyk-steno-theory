@@ -84,6 +84,11 @@ impl Briefs {
         let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
         Ok(toml::from_str(&text)?)
     }
+
+    /// Whether `word` is pinned to a literal outline, not just to a `"plover"`/`"lapwing"` source.
+    fn is_literal(&self, word: &str) -> bool {
+        self.word.get(word).is_some_and(|s| s != "plover" && s != "lapwing")
+    }
 }
 
 /// How a dictionary entry came about.
@@ -339,6 +344,44 @@ impl Book {
     }
 }
 
+/// Every literal `[word]` outline from `rules/briefs.toml`, fixed in rank order. A literal word the
+/// word list leaves out (no pronunciation, such as the apostrophe-less `thats`) is placed too,
+/// after the listed ones.
+fn fix_literals(
+    setup: &Setup,
+    briefs: &Briefs,
+    words: &[(&String, usize)],
+    texts: &candidates::RulesTexts,
+    book: &mut Book,
+) -> Result<()> {
+    let listed: HashSet<&str> = words.iter().map(|(w, _)| w.as_str()).collect();
+    let mut unlisted: Vec<&String> =
+        briefs.word.keys().filter(|w| briefs.is_literal(w) && !listed.contains(w.as_str())).collect();
+    unlisted.sort();
+    let literal_words = words.iter().map(|(w, _)| *w).filter(|w| briefs.is_literal(w)).chain(unlisted);
+    for word in literal_words {
+        let candidate = if listed.contains(word.as_str()) {
+            enumerate_candidates(setup, briefs, word, texts).into_iter().next()
+        } else {
+            parse_outline(&briefs.word[word]).map(|mut outline| {
+                setup.rules.joined(&mut outline);
+                let cost = candidate_cost(&outline);
+                Candidate { outline, origin: Origin::Brief, cost }
+            })
+        }
+        .with_context(|| format!("{word:?}'s brief in rules/briefs.toml does not parse as an outline"))?;
+        if !typable(&candidate.outline) {
+            anyhow::bail!(
+                "{word:?}'s brief (in rules/briefs.toml) is {:?}, which cannot be typed: the right pinky \
+                 cannot press a diagonal pair (-TZ, -SD) or three of -T -S -D -Z",
+                render_outline(&candidate.outline)
+            );
+        }
+        book.fix(word, candidate.outline, candidate.origin, &format!("{word:?}'s brief (in rules/briefs.toml)"))?;
+    }
+    Ok(())
+}
+
 /// The whole dictionary, in the order every choice is made (see `site/reference/collisions.json`):
 ///
 /// 1. reserved strokes (commands, punctuation, fingerspelling), the standalone suffixes, the
@@ -371,21 +414,8 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     // A literal `[word]` outline forces exactly one candidate and is never reopened: a human
     // decision, fixed before any other word competes. A `"plover"`/`"lapwing"` entry only narrows
     // which gold dictionary the word's briefs come from, and still competes.
-    let is_literal_override = |word: &str| briefs.word.get(word).is_some_and(|s| s != "plover" && s != "lapwing");
-    for (word, _) in words.iter().filter(|(w, _)| is_literal_override(w)) {
-        let candidate = enumerate_candidates(setup, briefs, word, &texts)
-            .into_iter()
-            .next()
-            .with_context(|| format!("{word:?}'s brief in rules/briefs.toml does not parse as an outline"))?;
-        if !typable(&candidate.outline) {
-            anyhow::bail!(
-                "{word:?}'s brief (in rules/briefs.toml) is {:?}, which cannot be typed: the right pinky \
-                 cannot press a diagonal pair (-TZ, -SD) or three of -T -S -D -Z",
-                render_outline(&candidate.outline)
-            );
-        }
-        book.fix(word, candidate.outline, candidate.origin, &format!("{word:?}'s brief (in rules/briefs.toml)"))?;
-    }
+    let is_literal_override = |word: &str| briefs.is_literal(word);
+    fix_literals(setup, briefs, &words, &texts, &mut book)?;
 
     // The phrasing grammar's strokes are fixed the same way, before any word settles: a word whose
     // own candidates land on a starter chord settles on its next outline. See `crate::phrases::grammar`.

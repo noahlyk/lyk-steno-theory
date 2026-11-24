@@ -137,7 +137,9 @@
    "t": "list",
    "items": [
     "A literal override resolves first, like a reserved outline or standalone suffix, so every other word's candidate pool treats the stroke as taken from the start.",
-    "A collision between a literal override and something already pinned (reserved stroke, suffix table, *I*, another override) is a **hard build error** to fix in `rules/briefs.toml`, never silently resolved."
+    "A collision between a literal override and something already pinned (reserved stroke, suffix table, *I*, another override) is a **hard build error** to fix in `rules/briefs.toml`, never silently resolved.",
+    "The literal outline is the word's **only** candidate: the word gets no extra one-stroke entries, and its other outlines are left to other words. Multi-stroke join backups from its pronunciation still reach it.",
+    "A literal override places its word even when the word list leaves it out (no pronunciation on record): [[thats|TAZ]]."
    ]
   },
   {
@@ -368,8 +370,16 @@
     [
      "*doesn't* [[*RBGZ]]",
      "[[*RBGZ]]"
+    ],
+    [
+     "[[thats|TAZ]]",
+     "[[TAZ]]"
     ]
    ]
+  },
+  {
+   "t": "p",
+   "x": "[[thats|TAZ]] is the informal spelling with no apostrophe: [[that|TA]] plus `-Z`, the key that ends *he's* [[HAOEZ]] and *here's* [[HAO*ERZ]]. *that's*, with the apostrophe, is [[TH-TS]]."
   },
   {
    "t": "h",
