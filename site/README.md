@@ -118,7 +118,7 @@ A phrasing-grammar phrase is an ordinary claim: `[[it was|KPWHEB]]` is checked a
 
 ## Writing a reference page
 
-Same JSON and markup as a lesson (`id`, `title`, `goal`, `blocks`; no drill). It must be complete and concise: every rule, table row and exact outline, no history or justification. State a word's outline as `[[word|OUTLINE]]` so `tools/site_data.py` checks it against `out/lyk`; use `[[OUTLINE]]` for patterns and suffix strokes. A page must be listed in `reference/index.json`. **Docs outrank code**: a change to `rules/*.toml` or `src/*.rs` that changes what a word strokes as, what a brief does or how candidates are picked lands with the matching Reference page edit in the same commit.
+Same JSON and markup as a lesson (`id`, `title`, `goal`, `blocks`; no drill). It must be complete and concise: every rule, table row and exact outline, no history or justification. State a word's outline as `[[word|OUTLINE]]` so `tools/site_data.py` checks it against `out/lyk`; use `[[OUTLINE]]` for patterns and suffix strokes. A page must be listed in `reference/index.json`. **Write outlines raw** (Plover notation, `TPHAEPL`, `TPHROUR`) in every source: they are checked against the dictionary files, which stay raw. The short notation (`NAEM`, `FLOUR`, see [the notation page](#/ref/notation)) is how keymux and the tools show a stroke; the site does not shorten chips yet, so where a page talks about the short form, write it as `code`. **Docs outrank code**: a change to `rules/*.toml` or `src/*.rs` that changes what a word strokes as, what a brief does or how candidates are picked lands with the matching Reference page edit in the same commit.
 
 ## Hoverable words and outlines
 

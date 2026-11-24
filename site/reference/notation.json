@@ -1,0 +1,333 @@
+{
+ "id": "notation",
+ "title": "Short notation",
+ "goal": "How keymux and lyk write a stroke for people: key groups as the letter they stand for, and how `#` strokes are written.",
+ "blocks": [
+  {
+   "t": "h",
+   "x": "The rule"
+  },
+  {
+   "t": "p",
+   "x": "A stroke is shown with each chord of a sound written as that sound's letter, vowels and the star as they are: [[enemy|TPHAEPL]] shows as `NAEM`, [[flower|TPHROUR]] as `FLOUR`. Dictionary files stay in raw Plover notation; only what people read is short. Input takes both: raw is always valid, and the short form is read back to the same keys."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Aliases.** Every chord of two keys or more that the [phonetic rules](#/ref/phonetic-rules) use for one sound (`[onset]` and `[coda]` of `rules/plover.toml`) is written as the sound's letters, where those differ from the keys: `TPH` is `N`, `-PB` is `N`, `SKWR` is `J`, `-PBLG` is `J`. A chord written as its own keys (`TH`, `SH`) needs none.",
+    "**Reading a run.** Each hand's consonant keys are read from the lowest key: the alias with the most keys that starts there, whose keys are all down and with no other key still to write inside its span (so `SR` `V` is never read inside `STR`), else the key's own letter. Letters come out in key order.",
+    "**Compound aliases.** Where that reading is not how a run's sounds usually split, the run gets an alias of its own, measured on the built dictionary: `TPHR` is `FL` (566 of 566 strokes), not `N` + `R`.",
+    "**Outlines written their own way.** An outline whose sounds split another way than the table reads it is listed with its own short form (`EPB/+SHRAOEUPB`, *enshrine*, is `EN/+SHRAOEUN`, not `EN/+SLAOEUN`).",
+    "**`#` strokes** are written with `#` and letters (`#TR-RL`), never Plover's digits (`2R-R8`): in lyk `#` is a modifier (questions, the [name lane](#/ref/names), the wrap strokes), and lyk has no number key for digits.",
+    "**Precedence:** an outline's own entry, then the table, then raw Plover notation."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Left hand"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Keys",
+    "Written"
+   ],
+   "rows": [
+    [
+     "HR",
+     "`L`"
+    ],
+    [
+     "KH",
+     "`CH`"
+    ],
+    [
+     "PH",
+     "`M`"
+    ],
+    [
+     "PW",
+     "`B`"
+    ],
+    [
+     "SR",
+     "`V`"
+    ],
+    [
+     "TK",
+     "`D`"
+    ],
+    [
+     "TP",
+     "`F`"
+    ],
+    [
+     "KHR",
+     "`KL`"
+    ],
+    [
+     "KWR",
+     "`Y`"
+    ],
+    [
+     "PHR",
+     "`PL`"
+    ],
+    [
+     "THR",
+     "`THR`"
+    ],
+    [
+     "TPH",
+     "`N`"
+    ],
+    [
+     "SKHR",
+     "`SKL`"
+    ],
+    [
+     "SKWR",
+     "`J`"
+    ],
+    [
+     "SPHR",
+     "`SPL`"
+    ],
+    [
+     "TKPW",
+     "`G`"
+    ],
+    [
+     "TPHR",
+     "`FL`"
+    ],
+    [
+     "STKPW",
+     "`Z`"
+    ],
+    [
+     "STKPWR",
+     "`SGR`"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Right hand"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Keys",
+    "Written"
+   ],
+   "rows": [
+    [
+     "-BG",
+     "`K`"
+    ],
+    [
+     "-FP",
+     "`CH`"
+    ],
+    [
+     "-PB",
+     "`N`"
+    ],
+    [
+     "-PL",
+     "`M`"
+    ],
+    [
+     "-RB",
+     "`SH`"
+    ],
+    [
+     "-FRB",
+     "`FRB`"
+    ],
+    [
+     "-PBG",
+     "`NG`"
+    ],
+    [
+     "-RBG",
+     "`RK`"
+    ],
+    [
+     "-RBT",
+     "`RBT`"
+    ],
+    [
+     "-RBZ",
+     "`RBZ`"
+    ],
+    [
+     "-FRBD",
+     "`FRBD`"
+    ],
+    [
+     "-FRBG",
+     "`FRK`"
+    ],
+    [
+     "-FRBZ",
+     "`FRBZ`"
+    ],
+    [
+     "-PBLG",
+     "`J`"
+    ],
+    [
+     "-RBGD",
+     "`RKD`"
+    ],
+    [
+     "-RBGS",
+     "`RKS`"
+    ],
+    [
+     "-RBGT",
+     "`RKT`"
+    ],
+    [
+     "-RBGTS",
+     "`RKTS`"
+    ]
+   ]
+  },
+  {
+   "t": "h",
+   "x": "How the compounds were chosen"
+  },
+  {
+   "t": "p",
+   "x": "`build` reads back every outline the rules wrote syllable by syllable from a word's sounds (59,946 outlines; a brief's keys say nothing about its sounds) and counts, for each run of two keys or more, how its sounds split. Where the commonest split is not how the plain aliases read the run, the run gets a compound alias. The runs split more than one way, or another way than the plain aliases read them:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "Run",
+    "Strokes",
+    "Splits",
+    "Plain aliases read"
+   ],
+   "rows": [
+    [
+     "`TPHR`",
+     "566",
+     "`FL` 566",
+     "`NR`"
+    ],
+    [
+     "`PHR`",
+     "699",
+     "`PL` 698, `MR` 1",
+     "`MR`"
+    ],
+    [
+     "`KHR`",
+     "919",
+     "`KL` 918, `CHR` 1",
+     "`CHR`"
+    ],
+    [
+     "`SHR`",
+     "394",
+     "`SL` 339, `SHR` 55",
+     "`SL`"
+    ],
+    [
+     "`SPHR`",
+     "112",
+     "`SPL` 112",
+     "`SMR`"
+    ],
+    [
+     "`SKHR`",
+     "35",
+     "`SKL` 35",
+     "`SCHR`"
+    ],
+    [
+     "`THR`",
+     "156",
+     "`THR` 155, `TL` 1",
+     "`TL`"
+    ],
+    [
+     "`PW`",
+     "5896",
+     "`B` 5891, `PW` 5",
+     "`B`"
+    ],
+    [
+     "`SR`",
+     "2810",
+     "`V` 2807, `SR` 3",
+     "`V`"
+    ],
+    [
+     "`-RB`",
+     "1416",
+     "`SH` 1398, `RB` 18",
+     "`SH`"
+    ],
+    [
+     "`-PL`",
+     "4854",
+     "`M` 4851, `PL` 3",
+     "`M`"
+    ],
+    [
+     "`-RBG`",
+     "81",
+     "`RK` 81",
+     "`SHG`"
+    ],
+    [
+     "`-RBGS`",
+     "29",
+     "`RKS` 29",
+     "`SHGS`"
+    ],
+    [
+     "`-RBD`",
+     "100",
+     "`SHD` 98, `RBD` 2",
+     "`SHD`"
+    ],
+    [
+     "`-FRB`",
+     "22",
+     "`FRB` 22",
+     "`FSH`"
+    ],
+    [
+     "`-FRPB`",
+     "100",
+     "`FRN` 62, `FRPB` 38",
+     "`FRN`"
+    ],
+    [
+     "`-FRPBD`",
+     "31",
+     "`FRND` 19, `FRPBD` 12",
+     "`FRND`"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "Runs met fewer than ten times are left out of this table but chosen the same way (the full list: `lyk build --report`). The minority splits are the outlines written their own way: 140 outlines in all."
+  },
+  {
+   "t": "h",
+   "x": "Where it is used"
+  },
+  {
+   "t": "p",
+   "x": "`build` writes the table and the per-outline list to `out/lyk/.keymux-notation.json`, and `deploy` ships it into the keymux steno folder (a hidden file, never read as a dictionary). keymux writes strokes through it where people read them: the [outline strokes](#/ref/punctuation) `PHRO*RPB`, `PHRO*PBT` and `PHRO*EPBT`, the tape file and the lookup; without the file it writes raw Plover notation with digits. This site's chips and lyk's own command output still show raw notation."
+  }
+ ]
+}

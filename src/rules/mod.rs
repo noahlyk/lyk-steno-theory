@@ -622,6 +622,35 @@ impl Rules {
             .or_else(|| single.get(&sounds[at]).or_else(|| single.get(plain(&sounds[at]))).map(|&s| (s, 1)))
     }
 
+    /// The onset table (`[onset]` of `rules/plover.toml`): a sound's left-hand keys.
+    #[must_use]
+    pub const fn onset_table(&self) -> &HashMap<String, Stroke> {
+        &self.onset
+    }
+
+    /// The coda table (`[coda]` of `rules/plover.toml`): a sound's right-hand keys.
+    #[must_use]
+    pub const fn coda_table(&self) -> &HashMap<String, Stroke> {
+        &self.coda
+    }
+
+    /// The pieces a syllable's consonants are written with, as [`Self::syllable_stroke`] finds
+    /// them one run at a time: each run's keys and the sounds it writes, onset and coda apart.
+    /// `None` when a run has no keys. The coda is the whole coda; a caller checking it against a
+    /// stroke whose vowel took the first coda sound (`AA R`) drops that sound itself.
+    #[must_use]
+    pub fn consonant_pieces(&self, sounds: &[String], onset: bool) -> Option<Vec<(Stroke, Vec<String>)>> {
+        let (single, clusters) = if onset { (&self.onset, &self.onset_cluster) } else { (&self.coda, &self.coda_cluster) };
+        let mut pieces = Vec::new();
+        let mut at = 0;
+        while at < sounds.len() {
+            let (stroke, used) = Self::next_run(sounds, at, single, clusters)?;
+            pieces.push((stroke, sounds[at..at + used].to_vec()));
+            at += used;
+        }
+        Some(pieces)
+    }
+
     /// The keys that write one syllable, if one stroke can.
     pub fn syllable_stroke(&self, syllable: &Syllable) -> Option<Stroke> {
         self.stroke_for(syllable, false)

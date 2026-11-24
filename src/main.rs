@@ -20,6 +20,7 @@ mod interactive;
 mod mistakes;
 mod lookup_cache;
 mod names;
+mod notation;
 mod num;
 mod output;
 mod paths;

@@ -66,6 +66,8 @@ pub fn deploy(
     names.extend([crate::rules::solve::plugin::BLOB_FILE, crate::rules::solve::plugin::SOURCE_FILE].map(str::to_owned));
     // The name lane: `#/` then a name's outline, lyk's own and the few borrowed from Lapwing
     names.extend([crate::names::FILE, crate::names::BORROWED_FILE].map(str::to_owned));
+    // The short notation keymux writes strokes in (hidden: never read as a dictionary)
+    names.push(crate::notation::FILE.to_owned());
     let generated = names.len();
     let mut items: Vec<Item> =
         names.into_iter().map(|name| Item { source: Source::File(words_out.join(&name)), name }).collect();

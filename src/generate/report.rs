@@ -4,7 +4,7 @@ use super::{Briefs, Entry, Generated, Origin, Setup, cheapest, generate, keys, s
 use crate::num::ToF64;
 use crate::output::Written;
 use crate::stroke::{Stroke, parse_outline, render_outline};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
@@ -44,6 +44,20 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     let lane = crate::names::generate(setup, &generated.entries, &names)?;
     crate::names::write(&lane, out)?;
     println!("  {:<24} the name lane: {}", crate::names::FILE, crate::names::summary(&lane, &names, setup));
+    let entries: Vec<(String, Vec<Stroke>)> =
+        generated.entries.iter().map(|e| (e.word.clone(), e.outline.clone())).collect();
+    let measured = crate::notation::measure(&setup.rules, &setup.pron, &entries);
+    let path = out.join(crate::notation::FILE);
+    std::fs::write(&path, measured.notation.to_json()).with_context(|| path.display().to_string())?;
+    println!(
+        "  {:<24} the short notation: {} aliases, {} outlines written their own way",
+        crate::notation::FILE,
+        measured.notation.left.len() + measured.notation.right.len(),
+        measured.notation.outlines.len()
+    );
+    if report {
+        print!("{}", crate::notation::report(&measured));
+    }
     if !generated.stranded.is_empty() {
         println!(
             "warning: {} words are stranded on a worse outline than their own plain reading: {} (build --report for the rest)",
