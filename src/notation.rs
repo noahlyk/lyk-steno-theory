@@ -827,9 +827,11 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
         let raw = crate::stroke::render_outline(outline);
         if own == notation.table_outline(outline) {
             agree.insert(raw);
-        } else {
+        } else if notation.parse_outline(&own).as_deref() == Some(*outline) {
             notation.outlines.insert(raw, own);
         }
+        // Else its own split does not read back as its keys (two sounds on one key, `K` and the
+        // `Y` of `KWR`): not known, written raw
     }
     notation.agree = agree;
     Measured { notation, splits, known: known.len(), vowels, chords }
