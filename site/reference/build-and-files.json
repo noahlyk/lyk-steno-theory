@@ -450,7 +450,7 @@
    "t": "list",
    "items": [
     "**Staged first.** Every file is written to `.lyk-staging/` beside the destination folder (a hidden sibling, so keymux does not read it), checked there, and only then moved into the live folder, one atomic rename per file. The live folder is not touched before the check passes.",
-    "**Validated.** The staged `.json` files go through `keymux steno validate --json` (the `keymux` first on `PATH`). Errors stop the deploy and nothing is written. Warnings are printed and the deploy continues; `--strict-validate` stops on them too. `--no-validate` skips the check.",
+    "**Validated.** The staged `.json` dictionaries (not hidden files such as `.keymux-notation.json`, which keymux reads beside them, not as a dictionary) go through `keymux steno validate --json` (the `keymux` first on `PATH`). Errors stop the deploy and nothing is written. Warnings are printed and the deploy continues; `--strict-validate` stops on them too. `--no-validate` skips the check.",
     "**Summary.** One line of counts (errors, warnings, notes, files, entries), then the first 10 errors and warnings as severity, file, outline and message. `keymux steno validate` lists the rest.",
     "**No validator.** With no `keymux` on `PATH` (a package-only detection), or a validator that cannot run (its exit code 2) or prints no JSON, one `validate: skipped, ...` line says why and the deploy continues.",
     "**Previous files.** Before the first rename, every file in the live folder is kept in `.lyk-previous/` beside it (hard links, so no copying; the folder holds one deploy and is replaced by the next). If the swap or the cleanup of old files fails, the live folder is restored from `.lyk-previous/` and the command fails.",

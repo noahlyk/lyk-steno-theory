@@ -153,6 +153,17 @@ pub enum Check {
     Ran(Report),
 }
 
+/// The staged files keymux reads as dictionaries, the ones to validate: `.json` files that are
+/// not hidden. A hidden file such as `.keymux-notation.json` is data keymux reads beside the
+/// dictionaries (its loader skips hidden files too), not a dictionary.
+fn dictionary_files(items: &[Item], staging: &Path) -> Vec<PathBuf> {
+    items
+        .iter()
+        .filter(|i| !i.name.starts_with('.') && Path::new(&i.name).extension().is_some_and(|e| e == "json"))
+        .map(|i| staging.join(&i.name))
+        .collect()
+}
+
 /// Run `keymux steno validate --json` on `files`.
 pub fn validate(keymux: &Path, files: &[PathBuf], strict: bool) -> Check {
     let run = || {
@@ -282,8 +293,7 @@ pub fn install(
     }
 
     if mode != Validate::Skip {
-        let json_files: Vec<PathBuf> =
-            items.iter().filter(|i| Path::new(&i.name).extension().is_some_and(|e| e == "json")).map(|i| staging.join(&i.name)).collect();
+        let json_files = dictionary_files(items, &staging);
         match find_on_path("keymux", path_var) {
             None => println!("validate: skipped, no `keymux` on PATH"),
             Some(keymux) => match validate(&keymux, &json_files, mode == Validate::Strict) {
@@ -679,6 +689,16 @@ mod tests {
             Check::Skipped(why) => assert!(why.contains("could not run"), "{why}"),
             Check::Ran(report) => panic!("ran: {report:?}"),
         }
+    }
+
+    #[test]
+    fn hidden_files_such_as_the_notation_file_are_not_validated_as_dictionaries() {
+        let staging = Path::new("/s");
+        let found = dictionary_files(
+            &items(&[("a.json", "{}"), (".keymux-notation.json", "{}"), ("05-x.rs", ""), (".keymux-theory", "")]),
+            staging,
+        );
+        assert_eq!(found, vec![staging.join("a.json")]);
     }
 
     #[test]
