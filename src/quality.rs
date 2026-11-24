@@ -274,7 +274,7 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
         .map(|(o, _)| o.as_str())
         .collect();
     let want: std::collections::BTreeSet<&str> =
-        ["PHRO*L", "PHRO*LS", "PHRO*LD", "PHRO*T", "PHRO*B", "PHRO*RPB", "PHRO*PBT", "PHR*UP", "PHRUPD"]
+        ["PHRO*L", "PHRO*LS", "PHRO*LD", "PHRO*T", "PHRO*B", "PHRO*RPB", "PHRO*PBT", "PHRO*EPBT", "PHR*UP", "PHRUPD"]
             .into_iter()
             .collect();
     assert_eq!(marked_controls, want, "first-up controls changed: update the Reference too");
@@ -336,6 +336,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         ("PHRO*B", "{:firstup}{:transparent}{:keyboard:toggle}"),
         ("PHRO*RPB", "{:firstup}{:transparent}{:outline:last}"),
         ("PHRO*PBT", "{:firstup}{:transparent}{:outline:next}"),
+        ("PHRO*EPBT", "{:firstup}{:transparent}{:outline:explain}"),
         ("PHRO*PLZ", "{:transparent}{:engine:unload}"),
     ];
     for (outline, value) in expected {
@@ -356,12 +357,12 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
                 | "tape:show" | "tape:hide" | "tape:toggle" | "tape:clear"
                 | "keyboard:show" | "keyboard:hide" | "keyboard:toggle"
                 | "lookup:open" | "lookup:close" | "lookup:toggle"
-                | "outline:last" | "outline:next"
+                | "outline:last" | "outline:next" | "outline:explain"
                 | "engine:unload"
         );
         assert!(valid && rest.matches('{').count() == 1, "{outline}: {value:?} is not a Keymux control");
     }
-    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented twelve");
+    assert_eq!(seen.len(), expected.len(), "transparent entries beyond the documented thirteen");
     for (outline, value) in [
         ("R*EUD", "{:redo}"),
         ("TK*UP", "{:undo_word}"),
@@ -383,7 +384,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     for freed in ["PHRO*PB", "TKUPT"] {
         assert!(!reserved.contains_key(freed), "{freed} should be free");
     }
-    assert_eq!(commands.len(), 82, "commands.json entry count changed: update the Reference (82 strokes)");
+    assert_eq!(commands.len(), 83, "commands.json entry count changed: update the Reference (83 strokes)");
 }
 
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and

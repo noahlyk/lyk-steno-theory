@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "`rules/reserved/punctuation.json`: **130 strokes**: 78 marks and symbols (12 of them the [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks)) plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **82 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "`rules/reserved/punctuation.json`: **130 strokes**: 78 marks and symbols (12 of them the [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks)) plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **83 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
@@ -593,7 +593,7 @@
   },
   {
    "t": "p",
-   "x": "82 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice), its commands that open Plover's own windows (keymux has no counterpart) and `{MODE:CAPS}`. No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 30 strokes (the cursor and selection family, Backspace, and the toggle, show and hide controls of the overlay, tape, keyboard and lookup) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "83 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice), its commands that open Plover's own windows (keymux has no counterpart) and `{MODE:CAPS}`. No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 31 strokes (the cursor and selection family, Backspace, the toggle, show and hide controls of the overlay, tape, keyboard and lookup, and the three outline-notation strokes) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -764,8 +764,8 @@
     ],
     [
      "Outline notation",
-     "[[PHRO*RPB]] [[PHRO*PBT]]",
-     "hold `PHRO*`, tap `-RPB` to type the last outline, `-PBT` to make the next stroke type its own notation"
+     "[[PHRO*RPB]] [[PHRO*PBT]] [[PHRO*EPBT]]",
+     "hold `PHRO*`, tap `-RPB` to type the last outline, `-PBT` to make the next stroke type its own notation, `E-PBT` to make it type its notation and entry"
     ],
     [
      "Lookup",
@@ -1141,14 +1141,20 @@
     [
      "[[PHRO*PBT]]",
      "`{:firstup}{:transparent}{:outline:next}`",
-     "The next stroke types its own notation instead of acting; the stroke after it acts as usual",
+     "The next stroke, whatever it is, types its own notation instead of acting; the stroke after it acts as usual. Struck twice, it types `PHRO*PBT`",
+     "yes"
+    ],
+    [
+     "[[PHRO*EPBT]]",
+     "`{:firstup}{:transparent}{:outline:explain}`",
+     "The next stroke, whatever it is, types its notation and its raw entry, unexecuted: `+*-G -> {^ing}`; the stroke after it acts as usual. Struck twice, it types `PHRO*EPBT -> {:firstup}{:transparent}{:outline:explain}`",
      "yes"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "Use them to read off the outline of what you just wrote, or of a stroke before you commit to it. **Key layout.** Both keep the `PHRO*` control base and share `-PB` (N, notation); `-R` adds *recent* (what was just struck), `-T` adds *then* (the stroke that follows). They are not nested in each other, so no hold-and-tap from one lands on the other. Both are free of every word outline, backup and phrase, and of every start of a multi-stroke entry. Each carries `{:firstup}{:transparent}` like the toggles above; `{:transparent}` keeps surrounding spacing and capitals and keeps the stroke off the translation history. Needs a Keymux that knows `{:outline:last}` and `{:outline:next}`."
+   "x": "Use them to read off the outline of what you just wrote, or of a stroke before you commit to it, and what a stroke does. **Armed strokes.** After `PHRO*PBT` or `PHRO*EPBT` the very next stroke is shown, never run: a command, a key combination, an undo, a word or the arming stroke itself. Striking either twice types its own outline (and entry). There is no disarm stroke: to cancel, strike anything and undo what it typed with `*`. **What explain shows.** The stroke on its own, as one lookup: its own entry in the dictionaries, never a longer multi-stroke entry it starts (`KAT` shows `KAT -> cat`, [[cat|KAT]], even where `KAT/...` starts longer entries). A stroke no dictionary has shows the solver's reading marked `(plugin NAME)` (`NOTATION -> word (plugin 05-lyk-solver)`, the plugin file's name), `(plugin late)` when the solver did not answer within the stroke's plugin deadline, and `(none)` when nothing reads it. The entry is typed as text, braces and all; nothing in it runs. The typed text is undone by `*` like a word. **Key layout.** All three keep the `PHRO*` control base and share `-PB` (N, notation); `-R` adds *recent* (what was just struck), `-T` adds *then* (the stroke that follows), and `E` on *then* adds *explain*. `-RPB` and `-PBT` are not nested in each other; `PHRO*EPBT` is `PHRO*PBT` plus `E`, so a hold-and-tap of `E` from `PHRO*PBT` lands on it (it is then shown, as the armed next stroke). All are free of every word outline, backup and phrase, and of every start of a multi-stroke entry. Each carries `{:firstup}{:transparent}` like the toggles above; `{:transparent}` keeps surrounding spacing and capitals and keeps the stroke off the translation history. Needs a Keymux that knows `{:outline:last}`, `{:outline:next}` and `{:outline:explain}`."
   },
   {
    "t": "h3",
