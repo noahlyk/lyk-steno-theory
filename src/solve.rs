@@ -86,7 +86,10 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
         return Ok(());
     }
     if let Some(text) = options.outline {
-        let run: Vec<u32> = parse_outline(text).context("not a stroke outline")?.iter().map(|s| s.0).collect();
+        // Raw or short notation in; the model reads the raw notation
+        let strokes = crate::notation::parse_outline(text).context("not a stroke outline")?;
+        let text = &render_outline(&strokes);
+        let run: Vec<u32> = strokes.iter().map(|s| s.0).collect();
         if std::env::var_os("LYK_SOLVE_DEBUG").is_some() {
             for &stroke in &run {
                 println!("{}", model.describe(stroke).join(" | "));
@@ -714,13 +717,16 @@ fn eval_tape(model: &Model, tape: &Path) -> Result<()> {
         let mut parts = line.split_whitespace();
         let (Some(_), Some(stroke), Some("?")) = (parts.next(), parts.next(), parts.next()) else { continue };
         n += 1;
+        // keymux writes the tape raw or, with lyk's notation file, short (`NAEM`): read either, keep raw
+        let raw = |text: &str| crate::notation::shown().parse_stroke(text).map_or_else(|| text.to_owned(), |s| s.to_string());
+        let stroke = &raw(stroke);
         // The next stroke within a few lines that typed a word, past undos and repeated misses
         let Some((next_stroke, word)) = lines[i + 1..lines.len().min(i + 8)].iter().find_map(|l| {
             let mut p = l.split_whitespace();
             let (_, s) = (p.next()?, p.next()?);
             let out = p.collect::<Vec<_>>().join(" ");
             let word = out.strip_prefix('"')?.strip_suffix('"')?.trim().to_lowercase();
-            (s != "*" && !word.is_empty() && word.chars().all(|c| c.is_alphabetic() || c == '\'')).then(|| (s.to_owned(), word))
+            (s != "*" && !word.is_empty() && word.chars().all(|c| c.is_alphabetic() || c == '\'')).then(|| (raw(s), word))
         }) else {
             continue;
         };
@@ -739,6 +745,7 @@ fn eval_tape(model: &Model, tape: &Path) -> Result<()> {
         if shown < 60 && !ok {
             shown += 1;
             let note = if one_key { "  (one key off)" } else { "" };
+            let (stroke, next_stroke) = (crate::notation::shorten(stroke), crate::notation::shorten(&next_stroke));
             println!("  {stroke:<12} -> {answer:<16} then {next_stroke} {word:?}{note}");
         }
     }

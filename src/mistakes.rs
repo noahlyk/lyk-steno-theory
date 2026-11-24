@@ -92,7 +92,10 @@ fn parse_line(line: &str) -> Option<(u32, String, Kind)> {
     } else {
         Kind::Other
     };
-    Some((sec, stroke.to_owned(), kind))
+    // keymux writes the tape in lyk's short notation (`NAEM`) once it has the notation file, in raw
+    // notation before: either way the stroke is kept raw, as the dictionary has it
+    let stroke = crate::notation::shown().parse_stroke(stroke).map_or_else(|| stroke.to_owned(), |s| s.to_string());
+    Some((sec, stroke, kind))
 }
 
 /// The tape's events, each with a day number: the time of day going backwards starts a new day.
@@ -627,7 +630,7 @@ fn watch_note(s: &Slip, struck: &str) -> String {
         ([a], []) => format!("you often add {}", NAMES[*a as usize]),
         ([], [m]) => format!("you often miss {}", NAMES[*m as usize]),
         ([a], [m]) => format!("you often hit {} for {}", NAMES[*a as usize], NAMES[*m as usize]),
-        _ => format!("you often strike {struck}"),
+        _ => format!("you often strike {}", crate::notation::shorten(struck)),
     }
 }
 
@@ -819,6 +822,7 @@ fn pc(x: f64) -> String {
 
 fn show(rep: &Report) -> String {
     use std::fmt::Write;
+    let short = crate::notation::shorten;
     let mut s = String::new();
     let t = &rep.thresholds;
     let c = &rep.counts;
@@ -848,15 +852,15 @@ fn show(rep: &Report) -> String {
     }
     let _ = writeln!(s, "\nWords with the most mistakes\n  {:<16} {:>6} {:>9} {:>7}  {:<14} watch", "word", "errors", "attempts", "rate", "outline");
     for w in &rep.words {
-        let _ = writeln!(s, "  {:<16} {:>6} {:>9} {:>7}  {:<14} {}", w.word, w.errors, w.attempts, pc(w.rate), w.outline, w.watch);
+        let _ = writeln!(s, "  {:<16} {:>6} {:>9} {:>7}  {:<14} {}", w.word, w.errors, w.attempts, pc(w.rate), short(&w.outline), w.watch);
     }
     let _ = writeln!(s, "\nWords by error rate\n  {:<16} {:>6} {:>9} {:>7}  {:<14} watch", "word", "errors", "attempts", "rate", "outline");
     for w in &rep.words_by_rate {
-        let _ = writeln!(s, "  {:<16} {:>6} {:>9} {:>7}  {:<14} {}", w.word, w.errors, w.attempts, pc(w.rate), w.outline, w.watch);
+        let _ = writeln!(s, "  {:<16} {:>6} {:>9} {:>7}  {:<14} {}", w.word, w.errors, w.attempts, pc(w.rate), short(&w.outline), w.watch);
     }
     let _ = writeln!(s, "\nStrokes by error rate (the intended stroke)\n  {:<14} {:<14} {:>6} {:>9} {:>7}", "stroke", "word", "errors", "attempts", "rate");
     for o in &rep.outlines_by_rate {
-        let _ = writeln!(s, "  {:<14} {:<14} {:>6} {:>9} {:>7}", o.outline, o.word, o.errors, o.attempts, pc(o.rate));
+        let _ = writeln!(s, "  {:<14} {:<14} {:>6} {:>9} {:>7}", short(&o.outline), o.word, o.errors, o.attempts, pc(o.rate));
     }
     let _ = writeln!(s, "\nKeys\n  {:<6} {:>8} {:>8} {:>7} {:>8}", "key", "wanted", "missed", "miss%", "added");
     for k in rep.keys.iter().take(14) {
@@ -875,7 +879,7 @@ fn show(rep: &Report) -> String {
     let _ = writeln!(s, "\nCommonest near-misses (struck -> intended)");
     for p in &rep.pairs {
         let got = p.struck_word.as_ref().map_or_else(|| "no entry".to_owned(), |w| format!("\"{w}\""));
-        let _ = writeln!(s, "  {:>6}  {:<14} {} -> {:<14} \"{}\"", p.count, p.struck, got, p.intended, p.word);
+        let _ = writeln!(s, "  {:>6}  {:<14} {} -> {:<14} \"{}\"", p.count, short(&p.struck), got, short(&p.intended), p.word);
     }
     let _ = writeln!(s, "\nPer day (mistakes per stroke attempted)");
     for d in rep.days.iter().rev().take(14).rev() {

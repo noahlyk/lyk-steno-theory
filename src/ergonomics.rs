@@ -426,7 +426,11 @@ pub fn explain_outline(outline: &[Stroke]) -> String {
     let mut out = String::new();
     for (i, &stroke) in outline.iter().enumerate() {
         if outline.len() > 1 {
-            let _ = writeln!(out, "stroke {} ({stroke}):", i + 1);
+            // The short form, and the keys it stands for when they differ
+            let short = crate::notation::stroke(stroke);
+            let raw = stroke.to_string();
+            let shown = if short == raw { raw } else { format!("{short} = {raw}") };
+            let _ = writeln!(out, "stroke {} ({shown}):", i + 1);
         }
         out.push_str(&explain(stroke));
         out.push('\n');

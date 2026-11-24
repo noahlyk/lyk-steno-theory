@@ -8,7 +8,8 @@
 //! together underlined as one. Colour never changes the text: the plain notation is identical.
 
 use crate::answer::{Answer, Cell, How, Mark, Row, THEORIES};
-use crate::stroke::{Stroke, render_outline};
+use crate::notation::Piece;
+use crate::stroke::Stroke;
 
 /// The narrowest an outline column is set, as in `quote`.
 const OUTLINE_WIDTH: usize = 12;
@@ -120,67 +121,66 @@ const GROUP_FOR_BIT: [Option<u8>; 23] = [
     Some(9),
 ];
 
-/// A key's text and colour part: green left hand, yellow vowels, red right hand, cyan for the
-/// star, number and extra keys.
-struct Part {
-    text: char,
-    /// SGR colour code; `None` is the dim hyphen
-    color: Option<u8>,
-    group: Option<u8>,
+/// The finger groups a piece's keys belong to, one bit each.
+fn finger_groups(keys: u32) -> u16 {
+    (0..23usize).filter(|bit| keys & (1 << bit) != 0).filter_map(|bit| GROUP_FOR_BIT[bit]).fold(0, |a, g| a | (1 << g))
 }
 
-/// One stroke as its printed parts, as keymux's `render_stroke_parts`.
-fn parts(stroke: Stroke) -> Vec<Part> {
-    const KEYS: &[u8; 23] = b"#STKPWHRAO*EUFRPBLGTSDZ";
-    let bits = stroke.0;
-    let down = |bit: u32| bits & (1 << bit) != 0;
-    let color = |bit: u32| match bit {
-        0 | 10 => 36,
-        1..=7 => 32,
-        8..=12 => 33,
-        _ => 31,
-    };
-    let mut out = Vec::new();
-    if bits & Stroke::JOIN != 0 {
-        out.push(Part { text: '+', color: Some(36), group: None });
-    } else if bits & Stroke::SPELL != 0 {
-        out.push(Part { text: '~', color: Some(36), group: None });
+/// A piece's SGR colour by the part of the keyboard its keys are on: green left hand, yellow
+/// vowels, red right hand, cyan for the star, number and extra keys; dim for the `-` that only
+/// parts the hands.
+const fn piece_colour(keys: u32) -> &'static str {
+    if keys == 0 {
+        "2"
+    } else if keys & (Stroke::JOIN | Stroke::SPELL | Stroke::STAR | 1) != 0 {
+        "36"
+    } else if keys & Stroke::LEFT != 0 {
+        "32"
+    } else if keys & Stroke::VOWELS != 0 {
+        "33"
+    } else {
+        "31"
     }
-    // With no vowel or star in between, right-hand letters would read as left-hand ones, so a
-    // dash marks the boundary
-    let mut hyphen = !(8..=12).any(down);
-    for bit in 0..23 {
-        if !down(bit) {
-            continue;
-        }
-        if hyphen && bit >= 13 {
-            out.push(Part { text: '-', color: None, group: None });
-            hyphen = false;
-        }
-        out.push(Part {
-            text: KEYS[bit as usize] as char,
-            color: Some(color(bit)),
-            group: GROUP_FOR_BIT[bit as usize],
-        });
-    }
-    out
 }
 
-/// One stroke, a colour a key by part of the keyboard, keys one finger plays together
-/// underlined as one run.
-fn stroke_text(stroke: Stroke) -> String {
-    let parts = parts(stroke);
+/// One stroke in raw notation as pieces, a key each: how Plover's and Lapwing's columns are
+/// written.
+fn raw_pieces(stroke: Stroke) -> Vec<Piece> {
+    let text = stroke.to_string();
+    let mut keys = (0..23u32).filter(|bit| stroke.0 & (1 << bit) != 0).map(|bit| 1u32 << bit);
+    text.chars()
+        .map(|c| {
+            let keys = match c {
+                '+' => Stroke::JOIN,
+                '~' => Stroke::SPELL,
+                '-' => 0,
+                _ => keys.next().unwrap_or(0),
+            };
+            Piece { text: c.to_string(), keys }
+        })
+        .collect()
+}
+
+/// One stroke's pieces, each coloured by its part of the keyboard, and pieces one finger plays
+/// together (a finger group shared with the piece beside it) underlined.
+fn pieces_text(pieces: &[Piece]) -> String {
     let mut out = String::new();
-    for (i, part) in parts.iter().enumerate() {
-        let joined = part.group.is_some()
-            && (i > 0 && parts[i - 1].group == part.group || parts.get(i + 1).is_some_and(|n| n.group == part.group));
-        let mut codes = part.color.map_or_else(|| "2".to_owned(), |c| c.to_string());
-        if joined {
+    for (i, piece) in pieces.iter().enumerate() {
+        let groups = finger_groups(piece.keys);
+        let beside = |j: Option<usize>| j.and_then(|j| pieces.get(j)).is_some_and(|p| finger_groups(p.keys) & groups != 0);
+        let mut codes = piece_colour(piece.keys).to_owned();
+        if groups != 0 && (beside(i.checked_sub(1)) || beside(Some(i + 1))) {
             codes.push_str(";4");
         }
-        out.push_str(&paint(&part.text.to_string(), &codes, true));
+        out.push_str(&paint(&piece.text, &codes, true));
     }
     out
+}
+
+/// One stroke in raw notation, coloured (see [`pieces_text`]).
+#[cfg(test)]
+fn stroke_text(stroke: Stroke) -> String {
+    pieces_text(&raw_pieces(stroke))
 }
 
 /// The physical keys that press each stroke, strokes split by `/`; keys within a stroke run
@@ -317,7 +317,7 @@ impl View {
         if row.mark == Mark::Forward {
             let reading = matches!(row.cells[0].as_ref().map(|c| &c.how), Some(How::Reading));
             return reading.then(|| {
-                let outline = row.cells[0].as_ref().map_or_default(|c| render_outline(&c.strokes));
+                let outline = row.cells[0].as_ref().map_or_default(|c| crate::notation::outline(&c.strokes));
                 format!("  {outline} is not an entry - shown as the rules' own reading of it (in quotes)")
             });
         }
@@ -348,14 +348,20 @@ impl View {
         }
     }
 
-    /// The outline column of a row for theory `t` and its width on screen.
+    /// The outline column of a row for theory `t` and its width on screen: lyk's in the short
+    /// notation ([`crate::notation`]), Plover's and Lapwing's raw (their own theories' keys).
     fn outline_cell(self, row: &Row, t: usize) -> (String, usize) {
         let missing = |text: &str, codes: &str| (paint(text, codes, self.color), text.len());
         match &row.cells[t] {
             None if row.mark == Mark::Missing && t == 0 => missing("no stroke", "31;2"),
             None => missing("-", "2"),
             Some(Cell { strokes, how }) => {
-                let plain = render_outline(strokes);
+                let pieces: Vec<Vec<Piece>> = if t == 0 {
+                    crate::notation::shown().outline_pieces(strokes)
+                } else {
+                    strokes.iter().map(|&s| raw_pieces(s)).collect()
+                };
+                let plain = pieces.iter().map(|s| s.iter().map(|p| p.text.as_str()).collect::<String>()).collect::<Vec<_>>().join("/");
                 let width = plain.chars().count();
                 if !self.color {
                     return (plain, width);
@@ -365,7 +371,7 @@ impl View {
                     return (paint(&plain, "2", true), width);
                 }
                 let slash = paint("/", "2", true);
-                (strokes.iter().map(|&s| stroke_text(s)).collect::<Vec<_>>().join(&slash), width)
+                (pieces.iter().map(|s| pieces_text(s)).collect::<Vec<_>>().join(&slash), width)
             }
         }
     }
@@ -455,10 +461,39 @@ mod tests {
     }
 
     #[test]
-    fn plain_text_spells_the_outlines_as_the_dictionary_does() {
+    fn plain_text_spells_lyks_outlines_short_and_the_others_raw() {
         let lines = lines("KAT", ALL, false, false);
         assert!(lines[0].starts_with("word") && lines[0].contains("lyk") && !lines[0].contains("plover"));
         assert!(lines[1].starts_with("\"cat\"") && lines[1].contains("KAT"), "{lines:?}");
+        // lyk's column short, Plover's and Lapwing's raw; a short or a raw query alike
+        for query in ["enemy", "NAEM", "TPHAEPL"] {
+            let first = |q: &str| self::lines(q, ALL, false, false)[1].clone();
+            let line = first(query);
+            assert!(line.contains("NAEM"), "{query}: {line}");
+        }
+        let enemy = self::lines("enemy", ALL, false, false);
+        assert!(enemy[1].split_whitespace().skip(2).all(|o| o == "TPHAEPL"), "{enemy:?}");
+        let flower = self::lines("flower", ALL, false, false);
+        assert!(flower[1].split_whitespace().nth(1) == Some("FLOUR"), "{flower:?}");
+        assert!(self::lines("FLOUR", ALL, false, false)[1].contains("\"flower\""));
+    }
+
+    #[test]
+    fn an_alias_is_coloured_as_one_piece_of_its_hand() {
+        let cell = Cell { strokes: crate::stroke::parse_outline("TPHAEPL/+-PB").unwrap(), how: How::Entry };
+        let row = Row { word: "x".into(), cells: [Some(cell), None, None], mark: Mark::Entry, detail: Vec::new() };
+        let (text, width) = View { show_keys: false, color: true }.outline_cell(&row, 0);
+        assert_eq!(strip(&text), "NAEM/+-N");
+        assert_eq!(width, 8);
+        assert!(text.contains("\x1b[32mN\x1b[0m"), "N (TPH) green, one piece: {text:?}");
+        assert!(text.contains("\x1b[31mM\x1b[0m"), "M (-PL) red: {text:?}");
+        assert!(text.contains("\x1b[36m+"), "the join key cyan: {text:?}");
+        // A number-key stroke and an outline written its own way
+        let cell = |raw: &str| Row { word: "x".into(), cells: [Some(Cell { strokes: crate::stroke::parse_outline(raw).unwrap(), how: How::Entry }), None, None], mark: Mark::Entry, detail: Vec::new() };
+        let plain = View { show_keys: false, color: false };
+        assert_eq!(plain.outline_cell(&cell("#TPH-PB"), 0).0, "#N-N");
+        assert_eq!(plain.outline_cell(&cell("ORB"), 0).0, "ORB");
+        assert_eq!(strip(&View { show_keys: false, color: true }.outline_cell(&cell("ORB"), 0).0), "ORB");
     }
 
     #[test]
@@ -508,7 +543,7 @@ mod tests {
             ),
             "{lines:?}"
         );
-        assert!(lines[1].contains("EFB/+-PBTS") && lines[1].contains(" - "), "{lines:?}");
+        assert!(lines[1].contains("EFB/+-NTS") && lines[1].contains(" - "), "{lines:?}");
     }
 
     #[test]

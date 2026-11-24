@@ -203,7 +203,7 @@ impl Tally {
         for ((group, cause), found) in &self.samples {
             let _ = writeln!(out, "\n{group} / {cause}:");
             for s in found {
-                let _ = writeln!(out, "  {:<22} {:<34} types {:?}", s.word, s.outline, s.typed);
+                let _ = writeln!(out, "  {:<22} {:<34} types {:?}", s.word, crate::notation::shorten(&s.outline), s.typed);
             }
         }
         out

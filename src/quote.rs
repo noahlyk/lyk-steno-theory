@@ -278,7 +278,7 @@ pub fn run(setup: &Setup, entries: &[Entry], max_words: usize) -> Result<()> {
             lyk_vs_lapwing += ok;
             lapwing_total += wk;
         }
-        println!("{:<width$}  {:<12}  {:<12}  {:<12}", row.word, row.lyk, row.plover, row.lapwing);
+        println!("{:<width$}  {:<12}  {:<12}  {:<12}", row.word, crate::notation::shorten(&row.lyk), row.plover, row.lapwing);
     }
     for row in rows.iter().filter(|r| !r.composed.is_empty()) {
         let how: Vec<String> =

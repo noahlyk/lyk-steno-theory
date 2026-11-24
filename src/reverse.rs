@@ -9,7 +9,7 @@
 //! `site/reference/spelling-mode.json`.
 
 use crate::analysis::Setup;
-use crate::stroke::{self, Stroke, render_outline};
+use crate::stroke::{Stroke, render_outline};
 use std::collections::HashMap;
 
 /// A word the dictionary does not hold as one entry, written from pieces it does: its own words
@@ -128,7 +128,7 @@ pub fn classify(input: &str) -> Query {
     let looks_like_a_stroke =
         !trimmed.is_empty() && !trimmed.chars().any(|c| c.is_ascii_lowercase());
     if looks_like_a_stroke
-        && let Some(strokes) = stroke::parse_outline(trimmed) {
+        && let Some(strokes) = crate::notation::parse_outline(trimmed) {
             return Query::Stroke(strokes);
         }
     Query::Text(trimmed.to_string())

@@ -112,7 +112,7 @@ fn print_summary(setup: &Setup, generated: &Generated) {
     );
     println!("    verb codes: {}", grammar.codes.iter().map(|(v, c)| format!("{v} {c}")).collect::<Vec<_>>().join(", "));
     for (stroke, text, why) in &grammar.unplaced {
-        println!("    left out: {text} ({stroke}): {why}");
+        println!("    left out: {text} ({}): {why}", crate::notation::shorten(stroke));
     }
     let questions = &generated.questions;
     println!(
@@ -122,10 +122,10 @@ fn print_summary(setup: &Setup, generated: &Generated) {
         questions.unplaced.len()
     );
     for (text, outline) in &questions.kept {
-        println!("    kept: {text} ({outline})");
+        println!("    kept: {text} ({})", crate::notation::shorten(outline));
     }
     for (stroke, text, why) in &questions.unplaced {
-        println!("    left out: {text} ({stroke}): {why}");
+        println!("    left out: {text} ({}): {why}", crate::notation::shorten(stroke));
     }
     println!("  extra single-stroke entries added last, in strokes nobody else needed: {}", generated.extras_added);
     println!("  phrase entries skipped as collisions: {}", generated.phrases_skipped);
@@ -286,7 +286,8 @@ fn print_lost(setup: &Setup, generated: &Generated) {
         .collect();
     lost.sort_by_key(|(e, _, _)| setup.rank.get(&e.word).copied().unwrap_or(usize::MAX));
     for (entry, wanted, holder) in lost.iter().take(30) {
-        println!("  {:<12} {:<18} ({wanted} is {holder})", entry.word, render_outline(&entry.outline));
+        let wanted = crate::notation::shorten(wanted);
+        println!("  {:<12} {:<18} ({wanted} is {holder})", entry.word, crate::notation::outline(&entry.outline));
     }
 }
 
@@ -296,7 +297,7 @@ fn print_worse(setup: &Setup, generated: &Generated, mut worse: Vec<Worse>) {
     println!("\nthe words that cost the most extra keys over plover");
     let best = cheapest(&generated.entries);
     for (_, word, ours_keys, plover_keys) in worse.iter().take(40) {
-        let outline = best.get(word).map_or_else(String::new, |o| render_outline(o));
+        let outline = best.get(word).map_or_else(String::new, |o| crate::notation::outline(o));
         let plover = setup.gold.plover.get(*word).and_then(|o| o.first()).map_or("", String::as_str);
         println!("  {word:<12} {ours_keys} vs {plover_keys} keys   ours {outline:<24} plover {plover}");
     }

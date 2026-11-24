@@ -329,7 +329,7 @@ pub fn run_ergonomics(
     rebuild: bool,
 ) -> Result<()> {
     if let Some(query) = query
-        && let Some(strokes) = stroke::parse_outline(query)
+        && let Some(strokes) = crate::notation::parse_outline(query)
     {
         report_ergonomics(&strokes, query, false);
         return Ok(());
@@ -339,7 +339,7 @@ pub fn run_ergonomics(
     let backups = read_back_backups(rebuild);
     let lookup = Lookup::new(&setup, &entries, backups.as_ref()).with_solver(built_solver);
     let report = |query: &str| {
-        if let Some(strokes) = stroke::parse_outline(query) {
+        if let Some(strokes) = crate::notation::parse_outline(query) {
             report_ergonomics(&strokes, query, false);
         } else if let Some(outline) = lookup.dictionary().get(query) {
             report_ergonomics(outline, query, true);
@@ -359,7 +359,9 @@ pub fn run_ergonomics(
 
 fn report_ergonomics(strokes: &[stroke::Stroke], query: &str, is_word: bool) {
     if is_word {
-        println!("{query}  ->  {}:", stroke::render_outline(strokes));
+        let (short, raw) = (crate::notation::outline(strokes), stroke::render_outline(strokes));
+        let keys = if short == raw { String::new() } else { format!(" (keys {raw})") };
+        println!("{query}  ->  {short}{keys}:");
     } else {
         println!("{query} (a stroke outline):");
     }
@@ -454,7 +456,7 @@ pub fn print_family(setup: &analysis::Setup, generated: &generate::Generated, wo
     for member in members {
         let own = cheapest.get(member).map_or_else(|| "-".to_owned(), |o| stroke::render_outline(o));
         let Some(link) = links.get(member) else {
-            println!("  {member:<18} {own:<22} (root)");
+            println!("  {member:<18} {:<22} (root)", crate::notation::shorten(&own));
             continue;
         };
         let stem_outline = cheapest.get(link.stem.as_str());
@@ -464,17 +466,20 @@ pub fn print_family(setup: &analysis::Setup, generated: &generate::Generated, wo
             setup.rules.joined(&mut composed);
             stroke::render_outline(&composed)
         });
+        let short = crate::notation::shorten;
         let backup_note = match &backup {
-            Some(text) if index.get(text) == Some(&member) => format!("backup {text}"),
+            Some(text) if index.get(text) == Some(&member) => format!("backup {}", short(text)),
             Some(text) => index
                 .get(text)
-                .map_or_else(|| format!("backup {text} not built"), |other| format!("backup {text} lost to {other:?}")),
+                .map_or_else(|| format!("backup {} not built", short(text)), |other| format!("backup {} lost to {other:?}", short(text))),
             None => "stem has no outline".to_owned(),
         };
         let starts = if family::follows_family(links, &cheapest, member) { "follows the family" } else { "own shape" };
         println!(
-            "  {member:<18} {own:<22} = {} + -{:<5} {backup_note}  [{starts}]",
-            link.stem, link.suffix
+            "  {member:<18} {:<22} = {} + -{:<5} {backup_note}  [{starts}]",
+            short(&own),
+            link.stem,
+            link.suffix
         );
     }
     let mut prefixed: Vec<(&String, &family::PrefixLink)> = generated
@@ -491,10 +496,11 @@ pub fn print_family(setup: &analysis::Setup, generated: &generate::Generated, wo
             .map(|o| stroke::render_outline(&o));
         let note = if shape.as_deref() == Some(own.as_str()) { "follows the family" } else { "own shape" };
         println!(
-            "  {member:<18} {own:<22} = {}- + {:<11} prefix shape {}  [{note}]",
+            "  {member:<18} {:<22} = {}- + {:<11} prefix shape {}  [{note}]",
+            crate::notation::shorten(&own),
             link.prefix,
             link.stem,
-            shape.unwrap_or_else(|| "-".to_owned())
+            shape.map_or_else(|| "-".to_owned(), |s| crate::notation::shorten(&s))
         );
     }
 }
@@ -545,6 +551,7 @@ pub fn family_report(setup: &analysis::Setup, generated: &generate::Generated, s
     odd.sort();
     out += "the commonest members whose outline doesn't follow the family\n";
     for (rank, word, own, stem, stem_outline) in odd.into_iter().take(show) {
+        let (own, stem_outline) = (crate::notation::shorten(&own), crate::notation::shorten(&stem_outline));
         let _ = writeln!(out, "  #{rank:<6} {word:<16} {own:<14} stem {stem} {stem_outline}");
     }
     out

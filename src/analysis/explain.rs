@@ -3,7 +3,7 @@
 //! (`learn`).
 
 use super::Setup;
-use crate::stroke::{Stroke, render_outline};
+use crate::stroke::Stroke;
 use std::collections::HashMap;
 
 /// How the rules write a word, syllable by syllable, next to what Plover and Lapwing write, and
@@ -20,7 +20,7 @@ pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str)
         match setup.rules.spell_word(&word) {
             Some(outline) => println!(
                 "{word}: no pronunciation in CMUdict, spelled out: {}",
-                render_outline(&outline)
+                crate::notation::outline(&outline)
             ),
             None => println!("{word}: no pronunciation in CMUdict, and not spellable (a-z only)"),
         }
@@ -38,25 +38,26 @@ pub fn explain(setup: &Setup, dictionary: &HashMap<&str, &[Stroke]>, word: &str)
                         syllable.onset.join(" "),
                         syllable.vowel,
                         syllable.coda.join(" "),
-                        stroke.map_or_else(|| "cannot be written in one stroke".to_owned(), |s| s.to_string())
+                        stroke.map_or_else(|| "cannot be written in one stroke".to_owned(), crate::notation::stroke)
                     );
                 }
             }
         }
     }
     let (plover, lapwing) = setup.gold.shortest(&word);
-    println!("ours    {}", setup.candidates(&word).join("  "));
+    let ours: Vec<String> = setup.candidates(&word).iter().map(|o| crate::notation::shorten(o)).collect();
+    println!("ours    {}", ours.join("  "));
     println!(
         "deployed {}",
         dictionary
             .get(word.as_str())
-            .map_or_else(|| "(not in the dictionary built here)".to_owned(), |o| render_outline(o))
+            .map_or_else(|| "(not in the dictionary built here)".to_owned(), |o| crate::notation::outline(o))
     );
     for step in setup.rules.brevity() {
         let forms: Vec<String> = variants
             .iter()
             .flat_map(|sounds| setup.rules.shorten(*step, &word, sounds))
-            .map(|o| render_outline(&o))
+            .map(|o| crate::notation::outline(&o))
             .collect();
         if !forms.is_empty() {
             let vowel = if step.vowel { "" } else { " (no vowel)" };
@@ -111,7 +112,7 @@ pub fn mismatches(
             .map_or_default(|s| s.join(" "));
         println!(
             "{word:<12} ours {:<18} plover {:<16} lapwing {:<16} {sounds}",
-            candidates.first().map_or("-", String::as_str),
+            candidates.first().map_or_else(|| "-".to_owned(), |o| crate::notation::shorten(o)),
             plover.unwrap_or("-"),
             lapwing.unwrap_or("-"),
         );

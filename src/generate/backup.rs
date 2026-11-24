@@ -595,7 +595,7 @@ pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limi
                     }
                 }
             };
-            println!("  {cost:>3}  {text:<40} {fate}");
+            println!("  {cost:>3}  {:<40} {fate}", crate::notation::outline(&outline));
         }
         println!("  {kept} kept as backups, {taken} taken by another word, {rejected} rejected, {beyond} past the quota");
     }
@@ -603,8 +603,8 @@ pub fn print_paths(setup: &Setup, generated: &super::Generated, word: &str, limi
         generated.entries.iter().filter(|e| e.word == word).map(|e| (e, render_outline(&e.outline))).collect();
     all.sort_by_key(|(e, text)| (priority(e), text.matches('/').count(), text.len()));
     println!("\nevery outline the dictionary holds for {word}: {}", all.len());
-    for (entry, text) in all {
-        println!("  {text:<42} {:?}", entry.origin);
+    for (entry, _) in all {
+        println!("  {:<42} {:?}", crate::notation::outline(&entry.outline), entry.origin);
     }
 }
 

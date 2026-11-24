@@ -287,7 +287,7 @@ impl<'a> Lookup<'a> {
             return Answer::default();
         }
         let parsed = if ask.stroke_mode {
-            match stroke::parse_outline(&query.to_uppercase()) {
+            match crate::notation::parse_outline(&query.to_uppercase()) {
                 Some(strokes) => Query::Stroke(strokes),
                 None => {
                     return Answer { rows: Vec::new(), problem: Some(format!("\"{query}\" is not stroke notation")) };
