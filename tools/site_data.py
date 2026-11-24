@@ -174,13 +174,14 @@ def write_engine(files, pick, rank):
 
 def write_notation(words, lessons):
     """site/data/notation.json: lyk's short notation (`out/lyk/.keymux-notation.json`, as keymux gets it), for the
-    site to show outlines in (site/js/notation.js). Its list of outlines whose split is known (`agree`) is cut to the
-    outlines the site shows: the lookup's and every [[word|OUTLINE]] of a page. Any other outline is shown raw."""
+    site to show outlines in (site/js/notation.js). Its outlines whose split is known (`agree`, `outlines`) are cut to
+    the outlines the site shows: the lookup's and every [[word|OUTLINE]] of a page. Any other outline is shown raw."""
     table = json.load(open(os.path.join(default_out_dir(), '.keymux-notation.json')))
     shown = {o for outs in words.values() for o in outs}
     for lesson in lessons:
         shown.update(outline for _, outline, _ in lesson_claims(lesson))
     table['agree'] = sorted(o for o in table.get('agree', []) if o in shown)
+    table['outlines'] = {o: t for o, t in table.get('outlines', {}).items() if o in shown}
     with open(os.path.join(SITE, 'data', 'notation.json'), 'w') as f:
         json.dump(table, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
     print(f"notation.json: {len(table['agree'])} known outlines shown short, {len(table.get('outlines', {}))} written their own way")
