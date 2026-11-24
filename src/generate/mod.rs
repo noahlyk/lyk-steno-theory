@@ -37,10 +37,10 @@ const BUILT_IN_SUFFIXES: &str = include_str!("../../rules/suffixes.toml");
 /// same stroke as one of these is never reachable — a real stroke, that was never a bug in the
 /// deployed config, just unknown to the generator. Reserved the same way a brief's outline is
 /// (see `generate`), so the collision can't resurface on the next regeneration.
-const RESERVED: &[(&str, &str)] = &[
-    ("a command", include_str!("../../rules/reserved/commands.json")),
-    ("a punctuation mark", include_str!("../../rules/reserved/punctuation.json")),
-    ("a fingerspelled letter or OS shortcut", include_str!("../../rules/reserved/emilys-modifiers.json")),
+const RESERVED: &[(&str, &str, &str)] = &[
+    ("a command", "commands.json", include_str!("../../rules/reserved/commands.json")),
+    ("a punctuation mark", "punctuation.json", include_str!("../../rules/reserved/punctuation.json")),
+    ("a fingerspelled letter or OS shortcut", "emilys-modifiers.json", include_str!("../../rules/reserved/emilys-modifiers.json")),
 ];
 
 #[derive(Deserialize, Default)]
@@ -215,7 +215,7 @@ fn strip_markers(text: &str) -> String {
 #[allow(clippy::literal_string_with_formatting_args)]
 pub fn reserved_entries() -> Result<Vec<Reserved>> {
     let mut found = Vec::new();
-    for (kind, json) in RESERVED {
+    for (kind, _, json) in RESERVED {
         let table: std::collections::BTreeMap<String, String> = serde_json::from_str(json)
             .with_context(|| format!("rules/reserved: {kind} dictionary"))?;
         for (outline_text, text) in table {
@@ -237,13 +237,19 @@ pub fn reserved_entries() -> Result<Vec<Reserved>> {
 /// generated word ever lands on one of these) without re-deriving this list by hand.
 pub fn reserved_outlines() -> Result<HashMap<String, String>> {
     let mut taken = HashMap::new();
-    for (kind, json) in RESERVED {
+    for (kind, file, json) in RESERVED {
         let strokes: HashMap<String, String> = serde_json::from_str(json)
             .with_context(|| format!("rules/reserved: {kind} dictionary"))?;
         for outline_text in strokes.keys() {
             let Some(outline) = parse_outline(outline_text) else {
                 continue;
             };
+            if !typable(&outline) {
+                anyhow::bail!(
+                    "{outline_text:?} (in rules/reserved/{file}) cannot be typed: the right pinky \
+                     cannot press a diagonal pair (-TZ, -SD) or three of -T -S -D -Z"
+                );
+            }
             let text = render_outline(&outline);
             taken.entry(text).or_insert_with(|| format!("reserved ({kind})"));
         }

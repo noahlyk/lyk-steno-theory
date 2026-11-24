@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "Some chords cannot be pressed; the generator never writes one. The right pinky has four keys in a 2x2 block:"
+   "x": "Some chords cannot be pressed; no lyk dictionary holds one. The right pinky has four keys in a 2x2 block:"
   },
   {
    "t": "pre",
@@ -115,10 +115,23 @@
      "Refused: `!build` stops with an error naming the word."
     ],
     [
+     "Reserved strokes in `rules/reserved/*.json` (commands, punctuation, Emily's modifiers)",
+     "Refused: `!build` stops with an error naming the file and the stroke. Clear the tape is [[PHRO*TSDZ]] (all four flat), not `-TZ`."
+    ],
+    [
+     "The name lane (`#/` + a name), Lapwing's borrowed outlines included",
+     "Split as above: Lapwing's `TPHROFRTZ` for *Northwest Territories* is shipped as `#/TPHROFRT/+-Z`."
+    ],
+    [
      "The stranded-word check",
      "Ignores a plain reading that is untypable."
     ]
    ]
+  },
+  {
+   "t": "note",
+   "kind": "rule",
+   "x": "No dictionary file lyk writes or deploys holds an untypable stroke: a test reads every stroke of every file (each `/`-separated stroke, with `#` and `+`) and fails on one."
   },
   {
    "t": "h",

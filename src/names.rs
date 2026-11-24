@@ -145,6 +145,12 @@ pub struct Lane {
     pub skipped: usize,
 }
 
+/// `outline` as typed: as it is, or with each stroke the right pinky cannot press split in two
+/// (`site/reference/typable.json`). Lapwing's borrowed outlines go through it too.
+fn pressable(outline: Vec<Stroke>) -> Option<Vec<Stroke>> {
+    if typable(&outline) { Some(outline) } else { split_untypable(&outline) }
+}
+
 fn lane_outline(outline: &[Stroke]) -> String {
     format!("#/{}", render_outline(outline))
 }
@@ -166,7 +172,7 @@ pub fn generate(setup: &Setup, entries: &[Entry], names: &[Name]) -> Result<Lane
     let rules = &setup.rules;
     let finish = |mut outline: Vec<Stroke>| -> Option<Vec<Stroke>> {
         rules.joined(&mut outline);
-        if typable(&outline) { Some(outline) } else { split_untypable(&outline) }
+        pressable(outline)
     };
     let mut claim = |lane: &mut Lane, at: usize, source: Source, outline: Vec<Stroke>| {
         if crate::generate::uses_suffix_chord(&outline) { return } // a literal attach, never a name's stroke
@@ -235,7 +241,7 @@ pub fn generate(setup: &Setup, entries: &[Entry], names: &[Name]) -> Result<Lane
         // Only now Lapwing's, for a name the rules could not strike, and only an outline nobody holds
         let mut any = false;
         for outline in &name.lapwing {
-            let Some(strokes) = parse_outline(outline).filter(|s| !crate::generate::uses_suffix_chord(s)) else { continue };
+            let Some(strokes) = parse_outline(outline).and_then(pressable).filter(|s| !crate::generate::uses_suffix_chord(s)) else { continue };
             let key = lane_outline(&strokes);
             if held.contains_key(&key) || reserved.contains_key(&key) {
                 lane.skipped += 1;
@@ -334,6 +340,16 @@ mod tests {
         // A borrowed name is one the rules gave nothing for: no lyk entry at all
         for text in lane.borrowed.values() {
             assert!(!text_has_own(text), "{text} is borrowed though lyk strikes it");
+        }
+    }
+
+    #[test]
+    fn a_borrowed_outline_the_pinky_cannot_press_is_split() {
+        let (_, lane) = lane();
+        assert_eq!(lane.borrowed.get("#/TPHROFRT/+-Z").map(String::as_str), Some("Northwest Territories"));
+        assert!(!lane.borrowed.contains_key("#/TPHROFRTZ"));
+        for outline in lane.own.keys().chain(lane.borrowed.keys()) {
+            assert!(typable(&parse_outline(outline).expect("an outline")), "{outline} cannot be typed");
         }
     }
 

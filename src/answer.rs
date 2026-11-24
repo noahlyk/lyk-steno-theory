@@ -840,7 +840,7 @@ mod tests {
             .map(|r| (r.word.as_str(), text(r.cells[0].as_ref())))
             .collect();
         assert!(commands.contains(&("{:tape:toggle}", "PHRO*T".to_owned())), "{commands:?}");
-        assert!(commands.contains(&("{:tape:clear}", "PHRO*TZ".to_owned())), "{commands:?}");
+        assert!(commands.contains(&("{:tape:clear}", "PHRO*TSDZ".to_owned())), "{commands:?}");
         assert!(commands.iter().all(|(word, _)| !word.contains("firstup") && !word.contains("transparent")));
         // right after the word's best outline, ahead of its other outlines and its completions
         let marks: Vec<Mark> = answer.rows.iter().map(|r| r.mark).collect();

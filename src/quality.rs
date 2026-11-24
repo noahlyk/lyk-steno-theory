@@ -278,7 +278,7 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
             .into_iter()
             .collect();
     assert_eq!(marked_controls, want, "first-up controls changed: update the Reference too");
-    for outline in ["PHRO*TZ", "PHRUP", "PHRO*PLZ"] {
+    for outline in ["PHRO*TSDZ", "PHRUP", "PHRO*PLZ"] {
         assert!(!commands[outline].contains("{:firstup"), "{outline} must stay on the last key up");
     }
     assert!(bad.is_empty(), "malformed first-up entries: {bad:#?}");
@@ -332,7 +332,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
         ("PHRO*LS", "{:firstup}{:transparent}{:overlay:show}"),
         ("PHRO*LD", "{:firstup}{:transparent}{:overlay:hide}"),
         ("PHRO*T", "{:firstup}{:transparent}{:tape:toggle}"),
-        ("PHRO*TZ", "{:transparent}{:tape:clear}"),
+        ("PHRO*TSDZ", "{:transparent}{:tape:clear}"),
         ("PHRO*B", "{:firstup}{:transparent}{:keyboard:toggle}"),
         ("PHRO*RPB", "{:firstup}{:transparent}{:outline:last}"),
         ("PHRO*PBT", "{:firstup}{:transparent}{:outline:next}"),

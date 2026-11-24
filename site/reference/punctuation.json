@@ -822,7 +822,7 @@
      "Engine commands run once, and `{:back}` is a single erase."
     ],
     [
-     "[[PHRO*TZ]] (clear the tape), [[PHRO*PLZ]] (free the engine from RAM)",
+     "[[PHRO*TSDZ]] (clear the tape), [[PHRO*PLZ]] (free the engine from RAM)",
      "Destructive or one-shot: clearing twice equals once, and unloading should be a fully released stroke, not the first key of a chord. Both stay on the last key up."
     ],
     [
@@ -1059,7 +1059,7 @@
      "yes"
     ],
     [
-     "[[PHRO*TZ]]",
+     "[[PHRO*TSDZ]]",
      "`{:transparent}{:tape:clear}`",
      "Empty the tape on screen (the tape file and the typing history are untouched)",
      "no: clearing is destructive, and a repeat means nothing"
@@ -1092,7 +1092,7 @@
   },
   {
    "t": "p",
-   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the engine control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), `Z` adds zap (clear). The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TZ` and `PHRUP` do not, for the reasons given there."
+   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the engine control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), and the whole pinky block flat (`-TSDZ`, all four keys) wipes: the tape's clear is `PHRO*TSDZ`. The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TSDZ` and `PHRUP` do not, for the reasons given there."
   },
   {
    "t": "h3",
@@ -1117,7 +1117,7 @@
   },
   {
    "t": "p",
-   "x": "The lyk dictionaries take about 700 MB while loaded; this stroke frees them. **No reload stroke:** the next stroke of any kind reloads the engine first, then performs; that one stroke is slower (the load time), nothing is lost. Types nothing, keeps surrounding spacing and capitals, stays off the tape, like the controls above. Runtime-only: nothing is written to the config; a restart loads the dictionaries as usual. Needs a Keymux that knows `{:engine:unload}`. Outline: the `PHRO*` control base with `-PL` (memory, the M of *memory*) and `Z` (zap, as in `PHRO*TZ`); bare `PHRO*PL` is unused because it begins a multi-stroke word and a standalone stroke would hold it up."
+   "x": "The lyk dictionaries take about 700 MB while loaded; this stroke frees them. **No reload stroke:** the next stroke of any kind reloads the engine first, then performs; that one stroke is slower (the load time), nothing is lost. Types nothing, keeps surrounding spacing and capitals, stays off the tape, like the controls above. Runtime-only: nothing is written to the config; a restart loads the dictionaries as usual. Needs a Keymux that knows `{:engine:unload}`. Outline: the `PHRO*` control base with `-PL` (memory, the M of *memory*) and `Z` (zap); bare `PHRO*PL` is unused because it begins a multi-stroke word and a standalone stroke would hold it up."
   },
   {
    "t": "h3",

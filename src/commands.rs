@@ -570,3 +570,43 @@ mod sticky_plus_tests {
         assert_eq!(send_early(bits("KA"), bits("KAT")), 0, "without + nothing changes");
     }
 }
+
+#[cfg(test)]
+mod typable_tests {
+    use crate::stroke::Stroke;
+
+    /// Every stroke of every dictionary file `build` writes and `deploy` ships can be pressed: no
+    /// right-pinky diagonal pair or triple (`site/reference/typable.json`) anywhere.
+    #[test]
+    fn every_stroke_of_every_emitted_dictionary_is_typable() {
+        let dir = crate::test_dir::TestDir::new("lyk-typable");
+        let setup = crate::dictionary_fixture::setup();
+        let generated = crate::dictionary_fixture::generated();
+        crate::output::write_dictionary(generated, &dir).expect("the dictionary writes");
+        let names = crate::names::collect(setup);
+        let lane = crate::names::generate(setup, &generated.entries, &names).expect("the lane generates");
+        crate::names::write(&lane, &dir).expect("the lane writes");
+        let mut files: Vec<(String, String)> = std::fs::read_dir(&*dir)
+            .expect("the folder reads")
+            .map(|e| e.expect("an entry").path())
+            .filter(|p| p.extension().is_some_and(|x| x == "json"))
+            .map(|p| (p.file_name().unwrap().to_string_lossy().into_owned(), std::fs::read_to_string(&p).expect("the file reads")))
+            .collect();
+        files.extend(super::STATIC_FILES.iter().filter(|(name, _)| std::path::Path::new(name).extension().is_some_and(|x| x == "json")).map(|(name, text)| ((*name).to_owned(), (*text).to_owned())));
+        assert!(files.len() > 6, "{:?}", files.iter().map(|(n, _)| n).collect::<Vec<_>>());
+        let mut bad = Vec::new();
+        for (name, text) in &files {
+            let table: std::collections::BTreeMap<String, String> = serde_json::from_str(text).expect("a dictionary");
+            for outline in table.keys() {
+                for stroke in outline.split('/') {
+                    match Stroke::parse(stroke) {
+                        Some(s) if s.typable() => {}
+                        Some(_) => bad.push(format!("{name}: {outline}")),
+                        None => bad.push(format!("{name}: {outline} (does not parse)")),
+                    }
+                }
+            }
+        }
+        assert!(bad.is_empty(), "untypable strokes: {bad:#?}");
+    }
+}
