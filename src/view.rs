@@ -455,9 +455,9 @@ mod tests {
         for query in ["FLĪT", "TPHRAOEUT"] {
             assert!(self::lines(query, ALL, false, false)[1].contains("\"flight\""), "{query}");
         }
-        // `nature`'s outlines, a brief and a dropped vowel: raw, `TPHR` the N and R it is
+        // `nature`: its first outline attributed to its sounds, `TPHRAEUFP` not (raw)
         let nature = self::lines("nature", ALL, false, false);
-        assert_eq!(nature[1].split_whitespace().nth(1), Some("TPHAEUFP"), "{nature:?}");
+        assert_eq!(nature[1].split_whitespace().nth(1), Some("NĀČ"), "known from its sounds: {nature:?}");
         assert!(nature.iter().any(|l| l.split_whitespace().next() == Some("TPHRAEUFP")), "{nature:?}");
         // A brief stays raw, and so does a stroke no entry has, though both read as input short
         let enemy = self::lines("enemy", ALL, false, false);
@@ -481,9 +481,9 @@ mod tests {
         assert!(text.contains("\x1b[32mFL\x1b[0m"), "FL (TPHR) green, one piece: {text:?}");
         assert!(text.contains("\x1b[33mĪ\x1b[0m"), "Ī (AOEU) yellow, one piece: {text:?}");
         assert!(text.contains("\x1b[31mT\x1b[0m"), "-T red: {text:?}");
-        // A brief: raw, a key a piece
+        // A stroke no entry has: raw, a key a piece
         let plain = View { show_keys: false, color: false };
-        assert_eq!(plain.outline_cell(&cell("TPHAEPL/+-PB"), 0).0, "TPHAEPL/+-PB");
+        assert_eq!(plain.outline_cell(&cell("TPHAOEUTS/TKPWAOEUT"), 0).0, "TPHAOEUTS/TKPWAOEUT");
         assert_eq!(plain.outline_cell(&cell("ORB"), 0).0, "ORB");
     }
 

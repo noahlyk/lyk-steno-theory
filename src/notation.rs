@@ -579,8 +579,32 @@ fn load() -> Notation {
     let setup = crate::dictionary_fixture::setup();
     let entries: Vec<(String, Vec<Stroke>)> =
         crate::dictionary_fixture::generated().entries.iter().map(|e| (e.word.clone(), e.outline.clone())).collect();
-    let measured = measure(&setup.rules, &setup.pron, &entries).notation;
+    let measured = measure(&setup.rules, &setup.pron, &entries, Some((test_model(), &aligned_entries()))).notation;
     Notation::from_json(&measured.to_json()).unwrap_or(measured)
+}
+
+/// The solver's model of the shared test dictionary, as `build` packs it.
+#[cfg(test)]
+pub fn test_model() -> &'static crate::rules::solve::Model {
+    static MODEL: std::sync::LazyLock<crate::rules::solve::Model> = std::sync::LazyLock::new(|| {
+        let setup = crate::dictionary_fixture::setup();
+        let lexicon = crate::rules::solve::Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common: 100_000 };
+        let entries = &crate::dictionary_fixture::generated().entries;
+        let blob = crate::rules::solve::pack(&setup.rules, &lexicon, &crate::rules::solve::stems(entries), None);
+        crate::rules::solve::Model::load(&blob).expect("the packed blob loads")
+    });
+    &MODEL
+}
+
+/// The entries `build` attributes with the solver's tables: every one but the backups.
+#[cfg(test)]
+fn aligned_entries() -> Vec<(String, Vec<Stroke>)> {
+    crate::dictionary_fixture::generated()
+        .entries
+        .iter()
+        .filter(|e| e.origin != crate::generate::Origin::Backup)
+        .map(|e| (e.word.clone(), e.outline.clone()))
+        .collect()
 }
 
 /// An outline as a person reads it ([`shown`]): short where its split is known (an outline lyk
@@ -634,6 +658,12 @@ pub struct Measured {
     pub splits: Vec<Split>,
     /// Outlines whose every stroke was read back to its sounds
     pub known: usize,
+    /// Of those, the ones the solver's chord tables attributed (not written syllable by syllable)
+    pub aligned: usize,
+    /// Of the outlines given for attribution (every deployed one), how many have a known split
+    pub others_known: usize,
+    /// How many were given
+    pub others: usize,
     /// Each vowel chord (the vowel keys of a stroke written from its sounds) and the sounds it
     /// wrote, how often
     pub vowels: BTreeMap<u32, BTreeMap<String, usize>>,
@@ -680,29 +710,7 @@ fn sounded(rules: &Rules, aliases: &(Vec<Alias>, Vec<Alias>), syllable: &Syllabl
             }
         }
         all.sort_by_key(|(keys, _)| keys.trailing_zeros());
-        let clusters: Vec<(u32, &str, &str)> =
-            CLUSTERS.iter().filter_map(|(keys, text, sounds)| Some((Stroke::parse(keys)?.0, *text, *sounds))).collect();
-        let mut i = 0;
-        while i + 1 < all.len() {
-            let both = all[i].0 | all[i + 1].0;
-            // Only the chord's own sounds: the same letters in another order (`ŠN` and `T` are
-            // `TŠN`), or the letters of the sounds it stands for (`K` and `S` are `X`)
-            let mut have: Vec<char> = format!("{}{}", all[i].1, all[i + 1].1).chars().collect();
-            have.sort_unstable();
-            let same = |text: &str| {
-                let mut want: Vec<char> = text.chars().collect();
-                want.sort_unstable();
-                want == have
-            };
-            if let Some((_, text, _)) = clusters.iter().find(|(keys, text, sounds)| {
-                *keys == both && (same(text) || sounds.split(' ').map(letters).collect::<Option<String>>().is_some_and(|l| same(&l)))
-            }) {
-                all[i] = (both, (*text).to_owned());
-                all.remove(i + 1);
-            } else {
-                i += 1;
-            }
-        }
+        merge_clusters(&mut all);
         all.into_iter().map(|(_, text)| text).collect()
     };
     let onset = rules.consonant_pieces(&syllable.onset, true)?;
@@ -724,15 +732,82 @@ fn sounded(rules: &Rules, aliases: &(Vec<Alias>, Vec<Alias>), syllable: &Syllabl
     Some((piece_text(&aliases.0, &onset), piece_text(&aliases.1, &right)))
 }
 
+/// Two tokens side by side whose keys are a [`CLUSTERS`] chord, written as its symbol when they
+/// are the chord's own sounds: the same letters in another order (`ŠN` and `T` are `TŠN`), or the
+/// letters of the sounds it stands for (`K` and `S` are `X`).
+fn merge_clusters(all: &mut Vec<(u32, String)>) {
+    let clusters: Vec<(u32, &str, &str)> =
+        CLUSTERS.iter().filter_map(|(keys, text, sounds)| Some((Stroke::parse(keys)?.0, *text, *sounds))).collect();
+    let mut i = 0;
+    while i + 1 < all.len() {
+        let both = all[i].0 | all[i + 1].0;
+        let mut have: Vec<char> = format!("{}{}", all[i].1, all[i + 1].1).chars().collect();
+        have.sort_unstable();
+        let same = |text: &str| {
+            let mut want: Vec<char> = text.chars().collect();
+            want.sort_unstable();
+            want == have
+        };
+        let found = clusters.iter().find(|(keys, text, sounds)| {
+            *keys == both && (same(text) || sounds.split(' ').map(letters).collect::<Option<String>>().is_some_and(|l| same(&l)))
+        });
+        if let Some((_, text, _)) = found {
+            all[i] = (both, (*text).to_owned());
+            all.remove(i + 1);
+        } else {
+            i += 1;
+        }
+    }
+}
+
+/// A word's (or a phrase's, word by word) pronunciations, each sound a `CMUdict` name.
+fn sounds_of(pron: &crate::data::Pronunciations, text: &str) -> Option<Vec<Vec<String>>> {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'').to_lowercase())
+        .collect();
+    if words.is_empty() || words.iter().any(String::is_empty) {
+        return None;
+    }
+    if let [word] = words.as_slice() {
+        return pron.get(word).cloned();
+    }
+    // A phrase: each word's first pronunciation, in order
+    let mut all = Vec::new();
+    for word in &words {
+        all.extend(pron.get(word)?.first()?.iter().cloned());
+    }
+    Some(vec![all])
+}
+
+/// One hand's keys written as `groups` split them: from the lowest key, the group holding it (all
+/// down) as the alias for exactly those keys or their own letters, else the key's own letter.
+fn split_text(aliases: &[Alias], bits: u32, groups: &[u32]) -> String {
+    let mut left = bits;
+    let mut all: Vec<(u32, String)> = Vec::new();
+    while left != 0 {
+        let low = left.isolate_lowest_one();
+        let group = groups.iter().copied().find(|&g| g & low != 0 && g & !left == 0 && g & !bits == 0).unwrap_or(low);
+        all.push((group, aliases.iter().find(|(keys, _)| *keys == group).map_or_else(|| raw(group), |(_, text)| text.clone())));
+        left &= !group;
+    }
+    merge_clusters(&mut all);
+    all.into_iter().map(|(_, text)| text).collect()
+}
+
+/// The solver's model and the outlines to attribute with its chord tables ([`measure`]).
+pub type Attribute<'a> = (&'a crate::rules::solve::Model, &'a [(String, Vec<Stroke>)]);
+
 /// The fewest strokes a measured compound must write before it is one.
-const MIN_COMPOUND: usize = 3;
+const MIN_COMPOUND: usize = 10;
 
 /// The short notation for these entries: the base aliases, a compound alias for each run whose
 /// sounds usually split another way than they read it, and the outlines whose own sounds split
 /// another way than the finished table reads them. Only strokes the rules write syllable by
 /// syllable from a word's sounds count: a brief's keys say nothing about its sounds.
 #[must_use]
-pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(String, Vec<Stroke>)]) -> Measured {
+#[allow(clippy::too_many_lines)]
+pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(String, Vec<Stroke>)], align: Option<Attribute>) -> Measured {
     let aliases = base(rules);
     let middle = vowel_marks();
     let curated: Vec<u32> = CLUSTERS.iter().filter_map(|(keys, _, _)| Some(Stroke::parse(keys)?.0)).collect();
@@ -789,6 +864,49 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
         }
         known.push((outline, runs));
     }
+    // Every other outline (short forms, folded strokes, briefs, phrases, extras...) whose keys the
+    // solver's chord tables attribute to its word's sounds one way only
+    let mut aligned = 0;
+    let (mut others_known, mut others_total) = (0, 0);
+    if let Some((model, others)) = align {
+        let seen: std::collections::HashSet<&[Stroke]> = known.iter().map(|(o, _)| *o).collect();
+        let read = |(word, outline): &(String, Vec<Stroke>)| -> Option<Vec<Runs>> {
+                if seen.contains(outline.as_slice()) || outline.iter().any(|s| s.0 & (Stroke::SPELL | NUMBER) != 0) {
+                    return None;
+                }
+                let run: Vec<u32> = outline.iter().map(|s| s.0).collect();
+                sounds_of(pron, word)?.iter().find_map(|sounds| model.split_for(&run, sounds)).map(|split| {
+                    outline
+                        .iter()
+                        .zip(&split)
+                        .map(|(s, groups)| (split_text(&aliases.0, s.0 & Stroke::LEFT, groups), split_text(&aliases.1, s.0 & Stroke::RIGHT, groups)))
+                        .collect()
+                })
+        };
+        // Four threads, each a share of the outlines, in order
+        let share = others.len().div_ceil(4).max(1);
+        let found: Vec<Option<Vec<Runs>>> = std::thread::scope(|scope| {
+            // Every thread is started before any is joined
+            #[allow(clippy::needless_collect)]
+            let handles: Vec<_> = others.chunks(share).map(|chunk| scope.spawn(move || chunk.iter().map(read).collect::<Vec<_>>())).collect();
+            handles.into_iter().flat_map(|h| h.join().unwrap_or_default()).collect()
+        });
+        others_known = others.iter().filter(|(_, o)| seen.contains(o.as_slice())).count();
+        others_total = others.len();
+        for ((_, outline), runs) in others.iter().zip(found) {
+            let Some(runs) = runs else { continue };
+            aligned += 1;
+            others_known += 1;
+            for (stroke, (left, right)) in outline.iter().zip(&runs) {
+                for (is_left, keys, text) in [(true, stroke.0 & Stroke::LEFT, left), (false, stroke.0 & Stroke::RIGHT, right)] {
+                    if keys.count_ones() >= 2 {
+                        *ways.entry((is_left, keys)).or_default().entry(text.clone()).or_default() += 1;
+                    }
+                }
+            }
+            known.push((outline, runs));
+        }
+    }
     // A compound where the commonest way is not how the base aliases read the run
     let (mut left, mut right) = aliases.clone();
     let mut splits = Vec::new();
@@ -808,10 +926,16 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
         // them), nor one a handful of strokes use: those outlines are written their own way
         let hand = if is_left { &mut left } else { &mut right };
         let used = counted.get(best).copied().unwrap_or(0);
+        // Its keys' own letters in another order say only the order of the sounds, not a group
+        let sorted = |t: &str| {
+            let mut c: Vec<char> = t.chars().collect();
+            c.sort_unstable();
+            c
+        };
         if *best != table
             && !curated.contains(&bits)
             && !hand.iter().any(|(_, t)| t == best)
-            && *best != raw(bits)
+            && sorted(best) != sorted(&raw(bits))
             && used >= MIN_COMPOUND
         {
             hand.push((bits, best.clone()));
@@ -825,6 +949,10 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
         let own: Vec<String> = outline.iter().zip(runs).map(|(&s, (l, r))| assemble(s, l, &notation.middle, r)).collect();
         let own = own.join("/");
         let raw = crate::stroke::render_outline(outline);
+        // Known with no group at all: written raw either way, so not listed
+        if own == raw {
+            continue;
+        }
         if own == notation.table_outline(outline) {
             agree.insert(raw);
         } else if notation.parse_outline(&own).as_deref() == Some(*outline) {
@@ -834,7 +962,7 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
         // `Y` of `KWR`): not known, written raw
     }
     notation.agree = agree;
-    Measured { notation, splits, known: known.len(), vowels, chords }
+    Measured { notation, splits, known: known.len(), vowels, chords, aligned, others_known, others: others_total }
 }
 
 /// What [`measure`] found, as `build --report` prints it: each run split more than one way, how
@@ -842,9 +970,12 @@ pub fn measure(rules: &Rules, pron: &crate::data::Pronunciations, entries: &[(St
 #[must_use]
 pub fn report(measured: &Measured) -> String {
     let mut out = format!(
-        "short notation: {} outlines read back to their sounds, {} written their own way\n",
+        "short notation: {} outlines read back to their sounds ({} of them attributed by the solver's chord tables, not syllable by syllable), {} written their own way; {} of {} deployed outlines have a known split\n",
         measured.known,
-        measured.notation.outlines.len()
+        measured.aligned,
+        measured.notation.outlines.len(),
+        measured.others_known,
+        measured.others
     );
     for split in &measured.splits {
         let keys = if split.left { raw(split.keys) } else { format!("-{}", raw(split.keys)) };
@@ -969,14 +1100,15 @@ mod tests {
         let generated = crate::dictionary_fixture::generated();
         let entries: Vec<(String, Vec<Stroke>)> =
             generated.entries.iter().map(|e| (e.word.clone(), e.outline.clone())).collect();
-        let measured = measure(&setup.rules, &setup.pron, &entries);
+        let measured = measure(&setup.rules, &setup.pron, &entries, None);
         let n = &measured.notation;
         assert_eq!(cluster(&n.left, s("TPHR").0), "FL", "{}", report(&measured));
         assert_eq!(n.stroke(s("TPHROUR")), "FLOUR");
         assert_eq!(n.stroke(s("TPHAEPL")), "NAEM");
         assert!(measured.known > 1000, "{}", measured.known);
-        // An outline written its own way: `orb` is O, R and B, not the SH of `-RB`
-        assert_eq!(n.outlines.get("ORB").map(String::as_str), Some("ORB"));
+        // `orb` is O, R and B, not the SH of `-RB`: known with no group, so written raw and not
+        // listed
+        assert!(!n.outlines.contains_key("ORB"));
         assert_eq!(n.outline(&[s("ORB")]), "ORB");
         assert_eq!(n.stroke(s("ORB")), "OŠ", "the table alone");
         // No alias is only its keys' own letters, and `tax` reads as the table writes it
@@ -1000,11 +1132,24 @@ mod tests {
         // An outline lyk wrote from its sounds is known: short. FL is a measured compound
         assert!(n.known("TPHRAOEUT"));
         assert_eq!(outline_of(n, "TPHRAOEUT"), "FLĪT");
-        // `flower` is folded onto one stroke from two syllables: its split is not known, raw
-        assert_eq!(outline_of(n, "TPHROUR"), "TPHROUR");
-        // Nor are a short form's and a dropped vowel's: TPHR is N and R here, never FL
-        assert_eq!(outline_of(n, "TPHRA*EUTS"), "TPHRA*EUTS", "narrates");
-        assert_eq!(outline_of(n, "TPHRAEUFP"), "TPHRAEUFP", "nature");
+        // Folded, short and brief outlines whose keys the chord tables attribute to their word's
+        // sounds one way only are known too: each as its own sounds split it
+        for (raw, short) in [
+            ("TPHROUR", "FLOUR"),      // flower, two syllables folded on one stroke
+            ("TPHRA*EUTS", "NRĀ*TS"),  // narrates: TPHR is N and R here, never FL
+            ("TPHAEUFP", "NĀČ"),       // nature
+            ("UFP", "UČ"),             // much
+            ("-PBG", "-Ŋ"),            // think
+            ("SKWRU", "JU"),           // judge
+            ("TPHAOEUT", "NĪT"),       // night
+        ] {
+            assert!(n.known(raw), "{raw}");
+            assert_eq!(outline_of(n, raw), short, "{raw}");
+        }
+        // Keys the tables cannot attribute one way stay raw: `notation`'s T before its vowel in
+        // the keys, after it in the word; `nature`'s TPHRAEUFP (no R sound before the vowel)
+        assert_eq!(outline_of(n, "TPHAEUGTS"), "TPHAEUGTS");
+        assert_eq!(outline_of(n, "TPHRAEUFP"), "TPHRAEUFP");
         // A brief's split is not known: raw, though the table would name it
         assert!(!n.known("TPHAEPL"));
         assert_eq!(outline_of(n, "TPHAEPL"), "TPHAEPL");

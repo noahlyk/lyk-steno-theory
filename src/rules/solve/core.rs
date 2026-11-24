@@ -298,6 +298,10 @@ const FOLD: Tok = Tok::C(u8::MAX);
 /// The keys a plural is folded on with, `-S` and `-Z`.
 const FOLD_KEYS: u32 = (1 << 20) | (1 << 22);
 
+/// A way to have read an outline's strokes so far ([`Model::split_for`]): its cost, each stroke's
+/// key groups, and whether another as cheap groups the keys otherwise.
+type Way = (u32, Vec<Vec<u32>>, bool);
+
 /// One reading of a stroke: its sounds, in order, and what reading them so costs.
 type StrokeReading = (Vec<Tok>, u32);
 
@@ -539,6 +543,8 @@ pub struct Reading {
 pub struct Model {
     sound_names: Vec<String>,
     sound_spelling: Vec<String>,
+    /// Whether each sound is a vowel
+    sound_vowel: Vec<bool>,
     loose: u64,
     confusable: Vec<u64>,
     onset: Vec<(u32, Vec<u8>)>,
@@ -957,11 +963,11 @@ impl Model {
         let n = r.u16() as usize;
         let mut sound_names = Vec::with_capacity(n);
         let mut sound_spelling = Vec::with_capacity(n);
+        let mut sound_vowel = Vec::with_capacity(n);
         for _ in 0..n {
             sound_names.push(r.str());
             sound_spelling.push(r.str());
-            // Whether it is a vowel: the trie's edges say so already
-            r.u8();
+            sound_vowel.push(r.u8() != 0);
         }
         let loose = r.u64();
         let r_sound = r.u8();
@@ -1142,6 +1148,7 @@ impl Model {
         Some(Self {
             sound_names,
             sound_spelling,
+            sound_vowel,
             loose,
             confusable,
             onset,
@@ -2371,6 +2378,175 @@ impl Model {
             text.push_str(&self.read_back(tail)?);
         }
         Some(text)
+    }
+
+    /// Every reading of one stroke as sound tokens, each with its key groups (each chord of two
+    /// keys or more that wrote one sound, and the vowel keys): [`Self::readings`] with the chords
+    /// kept, consonants after the vowel in steno order.
+    fn readings_grouped(&self, stroke: u32, first: bool) -> Vec<(Vec<Tok>, Vec<u32>)> {
+        let bits = stroke & !(JOIN | SPELL | NUMBER);
+        let left = bits & LEFT;
+        let big = |k: &u32| (k & !STAR).count_ones() >= 2;
+        let cover_of = |left: u32| -> Vec<(Vec<Tok>, Vec<u32>)> {
+            Self::covers(left, &self.onset, COVERS)
+                .into_iter()
+                .map(|cover| {
+                    (
+                        cover.iter().flat_map(|&i| self.onset[i].1.iter().map(|&s| Tok::C(s))).collect(),
+                        cover.iter().map(|&i| self.onset[i].0 & !STAR).filter(big).collect(),
+                    )
+                })
+                .collect()
+        };
+        let mut onsets = cover_of(left);
+        if first {
+            for (keys, ways) in &self.prefixes {
+                if left & keys == *keys {
+                    for (rest, chords) in cover_of(left & !keys) {
+                        for way in ways {
+                            let mut t = way.clone();
+                            t.extend_from_slice(&rest);
+                            onsets.push((t, std::iter::once(*keys).filter(big).chain(chords.iter().copied()).collect()));
+                        }
+                    }
+                }
+            }
+        }
+        let mut groups = Vec::new();
+        let rights = self.right_readings_grouped(bits & VOWELS, bits & (RIGHT | STAR), Some(&mut groups));
+        let mut out = Vec::new();
+        for (onset, onset_groups) in &onsets {
+            for ((right, _), right_groups) in rights.iter().zip(&groups) {
+                let mut toks = onset.clone();
+                toks.extend_from_slice(right);
+                if !toks.is_empty() {
+                    out.push((toks, onset_groups.iter().chain(right_groups).copied().collect()));
+                }
+            }
+        }
+        out
+    }
+
+    /// How `run`, an outline of the word whose sounds are `sounds` (`CMUdict` names, stress and
+    /// spelling labels allowed: `N`, `EY1`, `T.ed`), splits its keys into those sounds: for each
+    /// stroke, its chords of two keys or more and its vowel chord. Each stroke's sounds are matched
+    /// in order against the word's (consonants after the vowel in any order), sounds the strokes
+    /// leave out skipped (a vowel cheaply, a consonant dearly); a suffix chord after the first
+    /// stroke may stand for the rest of the word, the star ladder's marker for nothing. The cheapest
+    /// way wins; `None` when no way reads every stroke, or two equally cheap ways split the keys
+    /// differently.
+    #[must_use]
+    #[allow(clippy::many_single_char_names)]
+    pub fn split_for(&self, run: &[u32], sounds: &[String]) -> Option<Vec<Vec<u32>>> {
+        let ids: Vec<u8> = sounds
+            .iter()
+            .map(|s| {
+                let base: String = s.split('.').next().unwrap_or(s).chars().filter(char::is_ascii_alphabetic).collect();
+                self.sound_names.iter().position(|n| *n == base).and_then(|i| u8::try_from(i).ok())
+            })
+            .collect::<Option<_>>()?;
+        let n = ids.len();
+        let vowel = |s: u8| self.sound_vowel.get(s as usize).copied().unwrap_or(false);
+        let skip = |s: u8| if vowel(s) { 1u32 } else { 4 };
+        let matches = |tok: Tok, s: u8| match tok {
+            Tok::C(c) => c == s || (c == self.r_sound && s == self.er_sound),
+            Tok::V(keys) => vowel(s) && (self.heard[vowel_index(keys)] | self.spelled_any[vowel_index(keys)]) & (1 << s) != 0,
+            Tok::S(v, _) => v == s,
+        };
+        // The cheapest way to match `toks` from `from`: in order up to the vowel, the rest in any
+        // order (at most a few), each sound once; the end and the skips' cost
+        let fit = |toks: &[Tok], from: usize| -> Option<(usize, u32)> {
+            let head = toks.iter().position(|t| !matches!(t, Tok::C(_))).map_or(toks.len(), |p| p + 1);
+            let mut at = from;
+            let mut cost = 0;
+            for &tok in &toks[..head] {
+                let found = (at..n).find(|&j| matches(tok, ids[j]))?;
+                cost += ids[at..found].iter().map(|&s| skip(s)).sum::<u32>();
+                at = found + 1;
+            }
+            let tail = &toks[head..];
+            if tail.is_empty() {
+                return Some((at, cost));
+            }
+            if tail.len() > 4 {
+                return None;
+            }
+            // The tail's sounds as a run right after: each a distinct later sound, the run's
+            // skipped sounds paid for
+            let mut best: Option<(usize, u32)> = None;
+            let mut order: Vec<usize> = (0..tail.len()).collect();
+            loop {
+                let mut a = at;
+                let mut c = cost;
+                let mut ok = true;
+                for &k in &order {
+                    let Some(found) = (a..n).find(|&j| matches(tail[k], ids[j])) else {
+                        ok = false;
+                        break;
+                    };
+                    c += ids[a..found].iter().map(|&s| skip(s)).sum::<u32>();
+                    a = found + 1;
+                }
+                if ok && best.is_none_or(|(_, b)| c < b) {
+                    best = Some((a, c));
+                }
+                // The next permutation
+                let Some(i) = (1..order.len()).rev().find(|&i| order[i - 1] < order[i]) else { break };
+                let j = (i..order.len()).rev().find(|&j| order[j] > order[i - 1]).unwrap_or(i);
+                order.swap(i - 1, j);
+                order[i..].reverse();
+            }
+            best
+        };
+        // best[j]: the cheapest way to have read the strokes so far ending at sound j (a `Way`)
+        let mut best: Vec<Option<Way>> = vec![None; n + 1];
+        best[0] = Some((0, Vec::new(), false));
+        let offer = |slot: &mut Option<Way>, cost: u32, groups: &Vec<Vec<u32>>, tie: bool| match slot {
+            Some((c, g, t)) if *c == cost => {
+                *t |= tie || g != groups;
+            }
+            Some((c, _, _)) if *c < cost => {}
+            _ => *slot = Some((cost, groups.clone(), tie)),
+        };
+        for (i, &stroke) in run.iter().enumerate() {
+            let mut next: Vec<Option<Way>> = vec![None; n + 1];
+            let alts = self.readings_grouped(stroke, i == 0);
+            let suffix = i > 0 && stroke & JOIN != 0 && self.suffixes.iter().any(|&(s, _, _)| s == stroke);
+            for (j, way) in best.iter().enumerate() {
+                let Some((cost, groups, tie)) = way else { continue };
+                if Self::is_marker(run, i) {
+                    let mut g = groups.clone();
+                    g.push(Vec::new());
+                    offer(&mut next[j], *cost, &g, *tie);
+                    continue;
+                }
+                for (toks, chords) in &alts {
+                    if let Some((end, c)) = fit(toks, j) {
+                        let mut g = groups.clone();
+                        g.push(chords.clone());
+                        offer(&mut next[end], cost + c, &g, *tie);
+                    }
+                }
+                if suffix {
+                    // The chord stands for an ending: whatever sounds are left from here on
+                    let keys = stroke & RIGHT & !STAR;
+                    let mut g = groups.clone();
+                    g.push(if keys.count_ones() >= 2 { vec![keys] } else { Vec::new() });
+                    for slot in &mut next[j..=n] {
+                        offer(slot, cost + 2, &g, *tie);
+                    }
+                }
+            }
+            best = next;
+        }
+        let mut done: Option<Way> = None;
+        for (j, way) in best.into_iter().enumerate() {
+            let Some((cost, groups, tie)) = way else { continue };
+            let rest: u32 = ids[j..].iter().map(|&s| skip(s)).sum();
+            offer(&mut done, cost + rest, &groups, tie);
+        }
+        let (_, groups, tie) = done?;
+        (!tie).then_some(groups)
     }
 
     /// How the reading [`Self::answer_after`] gives `outline` split each stroke's keys into sounds:

@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "**A group of keys is written as one symbol only where its split is known.** An outline lyk wrote from a word's sounds is known: each chord that wrote one sound is written as that sound's symbol, vowels and the star as below: [[flight|TPHRAOEUT]] shows as `FLĪT`, [[night|TPHAOEUT]] as `NĪT`, [[wish|WEURB]] as `WIŠ`, [[tax|TABGS]] as `TAX`. Every other stroke is shown raw, a key each, because a guess at its split could be wrong: [[enemy|TPHAEPL]] (a brief) stays `TPHAEPL`, [[narrates|TPHRA*EUTS]] and [[nature|TPHRAEUFP]] (short forms whose `TPHR` is N and R, not FL) stay raw. Dictionary files and every page source stay raw. Input takes both forms."
+   "x": "**A group of keys is written as one symbol only where its split is known.** `build` knows the split of every outline whose keys it can attribute to its word's sounds one way only: [[flight|TPHRAOEUT]] shows as `FLĪT`, [[night|TPHAOEUT]] as `NĪT`, [[flower|TPHROUR]] (folded) as `FLOUR`, [[nature|TPHAEUFP]] as `NĀČ`, [[much|UFP]] (a brief) as `UČ`, [[narrates|TPHRA*EUTS]] (a short form, its `TPHR` the N and R it is) as `NRĀ*TS`. Every other stroke is shown raw, a key each, because a guess at its split could be wrong: [[enemy|TPHAEPL]] (its `AE` writes no vowel lyk's tables know) and [[notation|TPHAEUGTS]] (its `T` struck after the vowel it comes before) stay raw. Dictionary files and every page source stay raw. Input takes both forms."
   },
   {
    "t": "table",
@@ -20,14 +20,14 @@
    ],
    "rows": [
     [
-     "an outline lyk wrote syllable by syllable from its word's sounds, split as the table writes it",
+     "an outline lyk wrote syllable by syllable from its word's sounds",
      "short",
-     "its split is known (`agree` in the notation file)"
+     "its split is the sounds'"
     ],
     [
-     "an outline whose sounds split another way than the table reads it",
-     "its own short form (`ORB` for [[orb|ORB]], not `OŠ`)",
-     "its split is known (`outlines` in the file)"
+     "any other generated outline (folded, short form, brief, phrase, extra, alternate, ladder step) whose keys the chord tables attribute to its word's sounds one way only",
+     "short",
+     "its split is known; two equally good attributions that differ leave it raw"
     ],
     [
      "a word keymux's solver read from a run that missed the dictionary",
@@ -35,9 +35,9 @@
      "the solver reports the groups it used ([below](#/ref/notation/the-solver-s-split))"
     ],
     [
-     "a brief, a short form, a phrase, a folded or hand-written entry",
+     "an outline the tables cannot attribute (a brief whose keys are not its sounds, a T struck out of order), a backup, a name",
      "raw",
-     "lyk does not record which keys wrote which sound for these"
+     "nothing says how its keys split"
     ],
     [
      "a stroke no entry has, a misstroke, a run the solver cannot read",
@@ -176,35 +176,35 @@
      "`X`",
      "ks, the *ex-* prefix",
      "orthography (x)",
-     "the prefix chord"
+     "the prefix chord: X 213, K P 386 (written their own way)"
     ],
     [
      "`TPHR`",
      "`FL`",
      "f l",
      "respelling",
-     "measured: 566 of 566"
+     "measured over every entry: FL 1,261, NR 262 (short forms such as *narrates*, written their own way)"
     ],
     [
      "`PHR`",
      "`PL`",
      "p l",
      "respelling",
-     "measured: 698 of 699"
+     "measured: PL 1,449, MR 139"
     ],
     [
      "`KHR`",
      "`KL`",
      "k l",
      "respelling",
-     "measured: 918 of 919"
+     "measured: KL 2,281 of 2,282"
     ],
     [
      "`SHR`",
      "`SL`",
      "s l",
      "respelling",
-     "measured: 339 of 394"
+     "measured: SL 938, ŠR 121"
     ],
     [
      "`SPHR`",
@@ -290,7 +290,7 @@
      "`ŠN`",
      "shun (*-tion*)",
      "respelling",
-     "cluster"
+     "cluster: ŠN 1,468, G S 319"
     ],
     [
      "`-GTS`",
@@ -304,7 +304,7 @@
      "`X`",
      "ks (*tax*)",
      "orthography (x)",
-     "cluster: every one of lyk's sound-built strokes with `-BGS` is K S, none *kshun*"
+     "cluster: X 1,427, K ŠN 17 of 1,447 attributed strokes"
     ],
     [
      "`-FRB`",
@@ -315,24 +315,24 @@
     ],
     [
      "`-FRPB`",
-     "`NČ`",
+     "`ČRB`",
      "n ch (*bench*), r ch (*march*)",
      "respelling",
-     "measured: 62 of 100 (the rest written their own way)"
+     "measured: no split is most of its 465 strokes, so the table reads `ČR` + `B`; *bench* and *march* are written their own way"
     ],
     [
      "`-FT`",
-     "`ST`",
+     "`FT`",
      "s t",
      "respelling",
-     "measured: 979 of 1,061"
+     "measured: ST 979, FT 1,416 (the table reads `FT`)"
     ],
     [
      "`-FD`",
-     "`ZD`",
+     "`FD`",
      "z d (and s t of *-ed*)",
      "respelling",
-     "measured: 273 of 513"
+     "measured: FD 674, ZD 273, ST 153 (the table reads `FD`)"
     ],
     [
      "`-FBG`",
@@ -350,10 +350,10 @@
     ],
     [
      "`-LG`",
-     "`LK`",
+     "`LG`",
      "l k",
      "respelling",
-     "measured: 19 of 19"
+     "measured: L G 655, L K 19 (the table reads `LG`)"
     ],
     [
      "`-RBG`",
@@ -512,11 +512,11 @@
   },
   {
    "t": "p",
-   "x": "`build` reads back every outline the rules wrote syllable by syllable from a word's sounds (59,946 outlines; a brief's keys say nothing about its sounds) and records, for each run of two keys or more, how its sounds split. Where the commonest split is not how the base symbols read the run, and at least 3 strokes split so, the run gets a group of its own (never one that is just its keys' own letters, and never a symbol another group of that hand already has). The outlines that split as the finished table reads them are listed as known (58,903); those that split another way are listed with their own form (316); 727 more whose own split does not read back as their keys (two sounds on one key, the `K` of `KWR` for k y) are not known and stay raw. The file is 1.37 MB. `lyk build --report` prints every run's splits and what each vowel and right-hand chord wrote."
+   "x": "`build` finds the split of every generated outline but the backups two ways. An outline the rules wrote syllable by syllable is read back to its sounds (59,946 outlines). Any other (folded strokes, short forms and dropped vowels, briefs, phrases, extras, alternates, ladder steps) is attributed with the solver's chord tables: each stroke is every way its keys can be read as sounds, matched in order against its word's sounds (the consonants after the vowel in any order), the sounds the keys leave out skipped (a vowel cheaply, a consonant dearly); a suffix chord after the first stroke may stand for the rest of the word; the cheapest attribution wins, and two equally cheap ones that group the keys differently leave the outline unknown (83,690 outlines attributed). Over all of them, each run of two keys or more is counted by how its sounds split; where the commonest split is not how the base symbols read the run, and at least 10 strokes split so, the run gets a group of its own (never one that is only its keys' own letters, in any order, and never a symbol another group of that hand already has). The outlines that split as the finished table reads them are listed as known (118,705); those that split another way are listed with their own form (12,665); a known outline with no group at all is written raw either way and not listed. The file is 2.8 MB; keymux reads it in about 70 ms (a release build) and keeps about 120,000 outline hashes and 12,665 short forms. `lyk build --report` prints every run's splits."
   },
   {
    "t": "p",
-   "x": "Coverage: of 268,238 deployed outlines, 13,280 have a known split (10,998 of the 63,750 in `02-lyk-words.json`, where briefs and folded strokes are many); 45,937 backups have one. Everything else is raw."
+   "x": "Coverage: 97,143 of the 172,131 generated outlines `deploy` ships (56%) have a known split; of the 25,429 briefs, 10,247 are written short (their keys are their word's sounds), the rest raw. Backups (not shipped) and the name lane are not attributed: a backup shows short only when the solver reads it and reports its split."
   }
  ]
 }

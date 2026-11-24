@@ -46,7 +46,17 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     println!("  {:<24} the name lane: {}", crate::names::FILE, crate::names::summary(&lane, &names, setup));
     let entries: Vec<(String, Vec<Stroke>)> =
         generated.entries.iter().map(|e| (e.word.clone(), e.outline.clone())).collect();
-    let measured = crate::notation::measure(&setup.rules, &setup.pron, &entries);
+    // Every deployed outline but the backups is attributed to its word's sounds with the solver's
+    // chord tables (the model just packed), as well as those written syllable by syllable
+    let blob = std::fs::read(out.join(crate::rules::solve::plugin::BLOB_FILE))?;
+    let model = crate::rules::solve::Model::load(&blob).context("loading the solver model just packed")?;
+    let others: Vec<(String, Vec<Stroke>)> = generated
+        .entries
+        .iter()
+        .filter(|e| e.origin != crate::generate::Origin::Backup)
+        .map(|e| (e.word.clone(), e.outline.clone()))
+        .collect();
+    let measured = crate::notation::measure(&setup.rules, &setup.pron, &entries, Some((&model, &others)));
     let path = out.join(crate::notation::FILE);
     std::fs::write(&path, measured.notation.to_json()).with_context(|| path.display().to_string())?;
     println!(
@@ -59,6 +69,10 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     );
     if report {
         print!("{}", crate::notation::report(&measured));
+        let briefs: Vec<&crate::generate::Entry> =
+            generated.entries.iter().filter(|e| e.origin == crate::generate::Origin::Brief).collect();
+        let listed = briefs.iter().filter(|e| measured.notation.known(&render_outline(&e.outline))).count();
+        println!("  briefs: {listed} of {} written short (their keys attributed to their word's sounds one way only); the rest raw", briefs.len());
     }
     if !generated.stranded.is_empty() {
         println!(
