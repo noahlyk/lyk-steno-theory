@@ -195,7 +195,8 @@
    "items": [
     "A stroke whose text the solver read is marked in keymux's tape file: the line ends `plugin:05-lyk-solver \"reading\"`, after the description. Every stroke of a run carries it, each reading replacing the last. A stroke typed from an entry has no mark.",
     "A reading that comes after keymux's plugin deadline (`plugin_deadline_ms`) types the stroke plain, then arrives as a `late` line with the same mark.",
-    "The tape file is the only place: the overlay shows no mark for a solver reading (it shows only the late replacement line). Count the solver's words with `grep -c 'plugin:05-lyk-solver'` on the tape; `lyk mistakes` strips the mark when it reads it."
+    "The tape file is the only place: the overlay shows no mark for a solver reading (it shows only the late replacement line). Count the solver's words with `grep -c 'plugin:05-lyk-solver'` on the tape; `lyk mistakes` strips the mark when it reads it.",
+    "A reading's split is shown, not guessed: the word appears in the short notation as the solver split it (its `groups` report, see [the split it reports](#/ref/fallback/the-split-it-reports)); a run with no report shows its keys raw, each on its own."
    ],
    "ordered": false
   },

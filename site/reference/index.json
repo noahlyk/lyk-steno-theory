@@ -52,7 +52,7 @@
         { "id": "names", "title": "The name lane", "summary": "`#/` then a name's outline types it capitalized: the generated dictionary, the name solver for a miss, and the spelling reading for a name with no pronunciation." },
         { "id": "fallback", "title": "The solver: what a miss types", "summary": "The keymux plugin that reads a stroke or `+` run the dictionary lacks as its word; its costs; the plain read-back below it; the thinned backups." },
         { "id": "solver-contract", "title": "The solver contract", "summary": "Six guarantees that never bend: a defined entry wins, the solver only fills misses, exact means exact, same strokes same text, a tape mark, one undo; and what is not guaranteed." },
-        { "id": "notation", "title": "Short notation", "summary": "How a stroke is written for people: chords as the letter they stand for (NAEM, FLOUR), and # with letters." }
+        { "id": "notation", "title": "Short notation", "summary": "How a stroke is written for people: a known group of keys as its standard symbol (FLĪT, WIŠ, NĪT), every other stroke raw; both forms read back." }
       ]
     },
     {

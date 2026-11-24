@@ -753,6 +753,14 @@
   },
   {
    "t": "h",
+   "x": "The split it reports"
+  },
+  {
+   "t": "p",
+   "x": "Right after a reading, keymux asks the plugin how it split the run's keys into sounds (its optional `groups` export), so the word shows in the [short notation](#/ref/notation) and lights its groups on the keyboard diagram, as a dictionary entry with a known split does. The plugin reads the run again with tracing on and reports, for each stroke, each chord of two keys or more and the vowel chord that wrote one sound (in keymux's key bits). Nothing is computed unless keymux asks. A stroke the reading took whole (a known outline, a suffix chord) has no groups; a run read back as plain sounds, a name, a lock or a late star reports nothing, and its keys show raw. `lyk solve OUTLINE` prints the groups: `S/+TA/+SHUPB` (*station*) is `SH` and `-PB` in its last stroke."
+  },
+  {
+   "t": "h",
    "x": "Try it"
   },
   {
