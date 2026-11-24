@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createEngine } from './js/engine.js';
 import { parseOutline } from './js/steno.js';
+import { rawBits, setNotation, shortOutline, strokePieces, toRaw } from './js/notation.js';
 import { classify, classifyList } from './js/hovermatch.js';
 import { store } from './js/store.js';
 import { normalise } from './js/mydrills.js';
@@ -136,6 +137,28 @@ expect('assisted run: still passes', store.recordRun('t-peek', { accuracy: 95, w
 const mine = normalise({ v: 1, items: [{ p: 'late', o: ['HRAET'], w: 'late', n: 'you often add -T' }, { p: 'x', o: ['nope'], w: 'x' }], pairs: [] });
 expect('my drills: kept items', JSON.stringify(mine?.items), JSON.stringify([{ p: 'late', o: ['HRAET'], w: 'late', n: 'you often add -T' }]));
 expect('my drills: wrong version', normalise({ v: 2, items: [] }), null);
+
+// lyk's notation (js/notation.js) with the real table: short only where the split is known
+setNotation(read('data/notation.json'));
+expect('notation: a sound-built outline is short', shortOutline('TPHRAOEUT'), 'FLĪT');
+expect('notation: a brief stays raw', shortOutline('TPHAEPL'), 'TPHAEPL');
+expect('notation: a short form stays raw', shortOutline('TPHRA*EUTS'), 'TPHRA*EUTS');
+expect('notation: an outline written its own way', shortOutline('ORB'), 'ORB');
+expect('notation: a join, each stroke short', shortOutline('A/+KHAOEF'), 'A/+ČĒF');
+expect('notation: a number-key stroke by the table', strokePieces(rawBits('#TPH-PB')).map((p) => p.text).join(''), '#N-N');
+expect('notation: the table names a brief NAEM', strokePieces(rawBits('TPHAEPL')).map((p) => p.text).join(''), 'NAEM');
+// input: raw and short both, ASCII where it reads no other keys, the star after a mark
+for (const [typed, raw] of [['TPHRAOEUT', 'TPHRAOEUT'], ['FLĪT', 'TPHRAOEUT'], ['NAEM', 'TPHAEPL'], ['ORB', 'ORB'], ['OSH', 'ORB'],
+  ['#N-N', '#TPH-PB'], ['A/+ČĒF', 'A/+KHAOEF'], ['A / +CHĒF', 'A/+KHAOEF'], ['NĪ*T', 'TPHAO*EUT'], ['WISH', 'WEURB'], ['TPHAEPL', 'TPHAEPL']]) {
+  expect(`notation: ${typed} reads as ${raw}`, toRaw(typed), raw);
+}
+expect('notation: not a stroke', toRaw('NAEQ'), null);
+// every outline written its own way reads back as itself
+for (const [raw, short] of Object.entries(read('data/notation.json').outlines)) {
+  if (toRaw(short) !== raw) { errors.push(`notation: ${short} reads as ${toRaw(short)}, not ${raw}`); break; }
+}
+setNotation(null);
+expect('notation: with no table, raw', shortOutline('TPHRAOEUT'), 'TPHRAOEUT');
 
 // merged keys on the board (js/merge.js, its tests in merge.test.mjs)
 errors.push(...mergeTests());

@@ -1,6 +1,7 @@
 // The app shell: a hash router and the pages (lesson map, lesson, practice, lookup, key chart, progress).
 
-import { chart, dictionary, grammar, index, lesson } from './data.js';
+import { chart, dictionary, grammar, index, lesson, notation } from './data.js';
+import { setNotation, shortOutline, toRaw } from './notation.js';
 import { describe, explain, index as grammarIndex, leading, tokens } from './phrasing.js';
 import { createDrill, stopAllDrills } from './drill.js';
 import { clearDrills, fetchLocal, loadSaved, normalise, saveDrills } from './mydrills.js';
@@ -37,7 +38,12 @@ function setNav(name) {
   }
 }
 
+// lyk's notation, loaded once before the first page: outlines show short where their split is known
+let notationReady = null;
+const loadNotation = () => (notationReady ??= notation().then(setNotation, () => setNotation(null)));
+
 async function route() {
+  await loadNotation();
   for (const t of teardown) t();
   teardown = [];
   stopAllDrills();
@@ -223,7 +229,7 @@ async function myDrillsPanel(start) {
 
 async function lookupPage() {
   setNav('lookup');
-  const input = el('input', { class: 'search', type: 'search', placeholder: 'a word (walking) or a stroke (KAT, TKOG/+-Z)', autofocus: true, 'aria-label': 'search' });
+  const input = el('input', { class: 'search', type: 'search', placeholder: 'a word (walking) or a stroke (KAT, FLĪT or TPHRAOEUT)', autofocus: true, 'aria-label': 'search' });
   const out = el('div', { class: 'hits' });
   const row = (label, list) => (list.length ? [el('div', { class: 'hit__label' }, label),
     el('div', { class: 'hit__list' }, list.flatMap((o) => chip(o, { styled: true })))] : []);
@@ -239,13 +245,15 @@ async function lookupPage() {
     const hits = [];
     const lower = q.toLowerCase();
     if (words.has(lower)) hits.push(lower);
-    const asOutline = reverse.get(q) ?? reverse.get(q.toUpperCase());
+    // a stroke typed raw or short (`FLĪT`, `TPHRAOEUT`): looked up raw, as the dictionary holds it
+    const raw = /[a-z]/.test(q) ? null : toRaw(q.toUpperCase());
+    const asOutline = reverse.get(q) ?? reverse.get(q.toUpperCase()) ?? (raw ? reverse.get(raw) : undefined);
     if (asOutline) hits.push(...asOutline.filter((w) => !hits.includes(w)));
     for (const w of words.keys()) {
       if (hits.length >= 12) break;
       if (w.startsWith(lower) && !hits.includes(w)) hits.push(w);
     }
-    const asked = q.toUpperCase();
+    const asked = raw ?? q.toUpperCase();
     if (phrase) {
       const parts = explain(g, phrase.stroke);
       out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `${phrase.text}  (the phrasing grammar)`),
@@ -262,7 +270,7 @@ async function lookupPage() {
         el('p', { class: 'hit__note' }, describe(made))));
     }
     if (parseOutline(asked) && !made) {
-      out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `the stroke ${asked}`),
+      out.append(el('div', { class: 'hit' }, el('div', { class: 'hit__word' }, `the stroke ${shortOutline(asked)}`),
         ...row(asOutline ? 'reads as' : 'not in this dictionary, but you can see its keys', [asked]),
         asOutline ? el('div', { class: 'hit__list' }, asOutline.slice(0, 6).map((w) => el('span', { class: 'word' }, w))) : null));
     }

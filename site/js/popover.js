@@ -5,6 +5,7 @@
 import { createBoard } from './board.js';
 import { el } from './dom.js';
 import { parseBarOutline } from './steno.js';
+import { shortOutline } from './notation.js';
 import { define, ensure } from './translate.js';
 
 const STEP_MS = 900;
@@ -41,7 +42,7 @@ function place(anchor) {
 function paint(strokes, outline, at) {
   ctl.show(strokes[at]);
   // the stroke being shown keeps full strength; the rest of the outline is just dimmed (no brackets)
-  const parts = outline.split('/');
+  const parts = shortOutline(outline).split('/');
   label.replaceChildren(...parts.flatMap((s, i) => [
     ...(i ? [el('span', { class: 'pop__sep' }, '/')] : []),
     el('span', { class: `pop__stroke${strokes.length > 1 && i !== at ? ' is-dim' : ''}` }, s),

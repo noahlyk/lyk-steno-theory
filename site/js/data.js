@@ -16,6 +16,7 @@ export const index = () => getJson('lessons/index.json');
 export const lesson = (id) => getJson(`lessons/${id}.json`);
 export const chart = () => getJson('data/chart.json');
 export const grammar = () => getJson('data/grammar.json');
+export const notation = () => getJson('data/notation.json');
 export const refIndex = () => getJson('reference/index.json');
 export const refPage = (id) => getJson(`reference/${id}.json`);
 

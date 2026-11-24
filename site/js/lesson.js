@@ -4,6 +4,7 @@
 import { createBoard } from './board.js';
 import { createDrill } from './drill.js';
 import { outlineEl } from './outline.js';
+import { shortOutline } from './notation.js';
 import { el } from './dom.js';
 import { whenActive } from './input.js';
 import { dictionary } from './data.js';
@@ -40,7 +41,7 @@ export function chip(spec, { styled = false } = {}) {
   const outline = bar < 0 ? spec : spec.slice(bar + 1);
   // the hover board (popover.js) reads data-outline; an outline that is not a stroke has none
   const node = el('button', { class: `stroke${styled ? ' stroke--outline' : ''}`, type: 'button', 'data-outline': parseBarOutline(outline) ? outline : null },
-    styled ? outlineEl(outline) : outline);
+    styled ? outlineEl(outline) : shortOutline(outline));
   return word ? [el('span', { class: 'word' }, word), ' ', node] : [node];
 }
 

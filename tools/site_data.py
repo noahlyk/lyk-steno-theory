@@ -2,7 +2,7 @@
 """Writes the data the lessons site (`site/`) runs on, and checks every outline the lessons teach.
 
     cargo run --release -- build          # first, so out/lyk is current
-    python3 tools/site_data.py            # writes site/data/words.json, chart.json, engine.json, joins.json
+    python3 tools/site_data.py            # writes site/data/words.json, chart.json, engine.json, joins.json, notation.json
     python3 tools/site_data.py --check    # only checks the lessons; non-zero exit on any wrong outline
 
 It stops with "out/lyk is older than the rules: run `lyk build`" when `out/lyk/.built` (the source
@@ -21,7 +21,7 @@ import glob, json, os, re, sys, tomllib
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lyk_out import STALE, path, require_fresh, role_files, ranks  # noqa: E402
+from lyk_out import STALE, default_out_dir, path, require_fresh, role_files, ranks  # noqa: E402
 
 SITE = path('site')
 LESSONS = sorted(glob.glob(os.path.join(SITE, 'lessons', '[0-9]*.json')))
@@ -172,6 +172,20 @@ def write_engine(files, pick, rank):
         print(f'{name}: {os.path.getsize(os.path.join(out, name)):,} bytes')
 
 
+def write_notation(words, lessons):
+    """site/data/notation.json: lyk's short notation (`out/lyk/.keymux-notation.json`, as keymux gets it), for the
+    site to show outlines in (site/js/notation.js). Its list of outlines whose split is known (`agree`) is cut to the
+    outlines the site shows: the lookup's and every [[word|OUTLINE]] of a page. Any other outline is shown raw."""
+    table = json.load(open(os.path.join(default_out_dir(), '.keymux-notation.json')))
+    shown = {o for outs in words.values() for o in outs}
+    for lesson in lessons:
+        shown.update(outline for _, outline, _ in lesson_claims(lesson))
+    table['agree'] = sorted(o for o in table.get('agree', []) if o in shown)
+    with open(os.path.join(SITE, 'data', 'notation.json'), 'w') as f:
+        json.dump(table, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
+    print(f"notation.json: {len(table['agree'])} known outlines shown short, {len(table.get('outlines', {}))} written their own way")
+
+
 def main():
     check_only = '--check' in sys.argv
     require_fresh()
@@ -226,6 +240,7 @@ def main():
         json.dump({'words': dict(sorted(words.items(), key=lambda kv: (rank.get(kv[0], 10**9), kv[0])))}, f, separators=(',', ':'))
     print(f'words.json: {len(words)} words')
     write_engine(files, pick, rank)
+    write_notation(words, lessons)
 
     # chart.json
     rules = tomllib.load(open(path('rules', 'plover.toml'), 'rb'))
