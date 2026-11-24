@@ -1110,6 +1110,32 @@ mod tests {
         }
     }
 
+    /// keymux's `groups`: how the reading split each stroke's keys into sounds, from the decoder's
+    /// own trail, in lyk's key bits (`to_host` makes them keymux's).
+    #[test]
+    fn a_reading_reports_the_sound_groups_it_used() {
+        let model = model();
+        let keys = |text: &str| super::core::parse_stroke(text).expect("keys");
+        // `station`: S, T and A alone, then SH (`SH`) and N (`-PB`) as one key group each
+        assert_eq!(model.answer("S/+TA/+SHUPB").as_deref(), Some("station"));
+        let groups = model.groups_after("S/+TA/+SHUPB", "", false).expect("a reading's groups");
+        assert_eq!(groups, vec![vec![], vec![], vec![keys("SH"), keys("-PB")]]);
+        // `computer`: M (`-PL`) in the first stroke
+        let groups = model.groups_after("KOPL/+PU/+TER", "", false).expect("groups");
+        assert_eq!(groups[0], vec![keys("-PL")]);
+        // `otherwise`: the vowel chord `OE` of `OER` is one group, the `EU` of `WEU` another
+        let groups = model.groups_after("OER/+WEU/+-S/+E", "", false).expect("groups");
+        assert_eq!(groups, vec![vec![keys("OE")], vec![keys("EU")], vec![], vec![]]);
+        // A vowel chord is a group (`AOEU`, Ī)
+        let groups = model.groups_after("TPHAOEUT/+-L", "", false).expect("groups");
+        assert!(groups[0].contains(&keys("AOEU")) && groups[0].contains(&keys("TPH")), "{groups:?}");
+        // Nothing the solver reads close enough: nothing known, the keys stay raw
+        assert_eq!(model.groups_after("STKPWHRAO*EUFRPBLGTSDZ", "", false), None);
+        // keymux's bits: one lower, `S` its bit 0
+        assert_eq!(super::core::to_host(keys("S")), 1);
+        assert_eq!(super::core::to_host(keys("-Z")), 1 << 21);
+    }
+
     /// The name lane: a run struck after a lone `#` stroke, struck as the rules strike the
     /// name's lowercase word. keymux's stroke history tells the plugin; here the flag is passed.
     #[test]

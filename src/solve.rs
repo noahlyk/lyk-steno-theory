@@ -106,6 +106,15 @@ pub fn run(setup: &Setup, options: &Options) -> Result<()> {
             println!("after: {:?}", solve::core::previous_word(options.after));
         }
         println!("answer: {:?}  ({took:.1?})", model.answer_after(text, options.after, options.name));
+        // What keymux's `groups` export answers: the reading's sound groups, read again with tracing
+        let t = Instant::now();
+        let groups = model.groups_after(text, options.after, options.name);
+        let took = t.elapsed();
+        let shown = groups.as_ref().map_or_else(
+            || "none known: the keys stay raw".to_owned(),
+            |strokes| strokes.iter().map(|g| g.iter().map(|&k| crate::stroke::Stroke(k).to_string()).collect::<Vec<_>>().join(" ")).collect::<Vec<_>>().join(" / "),
+        );
+        println!("groups: {shown}  ({took:.1?})");
         return Ok(());
     }
     if let Some(step) = options.eval {

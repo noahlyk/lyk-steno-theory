@@ -1,5 +1,5 @@
 //! The keymux plugin: [`super::core`] verbatim, the packed blob beside it, and the fixed interface
-//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, and `init` and `context`; it imports `history_len` and
+//! keymux's plugin loader calls (`alloc`, `fallback`, `joins`, and `init`, `context` and `groups`; it imports `history_len` and
 //! `history_stroke` to see the stroke before a run; see keymux's `docs/plugins/README.md`).
 //!
 //! keymux compiles a plugin from its `.rs` alone and caches the result by that file's content
@@ -45,6 +45,8 @@ thread_local! {
     static LAST: std::cell::RefCell<AnswerCache> = const { std::cell::RefCell::new(AnswerCache::new()) };
     // The text typed just before the run `fallback` is asked next, as `context` gave it
     static CONTEXT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+    // Whether the last run `fallback` read was a name: `groups` reads it the same way, after
+    static LANE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// Called once after the plugin loads: the model and its working memory are made now, so the
@@ -84,6 +86,7 @@ pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
     let context = CONTEXT.with(|c| c.borrow().clone());
     // A run struck right after a lone `#` is a name
     let lane = in_name_lane(stroke_before());
+    LANE.with(|l| l.set(lane));
     let cached = LAST.with(|last| last.borrow().get(outline, &context, lane));
     let text = match cached {
         Some(text) => text,
@@ -95,6 +98,30 @@ pub extern "C" fn fallback(ptr: i32, len: i32) -> i64 {
     };
     let Some(text) = text else { return -1 };
     let mut out = text.into_bytes();
+    let out_len = out.len();
+    let out_ptr = out.as_mut_ptr();
+    std::mem::forget(out);
+    (i64::from(out_ptr as i32) << 32) | i64::from(out_len as i32)
+}
+
+/// Asked right after a `fallback` that gave a reading, with the same outline: how that reading
+/// split each stroke's keys into sounds, as keymux's key sets (little-endian `u32`, each group of
+/// two keys or more, `0` after each stroke's). Read again with tracing on, so it costs nothing
+/// unless keymux asks. Negative: nothing known (no reading close enough, a name, a lock).
+#[no_mangle]
+pub extern "C" fn groups(ptr: i32, len: i32) -> i64 {
+    let bytes = unsafe { std::slice::from_raw_parts(ptr as *const u8, len.max(0) as usize) };
+    let Ok(outline) = std::str::from_utf8(bytes) else { return -1 };
+    let context = CONTEXT.with(|c| c.borrow().clone());
+    let lane = LANE.with(std::cell::Cell::get);
+    let Some(split) = model().and_then(|m| m.groups_after(outline, &context, lane)) else { return -1 };
+    let mut out: Vec<u8> = Vec::new();
+    for stroke in split {
+        for group in stroke {
+            out.extend_from_slice(&to_host(group).to_le_bytes());
+        }
+        out.extend_from_slice(&0u32.to_le_bytes());
+    }
     let out_len = out.len();
     let out_ptr = out.as_mut_ptr();
     std::mem::forget(out);

@@ -35,6 +35,14 @@ pub const NUMBER: u32 = 1;
 /// solver's own layout above puts it at bit 0).
 pub const HOST_NUMBER: i64 = 1 << 22;
 
+/// Key bits as keymux's stroke bits: its layout has no number bar first (`S` is its bit 0, the
+/// number bar its bit 22), so every key one bit lower. The join and extra keys are not in a group.
+#[allow(dead_code)] // used by the plugin interface, which is compiled apart from this crate
+#[must_use]
+pub const fn to_host(keys: u32) -> u32 {
+    (keys & ((1 << 23) - 2)) >> 1
+}
+
 /// The plugin's memory of its last answer: keymux asks about the same run several times while it
 /// searches for the longest match. The answer is the same only for the same run, the same text
 /// before it and the same lane, so all three are the key: `#` then a run and the run alone never
@@ -241,6 +249,9 @@ struct St {
     /// Whether the stroke being read has matched a sound of this word yet: a stroke that is
     /// struck is used, never explained away as sounds the word does not have
     used: bool,
+    /// Which reading of each stroke got here, as an index into [`Scratch::trail`]: kept only
+    /// while tracing ([`Model::groups_after`]), else [`NO_BACK`]
+    trail: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -402,6 +413,12 @@ pub struct Scratch {
     steps: usize,
     /// The positions a stroke's sounds reach before its folded plural ([`FOLD`])
     folded: Vec<St>,
+    /// Tracing ([`Model::groups_after`]): which reading of which stroke each position came
+    /// through (the position before, the stroke, the reading), and each stroke's readings
+    trace: bool,
+    trail: Vec<(u32, u32, u32)>,
+    alts: Vec<Vec<StrokeReading>>,
+    stroke_at: u32,
 }
 
 /// Where reading a run stands after each of its strokes, to go on from.
@@ -433,6 +450,10 @@ impl Scratch {
             runs: Vec::new(),
             steps: 0,
             folded: Vec::new(),
+            trace: false,
+            trail: Vec::new(),
+            alts: Vec::new(),
+            stroke_at: 0,
         }
     }
 
@@ -511,6 +532,8 @@ pub struct Reading {
     /// What the word before the run took off its cost in the ranking, in tenths of a point
     /// ([`Model::solve_in`]; negative: added); `cost` itself is unchanged
     pub context: i32,
+    /// Where its strokes' readings are in the tracing scratch's trail ([`Model::groups_after`])
+    trail: u32,
 }
 
 pub struct Model {
@@ -1214,8 +1237,21 @@ impl Model {
 
     /// The right bank's readings (vowel and coda), each a token list and its cost.
     fn right_readings(&self, vowel_bits: u32, right_all: u32) -> Vec<(Vec<Tok>, u32)> {
+        self.right_readings_grouped(vowel_bits, right_all, None)
+    }
+
+    /// [`Self::right_readings`], and with `groups` each reading's key groups beside it (the vowel
+    /// keys and each chord of two keys or more, the star left out): only when tracing.
+    fn right_readings_grouped(&self, vowel_bits: u32, right_all: u32, mut groups: Option<&mut Vec<Vec<u32>>>) -> Vec<(Vec<Tok>, u32)> {
         let mut out = Vec::new();
         let star = right_all & STAR != 0;
+        let mut group = |chords: &mut dyn Iterator<Item = u32>| {
+            if let Some(groups) = groups.as_deref_mut() {
+                let mut found: Vec<u32> = std::iter::once(vowel_bits).chain(chords).map(|k| k & !STAR).filter(|k| k.count_ones() >= 2).collect();
+                found.dedup();
+                groups.push(found);
+            }
+        };
         for (right, extra) in [(right_all, 0), (right_all & !STAR, self.c.marker)] {
             if extra > 0 && !star {
                 continue;
@@ -1234,6 +1270,7 @@ impl Model {
                         let mut toks = vec![Tok::S(v, letters)];
                         toks.extend(coda.iter().map(|&s| Tok::C(s)));
                         out.push((toks, extra + cost));
+                        group(&mut cover.iter().map(|&i| self.coda[i].0).chain([combo_right]));
                     }
                 }
             }
@@ -1246,6 +1283,7 @@ impl Model {
                         let mut toks = vec![Tok::S(v, letters)];
                         toks.extend(cover.iter().flat_map(|&i| self.coda[i].1.iter().map(|&s| Tok::C(s))));
                         out.push((toks, extra + cost));
+                        group(&mut cover.iter().map(|&i| self.coda[i].0).chain([combo_right]));
                     }
                 }
             }
@@ -1261,9 +1299,65 @@ impl Model {
                 }
                 toks.extend(coda.iter().map(|&s| Tok::C(s)));
                 out.push((toks, extra + cost));
+                group(&mut cover.iter().map(|&i| self.coda[i].0));
             }
         }
         out
+    }
+
+    /// The key groups of the reading `toks` of `stroke` (a stroke's readings as [`Self::readings`]
+    /// lists them, `first` whether it starts the run): each chord of two keys or more that wrote
+    /// one sound, and the vowel keys, as the decoder read them. `None` if no way of reading the
+    /// stroke gives exactly those sounds.
+    fn groups_of(&self, stroke: u32, first: bool, toks: &[Tok]) -> Option<Vec<u32>> {
+        let bits = stroke & !(JOIN | SPELL | NUMBER);
+        let left = bits & LEFT;
+        let toks: Vec<Tok> = toks.iter().copied().filter(|&t| t != FOLD).collect();
+        let sorted = |t: &[Tok]| {
+            let mut t = t.to_vec();
+            t.sort();
+            t
+        };
+        // Each way of covering the left bank: its sounds and its chords, a prefix chord first
+        let mut onsets: Vec<(Vec<Tok>, Vec<u32>)> = Vec::new();
+        let cover_of = |left: u32| -> Vec<(Vec<Tok>, Vec<u32>)> {
+            Self::covers(left, &self.onset, COVERS)
+                .into_iter()
+                .map(|cover| (cover.iter().flat_map(|&i| self.onset[i].1.iter().map(|&s| Tok::C(s))).collect(), cover.iter().map(|&i| self.onset[i].0).collect()))
+                .collect()
+        };
+        onsets.extend(cover_of(left));
+        if first {
+            for (keys, ways) in &self.prefixes {
+                if left & keys == *keys {
+                    for (rest, chords) in cover_of(left & !keys) {
+                        for way in ways {
+                            let mut t = way.clone();
+                            t.extend_from_slice(&rest);
+                            onsets.push((t, std::iter::once(*keys).chain(chords.iter().copied()).collect()));
+                        }
+                    }
+                }
+            }
+        }
+        let mut rights = Vec::new();
+        let right_toks = self.right_readings_grouped(bits & VOWELS, bits & (RIGHT | STAR), Some(&mut rights));
+        // The consonants of a left-hand stroke after the first are in any order, the coda's too
+        let loose = !first && bits & VOWELS == 0 && bits & (RIGHT | STAR) == 0;
+        for (onset, chords) in &onsets {
+            let n = onset.len();
+            if n > toks.len() || (if loose { sorted(&toks[..n]) != sorted(onset) } else { toks[..n] != onset[..] }) {
+                continue;
+            }
+            for ((right, _), right_groups) in right_toks.iter().zip(&rights) {
+                if sorted(&toks[n..]) == sorted(right) {
+                    let mut out: Vec<u32> = chords.iter().map(|k| k & !STAR).filter(|k| k.count_ones() >= 2).collect();
+                    out.extend(right_groups.iter().copied());
+                    return Some(out);
+                }
+            }
+        }
+        None
     }
 
     /// Every reading of one stroke as sound tokens, with what each costs, cheapest first.
@@ -1530,7 +1624,7 @@ impl Model {
                 }
                 if let Some(c) = self.match_cost(tok, e) {
                     let cost = s.cost + c + e.lookahead - here;
-                    sc.candidate(St { node: child, cost, back: s.back, used: true });
+                    sc.candidate(St { node: child, cost, back: s.back, used: true, trail: s.trail });
                 }
             }
         }
@@ -1539,11 +1633,20 @@ impl Model {
 
     /// Push `states` through every reading of a stroke at once: readings that share a first few
     /// tokens share the work of matching them.
-    fn walk(&self, sc: &mut Scratch, arena: &[(u32, Piece)], alts: &[(Vec<Tok>, u32)], depth: usize, states: &[St], out: &mut Vec<St>) {
+    #[allow(clippy::too_many_arguments)]
+    fn walk(&self, sc: &mut Scratch, arena: &[(u32, Piece)], alts: &[(Vec<Tok>, u32)], base: usize, depth: usize, states: &[St], out: &mut Vec<St>) {
         let mut i = 0;
         while i < alts.len() {
             if alts[i].0.len() == depth {
-                out.extend(states.iter().map(|s| St { cost: s.cost + alts[i].1, ..*s }));
+                let cost = alts[i].1;
+                if sc.trace {
+                    for s in states {
+                        sc.trail.push((s.trail, sc.stroke_at, (base + i) as u32));
+                        out.push(St { cost: s.cost + cost, trail: (sc.trail.len() - 1) as u32, ..*s });
+                    }
+                } else {
+                    out.extend(states.iter().map(|s| St { cost: s.cost + cost, ..*s }));
+                }
                 i += 1;
                 continue;
             }
@@ -1554,15 +1657,23 @@ impl Model {
             }
             if tok == FOLD {
                 // The stroke's sounds before a folded plural: the words that end here take it
-                for alt in &alts[i..j] {
-                    sc.folded.extend(states.iter().map(|s| St { cost: s.cost + alt.1, ..*s }));
+                for (k, alt) in alts[i..j].iter().enumerate() {
+                    for s in states {
+                        let trail = if sc.trace {
+                            sc.trail.push((s.trail, sc.stroke_at, (base + i + k) as u32));
+                            (sc.trail.len() - 1) as u32
+                        } else {
+                            s.trail
+                        };
+                        sc.folded.push(St { cost: s.cost + alt.1, trail, ..*s });
+                    }
                 }
                 i = j;
                 continue;
             }
             let next = self.step(sc, arena, states, tok);
             if !next.is_empty() {
-                self.walk(sc, arena, &alts[i..j], depth + 1, &next, out);
+                self.walk(sc, arena, &alts[i..j], base + i, depth + 1, &next, out);
             }
             i = j;
         }
@@ -1584,6 +1695,7 @@ impl Model {
                     cost: s.cost + piece + self.word_cost[word as usize] + u32::from(extra) - self.nodes[s.node as usize].lookahead,
                     back: (arena.len() - 1) as u32,
                     used: true,
+                    trail: s.trail,
                 });
             }
         }
@@ -1643,7 +1755,7 @@ impl Model {
         let tail = &run[at + 1..];
         if tail.is_empty() {
             let pieces = vec![locked.clone()];
-            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false, context: 0 }];
+            return vec![Reading { text: locked, cost: 0, pieces, rarity: 0, composed: false, exact: false, joins: 0, morphemic: false, built: false, open: false, context: 0, trail: NO_BACK }];
         }
         self.solve_locked(sc, tail, keep, Some(&locked), prev)
     }
@@ -1782,7 +1894,7 @@ impl Model {
             } else {
                 NO_BACK
             };
-            p.before.push(self.settle(sc, &p.arena, &[St { node: 0, cost: 0, back, used: true }], true));
+            p.before.push(self.settle(sc, &p.arena, &[St { node: 0, cost: 0, back, used: true, trail: NO_BACK }], true));
             p.arena_at.push(p.arena.len());
             p.hard_until_at.push(0);
         } else {
@@ -1849,7 +1961,12 @@ impl Model {
             let starting: Vec<St> = states.iter().map(|s| St { used: false, ..*s }).collect();
             let mut next = Vec::new();
             sc.folded.clear();
-            self.walk(sc, &p.arena, &alts, 0, &starting, &mut next);
+            if sc.trace {
+                sc.alts.resize(i + 1, Vec::new());
+                sc.alts[i].clone_from(&alts);
+                sc.stroke_at = i as u32;
+            }
+            self.walk(sc, &p.arena, &alts, 0, 0, &starting, &mut next);
             if self.c.must_use > 0 {
                 next.retain(|s| s.used);
             }
@@ -1914,7 +2031,7 @@ impl Model {
         for e in ends {
             if matches!(self.after(arena, e.back), After::Short | After::Other) {
                 arena.push((e.back, Piece::Suffix(plural as u32)));
-                next.push(St { node: 0, cost: e.cost + self.c.fold_plural, back: (arena.len() - 1) as u32, used: true });
+                next.push(St { node: 0, cost: e.cost + self.c.fold_plural, back: (arena.len() - 1) as u32, used: true, trail: e.trail });
             }
         }
     }
@@ -1965,7 +2082,7 @@ impl Model {
                     // it is) it is free, on a word read from sounds a unit dearer, so `run` + `ing`
                     // is *runing*, not the near-sounding *raining*
                     let cost = if hard { u32::from(!matches!(p.arena[root.back as usize].1, Piece::Stem(_) | Piece::Suffix(_) | Piece::TwoSuffix(_))) } else { self.c.suffix };
-                    out.push(St { node: 0, cost: root.cost + cost, back: (p.arena.len() - 1) as u32, used: true });
+                    out.push(St { node: 0, cost: root.cost + cost, back: (p.arena.len() - 1) as u32, used: true, trail: root.trail });
                 }
             }
         }
@@ -1980,11 +2097,11 @@ impl Model {
                 let Some(piece) = self.join_cost(self.after(&p.arena, root.back), &self.stem_text[stem as usize]) else { continue };
                 let later = if first { 0 } else { self.c.stem_later };
                 p.arena.push((root.back, Piece::Stem(stem)));
-                out.push(St { node: 0, cost: root.cost + piece + self.stem_cost[stem as usize] + later, back: (p.arena.len() - 1) as u32, used: true });
+                out.push(St { node: 0, cost: root.cost + piece + self.stem_cost[stem as usize] + later, back: (p.arena.len() - 1) as u32, used: true, trail: root.trail });
                 // The same word's sounds, for the strokes after to carry on into a longer word:
                 // its rarity and its piece are charged when that word ends
                 for &node in &self.stem_nodes[stem as usize] {
-                    out.push(St { node, cost: root.cost + later + self.c.stem_enter + self.nodes[node as usize].lookahead, back: root.back, used: true });
+                    out.push(St { node, cost: root.cost + later + self.c.stem_enter + self.nodes[node as usize].lookahead, back: root.back, used: true, trail: root.trail });
                 }
             }
         }
@@ -2002,7 +2119,7 @@ impl Model {
                 for &stem in &near {
                     p.arena.push((root.back, Piece::Slip(stem)));
                     let cost = root.cost + piece + self.c.slip + self.stem_cost[stem as usize] + if first { 0 } else { self.c.stem_later };
-                    out.push(St { node: 0, cost, back: (p.arena.len() - 1) as u32, used: true });
+                    out.push(St { node: 0, cost, back: (p.arena.len() - 1) as u32, used: true, trail: root.trail });
                 }
             }
         }
@@ -2180,7 +2297,7 @@ impl Model {
         // A prefix with nothing after it is no word yet
         let open = pieces.last().is_some_and(|&p| self.is_prefix(p));
         let pieces = pieces.iter().map(|&p| self.piece_text(p, locked).to_owned()).collect();
-        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, built, open, context: 0 }
+        Reading { text, cost: end.cost, pieces, rarity, composed, exact, joins, morphemic, built, open, context: 0, trail: end.trail }
     }
 
     // --- What the plugin answers ---
@@ -2254,6 +2371,32 @@ impl Model {
             text.push_str(&self.read_back(tail)?);
         }
         Some(text)
+    }
+
+    /// How the reading [`Self::answer_after`] gives `outline` split each stroke's keys into sounds:
+    /// for each stroke, the key groups (two keys or more) that wrote one sound, and the vowel keys.
+    /// A stroke the reading took whole (a known outline, a suffix chord, a misstroke of one) has
+    /// none. `None` when nothing is known: no reading close enough (the keys read back), a name, a
+    /// spelled run, a run with a lock or a late star in it. The run is read again, tracing which
+    /// reading of each stroke the winner came through, so it costs nothing unless asked.
+    pub fn groups_after(&self, outline: &str, context: &str, lane: bool) -> Option<Vec<Vec<u32>>> {
+        let run: Vec<u32> = outline.split('/').map(parse_stroke).collect::<Option<_>>()?;
+        if lane || run.first().is_some_and(|s| s & SPELL != 0) || late_stars(&run) != run || last_lock(&run).is_some() || run.len() > MAX_RUN {
+            return None;
+        }
+        let mut sc = Scratch::new(self.node_count());
+        sc.trace = true;
+        let limit = THRESHOLD + THRESHOLD_PER_STROKE * run.len() as u32;
+        let best = self.solve_locked(&mut sc, &run, 1, None, self.context_word(context)).into_iter().next().filter(|r| r.cost <= limit)?;
+        let mut groups = vec![Vec::new(); run.len()];
+        let mut at = best.trail;
+        while at != NO_BACK {
+            let (back, stroke, alt) = sc.trail[at as usize];
+            let toks = &sc.alts[stroke as usize][alt as usize].0;
+            groups[stroke as usize] = self.groups_of(run[stroke as usize], stroke == 0, toks)?;
+            at = back;
+        }
+        Some(groups)
     }
 
     /// A spelling-mode run, one letter a stroke.
