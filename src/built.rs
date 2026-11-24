@@ -207,10 +207,8 @@ mod tests {
         std::fs::write(dir.join(role.file_name()), body).unwrap();
     }
 
-    fn fresh_dir(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("lyk-built-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+    fn fresh_dir(name: &str) -> crate::test_dir::TestDir {
+        let dir = crate::test_dir::TestDir::new(&format!("lyk-built-{name}"));
         for role in Role::ALL {
             write(&dir, role, "{}");
         }
@@ -231,7 +229,6 @@ mod tests {
         assert_eq!(cheapest["cat"], parse_outline("KAT").unwrap().as_slice());
         assert!(cheapest.contains_key("i"), "the pronoun is keyed lowercase");
         assert!(!cheapest.contains_key("'s"), "a suffix is never a word");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -247,7 +244,6 @@ mod tests {
         let cheapest = generate::cheapest(&entries);
         assert_eq!(cheapest["dog"], parse_outline("TKOG").unwrap().as_slice(), "a longer backup loses");
         assert_eq!(cheapest["cant"], parse_outline("KA/+PBT").unwrap().as_slice(), "the shorter backup wins");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -260,7 +256,6 @@ mod tests {
         assert_eq!(dog, ["TKO/+-G", "TK/+O/+-G"]);
         assert_eq!(backups.outlines("i").len(), 1, "keyed lowercase");
         assert!(backups.outlines("cat").is_empty(), "cat has backups");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -269,7 +264,6 @@ mod tests {
         write(&dir, Role::Words, "{\n  \"KR-GS\": \"say \\\"hi\\\"\"\n}");
         let entries = load(&dir).unwrap();
         assert!(entries.iter().any(|e| e.word == "say \"hi\""), "{:?}", entries.iter().map(|e| &e.word).collect::<Vec<_>>());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The reason reading back is allowed to replace generating: for every word, including the
@@ -277,8 +271,7 @@ mod tests {
     #[test]
     fn reading_back_a_written_dictionary_gives_the_generators_cheapest_outline_for_every_word() {
         let generated = crate::dictionary_fixture::generated();
-        let dir = std::env::temp_dir().join(format!("lyk-built-roundtrip-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        let dir = crate::test_dir::TestDir::new("lyk-built-roundtrip");
         crate::output::write_dictionary(generated, &dir).unwrap();
         let loaded = load(&dir).unwrap();
         let want = generate::cheapest(&generated.entries);
@@ -294,7 +287,6 @@ mod tests {
             .collect();
         assert!(differ.is_empty(), "{} of {} differ, e.g. {:?}", differ.len(), want.len(), &differ[..differ.len().min(5)]);
         assert!(got.len() + 5 >= want.len(), "{} read back of {} written", got.len(), want.len());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

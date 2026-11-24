@@ -458,11 +458,8 @@ mod tests {
     use super::*;
     use crate::stroke::{parse_outline, render_outline};
 
-    fn fresh_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("lyk-cache-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
+    fn fresh_dir(name: &str) -> crate::test_dir::TestDir {
+        crate::test_dir::TestDir::new(&format!("lyk-cache-{name}"))
     }
 
     fn built_dir(root: &Path) -> PathBuf {
@@ -541,7 +538,6 @@ mod tests {
             assert_eq!(text(&sorted), text(&backups), "{word}");
         }
         assert_eq!(sorted.outlines("dog"), vec![parse_outline("TKO/+G").unwrap(), parse_outline("TK/+O/+G").unwrap()]);
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -572,6 +568,5 @@ mod tests {
         assert!(read(&cache, &made).is_some(), "the key alone decides");
         std::fs::write(cache.join(LOOKUP_FILE), b"lyk lookup cache 1\n").unwrap();
         assert!(read(&cache, &made).is_none(), "a cut-short cache is no cache");
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

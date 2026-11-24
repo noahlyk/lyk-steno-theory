@@ -236,21 +236,16 @@ mod tests {
 
     #[test]
     fn a_file_with_the_same_content_is_left_alone() {
-        let dir = std::env::temp_dir().join(format!("lyk-output-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = crate::test_dir::TestDir::new("lyk-output");
         let path = dir.join("a.json");
         assert!(write_if_different(&path, b"{}").unwrap());
         assert!(!write_if_different(&path, b"{}").unwrap());
         assert!(write_if_different(&path, b"{\"A\": \"a\"}").unwrap());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn stale_generated_files_go_and_others_stay() {
-        let dir = std::env::temp_dir().join(format!("lyk-output-stale-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = crate::test_dir::TestDir::new("lyk-output-stale");
         for name in ["02-lyk-old-layout.json", "02-lyk-words.json", "01-lyk-commands.json", "notes.txt"] {
             std::fs::write(dir.join(name), "{}").unwrap();
         }
@@ -259,12 +254,11 @@ mod tests {
         for kept in ["02-lyk-words.json", "01-lyk-commands.json", "notes.txt"] {
             assert!(dir.join(kept).exists(), "{kept}");
         }
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn the_dropped_plugin_files_are_removed_beside_and_inside_the_dictionary_folder() {
-        let root = std::env::temp_dir().join(format!("lyk-dropped-plugin-{}", std::process::id()));
+        let root = crate::test_dir::TestDir::new("lyk-dropped-plugin");
         let dir = root.join("lyk");
         std::fs::create_dir_all(&dir).unwrap();
         for name in DROPPED_PLUGIN_FILES {
@@ -275,6 +269,5 @@ mod tests {
         for name in DROPPED_PLUGIN_FILES {
             assert!(!root.join(name).exists() && !dir.join(name).exists(), "{name}");
         }
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

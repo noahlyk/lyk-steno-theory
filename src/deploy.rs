@@ -561,11 +561,8 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    fn scratch(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("lyk-deploy-{}-{tag}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        dir
+    fn scratch(tag: &str) -> crate::test_dir::TestDir {
+        crate::test_dir::TestDir::new(&format!("lyk-deploy-{tag}"))
     }
 
     /// A `keymux` on a PATH of its own that prints `json` and exits with `code`.

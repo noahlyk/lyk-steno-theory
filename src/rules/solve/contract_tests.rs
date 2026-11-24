@@ -63,8 +63,7 @@ fn read_map(text: &str) -> HashMap<String, String> {
 static FIXTURE: LazyLock<Fixture> = LazyLock::new(|| {
     let setup = crate::dictionary_fixture::setup();
     let generated = crate::dictionary_fixture::generated();
-    let dir = std::env::temp_dir().join(format!("lyk-solver-contract-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("a temp folder");
+    let dir = crate::test_dir::TestDir::new("lyk-solver-contract");
     crate::output::write_dictionary(generated, &dir).expect("the dictionary writes");
     let names = crate::names::collect(setup);
     let lane = crate::names::generate(setup, &generated.entries, &names).expect("the name lane builds");
@@ -79,7 +78,7 @@ static FIXTURE: LazyLock<Fixture> = LazyLock::new(|| {
         let text = std::fs::read_to_string(dir.join(name)).expect("a name file was written");
         raw.push((name.to_owned(), read_map(&text)));
     }
-    std::fs::remove_dir_all(&dir).ok();
+    drop(dir);
     for (name, text) in [
         ("01-lyk-commands.json", include_str!("../../../rules/reserved/commands.json")),
         ("03-lyk-punctuation.json", include_str!("../../../rules/reserved/punctuation.json")),

@@ -110,9 +110,8 @@ mod tests {
         assert!(stale_reason("binary=abc1234\nrules=00ff\n", "00ff").unwrap().contains("before"));
     }
 
-    fn scratch(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("lyk-version-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+    fn scratch(name: &str) -> crate::test_dir::TestDir {
+        let dir = crate::test_dir::TestDir::new(&format!("lyk-version-{name}"));
         for sub in ["src/sub", "rules", "docs", "site"] {
             std::fs::create_dir_all(dir.join(sub)).unwrap();
         }
@@ -141,7 +140,7 @@ mod tests {
         assert_ne!(before, rules);
         std::fs::write(dir.join("src/sub/mod.rs"), "// changed").unwrap();
         assert_ne!(rules, script::source_hash(&dir));
-        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
         assert_eq!(script::source_hash(&dir), "none");
     }
 }

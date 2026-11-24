@@ -38,6 +38,8 @@ mod reverse;
 mod rules;
 mod solve;
 mod stroke;
+#[cfg(test)]
+mod test_dir;
 mod verify_lookup;
 mod version;
 mod view;

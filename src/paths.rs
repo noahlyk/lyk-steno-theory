@@ -257,8 +257,7 @@ mod tests {
 
     #[test]
     fn only_this_package_with_rules_is_a_checkout() {
-        let dir = std::env::temp_dir().join(format!("lyk-paths-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        let dir = crate::test_dir::TestDir::new("lyk-paths");
         std::fs::create_dir_all(dir.join("rules")).unwrap();
         assert!(!is_checkout(&dir));
         std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"other\"\n").unwrap();
@@ -267,7 +266,6 @@ mod tests {
         assert!(is_checkout(&dir));
         std::fs::remove_dir_all(dir.join("rules")).unwrap();
         assert!(!is_checkout(&dir));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

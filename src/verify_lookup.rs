@@ -432,12 +432,9 @@ mod tests {
     /// The deployed files of the fixture dictionary, as `build` writes them (written once).
     fn deployed() -> &'static Deployed {
         static DEPLOYED: std::sync::LazyLock<Deployed> = std::sync::LazyLock::new(|| {
-            let dir = std::env::temp_dir().join(format!("lyk-verify-lookup-{}", std::process::id()));
-            let _ = std::fs::remove_dir_all(&dir);
+            let dir = crate::test_dir::TestDir::new("lyk-verify-lookup");
             crate::output::write_dictionary(dictionary_fixture::generated(), &dir).expect("the dictionary is written");
-            let deployed = Deployed::load(&dir).expect("the deployed files load");
-            let _ = std::fs::remove_dir_all(&dir);
-            deployed
+            Deployed::load(&dir).expect("the deployed files load")
         });
         &DEPLOYED
     }
