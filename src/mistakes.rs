@@ -345,7 +345,7 @@ fn replay(events: &[Ev]) -> Replay {
     let mut last_t = i64::MIN;
     for (i, e) in events.iter().enumerate() {
         let t = i64::from(e.day) * 86_400 + i64::from(e.sec);
-        if t - last_t > GAP {
+        if t.saturating_sub(last_t) > GAP {
             flush(events, &mut p, &mut r);
         }
         last_t = t;
