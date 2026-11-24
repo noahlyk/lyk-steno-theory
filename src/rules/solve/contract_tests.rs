@@ -622,6 +622,12 @@ fn context_never_moves_what_is_fixed(count: usize) {
     let suffixes = hard_suffixes(fx);
     let stems = stem_words(fx, count / 8);
     let entries: std::collections::HashSet<&str> = fx.entries_sorted().into_iter().map(|e| e.0).collect();
+    // The solver's known outlines: the stems it is packed with (the words, short, alternates and
+    // extras entries), not every deployed outline. A phrase's (`UP`, *you up*), a name's or a
+    // command's outline is no stem: a run headed by one is read from sounds, so the word before may
+    // move it within its kind (`UP/+*L` is *apply* alone and *uply* after *the*, a tie at one cost)
+    let known: std::collections::HashSet<String> = super::stems(fx.entries).iter().map(|(o, _)| crate::stroke::render_outline(o)).collect();
+    let mut by_sounds: Vec<String> = Vec::new();
     let fixed: Vec<String> = stems
         .iter()
         .enumerate()
@@ -636,12 +642,17 @@ fn context_never_moves_what_is_fixed(count: usize) {
                 .step_by(97)
                 .filter_map(|outline| {
                     let head = outline.rsplit_once("/+")?.0;
-                    // A known outline: a head that is read from sounds is the context's to choose
-                    if !entries.contains(head) {
+                    let run = format!("{head}/{}", suffixes[outline.len() % suffixes.len()].0);
+                    if entries.contains(run.as_str()) {
                         return None;
                     }
-                    let run = format!("{head}/{}", suffixes[outline.len() % suffixes.len()].0);
-                    (!entries.contains(run.as_str())).then_some(run)
+                    // A known outline: a head that is read from sounds is the context's to choose,
+                    // within its kind (checked below)
+                    if !known.contains(head) {
+                        by_sounds.push(run);
+                        return None;
+                    }
+                    Some(run)
                 }),
         )
         .collect();
@@ -656,6 +667,14 @@ fn context_never_moves_what_is_fixed(count: usize) {
             let bare = fx.model.answer_with(&mut sc, outline);
             let after = fx.model.answer_in(&mut sc, outline, context, false);
             assert_eq!(after, bare, "guarantee 4 (only a tie is ever moved by the word before): {outline} after {context:?}");
+        }
+        // A run read from sounds may change, but never across a kind: the word before never makes
+        // a reading by sounds a fixed one, nor a fixed one a reading by sounds
+        for outline in by_sounds.iter().chain(&sample) {
+            let Some(run) = outline.split('/').map(super::core::parse_stroke).collect::<Option<Vec<u32>>>() else { continue };
+            let mut kind = |context: &str| fx.model.solve_in(&mut sc, &run, 1, context, false).first().map(|r| r.exact);
+            let (bare, after) = (kind(""), kind(context));
+            assert_eq!(after, bare, "guarantee 4 (the word before only reorders within a kind): {outline} after {context:?}, exact {bare:?} then {after:?}");
         }
     }
 }
@@ -691,3 +710,4 @@ fn contract_full_4_the_same_strokes_always_type_the_same_text() {
     deterministic(FULL_DETERMINISM_SAMPLE);
     context_never_moves_what_is_fixed(FULL_DETERMINISM_SAMPLE / 6);
 }
+
