@@ -134,7 +134,7 @@
   },
   {
    "t": "p",
-   "x": "`deploy` puts a small mod in the steno folder, the sticky-plus file (`06-lyk-sticky-plus.rs`). Each time a key comes up with others still down, the engine asks it whether to send the stroke now (its `send_early` hook); it says yes when `+` is the only key left. Needs a keymux with plugin `send_early` support; an older keymux does not load it, and `+` behaves as before (a stroke with `+` held goes when `+` comes up)."
+   "x": "`deploy` puts a small mod in the steno folder, the sticky-plus file (`06-lyk-sticky-plus.rs`). Each time a key comes up with others still down, the engine asks it whether to send the stroke now (its `send_early` hook); it says yes when `+` is the only key left. Needs a keymux with plugin `send_early` support; an older keymux does not load it, and `+` behaves as before (a stroke with `+` held goes when `+` comes up). A second mod, `07-lyk-outline-join.rs`, makes every `+` stroke part of the word the outline strokes [`PHRO*PBT` and `PHRO*EPBT`](#/ref/punctuation) are showing (its `outline_continues` hook, asked only while they follow a word), so `TPHAT/+STKPWAEUGS` is named whole even where keymux alone would start a new word at the `+` stroke. It changes nothing about what strokes type."
   },
   {
    "t": "h",

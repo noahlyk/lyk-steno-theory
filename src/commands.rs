@@ -33,6 +33,9 @@ const STATIC_FILES: &[(&str, &str)] = &[
     ("04-lyk-emilys-modifiers.json", include_str!("../rules/reserved/emilys-modifiers.json")),
     // A keymux mod (needs keymux's `send_early`): hold `+` across strokes
     ("06-lyk-sticky-plus.rs", include_str!("../rules/reserved/sticky-plus.rs")),
+    // A keymux mod (needs keymux's `outline_continues`): a `+` stroke always continues the
+    // outline `PHRO*PBT` / `PHRO*EPBT` shows
+    ("07-lyk-outline-join.rs", include_str!("../rules/reserved/outline-join.rs")),
     (".keymux-theory", "lyk\n"),
 ];
 
@@ -568,6 +571,40 @@ mod sticky_plus_tests {
         assert_eq!(send_early(bits("-T") | plus, kat), 0, "a key of the stroke still down: wait");
         assert_eq!(send_early(plus, plus), 0, "+ by itself is no stroke");
         assert_eq!(send_early(bits("KA"), bits("KAT")), 0, "without + nothing changes");
+    }
+}
+
+/// The outline-join mod `deploy` ships, read as ordinary Rust: what it answers keymux.
+#[cfg(test)]
+#[path = "../rules/reserved/outline-join.rs"]
+mod outline_join;
+
+#[cfg(test)]
+mod outline_join_tests {
+    use super::outline_join::outline_continues;
+    use crate::stroke::Stroke;
+
+    fn bits(outline: &str) -> i64 {
+        i64::from(Stroke::parse(outline).expect("a stroke").0)
+    }
+
+    #[test]
+    fn a_plus_stroke_continues_the_outline_shown() {
+        let plus = i64::from(Stroke::JOIN);
+        assert_eq!(plus, 1 << 23, "the mod's own bit for + is the join key's");
+        assert_eq!(outline_continues(bits("+STKPWAEUGS")), 1);
+        assert_eq!(outline_continues(plus), 1, "+ alone too");
+        assert_eq!(outline_continues(bits("TPHAT")), 0, "without + it is the engine's call");
+    }
+
+    #[test]
+    fn deploy_ships_it_after_the_sticky_plus() {
+        let names: Vec<&str> = super::STATIC_FILES.iter().map(|(name, _)| *name).collect();
+        let sticky = names.iter().position(|n| *n == "06-lyk-sticky-plus.rs").expect("sticky plus ships");
+        let join = names.iter().position(|n| *n == "07-lyk-outline-join.rs").expect("outline join ships");
+        assert!(sticky < join);
+        let (_, text) = super::STATIC_FILES[join];
+        assert!(text.contains("extern \"C\" fn outline_continues"), "the export keymux asks for");
     }
 }
 
