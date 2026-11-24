@@ -15,7 +15,7 @@
     { "t": "table", "head": ["What", "Strokes", "Source"], "rows": [
       ["Punctuation", "65", "`rules/reserved/punctuation.json`, forked from Plover: one stroke per mark"],
       ["Fingerspelling", "52", "[[A*]] writes a, [[A*P]] writes A, through [[STKPW*]] and [[STKPW*P]]"],
-      ["Commands", "83", "cursor and selection (`STPH-`, with `*` to select), newline, editing, F1 to F12, engine control, overlay and lookup controls"],
+      ["Commands", "87", "cursor and selection (`STPH-`, with `*` to select), newline, editing, F1 to F12, engine control, overlay and lookup controls"],
       ["Emily's modifiers", "1,470", "OS shortcuts, all ending in `-LGTS`"],
       ["Standalone suffixes", "38", "`rules/suffixes.toml` ([[+-G]] is ing, [[+-D]] is ed)"],
       ["Literal brief overrides", "no fixed count", "`[word]` outlines in `rules/briefs.toml`, for example [[eye|AOEU]], [[oh|OE]], [[working|WOG]]"]

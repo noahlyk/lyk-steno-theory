@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "`rules/reserved/punctuation.json`: **130 strokes**: 78 marks and symbols (12 of them the [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks)) plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **83 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
+   "x": "`rules/reserved/punctuation.json`: **130 strokes**: 78 marks and symbols (12 of them the [wrap strokes](#/ref/punctuation/wrapping-a-word-in-a-pair-of-marks)) plus 52 glued fingerspelling letters (listed on [the fingerspelling page](#/ref/fingerspelling/fingerspelling-in-running-text)). `rules/reserved/commands.json`: **87 strokes** ([below](#/ref/punctuation/commands)). All are [reserved](#/ref/reserved-strokes): no word takes them."
   },
   {
    "t": "p",
@@ -593,7 +593,7 @@
   },
   {
    "t": "p",
-   "x": "83 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice), its commands that open Plover's own windows (keymux has no counterpart) and `{MODE:CAPS}`. No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 31 strokes (the cursor and selection family, Backspace, the toggle, show and hide controls of the overlay, tape, keyboard and lookup, and the three outline-notation strokes) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
+   "x": "87 strokes in `rules/reserved/commands.json`. The `STPH` movement family and the F-keys are Lapwing's strokes minus its number-key variants (lyk has no number key). Omitted: Lapwing's repeated-arrow chords (such as `STPH-RS`, Left twice), its commands that open Plover's own windows (keymux has no counterpart) and `{MODE:CAPS}`. No caps-lock: for a run of words in capitals, strike [[KPA*L]] before each word. 31 strokes (the cursor and selection family, Backspace, the toggle, show and hide controls of the overlay, tape, keyboard and lookup, and the three outline-notation strokes) send on the first key up: see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)."
   },
   {
    "t": "h3",
@@ -949,6 +949,24 @@
      "`KPA*L` [[pay|PAEU]] types `PAY`"
     ],
     [
+     "Capitals mode on (the Lapwing and Josiah stroke)",
+     "[[KA*PS]]",
+     "`{MODE:CAPS}`",
+     "every word after it is typed in capitals until [[R*EFT]]; the OS Caps Lock is untouched"
+    ],
+    [
+     "Reset the mode (the Lapwing stroke)",
+     "[[R*EFT]]",
+     "`{MODE:RESET}`",
+     "ends `KA*PS` (and any other `{MODE:...}`): back to normal case and spacing"
+    ],
+    [
+     "The OS Caps Lock key",
+     "[[KPA*LG]]",
+     "`{#Caps_Lock}`",
+     "presses the real Caps Lock key, on or off; the way out when the keyboard is stuck in Caps Lock. `KPA*L` plus `-G`"
+    ],
+    [
      "Capitalize the word just written",
      "[[KPAD]]",
      "`{*-\\|}`",
@@ -1087,6 +1105,12 @@
      "`{:firstup}{:transparent}{:lookup:close}`",
      "Close the lookup",
      "yes"
+    ],
+    [
+     "[[PHRO*PS]]",
+     "`{:run:screenshot}`",
+     "Run the config's `screenshot` command: a screenshot without leaving steno, so the overlay is in it. Needs `commands: { \"screenshot\": \"...\" }` in the Keymux config (the user's: `niri msg action screenshot`, niri's region select); with no such command the validator warns and the stroke does nothing",
+     "no: a command runs once"
     ]
    ]
   },

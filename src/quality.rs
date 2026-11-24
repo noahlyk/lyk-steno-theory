@@ -384,7 +384,7 @@ fn overlay_controls_are_transparent_valid_unique_and_resolve() {
     for freed in ["PHRO*PB", "TKUPT"] {
         assert!(!reserved.contains_key(freed), "{freed} should be free");
     }
-    assert_eq!(commands.len(), 83, "commands.json entry count changed: update the Reference (83 strokes)");
+    assert_eq!(commands.len(), 87, "commands.json entry count changed: update the Reference (87 strokes)");
 }
 
 /// `Setup::load` fills in a translated MFA/WikiPron pronunciation (see `crate::ipa` and
