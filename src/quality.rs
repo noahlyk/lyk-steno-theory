@@ -231,8 +231,8 @@ fn split_firstup(value: &str) -> Option<(&str, &str)> {
 /// Keymux's `{:firstup}` marker (send on the first key up, see the Reference page on
 /// punctuation and commands) belongs only on a one-stroke key command, and goes first so
 /// Plover reads the rest of the entry the same way: `{:firstup:except=STPH*}{#Left}{^}`, never
-/// after `{^}`. The cursor family exempts its held base `STPH*`; every other first-up entry is
-/// plain `{:firstup}`. It must never sit on anything that types text or changes spacing or case.
+/// after `{^}`. The cursor family exempts its held base `STPH*`, the Keymux controls their shared
+/// base `PHRO*`; every other first-up entry is plain `{:firstup}`. It must never sit on anything that types text or changes spacing or case.
 // `{:firstup}` is a dictionary meta, not a format string.
 #[allow(clippy::literal_string_with_formatting_args)]
 #[test]
@@ -250,8 +250,14 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
             continue;
         };
         count += 1;
-        let cursor = outline.starts_with("STPH");
-        if marker != if cursor { "{:firstup:except=STPH*}" } else { "{:firstup}" } {
+        let want = if outline.starts_with("STPH") {
+            "{:firstup:except=STPH*}"
+        } else if outline.starts_with("PHR") && rest.starts_with("{:transparent}") {
+            "{:firstup:except=PHRO*}"
+        } else {
+            "{:firstup}"
+        };
+        if marker != want {
             bad.push(format!("{outline:?}: {value:?}"));
             continue;
         }
@@ -266,8 +272,8 @@ fn firstup_marker_is_only_on_key_commands_and_comes_first() {
     }
     assert!(count > 0, "no first-up entries at all: the cursor strokes lost their marker");
     // The overlay, tape, keyboard and lookup controls: toggles, show and hide repeat usefully and
-    // carry the marker; the one-shot or destructive ones (tape clear, engine unload, lookup open)
-    // must not. Every marked one is `{:firstup}{:transparent}{control}`, marker first.
+    // carry the marker (exempting the shared base `PHRO*`); the one-shot or destructive ones (tape clear, engine unload, lookup open)
+    // must not. Every marked one is `{:firstup:except=PHRO*}{:transparent}{control}`, marker first.
     let marked_controls: std::collections::BTreeSet<&str> = commands
         .iter()
         .filter(|(_, v)| split_firstup(v).is_some_and(|(_, rest)| rest.starts_with("{:transparent}")))

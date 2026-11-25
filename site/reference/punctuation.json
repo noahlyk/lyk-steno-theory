@@ -776,7 +776,7 @@
   },
   {
    "t": "p",
-   "x": "**Selection criteria:** commands that are naturally repeated; the family shares the left-hand base `STPH`, so a held `STPH` is a cursor chord; held base plus all but one key, plus the tapped key, makes exactly the next stroke of the family. Adding keys changes the family in place: `STPH-R` to `STPH-RB` (word left) with `-B`, `STPH-R` to `STPH*R` (select) with `*`; both are first-up too. The controls follow the same idea: a toggle, show or hide is a state flipped repeatedly without lifting the hand, and the overlay controls share the base `PHRO*L` as the cursor family shares `STPH`. In their entries the marker comes first, then `{:transparent}`, then the command: `{:firstup}{:transparent}{:overlay:toggle}`. Keymux reads each marker wherever it stands; the order is a convention that keeps the command last."
+   "x": "**Selection criteria:** commands that are naturally repeated; the family shares the left-hand base `STPH`, so a held `STPH` is a cursor chord; held base plus all but one key, plus the tapped key, makes exactly the next stroke of the family. Adding keys changes the family in place: `STPH-R` to `STPH-RB` (word left) with `-B`, `STPH-R` to `STPH*R` (select) with `*`; both are first-up too. The controls follow the same idea: a toggle, show or hide is a state flipped repeatedly without lifting the hand, and the overlay controls share the base `PHRO*L` as the cursor family shares `STPH`. In their entries the marker comes first, then `{:transparent}`, then the command: `{:firstup:except=PHRO*}{:transparent}{:overlay:toggle}`. Keymux reads each marker wherever it stands; the order is a convention that keeps the command last."
   },
   {
    "t": "p",
@@ -1054,25 +1054,25 @@
    "rows": [
     [
      "[[PHRO*L]]",
-     "`{:firstup}{:transparent}{:overlay:toggle}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:overlay:toggle}`",
      "Flip the whole overlay panel",
      "yes"
     ],
     [
      "[[PHRO*LS]]",
-     "`{:firstup}{:transparent}{:overlay:show}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:overlay:show}`",
      "Show it again (also after a click or window switch put it away)",
      "yes"
     ],
     [
      "[[PHRO*LD]]",
-     "`{:firstup}{:transparent}{:overlay:hide}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:overlay:hide}`",
      "Hide it",
      "yes"
     ],
     [
      "[[PHRO*T]]",
-     "`{:firstup}{:transparent}{:tape:toggle}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:tape:toggle}`",
      "Flip the tape only; the keyboard diagram stays",
      "yes"
     ],
@@ -1084,7 +1084,7 @@
     ],
     [
      "[[PHRO*B]]",
-     "`{:firstup}{:transparent}{:keyboard:toggle}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:keyboard:toggle}`",
      "Flip the keyboard diagram only",
      "yes"
     ],
@@ -1096,13 +1096,13 @@
     ],
     [
      "[[PHR*UP]]",
-     "`{:firstup}{:transparent}{:lookup:toggle}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:lookup:toggle}`",
      "Open the lookup, or close it if open",
      "yes"
     ],
     [
      "[[PHRUPD]]",
-     "`{:firstup}{:transparent}{:lookup:close}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:lookup:close}`",
      "Close the lookup",
      "yes"
     ],
@@ -1116,7 +1116,7 @@
   },
   {
    "t": "p",
-   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the engine control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), and the whole pinky block flat (`-TSDZ`, all four keys) wipes: the tape's clear is `PHRO*TSDZ`. The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TSDZ` and `PHRUP` do not, for the reasons given there."
+   "x": "**Key layout.** The six overlay strokes share the base `PHRO*` of the engine control strokes above; the last keys name part and verb: `-L` the panel (layer), `-T` the tape, `-B` the board (keyboard); a bare part flips it, `S` adds show, `D` adds dismiss (hide), and the whole pinky block flat (`-TSDZ`, all four keys) wipes: the tape's clear is `PHRO*TSDZ`. The lookup strokes keep the `PHR-UP` of the lookup command: plain chord opens, star flips, `D` closes. Tape and keyboard get only toggle, and show/hide exist only for the whole panel. Keymux also parses `{:tape:show}`, `{:tape:hide}`, `{:keyboard:show}`, `{:keyboard:hide}`, `{:overlay:...}` and `{:lookup:open}` for hand-written entries. All nine overlay and lookup strokes (and the two outline strokes below) are checked free of every word outline, backup and phrase in the built dictionary. **First-up:** seven of the nine carry `{:firstup:except=PHRO*}` (see [Send on the first key up](#/ref/punctuation/send-on-the-first-key-up)); `PHRO*TSDZ` and `PHRUP` do not, for the reasons given there. The exempt keys are the base every control stroke shares (`PHR`, `O`, `*`; keys not in a stroke do nothing): lifting part of the base early sends nothing, so a half-formed chord such as `PHRO*L` on the way to `PHRO*LS` never goes; the stroke goes when its first own key comes up."
   },
   {
    "t": "h3",
@@ -1158,27 +1158,27 @@
    "rows": [
     [
      "[[PHRO*RPB]]",
-     "`{:firstup}{:transparent}{:outline:last}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:outline:last}`",
      "Type, as text, the outline of the most recent translation or stroke (`TKOG`, `TKOG/+-Z`)",
      "yes"
     ],
     [
      "[[PHRO*PBT]]",
-     "`{:firstup}{:transparent}{:outline:next}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:outline:next}`",
      "The next word, as keymux groups it, types its outline instead of acting: `TPHAT`, then `TPHAT/+STKPWAEUGS` in its place as `+STKPWAEUGS` joins on; the first stroke that starts a new word ends it and acts as usual. Struck twice, it types `PHRO*PBT`",
      "yes"
     ],
     [
      "[[PHRO*EPBT]]",
-     "`{:firstup}{:transparent}{:outline:explain}`",
-     "The same, typing the outline and its raw entry, unexecuted: `TPHAT -> national`, then `TPHAT/+STKPWAEUGS -> internationalization`; `+*-G -> {^ing}`. Struck twice, it types `PHRO*EPBT -> {:firstup}{:transparent}{:outline:explain}`",
+     "`{:firstup:except=PHRO*}{:transparent}{:outline:explain}`",
+     "The same, typing the outline and its raw entry, unexecuted: `TPHAT -> national`, then `TPHAT/+STKPWAEUGS -> internationalization`; `+*-G -> {^ing}`. Struck twice, it types `PHRO*EPBT -> {:firstup:except=PHRO*}{:transparent}{:outline:explain}`",
      "yes"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "Use them to read off the outline of what you just wrote, or of a word before you commit to it, and what it does. **Armed strokes follow one word.** After `PHRO*PBT` or `PHRO*EPBT` the strokes translate as usual but silently (nothing they would type or run happens), only to see how keymux groups them into one word, and that word's outline is typed instead. Each stroke that grows the word (a `+` stroke, the next stroke of a multi-stroke entry) types the whole outline again in its place: `TPHAT -> national`, then `TPHAT/+STKPWAEUGS -> internationalization`. Every `+` stroke continues it (the `07-lyk-outline-join.rs` mod, see [the join key](#/ref/join-key)). The first stroke that starts a new word ends the mode and acts as usual. A first stroke that is no word of its own (a command, an undo, the arming stroke itself) is shown on its own, never run, and the mode ends: striking either twice types its own outline (and entry). There is no disarm stroke: to cancel, strike anything and undo what it typed with `*`. **What explain shows.** The word's raw entry: a dictionary entry, or the solver's reading as plain text; `(plugin late)` when the solver did not answer within the stroke's plugin deadline, and `(none)` when nothing reads it. Where `+` strokes continued past what keymux grouped as one word, each part's entry is shown in order, separated by spaces. The entry is typed as text, braces and all; nothing in it runs. **How strokes are written.** In the [short notation](#/ref/notation) when keymux has lyk's notation file, short only where the outline's split is known: `PHRO*PBT` then `TPHRAOEUT` types `FLĪT`, `PHRO*PBT` then the brief `TPHAEPL` types `TPHAEPL`; a `#` stroke is `#` and letters (`#TR-RL`), never digits. **Undo and wraps.** The typed text is one word to `*`: undo takes the whole explanation back, never the shorter one it replaced. A wrap stroke struck before (`#TR-RL` wraps the next word in backticks) wraps the whole explanation and keeps wrapping it as it grows: `#TR-RL`, `PHRO*EPBT`, `TPHAT`, `+STKPWAEUGS` types `` `TPHAT/+STKPWAEUGS -> internationalization` ``. **Key layout.** All three keep the `PHRO*` control base and share `-PB` (N, notation); `-R` adds *recent* (what was just struck), `-T` adds *then* (the stroke that follows), and `E` on *then* adds *explain*. `-RPB` and `-PBT` are not nested in each other; `PHRO*EPBT` is `PHRO*PBT` plus `E`, so a hold-and-tap of `E` from `PHRO*PBT` lands on it (it is then shown, as the armed next stroke). All are free of every word outline, backup and phrase, and of every start of a multi-stroke entry. Each carries `{:firstup}{:transparent}` like the toggles above; `{:transparent}` keeps surrounding spacing and capitals and keeps the stroke off the translation history. Needs a Keymux that knows `{:outline:last}`, `{:outline:next}` and `{:outline:explain}`; following a whole word needs one from 2026-11-24 on (an older one shows only the next stroke)."
+   "x": "Use them to read off the outline of what you just wrote, or of a word before you commit to it, and what it does. **Armed strokes follow one word.** After `PHRO*PBT` or `PHRO*EPBT` the strokes translate as usual but silently (nothing they would type or run happens), only to see how keymux groups them into one word, and that word's outline is typed instead. Each stroke that grows the word (a `+` stroke, the next stroke of a multi-stroke entry) types the whole outline again in its place: `TPHAT -> national`, then `TPHAT/+STKPWAEUGS -> internationalization`. Every `+` stroke continues it (the `07-lyk-outline-join.rs` mod, see [the join key](#/ref/join-key)). The first stroke that starts a new word ends the mode and acts as usual. A first stroke that is no word of its own (a command, an undo, the arming stroke itself) is shown on its own, never run, and the mode ends: striking either twice types its own outline (and entry). There is no disarm stroke: to cancel, strike anything and undo what it typed with `*`. **What explain shows.** The word's raw entry: a dictionary entry, or the solver's reading as plain text; `(plugin late)` when the solver did not answer within the stroke's plugin deadline, and `(none)` when nothing reads it. Where `+` strokes continued past what keymux grouped as one word, each part's entry is shown in order, separated by spaces. The entry is typed as text, braces and all; nothing in it runs. **How strokes are written.** In the [short notation](#/ref/notation) when keymux has lyk's notation file, short only where the outline's split is known: `PHRO*PBT` then `TPHRAOEUT` types `FLĪT`, `PHRO*PBT` then the brief `TPHAEPL` types `TPHAEPL`; a `#` stroke is `#` and letters (`#TR-RL`), never digits. **Undo and wraps.** The typed text is one word to `*`: undo takes the whole explanation back, never the shorter one it replaced. A wrap stroke struck before (`#TR-RL` wraps the next word in backticks) wraps the whole explanation and keeps wrapping it as it grows: `#TR-RL`, `PHRO*EPBT`, `TPHAT`, `+STKPWAEUGS` types `` `TPHAT/+STKPWAEUGS -> internationalization` ``. **Key layout.** All three keep the `PHRO*` control base and share `-PB` (N, notation); `-R` adds *recent* (what was just struck), `-T` adds *then* (the stroke that follows), and `E` on *then* adds *explain*. `-RPB` and `-PBT` are not nested in each other; `PHRO*EPBT` is `PHRO*PBT` plus `E`, so a hold-and-tap of `E` from `PHRO*PBT` lands on it (it is then shown, as the armed next stroke). All are free of every word outline, backup and phrase, and of every start of a multi-stroke entry. Each carries `{:firstup:except=PHRO*}{:transparent}` like the toggles above; `{:transparent}` keeps surrounding spacing and capitals and keeps the stroke off the translation history. Needs a Keymux that knows `{:outline:last}`, `{:outline:next}` and `{:outline:explain}`; following a whole word needs one from 2026-11-24 on (an older one shows only the next stroke)."
   },
   {
    "t": "h3",
