@@ -5,7 +5,7 @@ use crate::num::ToF64;
 use crate::output::Written;
 use crate::stroke::{Stroke, parse_outline, render_outline};
 use anyhow::{Context, Result};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
 /// The frequency bands the report breaks keys down by: the rank a band runs up to, and its name.
@@ -28,10 +28,9 @@ type Against = (String, HashMap<String, String>);
 /// only when something is wrong. With `report`, the whole diagnostic dump as well: pass counts,
 /// what it costs to type next to Plover and Lapwing, and the star and extra-key lists. The health
 /// conditions themselves are guarded by the `quality` and `report` tests, not by eyeballing this.
-pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against: Option<&Against>, report: bool) -> Result<()> {
+pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against: Option<&Against>, report: bool, raw: bool) -> Result<()> {
     let generated = generate(setup, briefs, common)?;
-    let files = crate::output::write_dictionary(&generated, out)?;
-    print_files(&generated, &files, out);
+    std::fs::create_dir_all(out).with_context(|| out.display().to_string())?;
     let lexicon = crate::rules::solve::Lexicon { pron: &setup.pron, rank: &setup.rank, spellings: &setup.spellings, bigrams: &setup.web_bigrams, common };
     let names = crate::names::collect(setup);
     let size = crate::rules::solve::write_plugin(&setup.rules, &lexicon, &generated.entries, &names, out)?;
@@ -56,11 +55,20 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
         .filter(|e| e.origin != crate::generate::Origin::Backup)
         .map(|e| (e.word.clone(), e.outline.clone()))
         .collect();
-    let measured = crate::notation::measure(&setup.rules, &setup.pron, &entries, Some((&model, &others)));
+    let measured = crate::notation::measure(&setup.rules, &setup.pron, &entries, Some((&model, &others)), &generated.splits);
     let path = out.join(crate::notation::FILE);
     std::fs::write(&path, measured.notation.to_json()).with_context(|| path.display().to_string())?;
+    // The dictionary keys spell each known split in the short notation (raw with `--raw`)
+    let files = if raw {
+        crate::output::write_dictionary(&generated, out)?
+    } else {
+        let reader = measured.notation.reader();
+        crate::output::write_dictionary_spelled(&generated, out, &|strokes| measured.notation.key_with(&reader, strokes))?
+    };
+    print_files(&generated, &files, out);
+    let spelled = check_keys(&generated, &measured.notation, raw)?;
     println!(
-        "  {:<24} the short notation: {} aliases, {} vowel marks, {} outlines written their own way, {} known to split as the table reads them",
+        "  {:<24} the short notation: {} symbols, {} vowel marks; {spelled} keys spelled short ({} split their own way, {} as the table reads them)",
         crate::notation::FILE,
         measured.notation.left.len() + measured.notation.right.len(),
         measured.notation.middle.len(),
@@ -90,6 +98,31 @@ pub fn build(setup: &Setup, briefs: &Briefs, common: usize, out: &Path, against:
     print_lost(setup, &generated);
     print_worse(setup, &generated, worse);
     Ok(())
+}
+
+/// Every key the dictionary files were written with read back as its own outline, raw notation
+/// first as every reader reads a key, and no two keys read back as the same outline: a key that
+/// would read as another outline would be another entry. Returns how many keys are spelled short.
+fn check_keys(generated: &Generated, notation: &crate::notation::Notation, raw: bool) -> Result<usize> {
+    let mut spelled = 0;
+    let reader = notation.reader();
+    let mut seen: HashSet<Vec<Stroke>> = HashSet::with_capacity(generated.entries.len());
+    for entry in &generated.entries {
+        let outline = if entry.origin == crate::generate::Origin::Suffix {
+            let Some(hard) = crate::output::hard_suffix(&entry.outline) else { continue };
+            hard
+        } else {
+            entry.outline.clone()
+        };
+        let key = if raw { render_outline(&outline) } else { notation.key_with(&reader, &outline) };
+        let back: Option<Vec<Stroke>> = key.split('/').map(|part| notation.parse_stroke_with(&reader, part)).collect();
+        anyhow::ensure!(back.as_ref() == Some(&outline), "the key {key:?} for {:?} reads back as {back:?}", entry.word);
+        if key != render_outline(&outline) && !raw {
+            spelled += 1;
+        }
+        anyhow::ensure!(seen.insert(outline), "two entries have the key {key:?}");
+    }
+    Ok(spelled)
 }
 
 /// What was written: the total and one line per file, with unchanged ones marked.

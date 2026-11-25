@@ -255,6 +255,14 @@ impl Spelled {
     }
 }
 
+/// One group of keys and the sounds it writes, as the rules wrote them: a consonant run's keys
+/// (`TPH` *n*, `-GS` *sh ən*), the vowel's keys (`AEU` *ey*), a fixed prefix's keys. The record of
+/// which keys wrote which sound that the short notation is written from (`crate::notation`).
+pub type Group = (u32, Vec<String>);
+
+/// Each stroke's groups, in the order the rules added them (the order the sounds are said).
+pub type Split = Vec<Vec<Group>>;
+
 /// One syllable's sounds.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Syllable {
@@ -549,6 +557,17 @@ impl Rules {
         clusters: &HashMap<String, Stroke>,
         fold: bool,
     ) -> Option<Stroke> {
+        Self::consonant_groups(sounds, single, clusters, fold).map(|(stroke, _)| stroke)
+    }
+
+    /// [`Self::consonants`], with the groups it wrote: each run's keys and its sounds.
+    fn consonant_groups(
+        sounds: &[String],
+        single: &HashMap<String, Stroke>,
+        clusters: &HashMap<String, Stroke>,
+        fold: bool,
+    ) -> Option<(Stroke, Vec<Group>)> {
+        let mut groups = Vec::new();
         let mut bits = 0u32;
         let mut at = 0;
         while at < sounds.len() {
@@ -566,9 +585,10 @@ impl Rules {
                 return None;
             }
             bits |= stroke.0;
+            groups.push((stroke.0 & !Stroke::STAR, sounds[at..at + used].to_vec()));
             at += used;
         }
-        Some(Stroke(bits))
+        Some((Stroke(bits), groups))
     }
 
     /// [`Self::consonants`] where a sound may share keys already down, and may come out of steno
@@ -582,6 +602,16 @@ impl Rules {
         single: &HashMap<String, Stroke>,
         clusters: &HashMap<String, Stroke>,
     ) -> Option<(Stroke, u32)> {
+        Self::shared_groups(sounds, single, clusters).map(|(stroke, out, _)| (stroke, out))
+    }
+
+    /// [`Self::consonants_shared`], with the groups it wrote.
+    fn shared_groups(
+        sounds: &[String],
+        single: &HashMap<String, Stroke>,
+        clusters: &HashMap<String, Stroke>,
+    ) -> Option<(Stroke, u32, Vec<Group>)> {
+        let mut groups = Vec::new();
         let mut bits = 0u32;
         let mut out_of_order = 0;
         let mut at = 0;
@@ -598,9 +628,10 @@ impl Rules {
                 }
             }
             bits |= stroke.0;
+            groups.push((stroke.0 & !Stroke::STAR, sounds[at..at + used].to_vec()));
             at += used;
         }
-        Some((Stroke(bits), out_of_order))
+        Some((Stroke(bits), out_of_order, groups))
     }
 
     /// The keys of the cluster (longest first) or the single sound at `at`, and how many sounds
@@ -663,14 +694,20 @@ impl Rules {
     /// [`Self::stroke_for`], with consonants that may share keys and fall out of order (see
     /// [`Self::consonants_shared`]) when `share`; also the number of sounds out of order.
     fn stroke_with(&self, syllable: &Syllable, fold: bool, share: bool) -> Option<(Stroke, u32)> {
+        self.stroke_groups(syllable, fold, share).map(|(stroke, out, _)| (stroke, out))
+    }
+
+    /// [`Self::stroke_with`], with the groups it wrote: the onset's runs, the vowel (with the
+    /// consonant it takes, `AR`), the coda's runs.
+    fn stroke_groups(&self, syllable: &Syllable, fold: bool, share: bool) -> Option<(Stroke, u32, Vec<Group>)> {
         let run = |sounds: &[String], single, clusters, fold| {
             if share {
-                Self::consonants_shared(sounds, single, clusters)
+                Self::shared_groups(sounds, single, clusters)
             } else {
-                Self::consonants(sounds, single, clusters, fold).map(|stroke| (stroke, 0))
+                Self::consonant_groups(sounds, single, clusters, fold).map(|(stroke, groups)| (stroke, 0, groups))
             }
         };
-        let (onset, onset_out) = run(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
+        let (onset, onset_out, onset_groups) = run(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
         let base = syllable
             .vowel
             .trim_end_matches(|c: char| c.is_ascii_digit());
@@ -696,7 +733,7 @@ impl Rules {
                 .map(|&v| (v, &syllable.coda[1..]))
         });
         let rest = &syllable.coda[..];
-        let with = |vowel: Stroke, coda: &[String]| -> Option<(Stroke, u32)> {
+        let with = |vowel: Stroke, coda: &[String]| -> Option<(Stroke, u32, Vec<Group>)> {
             // A vowel with an `R` of its own (`ER`, `AR`) and a cluster that has the `R` in it
             // too, as in `serve` -FRB, `march` -FRPB or `harsh` -RB, share the key; any other
             // key used twice does not fit, and nor does a second `R` sound (`harder`)
@@ -705,14 +742,25 @@ impl Rules {
             } else {
                 R_KEY
             };
-            let (coda, coda_out) = run(coda, &self.coda, &self.coda_cluster, fold)?;
-            if vowel.0 & coda.0 & Stroke::RIGHT & !shared != 0 {
+            let (coda_keys, coda_out, coda_groups) = run(coda, &self.coda, &self.coda_cluster, fold)?;
+            if vowel.0 & coda_keys.0 & Stroke::RIGHT & !shared != 0 {
                 return None;
             }
-            if vowel.0 & coda.0 & Stroke::STAR != 0 {
+            if vowel.0 & coda_keys.0 & Stroke::STAR != 0 {
                 return None;
             }
-            Some((Stroke(onset.0 | vowel.0 | coda.0), onset_out + coda_out))
+            let mut groups = onset_groups.clone();
+            // The vowel, with the coda's first sound when it took it (`AR`)
+            let mut sounds = Vec::new();
+            if !syllable.vowel.is_empty() {
+                sounds.push(syllable.vowel.clone());
+            }
+            sounds.extend(syllable.coda[..syllable.coda.len() - coda.len()].iter().cloned());
+            if vowel.0 & !Stroke::STAR != 0 || !sounds.is_empty() {
+                groups.push((vowel.0 & !Stroke::STAR, sounds));
+            }
+            groups.extend(coda_groups);
+            Some((Stroke(onset.0 | vowel.0 | coda_keys.0), onset_out + coda_out, groups))
         };
         joined
             .and_then(|(vowel, coda)| with(vowel, coda))
@@ -925,10 +973,15 @@ impl Rules {
     /// its consonants (`-G` for `-ing`, `-D` for `-ed`, `-PB` for `-en`). A reduced `ER` is written
     /// as its `R` (`-R`), and a syllable with no consonants keeps its vowel.
     fn continuation(&self, syllable: &Syllable) -> Option<Stroke> {
+        self.continuation_groups(syllable).map(|(stroke, _)| stroke)
+    }
+
+    /// [`Self::continuation`], with the groups it wrote.
+    fn continuation_groups(&self, syllable: &Syllable) -> Option<(Stroke, Vec<Group>)> {
         let is_er = plain(&syllable.vowel) == "ER";
         let consonants = syllable.onset.len() + syllable.coda.len();
         if consonants == 0 && !is_er {
-            return self.syllable_stroke(syllable);
+            return self.stroke_groups(syllable, false, false).map(|(stroke, _, groups)| (stroke, groups));
         }
         // A suffix is written on the right hand with no vowel (`-ness` -PBS, `-ment` -PLT, `-er`
         // -R); when its consonants don't fit there in order, the onset goes on the left and the
@@ -941,16 +994,17 @@ impl Rules {
         rest.extend(syllable.coda.iter().cloned());
         let mut all = syllable.onset.clone();
         all.extend(rest.iter().cloned());
-        if let Some(coda) = Self::consonants(&all, &self.coda, &self.coda_cluster, false) {
+        if let Some(coda) = Self::consonant_groups(&all, &self.coda, &self.coda_cluster, false) {
             return Some(coda);
         }
-        let onset = Self::consonants(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
-        let coda = Self::consonants(&rest, &self.coda, &self.coda_cluster, false)?;
-        Some(Stroke(onset.0 | coda.0))
+        let (onset, mut groups) = Self::consonant_groups(&syllable.onset, &self.onset, &self.onset_cluster, false)?;
+        let (coda, more) = Self::consonant_groups(&rest, &self.coda, &self.coda_cluster, false)?;
+        groups.extend(more);
+        Some((Stroke(onset.0 | coda.0), groups))
     }
 
     /// Whether a word's own last syllable is a reduced syllable that could be struck as a
-    /// standalone continuation stroke on its own — the same split [`Self::strokes_for`] already
+    /// standalone continuation stroke on its own — the same split [`Self::strokes_groups`] already
     /// falls back to when folding it onto one stroke doesn't fit (`ended` EPBD/+-D, `breaking`
     /// PWRAEUBG/+-G), computed here unconditionally instead of only when that fold fails. `None`
     /// for a one-syllable word (nothing to split), when the last syllable isn't reduced, or when
@@ -962,6 +1016,11 @@ impl Rules {
     /// whichever word they'd actually be pronounced with) and the bare (no join key) stroke the
     /// trailing syllable's vowel and coda alone would be struck as.
     pub fn suffix_split(&self, word: &str, sounds: &[String]) -> Option<(usize, Stroke)> {
+        self.suffix_split_groups(word, sounds).map(|(at, stroke, _)| (at, stroke))
+    }
+
+    /// [`Self::suffix_split`], with the groups of the suffix stroke.
+    pub fn suffix_split_groups(&self, word: &str, sounds: &[String]) -> Option<(usize, Stroke, Vec<Group>)> {
         let labelled = self.label(word, sounds);
         let syllables = self.syllables(&labelled)?;
         if syllables.len() < 2 {
@@ -976,8 +1035,8 @@ impl Rules {
             vowel: last.vowel.clone(),
             coda: last.coda.clone(),
         };
-        let stroke = self.continuation(&suffix)?;
-        Some((sounds.len() - 1 - last.coda.len(), stroke))
+        let (stroke, groups) = self.continuation_groups(&suffix)?;
+        Some((sounds.len() - 1 - last.coda.len(), stroke, groups))
     }
 
     /// Every standalone suffix of `rules/suffixes.toml`, one-stroke and two-stroke, as the text it
@@ -1054,6 +1113,17 @@ impl Rules {
         self.outline_with(word, sounds, false)
     }
 
+    /// [`Self::outline`], with the groups each stroke was written with.
+    pub fn outline_split(&self, word: &str, sounds: &[String]) -> Option<(Vec<Stroke>, Split)> {
+        self.outline_folded_split(word, sounds, false, self.fold_any)
+    }
+
+    /// [`Self::variant`], with its groups.
+    pub fn variant_split(&self, word: &str, sounds: &[String]) -> Option<(Vec<Stroke>, Split)> {
+        let alternative = self.outline_folded_split(word, sounds, true, self.fold_any)?;
+        (Some(&alternative.0) != self.outline(word, sounds).as_ref()).then_some(alternative)
+    }
+
     /// How the spelling tells this word from others that sound the same: the outline it takes
     /// when it has to, if that differs from its usual one.
     pub fn variant(&self, word: &str, sounds: &[String]) -> Option<Vec<Stroke>> {
@@ -1073,16 +1143,22 @@ impl Rules {
         clash: bool,
         any: bool,
     ) -> Option<Vec<Stroke>> {
+        self.outline_folded_split(word, sounds, clash, any).map(|(strokes, _)| strokes)
+    }
+
+    /// [`Self::outline_folded`], with the groups each stroke was written with.
+    fn outline_folded_split(&self, word: &str, sounds: &[String], clash: bool, any: bool) -> Option<(Vec<Stroke>, Split)> {
         let labelled = self.label_with(word, sounds, clash);
         let (prefix, skip) = self.prefix(word, &labelled).unzip();
         let syllables = self.syllables(&labelled[skip.unwrap_or(0)..])?;
-        let mut strokes = self.strokes_for(&syllables, any)?;
+        let (mut strokes, mut split): (Vec<Stroke>, Split) = self.strokes_groups(&syllables, any)?.into_iter().unzip();
         if let Some(prefix) = prefix {
             // The prefix keys join the first stroke's own left-hand keys, sharing any they both
             // use: `KP` + `PEBGT` is `KPEBGT`, `STK` + `TAPBS` is `STKAPBS`
             strokes.first_mut()?.0 |= prefix.0;
+            split.first_mut()?.insert(0, (prefix.0 & !Stroke::STAR, labelled[..skip.unwrap_or(0)].to_vec()));
         }
-        Some(strokes)
+        Some((strokes, split))
     }
 
     /// Every way to write a word one syllable per stroke, for the join paths every word of two
@@ -1169,9 +1245,10 @@ impl Rules {
         [suffixed, voiced].into_iter().flatten().collect()
     }
 
-    /// The strokes for a run of syllables, folding reduced ones onto the stroke before.
-    fn strokes_for(&self, syllables: &[Syllable], any: bool) -> Option<Vec<Stroke>> {
-        let mut strokes: Vec<Stroke> = Vec::new();
+    /// The strokes for a run of syllables, folding reduced ones onto the stroke before, each with
+    /// the groups it was written with.
+    fn strokes_groups(&self, syllables: &[Syllable], any: bool) -> Option<Vec<(Stroke, Vec<Group>)>> {
+        let mut strokes: Vec<(Stroke, Vec<Group>)> = Vec::new();
         let mut previous: Option<Syllable> = None;
         for syllable in syllables.iter().cloned() {
             if let Some(before) = &previous
@@ -1186,8 +1263,8 @@ impl Rules {
                 // Some consonants may land out of order (Plover's -RT for `-ter`, -LT for `-tly`)
                 let loose = added.iter().all(|s| self.loose.contains(plain(s)));
                 merged.coda.extend(added);
-                if let Some(stroke) = self.stroke_for(&merged, any || loose) {
-                    *strokes.last_mut()? = stroke;
+                if let Some((stroke, _, groups)) = self.stroke_groups(&merged, any || loose, false) {
+                    *strokes.last_mut()? = (stroke, groups);
                     previous = Some(merged);
                     continue;
                 }
@@ -1201,20 +1278,21 @@ impl Rules {
                     coda: syllable.coda.clone(),
                 };
                 if !syllable.onset.is_empty()
-                    && let Some(stroke) = self.stroke_for(&stem, any)
-                    && let Some(rest) = self.continuation(&suffix)
+                    && let Some((stroke, _, groups)) = self.stroke_groups(&stem, any, false)
+                    && let Some((rest, rest_groups)) = self.continuation_groups(&suffix)
                 {
-                    *strokes.last_mut()? = stroke;
-                    strokes.push(rest);
+                    *strokes.last_mut()? = (stroke, groups);
+                    strokes.push((rest, rest_groups));
                     previous = Some(vowelless(suffix, rest));
                     continue;
                 }
-                let rest = self.continuation(&syllable)?;
-                strokes.push(rest);
+                let (rest, rest_groups) = self.continuation_groups(&syllable)?;
+                strokes.push((rest, rest_groups));
                 previous = Some(vowelless(syllable, rest));
                 continue;
             }
-            strokes.push(self.syllable_stroke(&syllable)?);
+            let (stroke, _, groups) = self.stroke_groups(&syllable, false, false)?;
+            strokes.push((stroke, groups));
             previous = Some(syllable);
         }
         Some(strokes)

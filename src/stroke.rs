@@ -197,6 +197,22 @@ impl fmt::Display for Stroke {
 
 /// Parse `KAT/TKOG` into its strokes.
 pub fn parse_outline(text: &str) -> Option<Vec<Stroke>> {
+    text.split('/').map(parse_key_stroke).collect()
+}
+
+/// One stroke of an outline as a dictionary key or a person writes it: raw notation when the text
+/// is exactly that (`TPHAOEUT`), else lyk's short notation by the built table (`NĪT`, see
+/// `crate::notation`), else raw notation read leniently.
+fn parse_key_stroke(text: &str) -> Option<Stroke> {
+    let raw = Stroke::parse(text);
+    if raw.is_some_and(|stroke| stroke.to_string() == text) {
+        return raw;
+    }
+    crate::notation::parse_short_stroke(text).or(raw)
+}
+
+/// An outline in raw notation only (`TPHAOEUT/+-G`), read leniently: never the short notation.
+pub fn parse_raw_outline(text: &str) -> Option<Vec<Stroke>> {
     text.split('/').map(Stroke::parse).collect()
 }
 

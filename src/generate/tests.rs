@@ -279,7 +279,7 @@ fn six_of_the_fragment_check_overrides_reproduce_exactly_in_isolation() {
 }
 
 fn candidate(text: &str) -> Candidate {
-    Candidate { outline: parse_outline(text).unwrap(), origin: Origin::Rules, cost: 0 }
+    Candidate { outline: parse_outline(text).unwrap(), origin: Origin::Rules, cost: 0, split: None }
 }
 
 /// A small, hand-worked bipartite graph, checked against a by-hand-computed optimum before

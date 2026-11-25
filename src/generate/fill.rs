@@ -21,7 +21,7 @@ pub fn alternates(setup: &Setup, words: &[(&String, usize)], book: &mut Book) {
     for (word, _) in words {
         let mut seen: Vec<Vec<Stroke>> = Vec::new();
         for sounds in setup.pron.get(word.as_str()).into_iter().flatten() {
-            let Some(outline) = setup.rules.outline(word, sounds) else { continue };
+            let Some((outline, split)) = setup.rules.outline_split(word, sounds) else { continue };
             if seen.contains(&outline) {
                 continue;
             }
@@ -31,8 +31,9 @@ pub fn alternates(setup: &Setup, words: &[(&String, usize)], book: &mut Book) {
             }
             let mut outline = outline;
             setup.rules.joined(&mut outline);
-            if typable(&outline) {
-                book.claim(word, outline, Origin::Alternate);
+            let text = render_outline(&outline);
+            if typable(&outline) && book.claim(word, outline, Origin::Alternate) {
+                book.splits.insert(text, split);
             }
         }
     }

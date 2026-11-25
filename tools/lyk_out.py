@@ -70,12 +70,32 @@ def require_fresh(out_dir=None):
         sys.exit(f'{STALE}\n  ({why})')
 
 
+# Each outline whose key is spelled short in the files `role_files` read: raw outline -> its key
+SPELLED = {}
+
+
 def role_files(out_dir=None):
-    """{role: {outline: word}} for every `02-lyk-<role>.json` in `out_dir` (default out/lyk)."""
+    """{role: {outline: word}} for every `02-lyk-<role>.json` in `out_dir` (default out/lyk), each
+    outline in raw notation: a key spelled in the short notation (`NĪT`) is read back to its raw
+    keys (`TPHAOEUT`) with the notation file beside it, and kept in `SPELLED`."""
+    import notation
     out_dir = out_dir or default_out_dir()
+    table = notation.load(out_dir)
     files = {}
     for f in sorted(glob.glob(os.path.join(out_dir, '02-lyk-*.json'))):
-        files[os.path.basename(f)[len('02-lyk-'):-len('.json')]] = json.load(open(f))
+        entries = json.load(open(f, encoding='utf-8'))
+        if table is not None:
+            raw_entries = {}
+            for key, word in entries.items():
+                if key.isascii() and notation.raw_bits(key.split('/')[0]) is not None and table.to_raw(key) == key:
+                    raw_entries[key] = word
+                    continue
+                raw = table.to_raw(key)
+                if raw != key:
+                    SPELLED[raw] = key
+                raw_entries[raw] = word
+            entries = raw_entries
+        files[os.path.basename(f)[len('02-lyk-'):-len('.json')]] = entries
     # A suffix is defined as an exact attach, `{^}ed`; the tools work with its bare text
     files['suffixes'] = {o: (w[3:] if w.startswith('{^}') else w)
                          for o, w in files.get('suffixes', {}).items()}

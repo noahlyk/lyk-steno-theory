@@ -159,6 +159,11 @@ enum Command {
         /// keys over Plover. Off by default; the same conditions are asserted by `cargo test`
         #[arg(long)]
         report: bool,
+        /// Write every dictionary key in raw Plover notation (`TPHAOEUT`), for Plover or another
+        /// program that cannot read the short notation; by default a key whose split is known is
+        /// spelled short (`NĪT`)
+        #[arg(long)]
+        raw: bool,
     },
     /// Grab a random quote off the web and stroke it out, lyk next to Plover and Lapwing
     Quote {
@@ -535,6 +540,7 @@ fn main() -> Result<()> {
             briefs,
             against,
             report,
+            raw,
         } => {
             let setup = setup(Some(*common))?;
             let briefs = generate::Briefs::from_path(briefs.as_deref())?;
@@ -545,7 +551,7 @@ fn main() -> Result<()> {
                     Ok((name, data::load_words(path)?))
                 })
                 .transpose()?;
-            generate::build(&setup, &briefs, *common, out, against.as_ref(), *report)
+            generate::build(&setup, &briefs, *common, out, against.as_ref(), *report, *raw)
         }
         Command::Quote {
             common,

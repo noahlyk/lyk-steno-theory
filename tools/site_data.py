@@ -21,7 +21,7 @@ import glob, json, os, re, sys, tomllib
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lyk_out import STALE, default_out_dir, path, require_fresh, role_files, ranks  # noqa: E402
+from lyk_out import SPELLED, STALE, default_out_dir, path, require_fresh, role_files, ranks  # noqa: E402
 
 SITE = path('site')
 LESSONS = sorted(glob.glob(os.path.join(SITE, 'lessons', '[0-9]*.json')))
@@ -176,15 +176,28 @@ def write_notation(words, lessons):
     """site/data/notation.json: lyk's short notation (`out/lyk/.keymux-notation.json`, as keymux gets it), for the
     site to show outlines in (site/js/notation.js). Its outlines whose split is known (`agree`, `outlines`) are cut to
     the outlines the site shows: the lookup's and every [[word|OUTLINE]] of a page. Any other outline is shown raw."""
-    table = json.load(open(os.path.join(default_out_dir(), '.keymux-notation.json')))
+    table = json.load(open(os.path.join(default_out_dir(), '.keymux-notation.json'), encoding='utf-8'))
     shown = {o for outs in words.values() for o in outs}
     for lesson in lessons:
         shown.update(outline for _, outline, _ in lesson_claims(lesson))
-    table['agree'] = sorted(o for o in table.get('agree', []) if o in shown)
-    table['outlines'] = {o: t for o, t in table.get('outlines', {}).items() if o in shown}
-    with open(os.path.join(SITE, 'data', 'notation.json'), 'w') as f:
+    # The dictionary keys spell each known split (`role_files` read them back to raw); the site's
+    # own data stays raw, so the spellings of the outlines it shows go beside the table
+    # (in `agree` where the table writes them so, as the site reads it, else in `outlines`)
+    import notation
+    reader = notation.Notation(table)
+    agree, own = [], {}
+    for raw, key in SPELLED.items():
+        if raw not in shown:
+            continue
+        if '/'.join(reader.table_text(notation.raw_bits(part)) for part in raw.split('/')) == key:
+            agree.append(raw)
+        else:
+            own[raw] = key
+    table['agree'] = sorted(agree)
+    table['outlines'] = own
+    with open(os.path.join(SITE, 'data', 'notation.json'), 'w', encoding='utf-8') as f:
         json.dump(table, f, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
-    print(f"notation.json: {len(table['agree'])} known outlines shown short, {len(table.get('outlines', {}))} written their own way")
+    print(f"notation.json: {len(agree) + len(own)} outlines shown short as their keys spell them ({len(own)} not as the table writes them)")
 
 
 def main():

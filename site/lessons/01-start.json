@@ -47,7 +47,7 @@
       ["`C` `V`", "A O"], ["`Y H`", "*"], ["`N` `M`", "E U"],
       ["`U` `J`", "-F -R"], ["`I` `K`", "-P -B"], ["`O` `L`", "-L -G"], ["`P` `;`", "-T -S"], ["`[` `'`", "-D -Z"]
     ] },
-    { "t": "p", "x": "On a steno keyboard, use the dictionary files this project builds (see the main README) and bind `+` to the left index finger's inner column ([join key](#/ref/join-key))." },
+    { "t": "p", "x": "On a steno keyboard, use the dictionary files this project builds (see the main README; their keys are in lyk's [short notation](#/ref/notation), which keymux reads and Plover does not: `lyk build --raw` writes them raw) and bind `+` to the left index finger's inner column ([join key](#/ref/join-key))." },
     { "t": "quiz", "q": "Which one starts a new word?", "opts": ["[[+-G]]", "[[WAUBG]]", "[[+AOE]]"], "a": 1, "why": "Only a stroke without the join key begins a word." }
   ]
 }

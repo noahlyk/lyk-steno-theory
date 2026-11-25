@@ -8,6 +8,7 @@ mod fill;
 mod report;
 mod settle;
 mod solver;
+pub mod split;
 #[cfg(test)]
 mod faithful_tests;
 #[cfg(test)]
@@ -179,6 +180,9 @@ pub struct Generated {
     pub links: HashMap<String, crate::family::Link>,
     /// Every word that is a prefix plus another word, by word - see `crate::family`.
     pub prefix_links: HashMap<String, crate::family::PrefixLink>,
+    /// Each entry's recorded split, by its text: which keys wrote which sound ([`split::record`]);
+    /// the backups' are composed by `crate::notation`
+    pub splits: HashMap<String, crate::rules::Split>,
 }
 
 const KEY_WEIGHT: u32 = 1_000;
@@ -294,6 +298,8 @@ pub struct Book {
     pub entries: Vec<Entry>,
     pub taken: HashMap<String, String>,
     pub unresolved: Vec<String>,
+    /// The split a pass recorded as it placed an entry, by the entry's text (see [`split`])
+    pub splits: HashMap<String, crate::rules::Split>,
 }
 
 /// A point in a [`Book`] to go back to: see [`Book::reset`].
@@ -366,7 +372,7 @@ fn fix_literals(
             parse_outline(&briefs.word[word]).map(|mut outline| {
                 setup.rules.joined(&mut outline);
                 let cost = candidate_cost(&outline);
-                Candidate { outline, origin: Origin::Brief, cost }
+                Candidate { outline, origin: Origin::Brief, cost, split: None }
             })
         }
         .with_context(|| format!("{word:?}'s brief in rules/briefs.toml does not parse as an outline"))?;
@@ -392,7 +398,7 @@ fn fix_literals(
 /// 4. phrases (`crate::phrases`), which may take a rarer word's stroke;
 /// 5. extra one-stroke entries, in whatever strokes nobody needed.
 pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generated> {
-    let mut book = Book { entries: Vec::new(), taken: reserved_outlines()?, unresolved: Vec::new() };
+    let mut book = Book { entries: Vec::new(), taken: reserved_outlines()?, unresolved: Vec::new(), splits: HashMap::new() };
 
     // A standalone suffix is struck on its own far more often than any one rare word wants its
     // outline, so it comes first, the same as a brief.
@@ -481,6 +487,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
     let questions = crate::phrases::grammar::place_questions(setup, &mut book).map_err(anyhow::Error::msg)?;
     let extras_added = fill::extras(setup, &pools, &settled.offers, &mut book, None);
     let stranded = fill::stranded(setup, &book, &settled.released, &noise);
+    let splits = split::record(setup, &pools, &links, &book.entries, &book.splits);
 
     Ok(Generated {
         entries: book.entries,
@@ -497,6 +504,7 @@ pub fn generate(setup: &Setup, briefs: &Briefs, common: usize) -> Result<Generat
         extras_added,
         links,
         prefix_links,
+        splits,
     })
 }
 

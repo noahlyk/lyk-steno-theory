@@ -477,7 +477,7 @@ fn count_eligible_free(by_count: &[&(String, String)], map: &HashMap<&str, Strok
 #[test]
 fn merge_into_host_first_stroke_preserves_every_later_stroke_untouched() {
     // Hand-worked synthetic case, step 2 of the multi-stroke-host plan: a small multi-stroke
-    // word's own primary (`"ample"`, made up for this test as a two-stroke outline `APL/+PL`,
+    // word's own primary (`"ample"`, made up for this test as a two-stroke outline `APL/+P-L`,
     // chosen only so its first stroke `APL` is disjoint from the filler below - no real
     // dictionary word needs to actually exist with this outline) and a real single-stroke
     // filler word's primary (`"of"`'s own real `-F`). Confirms the merge produces the right
@@ -485,7 +485,7 @@ fn merge_into_host_first_stroke_preserves_every_later_stroke_untouched() {
     // through completely unchanged, exactly the invariant `compose_backup`'s direction (b)
     // already guarantees for a leading consonant folded onto `word_outline[stem][0]`.
     let filler = parse_outline("-F").unwrap()[0];
-    let host = parse_outline("APL/+PL").unwrap();
+    let host = parse_outline("APL/+P-L").unwrap();
     assert_eq!(host.len(), 2, "test setup: host must be genuinely two strokes");
     assert_eq!(filler.0 & host[0].0, 0, "test setup: filler and the host's first stroke must be disjoint");
 
@@ -514,7 +514,7 @@ fn phrase_candidate_outline_handles_both_host_directions_and_still_excludes_both
     single.insert("of", parse_outline("-F").unwrap()[0]);
     single.insert("the", parse_outline("-T").unwrap()[0]);
 
-    let ample_outline = parse_outline("APL/+PL").unwrap();
+    let ample_outline = parse_outline("APL/+P-L").unwrap();
     let of_outline = parse_outline("-F").unwrap();
     let the_outline = parse_outline("-T").unwrap();
     let mut any_len: HashMap<&str, &[Stroke]> = HashMap::new();

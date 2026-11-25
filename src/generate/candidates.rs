@@ -6,6 +6,7 @@
 use super::{Briefs, CONTRACTION_TAILS, KEY_WEIGHT, Origin, keys, split_untypable, typable, uses_suffix_chord};
 use crate::analysis::Setup;
 use crate::ergonomics;
+use crate::rules::Split;
 use crate::stroke::{Stroke, parse_outline, render_outline};
 use std::collections::HashSet;
 
@@ -19,6 +20,9 @@ pub struct Candidate {
     pub outline: Vec<Stroke>,
     pub origin: Origin,
     pub cost: u32,
+    /// Which keys wrote which of the word's sounds, as the rules wrote them (see
+    /// [`super::split`]); `None` for an outline the rules did not write (a gold brief)
+    pub split: Option<Split>,
 }
 
 pub const STROKE_WEIGHT: u32 = 25_000;
@@ -99,7 +103,7 @@ fn gold_only(setup: &Setup, briefs: &Briefs, word: &str) -> Vec<Candidate> {
         .filter(|outline| outline.len() == 1 && typable(outline) && seen.insert(outline.clone()))
         .map(|outline| {
             let cost = candidate_cost(&outline);
-            Candidate { outline, origin: Origin::Brief, cost }
+            Candidate { outline, origin: Origin::Brief, cost, split: None }
         })
         .collect()
 }
@@ -215,24 +219,26 @@ pub fn enumerate_candidates(
         }
     }
     // 2. The plain rules reading, every time, brief or not; 2b. the stem-plus-suffix readings.
-    let base = setup.rules.outline(word, sounds);
-    if let Some(outline) = &base {
-        pool.push(outline.clone(), Origin::Rules);
+    let base_split = setup.rules.outline_split(word, sounds);
+    let base = base_split.as_ref().map(|(outline, _)| outline.clone());
+    if let Some((outline, split)) = &base_split {
+        pool.push(outline.clone(), Some(split.clone()), Origin::Rules);
     }
     pool.suffixed();
     // 3. The spelling variant that tells a homophone apart, beside the plain reading.
-    let variant = setup.rules.variant(word, sounds);
-    if let Some(outline) = &variant {
-        pool.push(outline.clone(), Origin::Spelling);
+    let variant_split = setup.rules.variant_split(word, sounds);
+    if let Some((outline, split)) = &variant_split {
+        pool.push(outline.clone(), Some(split.clone()), Origin::Spelling);
     }
     // 4. Brevity steps, gated by rank.
     if let Some(first) = base.as_ref().filter(|b| b.len() > 1) {
         pool.shortened(prons, first.len(), texts);
     }
     // 5. The star ladder on the plain reading and on the spelling variant.
-    for outline in [base.as_ref(), variant.as_ref()].into_iter().flatten() {
+    for (outline, split) in [base_split.as_ref(), variant_split.as_ref()].into_iter().flatten() {
         for (n, laddered) in ladder(outline, setup.rules.join_key()) {
-            pool.push(laddered, Origin::Ladder(n));
+            let carried = super::split::carry(outline, split, &laddered);
+            pool.push(laddered, carried, Origin::Ladder(n));
         }
     }
     // 5b. An unfaithful gold outline must pay for itself: it stays only if it takes fewer strokes
@@ -245,7 +251,7 @@ pub fn enumerate_candidates(
     let fewest = pool.out.iter().map(|c| c.outline.len()).chain(reading).min().unwrap_or(usize::MAX);
     for outline in std::mem::take(&mut pool.held) {
         let from = pool.out.len();
-        pool.push(outline, Origin::Brief);
+        pool.push(outline, None, Origin::Brief);
         let mut kept = from;
         for i in from..pool.out.len() {
             if pool.out[i].outline.len() < fewest {
@@ -256,8 +262,8 @@ pub fn enumerate_candidates(
         pool.out.truncate(kept);
     }
     // 6. S-for-Z coda alternates.
-    for outline in voicing_alternates(word, &pool.out) {
-        pool.push(outline, Origin::Voicing);
+    for (outline, split) in voicing_alternates(word, &pool.out) {
+        pool.push(outline, split, Origin::Voicing);
     }
     // A starred suffix chord is always a literal attach, so no candidate may continue with one: the
     // word settles on its next candidate.
@@ -283,7 +289,7 @@ impl Pool<'_> {
     /// Adds `outline`, join keys set. One that can't be typed as written is offered with one pinky
     /// key swapped for its partner (still one stroke) and with the offending pinky keys moved onto
     /// a continuation stroke: never just dropped.
-    fn push(&mut self, mut outline: Vec<Stroke>, origin: Origin) {
+    fn push(&mut self, mut outline: Vec<Stroke>, mut split: Option<Split>, origin: Origin) {
         let rules = &self.setup.rules;
         rules.joined(&mut outline);
         if !typable(&outline) {
@@ -293,22 +299,25 @@ impl Pool<'_> {
                     let mut repaired = outline.clone();
                     repaired[at] = swapped;
                     let cost = candidate_cost(&repaired);
-                    self.out.push(Candidate { outline: repaired, origin, cost });
+                    let split = split.as_ref().and_then(|s| super::split::carry(&outline, s, &repaired));
+                    self.out.push(Candidate { outline: repaired, origin, cost, split });
                 }
             }
-            let Some(split) = split_untypable(&outline) else { return };
-            outline = split;
+            let Some(two) = split_untypable(&outline) else { return };
+            split = split.as_ref().and_then(|s| super::split::carry(&outline, s, &two));
+            outline = two;
             rules.joined(&mut outline);
         }
         let cost = candidate_cost(&outline);
-        self.out.push(Candidate { outline, origin, cost });
+        let split = split.filter(|s| super::split::valid(&outline, s));
+        self.out.push(Candidate { outline, origin, cost, split });
     }
 
     /// A gold dictionary's outlines for the word, each raw and with its fragments dropped.
     fn briefs(&mut self, outlines: Option<&Vec<String>>) {
         for outline in gold_candidates(&self.setup.rules, outlines, self.word, self.sounds, self.prons) {
             if self.exempt || self.setup.rules.faithful_any(&outline, self.word, self.prons) {
-                self.push(outline, Origin::Brief);
+                self.push(outline, None, Origin::Brief);
             } else {
                 self.held.push(outline);
             }
@@ -329,7 +338,7 @@ impl Pool<'_> {
         if let Some(mut outline) = parse_outline(literal) {
             self.setup.rules.joined(&mut outline);
             let cost = candidate_cost(&outline);
-            self.out.push(Candidate { outline, origin: Origin::Brief, cost });
+            self.out.push(Candidate { outline, origin: Origin::Brief, cost, split: None });
         }
         self.out
     }
@@ -341,17 +350,18 @@ impl Pool<'_> {
     fn suffixed(&mut self) {
         let rules = &self.setup.rules;
         let mut stem_sounds: Vec<String> = self.sounds.to_vec();
-        let mut suffix_strokes: Vec<Stroke> = Vec::new();
+        let mut suffix_strokes: Vec<(Stroke, Vec<crate::rules::Group>)> = Vec::new();
         for _ in 0..2 {
-            let Some((split, suffix)) = rules.suffix_split(self.word, &stem_sounds) else { break };
-            if split == 0 {
+            let Some((at, suffix, groups)) = rules.suffix_split_groups(self.word, &stem_sounds) else { break };
+            if at == 0 {
                 break;
             }
-            suffix_strokes.insert(0, suffix);
-            stem_sounds.truncate(split);
-            if let Some(mut outline) = rules.outline(self.word, &stem_sounds) {
-                outline.extend(suffix_strokes.iter().copied());
-                self.push(outline, Origin::Rules);
+            suffix_strokes.insert(0, (suffix, groups));
+            stem_sounds.truncate(at);
+            if let Some((mut outline, mut split)) = rules.outline_split(self.word, &stem_sounds) {
+                outline.extend(suffix_strokes.iter().map(|(stroke, _)| *stroke));
+                split.extend(suffix_strokes.iter().map(|(_, groups)| groups.clone()));
+                self.push(outline, Some(split), Origin::Rules);
             }
         }
     }
@@ -365,15 +375,21 @@ impl Pool<'_> {
         for short in setup.rules.brevity().iter().filter(|s| own < s.rank) {
             let mut seen: HashSet<Vec<Stroke>> = HashSet::new();
             for sounds in prons {
-                for outline in setup.rules.shorten(*short, self.word, sounds).into_iter().filter(|o| o.len() < full) {
-                    let starred =
-                        ladder(&outline, setup.rules.join_key()).into_iter().filter(|(n, _)| *n <= 2).map(|(_, o)| o);
-                    for candidate in std::iter::once(outline).chain(starred) {
+                for (outline, split) in setup.rules.shorten_split(*short, self.word, sounds).into_iter().filter(|(o, _)| o.len() < full) {
+                    let starred = ladder(&outline, setup.rules.join_key())
+                        .into_iter()
+                        .filter(|(n, _)| *n <= 2)
+                        .map(|(_, o)| {
+                            let carried = super::split::carry(&outline, &split, &o);
+                            (o, carried)
+                        })
+                        .collect::<Vec<_>>();
+                    for (candidate, split) in std::iter::once((outline, Some(split))).chain(starred) {
                         if texts.wanted.contains(&render_outline(&candidate)) || !seen.insert(candidate.clone()) {
                             continue;
                         }
                         let from = self.out.len();
-                        self.push(candidate, Origin::Short(short.step));
+                        self.push(candidate, split, Origin::Short(short.step));
                         for pushed in &mut self.out[from..] {
                             if texts.stars.contains(&render_outline(&pushed.outline)) {
                                 pushed.cost += STAR_SURCHARGE;
@@ -395,14 +411,14 @@ impl Pool<'_> {
 /// unable to compete just because nothing had ever proposed it at that stroke length. This offers
 /// it again, every time, so the two can compete on cost like any other candidate-origin ambiguity
 /// instead of `-Z` winning by default.
-fn voicing_alternates(word: &str, out: &[Candidate]) -> Vec<Vec<Stroke>> {
+fn voicing_alternates(word: &str, out: &[Candidate]) -> Vec<(Vec<Stroke>, Option<Split>)> {
     const CODA_S: u32 = 1 << 20;
     const CODA_Z: u32 = 1 << 22;
     if !word.ends_with('s') {
         return Vec::new();
     }
     let mut seen: HashSet<Vec<Stroke>> = out.iter().map(|c| c.outline.clone()).collect();
-    let mut additions: Vec<Vec<Stroke>> = Vec::new();
+    let mut additions: Vec<(Vec<Stroke>, Option<Split>)> = Vec::new();
     for candidate in out {
         let Some(&last) = candidate.outline.last() else { continue };
         if last.0 & CODA_Z == 0 || last.0 & CODA_S != 0 {
@@ -412,7 +428,8 @@ fn voicing_alternates(word: &str, out: &[Candidate]) -> Vec<Vec<Stroke>> {
         let i = respelled.len() - 1;
         respelled[i] = Stroke((last.0 & !CODA_Z) | CODA_S);
         if seen.insert(respelled.clone()) {
-            additions.push(respelled);
+            let split = candidate.split.as_ref().and_then(|s| super::split::carry(&candidate.outline, s, &respelled));
+            additions.push((respelled, split));
         }
     }
     additions

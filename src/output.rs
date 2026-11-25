@@ -1,5 +1,6 @@
-//! The generated dictionary as files: several small Plover JSON dictionaries, one per role, instead
-//! of one big one.
+//! The generated dictionary as files: several small steno JSON dictionaries, one per role, instead
+//! of one big one, each key in lyk's short notation where the outline's split is known (`NĪT`) and
+//! raw where it is not (`build --raw`: every key raw, as Plover reads them).
 //!
 //! Every entry goes to the file for the way it was made (see [`Role`]). Outlines never repeat
 //! across the files (the generator keeps exactly one word per outline), so which file loads first
@@ -134,6 +135,12 @@ pub fn definition(entry: &crate::generate::Entry) -> String {
 /// always give the same bytes. A file that would come out as it already is, is left alone; a
 /// generated file in `dir` that no role writes (an earlier layout's) is removed.
 pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written>> {
+    write_dictionary_spelled(generated, dir, &render_outline)
+}
+
+/// [`write_dictionary`], each key spelled by `spell`: the short notation where the outline's split
+/// is known (`"NĪT": "night"`), raw notation where it is not (see `crate::notation`).
+pub fn write_dictionary_spelled(generated: &Generated, dir: &Path, spell: &dyn Fn(&[Stroke]) -> String) -> Result<Vec<Written>> {
     let mut by_role: BTreeMap<Role, BTreeMap<String, String>> = BTreeMap::new();
     for entry in &generated.entries {
         let outline = if entry.origin == Origin::Suffix {
@@ -145,7 +152,7 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
         by_role
             .entry(Role::of(entry.origin))
             .or_default()
-            .insert(render_outline(&outline), definition(entry));
+            .insert(spell(&outline), definition(entry));
     }
     std::fs::create_dir_all(dir).with_context(|| dir.display().to_string())?;
     let mut done = Vec::new();
@@ -163,7 +170,7 @@ pub fn write_dictionary(generated: &Generated, dir: &Path) -> Result<Vec<Written
         .entries
         .iter()
         .filter(|e| e.origin == Origin::Family)
-        .map(|e| (render_outline(&e.outline), written(&e.word)))
+        .map(|e| (spell(&e.outline), written(&e.word)))
         .collect();
     write_if_different(&dir.join(FAMILY_FILE), serde_json::to_string_pretty(&family)?.as_bytes())?;
     std::fs::write(dir.join(BUILT_STAMP), crate::version::stamp_text(crate::version::SOURCE_HASH)).with_context(|| dir.join(BUILT_STAMP).display().to_string())?;

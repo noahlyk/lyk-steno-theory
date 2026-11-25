@@ -471,7 +471,7 @@ mod tests {
         std::fs::write(dir.join(Role::Words.file_name()), "{\n  \"KAT\": \"cat\",\n  \"TKOG\": \"dog\"\n}").unwrap();
         std::fs::write(
             dir.join(Role::Backups.file_name()),
-            "{\n  \"KA/+T\": \"cat\",\n  \"TKO/+G\": \"dog\",\n  \"TK/+O/+G\": \"dog\",\n  \"S\": \"I\"\n}",
+            "{\n  \"KA/+T\": \"cat\",\n  \"TKO/+-G\": \"dog\",\n  \"TK/+O/+-G\": \"dog\",\n  \"S\": \"I\"\n}",
         )
         .unwrap();
         dir
@@ -537,7 +537,7 @@ mod tests {
             let text = |b: &Backups| b.outlines(word).iter().map(|o| render_outline(o)).collect::<Vec<_>>();
             assert_eq!(text(&sorted), text(&backups), "{word}");
         }
-        assert_eq!(sorted.outlines("dog"), vec![parse_outline("TKO/+G").unwrap(), parse_outline("TK/+O/+G").unwrap()]);
+        assert_eq!(sorted.outlines("dog"), vec![parse_outline("TKO/+-G").unwrap(), parse_outline("TK/+O/+-G").unwrap()]);
     }
 
     #[test]

@@ -52,7 +52,7 @@ pub fn deploy(
 ) -> Result<()> {
     let to = expand_home(to)?;
     let words_out = crate::paths::built_dir();
-    generate::build(setup, briefs, common, &words_out, None, false)?;
+    generate::build(setup, briefs, common, &words_out, None, false, false)?;
 
     // Every generated file. The backups are not shipped: the solver plugin reads any outline that
     // sounds like a word as that word, so keymux holds no list of them (`out/lyk` keeps them, as

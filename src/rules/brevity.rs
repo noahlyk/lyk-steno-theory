@@ -1,7 +1,7 @@
 //! How short: the brevity steps (`[[brevity]]` in the rules) that write a word in fewer strokes
 //! than its plain reading, down to one-stroke skeletons. See `site/reference/brevity.json`.
 
-use super::{Rules, Shortening, Step, Syllable, plain};
+use super::{Group, Rules, Shortening, Split, Step, Syllable, plain};
 use crate::stroke::Stroke;
 
 impl Rules {
@@ -12,6 +12,11 @@ impl Rules {
 
     /// The shorter outlines a shortening step gives a word of several syllables.
     pub fn shorten(&self, step: Shortening, word: &str, sounds: &[String]) -> Vec<Vec<Stroke>> {
+        self.shorten_split(step, word, sounds).into_iter().map(|(outline, _)| outline).collect()
+    }
+
+    /// [`Self::shorten`], each outline with the groups its strokes were written with.
+    pub fn shorten_split(&self, step: Shortening, word: &str, sounds: &[String]) -> Vec<(Vec<Stroke>, Split)> {
         let syllables = sounds
             .iter()
             .filter(|s| s.ends_with(|c: char| c.is_ascii_digit()))
@@ -22,14 +27,14 @@ impl Rules {
         match step.step {
             Step::Lead | Step::Lean => self.leading(step.step, word, sounds).into_iter().collect(),
             Step::Fold => self
-                .outline_folded(word, sounds, false, true)
+                .outline_folded_split(word, sounds, false, true)
                 .into_iter()
                 .collect(),
             Step::Skeleton | Step::Shell | Step::Ends => self
-                .skeletons_folded(word, sounds, step.any)
+                .skeletons_split(word, sounds, step.any)
                 .into_iter()
-                .filter(|(kind, vowel, _)| *kind == step.step && *vowel == step.vowel)
-                .map(|(_, _, stroke)| vec![stroke])
+                .filter(|(kind, vowel, _, _)| *kind == step.step && *vowel == step.vowel)
+                .map(|(_, _, stroke, groups)| (vec![stroke], vec![groups]))
                 .collect(),
         }
     }
@@ -40,16 +45,12 @@ impl Rules {
     /// those of the last syllable only.
     #[cfg(test)]
     pub fn skeletons(&self, word: &str, sounds: &[String]) -> Vec<(Step, bool, Stroke)> {
-        self.skeletons_folded(word, sounds, false)
+        self.skeletons_split(word, sounds, false).into_iter().map(|(step, vowel, stroke, _)| (step, vowel, stroke)).collect()
     }
 
-    /// [`Self::skeletons`], with the consonants allowed out of steno order (`any`) or not.
-    pub(super) fn skeletons_folded(
-        &self,
-        word: &str,
-        sounds: &[String],
-        any: bool,
-    ) -> Vec<(Step, bool, Stroke)> {
+    /// The one-stroke skeletons, with the consonants allowed out of steno order (`any`) or not,
+    /// each stroke with the groups it was written with.
+    fn skeletons_split(&self, word: &str, sounds: &[String], any: bool) -> Vec<(Step, bool, Stroke, Vec<Group>)> {
         let labelled = self.label(word, sounds);
         let (prefix, skip) = self.prefix(word, &labelled).unzip();
         let Some(syllables) = self.syllables(&labelled[skip.unwrap_or(0)..]) else {
@@ -58,8 +59,13 @@ impl Rules {
         if syllables.len() + usize::from(prefix.is_some()) < 2 {
             return Vec::new();
         }
-        let Some((onset, start, onset_right)) = self.skeleton_left(&syllables) else { return Vec::new() };
+        let Some((onset, start, onset_right, onset_groups)) = self.skeleton_left(&syllables) else { return Vec::new() };
         let onset = Stroke(onset.0 | prefix.map_or(0, |p| p.0));
+        let mut left_groups: Vec<Group> = Vec::new();
+        if let Some(p) = prefix {
+            left_groups.push((p.0 & !Stroke::STAR, labelled[..skip.unwrap_or(0)].to_vec()));
+        }
+        left_groups.extend(onset_groups);
         let syllables = &syllables[start..];
         let stress = syllables.iter().position(|s| s.vowel.ends_with('1')).unwrap_or(0);
         let choices = skeleton_choices(syllables, stress, onset_right);
@@ -76,11 +82,11 @@ impl Rules {
             .or_else(|| self.vowel.get(plain(key)))
             .copied();
 
-        let mut found: Vec<(Step, bool, Stroke)> = Vec::new();
+        let mut found: Vec<(Step, bool, Stroke, Vec<Group>)> = Vec::new();
         for (step, rest) in choices {
             // The consonants in steno order, as they are read; a form with no left hand and no
             // vowel is not offered
-            let Some(coda) = Self::consonants(&rest, &self.coda, &self.coda_cluster, any) else {
+            let Some((coda, coda_groups)) = Self::consonant_groups(&rest, &self.coda, &self.coda_cluster, any) else {
                 continue;
             };
             if coda.is_empty() {
@@ -90,11 +96,16 @@ impl Rules {
                 continue;
             }
             let bare = Stroke(onset.0 | coda.0);
-            found.push((step, false, bare));
+            let mut groups = left_groups.clone();
+            groups.extend(coda_groups.iter().cloned());
+            found.push((step, false, bare, groups));
             if let Some(vowel) = vowel
                 && vowel.0 & coda.0 & Stroke::STAR == 0
             {
-                found.push((step, true, Stroke(bare.0 | vowel.0)));
+                let mut groups = left_groups.clone();
+                groups.push((vowel.0 & !Stroke::STAR, vec![key.to_owned()]));
+                groups.extend(coda_groups);
+                found.push((step, true, Stroke(bare.0 | vowel.0), groups));
             }
         }
         found
@@ -104,7 +115,7 @@ impl Rules {
     /// written as a syllable. `lead` drops one that is only a vowel (`about` PWOUT, `again`
     /// TKPWEPB); `lean` puts the consonants of one onto the left hand of the next stroke when
     /// they come before its own keys (`believe` PWHRAOEF, `deliver` TKHREUFR).
-    pub(super) fn leading(&self, step: Step, word: &str, sounds: &[String]) -> Option<Vec<Stroke>> {
+    pub(super) fn leading(&self, step: Step, word: &str, sounds: &[String]) -> Option<(Vec<Stroke>, Split)> {
         let labelled = self.label(word, sounds);
         if self.prefix(word, &labelled).is_some() {
             return None;
@@ -116,11 +127,11 @@ impl Rules {
         }
         let mut consonants = first.onset.clone();
         consonants.extend(first.coda.iter().cloned());
-        let mut rest = self.strokes_for(&syllables[1..], self.fold_any)?;
+        let (mut rest, mut split): (Vec<Stroke>, Split) = self.strokes_groups(&syllables[1..], self.fold_any)?.into_iter().unzip();
         match step {
-            Step::Lead if consonants.is_empty() => Some(rest),
+            Step::Lead if consonants.is_empty() => Some((rest, split)),
             Step::Lean if !consonants.is_empty() => {
-                let keys = Self::consonants(&consonants, &self.onset, &self.onset_cluster, false)?;
+                let (keys, groups) = Self::consonant_groups(&consonants, &self.onset, &self.onset_cluster, false)?;
                 let next = rest.first_mut()?;
                 let own = Stroke(next.0 & Stroke::LEFT);
                 let in_order = match (keys.highest(), own.lowest()) {
@@ -131,7 +142,9 @@ impl Rules {
                     return None;
                 }
                 next.0 |= keys.0;
-                Some(rest)
+                let first = split.first_mut()?;
+                first.splice(0..0, groups);
+                Some((rest, split))
             }
             _ => None,
         }
@@ -142,28 +155,33 @@ impl Rules {
     /// its consonants are the left hand (`in-` TPH, `be-` PW) and the next syllable's onset joins
     /// them when it comes after in order (`believe` PWHR); with no consonants it is dropped
     /// (`opinion` P-PB). `None` when the first kept onset can't be written.
-    fn skeleton_left(&self, syllables: &[Syllable]) -> Option<(Stroke, usize, bool)> {
+    fn skeleton_left(&self, syllables: &[Syllable]) -> Option<(Stroke, usize, bool, Vec<Group>)> {
         let in_order = |a: Stroke, b: Stroke| match (a.highest(), b.lowest()) {
             (Some(high), Some(low)) => high <= low,
             _ => true,
         };
-        let left = |sounds: &[String]| Self::consonants(sounds, &self.onset, &self.onset_cluster, false);
+        let left = |sounds: &[String]| Self::consonant_groups(sounds, &self.onset, &self.onset_cluster, false);
         if syllables.len() >= 2 && syllables[0].vowel.ends_with('0') {
             let lead = &syllables[0];
             let coda: Vec<String> = lead.coda.iter().filter(|s| plain(s) != "Y").cloned().collect();
-            let mut keys = left(&lead.onset).unwrap_or_default();
-            if let Some(c) = left(&coda)
+            let (mut keys, mut groups) = left(&lead.onset).unwrap_or_default();
+            if let Some((c, more)) = left(&coda)
                 && in_order(keys, c)
             {
                 keys.0 |= c.0;
+                groups.extend(more);
             }
             match left(&syllables[1].onset) {
-                Some(next) if in_order(keys, next) => return Some((Stroke(keys.0 | next.0), 1, false)),
+                Some((next, more)) if in_order(keys, next) => {
+                    groups.extend(more);
+                    return Some((Stroke(keys.0 | next.0), 1, false, groups));
+                }
                 _ if keys.is_empty() => {}
-                _ => return Some((keys, 1, true)),
+                _ => return Some((keys, 1, true, groups)),
             }
         }
-        Some((left(&syllables[0].onset)?, 0, false))
+        let (keys, groups) = left(&syllables[0].onset)?;
+        Some((keys, 0, false, groups))
     }
 }
 

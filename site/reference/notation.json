@@ -1,7 +1,7 @@
 {
  "id": "notation",
  "title": "Short notation",
- "goal": "How keymux, lyk and this site write a stroke for people: a group of keys whose sound is known as the standard letter for it, every other stroke as raw keys; and how both forms are read back.",
+ "goal": "How keymux, lyk and this site write a stroke for people, and how lyk's dictionary keys are spelled: a group of keys whose sound the generator recorded as the standard letter for it, every other stroke as raw keys; and how both forms are read back.",
  "blocks": [
   {
    "t": "h",
@@ -9,7 +9,7 @@
   },
   {
    "t": "p",
-   "x": "**A group of keys is written as one symbol only where its split is known.** `build` knows the split of every outline whose keys it can attribute to its word's sounds one way only: [[flight|TPHRAOEUT]] shows as `FLĪT`, [[night|TPHAOEUT]] as `NĪT`, [[flower|TPHROUR]] (folded) as `FLOUR`, [[nature|TPHAEUFP]] as `NĀČ`, [[much|UFP]] (a brief) as `UČ`, [[narrates|TPHRA*EUTS]] (a short form, its `TPHR` the N and R it is) as `NRĀ*TS`. Every other stroke is shown raw, a key each, because a guess at its split could be wrong: [[enemy|TPHAEPL]] (its `AE` writes no vowel lyk's tables know) and [[notation|TPHAEUGTS]] (its `T` struck after the vowel it comes before) stay raw. Dictionary files and every page source stay raw. Input takes both forms."
+   "x": "**A group of keys is written as one symbol only where its split is known.** The generator records, as it writes each outline, which keys wrote which of its word's sounds ([how](#/ref/notation/how-the-split-is-recorded)), and the dictionary files spell every outline whose split is known in this notation, so the key itself is the split: [[night|TPHAOEUT]] is `NĪT`, [[flower|TPHROUR]] (folded) `FLOUR`, [[nature|TPHAEUFP]] `NĀČ`, [[much|UFP]] (a brief the rules write) `UČ`, [[narrates|TPHRA*EUTS]] (a short form, its `TPHR` the N and R it is) `NRĀ*TS`, [[notation|TPHAEUGTS]] (its `T` struck inside the `-GS` of the *shun* it comes before) `NĀTŠN`, [[seems|SAOEPLS]] (Plover's brief, the rules' `SAOEPLZ` with its `-Z` struck `-S`) `SĒMS`. Every other stroke is written raw, a key each, because a guess at its split could be wrong: [[enemy|TPHAEPL]] (a brief whose `AE` writes no vowel lyk's tables know) stays `TPHAEPL`. Input takes both forms."
   },
   {
    "t": "table",
@@ -20,14 +20,19 @@
    ],
    "rows": [
     [
-     "an outline lyk wrote syllable by syllable from its word's sounds",
+     "an outline lyk wrote from its word's sounds: syllable by syllable, folded, a short form or dropped vowel, a star-ladder step, a `-S` respelling, a pinky swap, another pronunciation, a family shape, a merged phrase, and the extras and alternates made of those",
      "short",
-     "its split is the sounds'"
+     "its split was recorded as it was written"
     ],
     [
-     "any other generated outline (folded, short form, brief, phrase, extra, alternate, ladder step) whose keys the chord tables attribute to its word's sounds one way only",
+     "a backup join made of known pieces (a stem and a suffix chord, two words, an earlier join)",
      "short",
-     "its split is known; two equally good attributions that differ leave it raw"
+     "each stroke split as in its piece"
+    ],
+    [
+     "a brief whose keys are an outline the rules wrote for the word, by a step that keeps its sounds (Plover's `SAOEPLS`: the rules' `SAOEPLZ`, `-Z` struck `-S`), or that the chord tables attribute to its word's sounds one way only",
+     "short",
+     "its split is the rules' (or the tables')"
     ],
     [
      "a word keymux's solver read from a run that missed the dictionary",
@@ -35,7 +40,7 @@
      "the solver reports the groups it used ([below](#/ref/notation/the-solver-s-split))"
     ],
     [
-     "an outline the tables cannot attribute (a brief whose keys are not its sounds, a T struck out of order), a backup, a name",
+     "any other brief (its keys are not its sounds), a phrasing-grammar stroke, the name lane, the reserved strokes",
      "raw",
      "nothing says how its keys split"
     ],
@@ -53,11 +58,41 @@
   },
   {
    "t": "h",
+   "x": "The order rule"
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Each group is written once, in steno order**: a hand's groups by their lowest key, the vowel chord by its mark. That is the order the keys are struck in, so the text names the keys as the hand finds them.",
+    "**A single key is its own letter, whatever sound it writes**: the `-S` of *seems* writes its *z* and is `S` (`SĒMS`), the `-D` of a past tense that sounds *t* is `D`, the `-G` of *-ing* is `G`, the `-F` of *have* is `F`. A symbol names a group of keys, never a sound one key happens to make.",
+    "**A chord of several keys is its symbol** where the table has one (`-PB` `N`, `-GS` `ŠN`), else the letters of the sounds it writes (`-FT` for *st*: `ST`), else its keys as the table reads them.",
+    "**A chord struck around another** (its keys on both sides of a key of another group: `-GS` around the `-T` of *notation*) is written as the cluster symbol of the two together where there is one (`-GTS` `TŠN`, so `NĀTŠN`, the sounds in the order they are said); with none, each group by its lowest key (the outer one first).",
+    "**Reading never depends on the order**: a hand's text is read as a set of tokens, each a set of keys, so `NĀTŠN` and `NĀŠNT` are the same stroke. A spelling that would read back as other keys is not used: the outline is written raw."
+   ]
+  },
+  {
+   "t": "h",
+   "x": "Dictionary keys"
+  },
+  {
+   "t": "p",
+   "x": "`build` writes every dictionary key in this notation where the outline's split is known (`\"NĪT\": \"night\"`, `\"NRĀ*TS\": \"narrates\"`, `\"FLOUR\": \"flower\"`) and raw where it is not (`\"-S\": \"yes\"`): the key's spelling is the split, so no list of known outlines ships beside the files. `.keymux-notation.json` holds only the symbol table and `\"spelled\": \"keys\"`, which tells keymux to read the keys of the dictionaries beside it with the table (a 4 KB file). `build` checks that every key reads back as exactly its outline, raw notation first, and that no two keys read as one outline; keymux and the tools read the keys the same way (see [build and files](#/ref/build-and-files/the-dictionary-files))."
+  },
+  {
+   "t": "list",
+   "items": [
+    "**Why.** What a stroke is written as and what the dictionary says it is are one thing: a learner reading a file, keymux's tape, its lookup, its keyboard diagram and this site all show the key as written, and nothing has to be kept in step beside it.",
+    "**Plover cannot read the files as they are**: it knows raw notation only. `lyk build --raw` writes every key raw (`TPHAOEUT`), for Plover or any program that needs Plover's notation. typeladder's `lyk.codes.json` stays raw (it is written from the dictionary in memory, not from the files; typeladder would need the symbol table to read short keys).",
+    "**Stays raw**: the reserved-stroke files (`01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json`, hand-written), the name lane (`03-lyk-names*.json`: its outlines are not recorded yet), a brief whose keys are not its sounds, and `build --raw`."
+   ]
+  },
+  {
+   "t": "h",
    "x": "Symbols"
   },
   {
    "t": "p",
-   "x": "One character where a standard one exists (dictionary respelling, IPA or established spelling), else the usual dictionary respelling in capitals. A group is written in its hand's colour as one piece. The **source** column says where each symbol comes from; *base* chords are the `[onset]` and `[coda]` of `rules/plover.toml`, *cluster* chords are fixed in `src/notation.rs` (`CLUSTERS`), *measured* ones are chosen by `build` (see [how they were chosen](#/ref/notation/how-the-groups-were-chosen)); the counts are strokes lyk wrote from sounds."
+   "x": "One character where a standard one exists (dictionary respelling, IPA or established spelling), else the usual dictionary respelling in capitals. A group is written in its hand's colour as one piece. The **source** column says where each symbol comes from; *base* chords are the `[onset]` and `[coda]` of `rules/plover.toml`, *cluster* chords are fixed in `src/notation.rs` (`CLUSTERS`), *measured* ones are chosen by `build` (see [how they were chosen](#/ref/notation/how-the-split-is-recorded)); the counts are strokes lyk wrote from sounds."
   },
   {
    "t": "h3",
@@ -176,49 +211,49 @@
      "`X`",
      "ks, the *ex-* prefix",
      "orthography (x)",
-     "the prefix chord: X 213, K P 386 (written their own way)"
+     "the prefix chord: X 646, K P 304 (written their own way)"
     ],
     [
      "`TPHR`",
      "`FL`",
      "f l",
      "respelling",
-     "measured over every entry: FL 1,261, NR 262 (short forms such as *narrates*, written their own way)"
+     "measured over every entry: FL 1,444, NR 338 (short forms such as *narrates*, written their own way), NT 118"
     ],
     [
      "`PHR`",
      "`PL`",
      "p l",
      "respelling",
-     "measured: PL 1,449, MR 139"
+     "measured: PL 1,634, MR 358"
     ],
     [
      "`KHR`",
      "`KL`",
      "k l",
      "respelling",
-     "measured: KL 2,281 of 2,282"
+     "measured: KL 2,541 of 2,564"
     ],
     [
      "`SHR`",
      "`SL`",
      "s l",
      "respelling",
-     "measured: SL 938, ŠR 121"
+     "measured: SL 1,088, ŠR 153"
     ],
     [
      "`SPHR`",
      "`SPL`",
      "s p l",
      "respelling",
-     "measured: 112 of 112"
+     "measured: 273 of 325"
     ],
     [
      "`SKHR`",
      "`SKL`",
      "s k l",
      "respelling",
-     "measured: 35 of 35"
+     "measured: 178 of 191"
     ]
    ]
   },
@@ -290,97 +325,97 @@
      "`ŠN`",
      "shun (*-tion*)",
      "respelling",
-     "cluster: ŠN 1,468, G S 319"
+     "cluster: ŠN 1,569, G S 461"
     ],
     [
      "`-GTS`",
      "`TŠN`",
      "t then shun (*notation*)",
      "respelling",
-     "cluster"
+     "cluster: TŠN 159 of 237"
     ],
     [
      "`-BGS`",
      "`X`",
      "ks (*tax*)",
      "orthography (x)",
-     "cluster: X 1,427, K ŠN 17 of 1,447 attributed strokes"
+     "cluster: X 1,483, K ŠN 23 of 1,511 strokes"
     ],
     [
      "`-FRB`",
      "`RV`",
      "r v (*serve*)",
      "respelling",
-     "cluster: 18 of 22"
+     "cluster: 75 of 175 (RVR 43)"
     ],
     [
      "`-FRPB`",
      "`ČRB`",
      "n ch (*bench*), r ch (*march*)",
      "respelling",
-     "measured: no split is most of its 465 strokes, so the table reads `ČR` + `B`; *bench* and *march* are written their own way"
+     "measured: no split is most of its 503 strokes (FRN 162, NČ 148), so the table reads `ČR` + `B`; *bench* and *march* are written their own way"
     ],
     [
      "`-FT`",
-     "`FT`",
+     "`ST`",
      "s t",
      "respelling",
-     "measured: ST 979, FT 1,416 (the table reads `FT`)"
+     "measured: ST 1,871, FT 664 (the table reads `ST`)"
     ],
     [
      "`-FD`",
-     "`FD`",
+     "`ZD`",
      "z d (and s t of *-ed*)",
      "respelling",
-     "measured: FD 674, ZD 273, ST 153 (the table reads `FD`)"
+     "measured: ZD 497, FD 417, ST 253 (the table reads `ZD`)"
     ],
     [
      "`-FBG`",
      "`SK`",
      "s k",
      "respelling",
-     "measured: 45 of 45"
+     "measured: SK 232, FK 142"
     ],
     [
      "`-FL`",
-     "`LF`",
-     "l f",
-     "respelling",
-     "measured: 40 of 57"
+     "`FL`",
+     "its keys",
+     "its keys",
+     "measured: FL 375, SL 169, LF 94: its keys' own letters are commonest, so no symbol"
     ],
     [
      "`-LG`",
      "`LG`",
      "l k",
      "respelling",
-     "measured: L G 655, L K 19 (the table reads `LG`)"
+     "measured: L G 564, L K 154 (no symbol: its keys' letters)"
     ],
     [
      "`-RBG`",
      "`RK`",
      "r k",
      "respelling",
-     "measured: 81 of 81"
+     "measured: 1,008 of 1,134"
     ],
     [
      "`-FPL`",
      "`ZM`",
      "z m",
      "respelling",
-     "measured"
+     "measured: ZM 201 of 617 (FM 127, FPL 118)"
     ],
     [
      "`-FRD`",
-     "`STR`",
-     "s t r",
-     "respelling",
-     "measured"
+     "`FRD`",
+     "its keys",
+     "its keys",
+     "measured: F R D 218, STR 27: no symbol"
     ]
    ]
   },
   {
    "t": "p",
-   "x": "Every other key is its own letter. A run of keys is read from its lowest key: the group with the most keys that starts there, whose keys are all down and with no other key still to write inside its span (`SR` `V` is never read inside `STR`), else the key's own letter. `#` strokes are `#` and letters (`#TR-RL`), never Plover's digits."
+   "x": "The tables list the symbols a learner meets most; `build` measures more for longer runs the same way (150 symbols in all, such as `STK` `DS` for *dis-* and `-FRT` `STR`), all in `.keymux-notation.json`, and `lyk build --report` prints every run's splits. Every other key is its own letter. A run of keys is read from its lowest key: the group with the most keys that starts there, whose keys are all down and with no other key still to write inside its span (`SR` `V` is never read inside `STR`), else the key's own letter. `#` strokes are `#` and letters (`#TR-RL`), never Plover's digits."
   },
   {
    "t": "h3",
@@ -492,10 +527,10 @@
   {
    "t": "list",
    "items": [
-    "**lyk.** `lookup`/`keys`/`resolve` (lyk's column only, each group coloured by hand; dim for a solver read), `explain`, `quote`, `paths`, `family`, `ergonomics` (with the keys beside a short form), `mistakes` (the report; the tape is read in either form), `verify-lookup`, `build --report` and `solve --tape`. All through one function, `notation::outline`, reading `out/lyk/.keymux-notation.json` (before any build: the built-in rules' table, every stroke raw).",
-    "**This site.** Chips, tables, Lookup and the hover board's label (`data/notation.json`, the same table with its known outlines cut to the ones the site shows).",
-    "**keymux.** The tape (overlay and file), the live lookup, `{:outline:...}` and the keyboard diagram write and draw through the same file, which `deploy` ships beside the dictionaries; without it everything is Plover's notation. The diagram draws every key on its own unless the stroke's split is known; a known group lights as one block labelled with its symbol (`Ī` across the four thumb keys, `Š` over `-RB`), the star beside it.",
-    "**Stays raw** (read by programs): the dictionary files, typeladder's `lyk.codes.json`, the name lane files, the solver plugin, `mistakes --json` and `--drill`, `solve --misses`, the site's `data/` files and page sources."
+    "**lyk.** `lookup`/`keys`/`resolve` (lyk's column only, each group coloured by hand; dim for a solver read), `explain`, `quote`, `paths`, `family`, `ergonomics` (with the keys beside a short form), `mistakes` (the report; the tape is read in either form), `verify-lookup`, `build --report` and `solve --tape`. All through one function, `notation::outline`, reading the symbol table in `out/lyk/.keymux-notation.json` and the spelled keys of the dictionary files beside it, a backup's as a lookup reads it (before any build: the built-in rules' table, every stroke raw).",
+    "**This site.** Chips, tables, Lookup and the hover board's label (`data/notation.json`: the same table, and the spelled keys of the outlines the site shows, by their raw outline).",
+    "**keymux.** Reads the dictionary keys with the file `deploy` ships beside them, and writes each outline as its key spells it: the tape (overlay and file), the live lookup, `{:outline:...}` and the keyboard diagram; without the file everything is Plover's notation. The diagram draws every key on its own unless the stroke's split is known; a known group lights as one block labelled with its symbol (`Ī` across the four thumb keys, `Š` over `-RB`), the star beside it.",
+    "**Stays raw** (read by programs): typeladder's `lyk.codes.json`, the name lane files, the solver plugin, `mistakes --json` and `--drill`, `solve --misses`, the site's `data/` files and page sources (the tools read the dictionary keys back to raw with `tools/notation.py`), and every key `lyk build --raw` writes."
    ]
   },
   {
@@ -508,15 +543,69 @@
   },
   {
    "t": "h",
-   "x": "How the groups were chosen"
+   "x": "How the split is recorded"
   },
   {
    "t": "p",
-   "x": "`build` finds the split of every generated outline but the backups two ways. An outline the rules wrote syllable by syllable is read back to its sounds (59,946 outlines). Any other (folded strokes, short forms and dropped vowels, briefs, phrases, extras, alternates, ladder steps) is attributed with the solver's chord tables: each stroke is every way its keys can be read as sounds, matched in order against its word's sounds (the consonants after the vowel in any order), the sounds the keys leave out skipped (a vowel cheaply, a consonant dearly); a suffix chord after the first stroke may stand for the rest of the word; the cheapest attribution wins, and two equally cheap ones that group the keys differently leave the outline unknown (83,690 outlines attributed). Over all of them, each run of two keys or more is counted by how its sounds split; where the commonest split is not how the base symbols read the run, and at least 10 strokes split so, the run gets a group of its own (never one that is only its keys' own letters, in any order, and never a symbol another group of that hand already has). The outlines that split as the finished table reads them are listed as known (118,705); those that split another way are listed with their own form (12,665); a known outline with no group at all is written raw either way and not listed. The file is 2.8 MB; keymux reads it in about 70 ms (a release build) and keeps about 120,000 outline hashes and 12,665 short forms. `lyk build --report` prints every run's splits."
+   "x": "The rules write every outline from groups: an onset's runs (`TPH` *n*, `TPHR` *f l*), the vowel (`AOEU` *ay*, with the consonant it takes: `AR`), the coda's runs (`-GS` *sh ən*), a fixed prefix's keys. `build` keeps those groups with every outline it writes (`Rules::outline_split`, `shorten_split`), and carries them through every step that changes an outline after it is written (`src/generate/split.rs`): the join key and the star name no sound, a `-S` respelling or a pinky swap moves its key's sound to the key it moves to, an untypable stroke struck as two takes its groups with it, a marker stroke (`/+*`) has none. A family shape is its root's groups plus the ending's keys (the sounds the member adds), a merged phrase both words' groups, a gold brief the groups of an outline the rules wrote for the word when its keys are that outline by one of those steps (Plover's `SAOEPLS` for *seems*), and a backup join its pieces' strokes as each piece is written. An outline with no record (any other brief, a phrasing-grammar stroke) is attributed with the solver's chord tables as before: each stroke every way its keys can be read as sounds, matched in order against the word's sounds, the cheapest attribution kept, two equally cheap ones that group the keys differently leave it unknown. Over every outline but the backups, each run of two keys or more is counted by how its sounds split; where the commonest split is not how the base symbols read the run, and at least 10 strokes split so, the run gets a symbol of its own (never one that is only its keys' own letters, in any order, nor one another group of that hand already has), and a symbol that would make some run of that hand's keys read back as other keys is dropped, the least used first. `lyk build --report` prints every run's splits and what recording found that the tables could not attribute."
   },
   {
    "t": "p",
-   "x": "Coverage: 97,143 of the 172,131 generated outlines `deploy` ships (56%) have a known split; of the 25,429 briefs, 10,247 are written short (their keys are their word's sounds), the rest raw. Backups (not shipped) and the name lane are not attributed: a backup shows short only when the solver reads it and reports its split."
+   "x": "Coverage: 124,004 of the 172,132 generated outlines `deploy` ships (72%) have a known split, up from 97,143 (56%) when the split was only attributed after the build; of the 25,430 briefs, 12,056 are written short. 27,126 shipped outlines are known only because their split was recorded (by what the tables miss in them: a key written for a sound its letter is not 11,724 (`S` as *z* 6,892, `F` as *v* 2,143, `Z` as *s* 1,114, `G` as *ng* 1,088, `T` as *d* 966, `D` as *t* 501, `T` or `D` as *th* 217, `G` as *k* 31), a chord struck around another 5,919, a stroke with no vowel keys 3,954, an attribution the tables found ambiguous 8,497; an outline may count twice). The keys spelled short, of the keys the table would write with a group:"
+  },
+  {
+   "t": "table",
+   "head": [
+    "File",
+    "Spelled short",
+    "Before (attributed after the build)"
+   ],
+   "rows": [
+    [
+     "`02-lyk-words.json`",
+     "42,522 of 58,052 (73%)",
+     "36,966 of 57,125 (65%)"
+    ],
+    [
+     "`02-lyk-short.json`",
+     "48,700 of 53,250 (91%)",
+     "35,863 of 52,391 (68%)"
+    ],
+    [
+     "`02-lyk-alternates.json`",
+     "4,157 of 4,368 (95%)",
+     "4,100 of 4,353 (94%)"
+    ],
+    [
+     "`02-lyk-extras.json`",
+     "11,835 of 31,001 (38%)",
+     "9,003 of 30,524 (29%)"
+    ],
+    [
+     "`02-lyk-phrases.json`",
+     "1,358 of 6,503 (21%)",
+     "1,199 of 6,362 (19%)"
+    ],
+    [
+     "`02-lyk-phrasing.json`",
+     "8 of 6,875",
+     "8 of 6,875"
+    ],
+    [
+     "`02-lyk-backups.json` (not shipped)",
+     "2,858,198 of 4,822,787 (59%)",
+     "43,912 of 4,811,411 (1%)"
+    ],
+    [
+     "`03-lyk-names*.json`, `02-lyk-suffixes.json`",
+     "none (raw)",
+     "none"
+    ]
+   ]
+  },
+  {
+   "t": "p",
+   "x": "The shipped files are 7.8 MB with their keys spelled (10.9 MB before, the 2.8 MB list of known outlines gone). keymux reads lyk's 270,000 shipped entries in about 0.38 s (0.30 s with raw keys; a cached start is unchanged), and its notation with the 113,000 spelled outlines in about 0.3 s and 16 MB (0.07 s and 17 MB before); the overlay's copy of it is 2.7 MB."
   }
  ]
 }

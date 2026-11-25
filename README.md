@@ -69,7 +69,7 @@ In a checkout write `cargo run --release --` for `lyk`. Every command, option an
 
 ```
 lyk fetch                          # download the data (safe to re-run), the other theories included
-lyk build                          # briefs + rules -> out/lyk/02-lyk-*.json (--report: every diagnostic and the cost tables)
+lyk build                          # briefs + rules -> out/lyk/02-lyk-*.json, keys in the short notation where the split is known (--raw: raw keys, for Plover; --report: every diagnostic and the cost tables)
 lyk deploy                         # build, then each installed target: keymux (validate, copy into ~/.config/keymux/steno/lyk (--to), with the solver plugin and no backups), typeladder (dictionaries/lyk.codes.json)
 lyk deploy --only keymux           # one target (also --only typeladder, --no-keymux, --no-typeladder)
 lyk deploy --rollback              # put back the files the last deploy replaced

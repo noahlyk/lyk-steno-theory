@@ -60,7 +60,7 @@
     { "t": "p", "x": "The phrasing grammar writes a whole phrase in one stroke by rule: starter (who) on the left bank, auxiliary or tense on the vowels, star for not, verb on the right bank. Lessons: [the lessons](#/lesson/19-phrasing-grammar), [the phrasing strokes lesson](#/lesson/20-phrasing-strokes)." },
 
     { "t": "h", "x": "Output: writing the dictionary files" },
-    { "t": "p", "x": "The generator keys every word lowercase. `write_json` applies one transform on output, `written()`: the pronoun \"i\", alone, leading a contraction, or either half of a phrase, is capitalized." },
+    { "t": "p", "x": "The generator keys every word lowercase. `write_json` applies one transform on output, `written()`: the pronoun \"i\", alone, leading a contraction, or either half of a phrase, is capitalized. Each key is the outline in the [short notation](#/ref/notation/dictionary-keys) where its split is known (`NĪT`), raw where it is not; `build --raw` writes every key raw." },
     { "t": "table", "head": ["Stroke", "Written as"], "rows": [
       ["[[EU]]", "I"],
       ["[[AOEUPL]]", "I'm"],

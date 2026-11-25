@@ -218,7 +218,7 @@ fn open_words<'a>(pools: &Pools<'a>, offers: &HashMap<String, Vec<Vec<Stroke>>>,
     for (i, (word, candidates)) in pools.iter().enumerate() {
         let family = offers.get(word).filter(|_| !pools.no_prose[i]).into_iter().flatten().map(|outline| {
             let candidate =
-                Candidate { outline: outline.clone(), origin: Origin::Family, cost: candidate_cost(outline).saturating_sub(FAMILY_DISCOUNT) };
+                Candidate { outline: outline.clone(), origin: Origin::Family, cost: candidate_cost(outline).saturating_sub(FAMILY_DISCOUNT), split: None };
             (render_outline(outline), candidate)
         });
         let own = pools.texts[i].iter().cloned().zip(candidates.iter().cloned());

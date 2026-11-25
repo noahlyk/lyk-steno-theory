@@ -101,6 +101,10 @@
      "Add a third dictionary to the cost tables of `build --report`. Example: `build --report --against magnum.rtf`."
     ],
     [
+     "`build --raw`",
+     "Write every dictionary key in raw Plover notation (`TPHAOEUT`) instead of the short notation where the split is known (`NĪT`): for Plover or any other program that reads Plover's notation only. keymux reads either."
+    ],
+    [
      "`quote [--words N] [--rebuild]`",
      "A random quote, stroked in lyk next to Plover and Lapwing, a word that is not an entry composed from entries (see [how these commands answer](#/ref/build-and-files/how-quote-lookup-and-resolve-answer))."
     ],
@@ -208,7 +212,7 @@
   },
   {
    "t": "p",
-   "x": "`!build` writes several small steno JSON files, one per **way an entry came about**; `!deploy` puts them in keymux's folder next to the reserved-stroke files. The split does not change what a stroke means."
+   "x": "`!build` writes several small steno JSON files, one per **way an entry came about**; `!deploy` puts them in keymux's folder next to the reserved-stroke files. The split does not change what a stroke means. **Each key is written in lyk's [short notation](#/ref/notation/dictionary-keys) where the outline's split is known** (`\"NĪT\": \"night\"`, `\"FLOUR\": \"flower\"`) and raw where it is not (`\"-S\": \"yes\"`); `!build` checks that every key reads back as exactly its outline and that no two keys read as one. keymux reads them with `.keymux-notation.json`; Plover cannot, so `lyk build --raw` writes every key raw for Plover or any program that needs Plover's notation."
   },
   {
    "t": "table",
@@ -262,7 +266,7 @@
   },
   {
    "t": "p",
-   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` ([reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`); the [name lane](#/ref/names)'s `03-lyk-names.json` (lyk's own outlines for names, `#/` and an outline) and `03-lyk-names-borrowed.json` (Lapwing's, only for a name the rules cannot strike), both written by `!build` and shipped by `!deploy`; the solver plugin `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly on first load and on every change, see [the solver](#/ref/fallback)); and two mods copied verbatim from `rules/reserved/`, `06-lyk-sticky-plus.rs` ([holding `+`](#/ref/join-key)) and `07-lyk-outline-join.rs` (a `+` stroke always continues the outline [`PHRO*PBT` / `PHRO*EPBT`](#/ref/punctuation) shows); and the [short notation](#/ref/notation) file `.keymux-notation.json` (written by `!build` to `out/lyk/`: the symbol table of each hand and the vowel marks, the outlines written their own way and the outlines whose split is known), from which keymux writes strokes for people."
+   "x": "Alongside them in the same folder: `01-lyk-commands.json`, `03-lyk-punctuation.json`, `04-lyk-emilys-modifiers.json` ([reserved strokes](#/ref/reserved-strokes), copied verbatim from `rules/reserved/`); the [name lane](#/ref/names)'s `03-lyk-names.json` (lyk's own outlines for names, `#/` and an outline) and `03-lyk-names-borrowed.json` (Lapwing's, only for a name the rules cannot strike), both written by `!build` and shipped by `!deploy`; the solver plugin `05-lyk-solver.rs` with its lexicon `05-lyk-solver.bin` (written by `!build` to `out/lyk/`; keymux compiles the `.rs` to WebAssembly on first load and on every change, see [the solver](#/ref/fallback)); and two mods copied verbatim from `rules/reserved/`, `06-lyk-sticky-plus.rs` ([holding `+`](#/ref/join-key)) and `07-lyk-outline-join.rs` (a `+` stroke always continues the outline [`PHRO*PBT` / `PHRO*EPBT`](#/ref/punctuation) shows); and the [short notation](#/ref/notation) file `.keymux-notation.json` (written by `!build` to `out/lyk/`: the symbol table of each hand and the vowel marks, and `\"spelled\": \"keys\"`, which tells keymux to read the dictionary keys beside it with that table; about 4 KB), from which keymux reads the keys and writes strokes for people. keymux must be one that reads spelled keys (install it before deploying a dictionary built this way); `keymux steno validate`, which `!deploy` runs, reads them too."
   },
   {
    "t": "p",
@@ -463,7 +467,7 @@
   },
   {
    "t": "p",
-   "x": "Python 3, no dependencies, in `tools/`. Each tool reads the built dictionary in `out/lyk/` (run `cargo run --release -- build` first) and the data in `data/`, from wherever it is run. `lyk_out.py` is the shared loader, not a tool."
+   "x": "Python 3, no dependencies, in `tools/`. Each tool reads the built dictionary in `out/lyk/` (run `cargo run --release -- build` first) and the data in `data/`, from wherever it is run. `lyk_out.py` is the shared loader, not a tool: it reads every key back to its raw outline with `notation.py` (the same reading as lyk's and keymux's: raw notation first, then the short notation by `.keymux-notation.json`), so the tools work on raw outlines."
   },
   {
    "t": "table",

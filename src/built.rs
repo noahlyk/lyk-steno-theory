@@ -191,9 +191,20 @@ impl Backups {
                 .get(word)
                 .into_iter()
                 .flatten()
-                .filter_map(|&(from, to)| parse_outline(&text[from as usize..to as usize]))
+                .filter_map(|&(from, to)| {
+                    let key = &text[from as usize..to as usize];
+                    crate::notation::learn_key(key);
+                    parse_outline(key)
+                })
                 .collect(),
-            Source::Sorted(sorted) => sorted.outlines(word).iter().filter_map(|o| parse_outline(o)).collect(),
+            Source::Sorted(sorted) => sorted
+                .outlines(word)
+                .iter()
+                .filter_map(|o| {
+                    crate::notation::learn_key(o);
+                    parse_outline(o)
+                })
+                .collect(),
         }
     }
 }
@@ -238,19 +249,19 @@ mod tests {
         write(
             &dir,
             Role::Backups,
-            "{\n  \"TKO/+G\": \"dog\",\n  \"KA/+PBT\": \"cant\",\n  \"KA/+PB/+T\": \"cant\"\n}",
+            "{\n  \"TKO/+-G\": \"dog\",\n  \"KA/+-PBT\": \"cant\",\n  \"KA/+-PB/+-T\": \"cant\"\n}",
         );
         let entries = load(&dir).unwrap();
         let cheapest = generate::cheapest(&entries);
         assert_eq!(cheapest["dog"], parse_outline("TKOG").unwrap().as_slice(), "a longer backup loses");
-        assert_eq!(cheapest["cant"], parse_outline("KA/+PBT").unwrap().as_slice(), "the shorter backup wins");
+        assert_eq!(cheapest["cant"], parse_outline("KA/+-PBT").unwrap().as_slice(), "the shorter backup wins");
     }
 
     #[test]
     fn the_backups_index_lists_every_outline_of_a_word_including_the_long_ones() {
         let dir = fresh_dir("backups-index");
         write(&dir, Role::Words, "{\n  \"TKOG\": \"dog\"\n}");
-        write(&dir, Role::Backups, "{\n  \"TKO/+G\": \"dog\",\n  \"TK/+O/+G\": \"dog\",\n  \"S\": \"I\"\n}");
+write(&dir, Role::Backups, "{\n  \"TKO/+-G\": \"dog\",\n  \"TK/+O/+-G\": \"dog\",\n  \"S\": \"I\"\n}");
         let backups = Backups::load(&dir).unwrap();
         let dog: Vec<String> = backups.outlines("dog").iter().map(|o| crate::stroke::render_outline(o)).collect();
         assert_eq!(dog, ["TKO/+-G", "TK/+O/+-G"]);

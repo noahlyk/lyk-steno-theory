@@ -340,7 +340,7 @@ impl View {
             None => missing("-", "2"),
             Some(Cell { strokes, how }) => {
                 let pieces: Vec<Vec<Piece>> = if t == 0 {
-                    crate::notation::shown().outline_pieces(strokes)
+                    crate::notation::outline_pieces(strokes)
                 } else {
                     strokes.iter().map(|&s| crate::notation::raw_pieces(s)).collect()
                 };
